@@ -1,0 +1,28 @@
+# PHP
+vendor/
+.env
+*.cache
+
+# Node
+node_modules/
+.next/
+dist/
+
+# Flutter
+build/
+.dart_tool/
+.flutter-plugins
+.flutter-plugins-dependencies
+
+# IDE
+.idea/
+.vscode/
+!.vscode/settings.json
+*.swp
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Claude
+.claude/plugins/cache/
