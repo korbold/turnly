@@ -11,8 +11,19 @@ return Application::configure(basePath: dirname(__DIR__))
         health: '/up',
     )
     ->withMiddleware(function (Middleware $middleware): void {
-        //
+        $middleware->alias([
+            'tenant' => \App\Infrastructure\Http\Middleware\ResolveTenantMiddleware::class,
+            'super_admin' => \App\Infrastructure\Http\Middleware\EnsureSuperAdminMiddleware::class,
+        ]);
     })
     ->withExceptions(function (Exceptions $exceptions): void {
-        //
+        $exceptions->render(function (\App\Domain\Shared\Exceptions\AppException $e, \Illuminate\Http\Request $request) {
+            return response()->json([
+                'error' => [
+                    'code' => $e->getErrorCode(),
+                    'message' => $e->getMessage(),
+                    'context' => $e->getContext(),
+                ]
+            ], $e->getStatusCode());
+        });
     })->create();
