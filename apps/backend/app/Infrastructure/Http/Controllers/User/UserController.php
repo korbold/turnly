@@ -30,6 +30,57 @@ class UserController extends Controller
         return new UserResource($user);
     }
 
+    public function store(Request $request): JsonResponse
+    {
+        $request->validate([
+            'name' => 'required|string|max:255',
+            'email' => 'required|email|max:255',
+            'password' => 'required|string|min:8',
+            'role' => 'required|in:tenant_admin,cashier,washer',
+            'phone' => 'nullable|string|max:20',
+        ]);
+
+        $tenantId = app('current_tenant_id');
+
+        // Check if user already exists
+        $user = UserModel::where('email', $request->email)->first();
+
+        if ($user) {
+            // Check if already in this tenant
+            $exists = TenantUserModel::where('tenant_id', $tenantId)
+                ->where('user_id', $user->id)
+                ->exists();
+
+            if ($exists) {
+                return response()->json([
+                    'error' => ['code' => 'ALREADY_MEMBER', 'message' => 'Este usuario ya es miembro del equipo'],
+                ], 422);
+            }
+        } else {
+            // Create new user
+            $user = UserModel::create([
+                'name' => $request->name,
+                'email' => $request->email,
+                'password' => $request->password, // hashed by model cast
+                'phone' => $request->phone,
+                'is_super_admin' => false,
+            ]);
+        }
+
+        // Link to tenant
+        TenantUserModel::create([
+            'tenant_id' => $tenantId,
+            'user_id' => $user->id,
+            'role' => $request->role,
+            'is_active' => true,
+        ]);
+
+        return response()->json([
+            'data' => ['message' => 'Miembro agregado exitosamente'],
+            'meta' => ['timestamp' => now()->toIso8601String()],
+        ], 201);
+    }
+
     public function updateRole(Request $request, string $id): JsonResponse
     {
         $request->validate([
