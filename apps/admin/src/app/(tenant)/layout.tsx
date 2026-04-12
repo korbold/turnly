@@ -1,16 +1,31 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-import { useRouter } from 'next/navigation';
-import { isAuthenticated } from '@/lib/api/auth';
+import { useRouter, usePathname } from 'next/navigation';
+import { isAuthenticated, getMe } from '@/lib/api/auth';
+import { canAccess } from '@/lib/constants/permissions';
 import { Sidebar } from '@/components/layout/Sidebar';
 import { TopBar } from '@/components/layout/TopBar';
 
+const PATH_TO_SECTION: Record<string, string> = {
+  '/dashboard': 'dashboard',
+  '/reservations': 'reservations',
+  '/service-log': 'service-log',
+  '/clients': 'clients',
+  '/services': 'services',
+  '/team': 'team',
+  '/reports': 'reports',
+  '/settings': 'settings',
+};
+
 export default function TenantLayout({ children }: { children: React.ReactNode }) {
   const router = useRouter();
+  const pathname = usePathname();
   const [ready, setReady] = useState(false);
   const [superAdminMode, setSuperAdminMode] = useState(false);
   const [viewingSlug, setViewingSlug] = useState('');
+  const [userRole, setUserRole] = useState<string | null>(null);
+  const [accessDenied, setAccessDenied] = useState(false);
 
   useEffect(() => {
     if (!isAuthenticated()) {
@@ -21,8 +36,33 @@ export default function TenantLayout({ children }: { children: React.ReactNode }
       setSuperAdminMode(true);
       setViewingSlug(localStorage.getItem('tenant_slug') ?? '');
     }
-    setReady(true);
+
+    // Fetch user role for access control
+    getMe()
+      .then((me) => {
+        setUserRole(me.role ?? null);
+        setReady(true);
+      })
+      .catch(() => {
+        setReady(true); // allow access on error (fallback)
+      });
   }, [router]);
+
+  // Check access whenever pathname or role changes
+  useEffect(() => {
+    if (!ready || !userRole) return;
+    // Super admin mode bypasses role checks
+    if (superAdminMode) return;
+
+    const basePath = '/' + (pathname.split('/')[1] ?? '');
+    const section = PATH_TO_SECTION[basePath];
+    if (section && !canAccess(userRole, section)) {
+      setAccessDenied(true);
+      router.replace('/dashboard');
+    } else {
+      setAccessDenied(false);
+    }
+  }, [pathname, userRole, ready, superAdminMode, router]);
 
   function handleBackToPanel() {
     localStorage.removeItem('tenant_slug');
@@ -30,7 +70,7 @@ export default function TenantLayout({ children }: { children: React.ReactNode }
     router.push('/super-admin');
   }
 
-  if (!ready) {
+  if (!ready || accessDenied) {
     return (
       <div className="min-h-screen flex items-center justify-center">
         <div className="animate-spin h-8 w-8 border-4 border-blue-500 border-t-transparent rounded-full" />
