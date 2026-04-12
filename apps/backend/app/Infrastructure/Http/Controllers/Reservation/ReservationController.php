@@ -1,0 +1,139 @@
+<?php
+
+namespace App\Infrastructure\Http\Controllers\Reservation;
+
+use App\Application\DTOs\Reservation\AvailableSlotsQueryDTO;
+use App\Application\DTOs\Reservation\CreateReservationDTO;
+use App\Application\UseCases\Reservation\CancelReservationUseCase;
+use App\Application\UseCases\Reservation\CompleteWashUseCase;
+use App\Application\UseCases\Reservation\ConfirmReservationUseCase;
+use App\Application\UseCases\Reservation\CreateReservationUseCase;
+use App\Application\UseCases\Reservation\GetAvailableSlotsUseCase;
+use App\Application\UseCases\Reservation\StartWashUseCase;
+use App\Infrastructure\Http\Controllers\Controller;
+use App\Infrastructure\Http\Requests\Reservation\CancelReservationRequest;
+use App\Infrastructure\Http\Requests\Reservation\CreateReservationRequest;
+use App\Infrastructure\Http\Resources\ReservationResource;
+use App\Infrastructure\Persistence\Models\ReservationModel;
+use Illuminate\Http\JsonResponse;
+use Illuminate\Http\Request;
+
+class ReservationController extends Controller
+{
+    public function __construct(
+        private CreateReservationUseCase $createReservation,
+        private ConfirmReservationUseCase $confirmReservation,
+        private CancelReservationUseCase $cancelReservation,
+        private StartWashUseCase $startWash,
+        private CompleteWashUseCase $completeWash,
+        private GetAvailableSlotsUseCase $getAvailableSlots,
+    ) {}
+
+    public function index(Request $request)
+    {
+        $query = ReservationModel::with(['vehicle', 'service', 'client']);
+
+        if ($request->has('date')) {
+            $query->whereDate('scheduled_at', $request->date);
+        }
+        if ($request->has('status')) {
+            $query->where('status', $request->status);
+        }
+        if ($request->has('service_id')) {
+            $query->where('service_id', $request->service_id);
+        }
+
+        $reservations = $query->orderBy('scheduled_at')->paginate($request->get('per_page', 15));
+
+        return ReservationResource::collection($reservations);
+    }
+
+    public function store(CreateReservationRequest $request): JsonResponse
+    {
+        $dto = new CreateReservationDTO(
+            tenantId: app('current_tenant_id'),
+            clientId: $request->user()->id,
+            vehicleId: $request->vehicle_id,
+            serviceId: $request->service_id,
+            scheduledAt: $request->scheduled_at,
+            createdBy: $request->user()->id,
+            assignedTo: $request->assigned_to,
+            notes: $request->notes,
+        );
+
+        $reservation = $this->createReservation->execute($dto);
+
+        // Fetch the model with relationships for the resource
+        $model = ReservationModel::with(['vehicle', 'service', 'client'])->find($reservation->id);
+
+        return (new ReservationResource($model))
+            ->response()
+            ->setStatusCode(201);
+    }
+
+    public function show(string $id): ReservationResource
+    {
+        $reservation = ReservationModel::with(['vehicle', 'service', 'client', 'assignedEmployee'])->findOrFail($id);
+        return new ReservationResource($reservation);
+    }
+
+    public function confirm(string $id): JsonResponse
+    {
+        $this->confirmReservation->execute($id);
+        return response()->json([
+            'data' => ['message' => 'Reservation confirmed'],
+            'meta' => ['timestamp' => now()->toIso8601String()],
+        ]);
+    }
+
+    public function start(string $id): JsonResponse
+    {
+        $this->startWash->execute($id);
+        return response()->json([
+            'data' => ['message' => 'Wash started'],
+            'meta' => ['timestamp' => now()->toIso8601String()],
+        ]);
+    }
+
+    public function complete(string $id): JsonResponse
+    {
+        $this->completeWash->execute($id);
+        return response()->json([
+            'data' => ['message' => 'Wash completed'],
+            'meta' => ['timestamp' => now()->toIso8601String()],
+        ]);
+    }
+
+    public function cancel(CancelReservationRequest $request, string $id): JsonResponse
+    {
+        $this->cancelReservation->execute($id, $request->reason);
+        return response()->json([
+            'data' => ['message' => 'Reservation cancelled'],
+            'meta' => ['timestamp' => now()->toIso8601String()],
+        ]);
+    }
+
+    public function availableSlots(Request $request): JsonResponse
+    {
+        $request->validate([
+            'date' => 'required|date',
+            'service_id' => 'required|uuid',
+        ]);
+
+        $dto = new AvailableSlotsQueryDTO(
+            tenantId: app('current_tenant_id'),
+            date: $request->date,
+            serviceId: $request->service_id,
+        );
+
+        $slots = $this->getAvailableSlots->execute($dto);
+
+        return response()->json([
+            'data' => $slots,
+            'meta' => [
+                'tenant' => app('current_tenant')->slug ?? null,
+                'timestamp' => now()->toIso8601String(),
+            ],
+        ]);
+    }
+}
