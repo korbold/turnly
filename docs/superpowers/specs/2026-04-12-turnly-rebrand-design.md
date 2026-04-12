@@ -50,7 +50,7 @@ address         VARCHAR(255) NULLABLE
 logo_url        VARCHAR(500) NULLABLE — path to uploaded logo
 cover_url       VARCHAR(500) NULLABLE — path to cover/banner image
 social_links    JSON NULLABLE — { "instagram": "...", "facebook": "...", "whatsapp": "..." }
-brand_colors    JSON NULLABLE — { "primary": "#3B82F6", "secondary": "#1E40AF" }
+brand_theme     VARCHAR(20) DEFAULT 'blue' — key from predefined color palette (blue, green, red, purple, orange, teal, pink, gray)
 ```
 
 ### 3.3 Table `tenant_images` — NEW
@@ -186,11 +186,23 @@ The existing Settings page gets expanded with these sections:
 - These appear on the public page
 
 **Colores de marca:**
-- Color primario (color picker) — usado en sidebar, botones, acentos del panel admin y página pública
-- Color secundario (color picker) — usado en hover states, badges, elementos secundarios
-- Vista previa en tiempo real al elegir colores
-- Colores por defecto: azul primario `#3B82F6`, azul oscuro secundario `#1E40AF`
+- El dueño elige de una paleta predefinida de temas (no color picker libre)
+- Cada tema tiene primary + secondary ya combinados y probados visualmente
+- Vista previa en tiempo real al elegir
 - Se aplican via CSS custom properties (`--color-primary`, `--color-secondary`) inyectadas según el tenant
+
+Paleta de temas disponibles:
+
+| Nombre | Primary | Secondary | Ideal para |
+|--------|---------|-----------|------------|
+| Azul (default) | `#3B82F6` | `#1E40AF` | General |
+| Verde | `#22C55E` | `#15803D` | Spa, salud |
+| Rojo | `#EF4444` | `#B91C1C` | Barberías |
+| Púrpura | `#A855F7` | `#7E22CE` | Belleza |
+| Naranja | `#F97316` | `#C2410C` | Gym, energía |
+| Teal | `#14B8A6` | `#0F766E` | Médico |
+| Rosa | `#EC4899` | `#BE185D` | Estética |
+| Gris | `#6B7280` | `#374151` | Minimalista |
 
 **Dónde se aplican los colores:**
 - Panel del dueño/staff: sidebar activo, botones primarios, badges, toggle switches
