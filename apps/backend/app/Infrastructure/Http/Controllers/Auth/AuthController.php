@@ -66,6 +66,7 @@ class AuthController extends Controller
                     'id' => $user->id,
                     'name' => $user->name,
                     'email' => $user->email,
+                    'is_super_admin' => $user->is_super_admin,
                 ],
                 'token' => $token,
                 'tenant' => $tenant ? [
