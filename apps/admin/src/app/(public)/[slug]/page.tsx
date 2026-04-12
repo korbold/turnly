@@ -13,8 +13,8 @@ import {
 import {
   MapPin,
   Phone,
-  Instagram,
-  Facebook,
+  AtSign,
+  Globe,
   MessageCircle,
   CheckCircle2,
   ChevronLeft,
@@ -288,7 +288,7 @@ export default function BusinessPage({ params }: PageProps) {
                 rel="noopener noreferrer"
                 className="text-gray-400 hover:text-pink-500 transition-colors"
               >
-                <Instagram className="h-5 w-5" />
+                <AtSign className="h-5 w-5" />
               </a>
             )}
             {tenant.social_links.facebook && (
@@ -298,7 +298,7 @@ export default function BusinessPage({ params }: PageProps) {
                 rel="noopener noreferrer"
                 className="text-gray-400 hover:text-blue-600 transition-colors"
               >
-                <Facebook className="h-5 w-5" />
+                <Globe className="h-5 w-5" />
               </a>
             )}
             {tenant.social_links.whatsapp && (
