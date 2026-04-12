@@ -1,12 +1,20 @@
 'use client';
 
 import { useRouter } from 'next/navigation';
+import { useQuery } from '@tanstack/react-query';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
-import { Settings } from 'lucide-react';
+import { getServices } from '@/lib/api/services';
 
 export default function ConfigurePage() {
   const router = useRouter();
+
+  const { data, isLoading } = useQuery({
+    queryKey: ['onboarding-services'],
+    queryFn: () => getServices({ per_page: 50 }),
+  });
+
+  const services = data?.data ?? [];
 
   const handleContinue = () => {
     router.push('/welcome');
@@ -15,24 +23,29 @@ export default function ConfigurePage() {
   return (
     <Card>
       <CardHeader>
-        <CardTitle>Paso 4: Configuración</CardTitle>
+        <CardTitle>Paso 4: Tus servicios</CardTitle>
       </CardHeader>
-      <CardContent className="space-y-4 text-center">
-        <div className="flex justify-center">
-          <Settings className="h-16 w-16 text-blue-500" />
-        </div>
-        <p className="text-gray-700 font-medium">Tu negocio está listo</p>
-        <p className="text-sm text-gray-500">
-          Puedes configurar tus servicios, horarios y más desde el panel de administración una vez que hayas completado el registro.
+      <CardContent className="space-y-4">
+        <p className="text-gray-600 text-sm">
+          Hemos creado estos servicios sugeridos para tu negocio.
+          Puedes modificarlos después en Configuración.
         </p>
-        <div className="bg-blue-50 text-blue-700 text-sm p-3 rounded-md text-left space-y-1">
-          <p className="font-medium">Próximos pasos sugeridos:</p>
-          <ul className="list-disc list-inside space-y-1 text-blue-600">
-            <li>Agregar servicios</li>
-            <li>Configurar horarios de atención</li>
-            <li>Invitar a tu equipo</li>
+        {isLoading ? (
+          <div className="text-center py-6 text-gray-400 text-sm">Cargando servicios...</div>
+        ) : services.length === 0 ? (
+          <div className="bg-gray-50 rounded-md p-4 text-sm text-gray-500 text-center">
+            No se crearon servicios sugeridos
+          </div>
+        ) : (
+          <ul className="divide-y divide-gray-100 rounded-md border border-gray-200 overflow-hidden">
+            {services.map((service) => (
+              <li key={service.id} className="flex items-center justify-between px-4 py-3 bg-white">
+                <span className="text-gray-800 font-medium">{service.name}</span>
+                <span className="text-gray-500 text-sm">${parseFloat(service.price).toFixed(2)}</span>
+              </li>
+            ))}
           </ul>
-        </div>
+        )}
       </CardContent>
       <CardFooter>
         <Button className="w-full" onClick={handleContinue}>
