@@ -104,6 +104,8 @@ Route::prefix('v1')->group(function () {
             Route::get('tenants', [SuperAdminController::class, 'index']);
             Route::patch('tenants/{id}/suspend', [SuperAdminController::class, 'suspend']);
             Route::patch('tenants/{id}/activate', [SuperAdminController::class, 'activate']);
+            Route::get('users', [SuperAdminController::class, 'users']);
+            Route::get('stats', [SuperAdminController::class, 'stats']);
         });
     });
 });
