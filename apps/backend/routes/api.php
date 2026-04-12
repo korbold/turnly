@@ -12,7 +12,15 @@ use App\Infrastructure\Http\Controllers\User\UserController;
 use App\Infrastructure\Http\Controllers\Report\ReportController;
 use App\Infrastructure\Http\Controllers\SuperAdmin\SuperAdminController;
 use App\Infrastructure\Http\Controllers\Upload\UploadController;
+use App\Infrastructure\Http\Controllers\PublicController;
 use Illuminate\Support\Facades\Route;
+
+// Public business pages
+Route::prefix('v1/public')->group(function () {
+    Route::get('tenants/{slug}', [PublicController::class, 'getTenant']);
+    Route::get('tenants/{slug}/available-slots', [PublicController::class, 'getAvailableSlots']);
+    Route::post('tenants/{slug}/book', [PublicController::class, 'book']);
+});
 
 Route::prefix('v1')->group(function () {
 
