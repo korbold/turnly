@@ -23,18 +23,22 @@ import {
   DialogTrigger,
   DialogFooter,
 } from '@/components/ui/dialog';
+import { ImageUpload } from '@/components/ui/image-upload';
+import Image from 'next/image';
 import type { Service } from '@/types/service';
 
 interface ServiceFormData {
   name: string;
   price: string;
   description: string;
+  image_url: string;
 }
 
 const emptyForm: ServiceFormData = {
   name: '',
   price: '',
   description: '',
+  image_url: '',
 };
 
 export default function ServicesPage() {
@@ -99,6 +103,7 @@ export default function ServicesPage() {
       name: service.name,
       price: service.price,
       description: service.description ?? '',
+      image_url: service.image_url ?? '',
     });
     setDialogOpen(true);
   }
@@ -109,6 +114,7 @@ export default function ServicesPage() {
       name: form.name,
       price: parseFloat(form.price),
       description: form.description || undefined,
+      image_url: form.image_url || undefined,
     };
     if (editingService) {
       updateMutation.mutate({ id: editingService.id, data: payload });
@@ -136,6 +142,16 @@ export default function ServicesPage() {
               <DialogTitle>{editingService ? 'Editar servicio' : 'Nuevo servicio'}</DialogTitle>
             </DialogHeader>
             <form onSubmit={handleSubmit} className="space-y-4">
+              <div>
+                <label className="text-sm font-medium text-gray-700 block mb-1">Imagen del servicio</label>
+                <ImageUpload
+                  currentUrl={form.image_url || null}
+                  folder="services"
+                  label="Imagen del servicio"
+                  onUpload={(url) => setForm({ ...form, image_url: url })}
+                  onRemove={() => setForm({ ...form, image_url: '' })}
+                />
+              </div>
               <div>
                 <label className="text-sm font-medium text-gray-700 block mb-1">Nombre</label>
                 <Input
@@ -234,7 +250,21 @@ export default function ServicesPage() {
               <TableBody>
                 {services.map((service) => (
                   <TableRow key={service.id}>
-                    <TableCell className="font-medium">{service.name}</TableCell>
+                    <TableCell className="font-medium">
+                      <div className="flex items-center gap-2">
+                        {service.image_url && (
+                          <div className="relative size-8 rounded overflow-hidden shrink-0">
+                            <Image
+                              src={service.image_url}
+                              alt={service.name}
+                              fill
+                              className="object-cover"
+                            />
+                          </div>
+                        )}
+                        {service.name}
+                      </div>
+                    </TableCell>
                     <TableCell>${parseFloat(service.price).toFixed(2)}</TableCell>
                     <TableCell>
                       <button

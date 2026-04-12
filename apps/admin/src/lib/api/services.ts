@@ -11,6 +11,7 @@ export async function createService(data: {
   name: string;
   price: number;
   description?: string;
+  image_url?: string | null;
 }): Promise<Service> {
   const response = await api.post('/services', data);
   return response.data.data;
@@ -20,6 +21,7 @@ export async function updateService(id: string, data: Partial<{
   name: string;
   price: number;
   description: string;
+  image_url: string | null;
   is_active: boolean;
   sort_order: number;
 }>): Promise<Service> {
