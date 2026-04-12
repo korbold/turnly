@@ -3,7 +3,6 @@
 import { useQuery } from '@tanstack/react-query';
 import { getDailyReport } from '@/lib/api/reports';
 import { getReservations } from '@/lib/api/reservations';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { CalendarDays, Car, DollarSign, Clock, Plus } from 'lucide-react';
@@ -44,22 +43,29 @@ export default function DashboardPage() {
 
   return (
     <div className="space-y-6">
+      {/* Page header */}
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-2xl font-bold text-gray-900">Dashboard</h1>
-          <p className="text-gray-500">
+          <h1 className="text-2xl font-semibold text-gray-900">Dashboard</h1>
+          <p className="text-sm text-[#6A84A8] mt-0.5">
             {format(new Date(), "EEEE, d 'de' MMMM yyyy", { locale: es })}
           </p>
         </div>
         <div className="flex gap-2">
           <Link href="/reservations?new=true">
-            <Button size="sm">
+            <Button
+              size="sm"
+              className="bg-[#304FDB] hover:bg-[#2C2792] text-white rounded-lg"
+            >
               <Plus className="h-4 w-4 mr-1" />
               Nueva reservación
             </Button>
           </Link>
           <Link href="/service-log/new">
-            <Button variant="outline" size="sm">
+            <Button
+              size="sm"
+              className="bg-[#304FDB] hover:bg-[#2C2792] text-white rounded-lg"
+            >
               <Plus className="h-4 w-4 mr-1" />
               Registrar servicio
             </Button>
@@ -69,68 +75,72 @@ export default function DashboardPage() {
 
       {/* Stats cards */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between pb-2">
-            <CardTitle className="text-sm font-medium text-gray-500">Reservaciones hoy</CardTitle>
-            <CalendarDays className="h-4 w-4 text-gray-400" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">{report?.reservations.total ?? '—'}</div>
-            <p className="text-xs text-gray-500 mt-1">
-              {report?.reservations.pending ?? 0} pendientes · {report?.reservations.confirmed ?? 0} confirmadas
-            </p>
-          </CardContent>
-        </Card>
+        {/* Reservaciones hoy */}
+        <div className="bg-white rounded-xl shadow-sm p-6">
+          <div className="flex items-center justify-center w-10 h-10 rounded-full bg-blue-100 mb-4">
+            <CalendarDays className="h-5 w-5 text-[#304FDB]" />
+          </div>
+          <div className="text-3xl font-bold text-gray-900">
+            {report?.reservations.total ?? '—'}
+          </div>
+          <p className="text-sm text-[#6A84A8] mt-1">Reservaciones hoy</p>
+          <p className="text-xs text-[#6A84A8] mt-0.5">
+            {report?.reservations.pending ?? 0} pendientes · {report?.reservations.confirmed ?? 0} confirmadas
+          </p>
+        </div>
 
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between pb-2">
-            <CardTitle className="text-sm font-medium text-gray-500">Servicios realizados</CardTitle>
-            <Car className="h-4 w-4 text-gray-400" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">{report?.washes.completed ?? '—'}</div>
-            <p className="text-xs text-gray-500 mt-1">
-              {report?.washes.in_progress ?? 0} en progreso
-            </p>
-          </CardContent>
-        </Card>
+        {/* Servicios realizados */}
+        <div className="bg-white rounded-xl shadow-sm p-6">
+          <div className="flex items-center justify-center w-10 h-10 rounded-full bg-green-100 mb-4">
+            <Car className="h-5 w-5 text-green-600" />
+          </div>
+          <div className="text-3xl font-bold text-gray-900">
+            {report?.washes.completed ?? '—'}
+          </div>
+          <p className="text-sm text-[#6A84A8] mt-1">Servicios realizados</p>
+          <p className="text-xs text-[#6A84A8] mt-0.5">
+            {report?.washes.in_progress ?? 0} en progreso
+          </p>
+        </div>
 
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between pb-2">
-            <CardTitle className="text-sm font-medium text-gray-500">Ingresos del día</CardTitle>
-            <DollarSign className="h-4 w-4 text-gray-400" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">
-              ${report?.washes.revenue?.toFixed(2) ?? '—'}
-            </div>
-            <p className="text-xs text-gray-500 mt-1">
-              Efectivo: ${report?.washes.by_payment_method?.cash?.toFixed(2) ?? '0'}
-            </p>
-          </CardContent>
-        </Card>
+        {/* Ingresos del día */}
+        <div className="bg-white rounded-xl shadow-sm p-6">
+          <div className="flex items-center justify-center w-10 h-10 rounded-full bg-amber-100 mb-4">
+            <DollarSign className="h-5 w-5 text-amber-600" />
+          </div>
+          <div className="text-3xl font-bold text-gray-900">
+            ${report?.washes.revenue?.toFixed(2) ?? '—'}
+          </div>
+          <p className="text-sm text-[#6A84A8] mt-1">Ingresos del día</p>
+          <p className="text-xs text-[#6A84A8] mt-0.5">
+            Efectivo: ${report?.washes.by_payment_method?.cash?.toFixed(2) ?? '0'}
+          </p>
+        </div>
 
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between pb-2">
-            <CardTitle className="text-sm font-medium text-gray-500">Total servicios</CardTitle>
-            <Clock className="h-4 w-4 text-gray-400" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">{report?.washes.total ?? '—'}</div>
-            <p className="text-xs text-gray-500 mt-1">Hoy en total</p>
-          </CardContent>
-        </Card>
+        {/* Total servicios */}
+        <div className="bg-white rounded-xl shadow-sm p-6">
+          <div className="flex items-center justify-center w-10 h-10 rounded-full bg-purple-100 mb-4">
+            <Clock className="h-5 w-5 text-purple-600" />
+          </div>
+          <div className="text-3xl font-bold text-gray-900">
+            {report?.washes.total ?? '—'}
+          </div>
+          <p className="text-sm text-[#6A84A8] mt-1">Total servicios</p>
+          <p className="text-xs text-[#6A84A8] mt-0.5">Hoy en total</p>
+        </div>
       </div>
 
       {/* Upcoming reservations */}
-      <Card>
-        <CardHeader className="flex flex-row items-center justify-between">
-          <CardTitle>Próximas reservaciones</CardTitle>
+      <div className="bg-white rounded-xl shadow-sm">
+        <div className="flex items-center justify-between px-6 py-4 border-b border-gray-100">
+          <h2 className="text-base font-semibold text-gray-900">Próximas reservaciones</h2>
           <Link href="/reservations">
-            <Button variant="ghost" size="sm">Ver todas</Button>
+            <Button variant="ghost" size="sm" className="text-[#304FDB] hover:text-[#2C2792] hover:bg-blue-50">
+              Ver todas
+            </Button>
           </Link>
-        </CardHeader>
-        <CardContent>
+        </div>
+        <div className="p-6">
           {upcomingReservations?.data && upcomingReservations.data.length > 0 ? (
             <div className="space-y-3">
               {upcomingReservations.data.map((res) => (
@@ -138,7 +148,7 @@ export default function DashboardPage() {
                   <div className="flex items-center gap-3">
                     <div>
                       <p className="font-medium text-sm">{res.client?.name ?? 'Cliente'}</p>
-                      <p className="text-xs text-gray-500">
+                      <p className="text-xs text-[#6A84A8]">
                         {res.client_resource?.plate} · {res.service?.name}
                       </p>
                     </div>
@@ -155,10 +165,10 @@ export default function DashboardPage() {
               ))}
             </div>
           ) : (
-            <p className="text-gray-400 text-sm text-center py-4">No hay reservaciones próximas</p>
+            <p className="text-[#6A84A8] text-sm text-center py-4">No hay reservaciones próximas</p>
           )}
-        </CardContent>
-      </Card>
+        </div>
+      </div>
     </div>
   );
 }
