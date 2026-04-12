@@ -1,4 +1,3 @@
-import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import '../storage/secure_storage.dart';
 import '../../features/auth/presentation/screens/login_screen.dart';
@@ -8,6 +7,7 @@ import '../../features/services/presentation/screens/service_form_screen.dart';
 import '../../features/services/presentation/screens/services_screen.dart';
 import '../../features/shell/presentation/screens/shell_screen.dart';
 import '../../features/reports/presentation/screens/reports_screen.dart';
+import '../../features/settings/presentation/screens/settings_screen.dart';
 import '../../features/team/presentation/screens/team_screen.dart';
 import '../../features/wash_log/presentation/screens/register_wash_screen.dart';
 
@@ -77,20 +77,7 @@ final goRouter = GoRouter(
     ),
     GoRoute(
       path: '/settings',
-      builder: (context, state) => const _Placeholder(title: 'Configuración'),
+      builder: (context, state) => const SettingsScreen(),
     ),
   ],
 );
-
-class _Placeholder extends StatelessWidget {
-  final String title;
-  const _Placeholder({required this.title});
-
-  @override
-  Widget build(BuildContext context) {
-    return Scaffold(
-      appBar: AppBar(title: Text(title)),
-      body: Center(child: Text(title)),
-    );
-  }
-}
