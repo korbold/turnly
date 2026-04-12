@@ -25,7 +25,7 @@ export default function WelcomePage() {
   return (
     <Card>
       <CardHeader>
-        <CardTitle className="text-center">Paso 4: ¡Listo!</CardTitle>
+        <CardTitle className="text-center">Paso 5: ¡Listo!</CardTitle>
       </CardHeader>
       <CardContent className="space-y-4 text-center">
         <div className="flex justify-center">

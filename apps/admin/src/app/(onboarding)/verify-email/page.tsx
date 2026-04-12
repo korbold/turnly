@@ -18,7 +18,7 @@ export default function VerifyEmailPage() {
     try {
       const tenantId = localStorage.getItem('onboarding_tenant_id') ?? '';
       await verifyTenant(tenantId);
-      router.push('/configure');
+      router.push('/business-type');
     } catch (err: unknown) {
       const apiError = err as { message?: string; fieldErrors?: Record<string, string[]> };
       if (apiError?.fieldErrors) {

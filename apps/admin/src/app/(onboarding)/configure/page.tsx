@@ -15,7 +15,7 @@ export default function ConfigurePage() {
   return (
     <Card>
       <CardHeader>
-        <CardTitle>Paso 3: Configuración</CardTitle>
+        <CardTitle>Paso 4: Configuración</CardTitle>
       </CardHeader>
       <CardContent className="space-y-4 text-center">
         <div className="flex justify-center">
