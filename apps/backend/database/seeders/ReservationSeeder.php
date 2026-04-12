@@ -2,12 +2,12 @@
 
 namespace Database\Seeders;
 
+use App\Infrastructure\Persistence\Models\ClientResourceModel;
 use App\Infrastructure\Persistence\Models\ReservationModel;
 use App\Infrastructure\Persistence\Models\ServiceModel;
 use App\Infrastructure\Persistence\Models\TenantModel;
 use App\Infrastructure\Persistence\Models\TenantUserModel;
 use App\Infrastructure\Persistence\Models\UserModel;
-use App\Infrastructure\Persistence\Models\VehicleModel;
 use Carbon\Carbon;
 use Illuminate\Database\Seeder;
 use Illuminate\Support\Str;
@@ -88,7 +88,7 @@ class ReservationSeeder extends Seeder
             $client  = $clients[$index % $clients->count()];
             $service = $services[$index % $services->count()];
 
-            $vehicle = VehicleModel::withoutGlobalScopes()
+            $clientResource = ClientResourceModel::withoutGlobalScopes()
                 ->where('tenant_id', $tenant->id)
                 ->where('owner_id', $client->id)
                 ->first();
@@ -103,19 +103,19 @@ class ReservationSeeder extends Seeder
             }
 
             ReservationModel::withoutGlobalScopes()->create([
-                'id'            => Str::uuid(),
-                'tenant_id'     => $tenant->id,
-                'client_id'     => $client->id,
-                'vehicle_id'    => $vehicle?->id,
-                'service_id'    => $service->id,
-                'assigned_to'   => $washer->id,
-                'scheduled_at'  => $scheduledAt,
-                'estimated_end' => $estimatedEnd,
-                'status'        => $status,
-                'notes'         => null,
-                'cancelled_at'  => $cancelledAt,
-                'cancel_reason' => $cancelReason,
-                'created_by'    => $cashier->id,
+                'id'                 => Str::uuid(),
+                'tenant_id'          => $tenant->id,
+                'client_id'          => $client->id,
+                'client_resource_id' => $clientResource?->id,
+                'service_id'         => $service->id,
+                'assigned_to'        => $washer->id,
+                'scheduled_at'       => $scheduledAt,
+                'estimated_end'      => $estimatedEnd,
+                'status'             => $status,
+                'notes'              => null,
+                'cancelled_at'       => $cancelledAt,
+                'cancel_reason'      => $cancelReason,
+                'created_by'         => $cashier->id,
             ]);
         }
     }

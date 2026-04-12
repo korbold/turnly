@@ -2,11 +2,11 @@
 
 namespace Database\Seeders;
 
+use App\Infrastructure\Persistence\Models\ClientResourceModel;
+use App\Infrastructure\Persistence\Models\ServiceLogModel;
 use App\Infrastructure\Persistence\Models\ServiceModel;
 use App\Infrastructure\Persistence\Models\TenantModel;
 use App\Infrastructure\Persistence\Models\TenantUserModel;
-use App\Infrastructure\Persistence\Models\VehicleModel;
-use App\Infrastructure\Persistence\Models\WashLogModel;
 use Carbon\Carbon;
 use Illuminate\Database\Seeder;
 use Illuminate\Support\Str;
@@ -14,7 +14,7 @@ use Illuminate\Support\Str;
 class WashLogSeeder extends Seeder
 {
     /**
-     * 30 wash_logs per tenant over last 14 days.
+     * 30 service_logs per tenant over last 14 days.
      * Payment split: ~60% cash, ~25% card, ~15% transfer.
      */
     public function run(): void
@@ -32,7 +32,7 @@ class WashLogSeeder extends Seeder
             ->where('tenant_id', $tenant->id)
             ->get();
 
-        $vehicles = VehicleModel::withoutGlobalScopes()
+        $clientResources = ClientResourceModel::withoutGlobalScopes()
             ->where('tenant_id', $tenant->id)
             ->get();
 
@@ -60,31 +60,31 @@ class WashLogSeeder extends Seeder
         $logDates = $this->buildLogDates(14, 30);
 
         for ($i = 0; $i < 30; $i++) {
-            $service  = $services[$i % $services->count()];
-            $vehicle  = $vehicles[$i % $vehicles->count()];
-            $logDate  = $logDates[$i];
-            $payment  = $paymentPool[$i % count($paymentPool)];
+            $service         = $services[$i % $services->count()];
+            $clientResource  = $clientResources[$i % $clientResources->count()];
+            $logDate         = $logDates[$i];
+            $payment         = $paymentPool[$i % count($paymentPool)];
 
             // Business-hour start time
             $startHour = rand(8, 16);
             $startedAt = $logDate->copy()->setTime($startHour, rand(0, 59), 0);
             $finishedAt = $startedAt->copy()->addMinutes(30);
 
-            WashLogModel::withoutGlobalScopes()->create([
-                'id'             => Str::uuid(),
-                'tenant_id'      => $tenant->id,
-                'vehicle_id'     => $vehicle->id,
-                'service_id'     => $service->id,
-                'reservation_id' => null,
-                'attended_by'    => $washer->id,
-                'created_by'     => $cashier->id,
-                'started_at'     => $startedAt,
-                'finished_at'    => $finishedAt,
-                'price_charged'  => $service->price,
-                'payment_method' => $payment,
-                'status'         => 'completed',
-                'notes'          => null,
-                'log_date'       => $logDate->toDateString(),
+            ServiceLogModel::withoutGlobalScopes()->create([
+                'id'                 => Str::uuid(),
+                'tenant_id'          => $tenant->id,
+                'client_resource_id' => $clientResource->id,
+                'service_id'         => $service->id,
+                'reservation_id'     => null,
+                'attended_by'        => $washer->id,
+                'created_by'         => $cashier->id,
+                'started_at'         => $startedAt,
+                'finished_at'        => $finishedAt,
+                'price_charged'      => $service->price,
+                'payment_method'     => $payment,
+                'status'             => 'completed',
+                'notes'              => null,
+                'log_date'           => $logDate->toDateString(),
             ]);
         }
     }

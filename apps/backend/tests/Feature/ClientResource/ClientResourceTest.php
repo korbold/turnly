@@ -2,7 +2,7 @@
 
 use App\Infrastructure\Persistence\Models\TenantModel;
 use App\Infrastructure\Persistence\Models\UserModel;
-use App\Infrastructure\Persistence\Models\VehicleModel;
+use App\Infrastructure\Persistence\Models\ClientResourceModel;
 
 beforeEach(function () {
     $this->tenant = TenantModel::factory()->create(['status' => 'active']);
@@ -11,10 +11,10 @@ beforeEach(function () {
     app()->instance('current_tenant_id', $this->tenant->id);
 });
 
-test('can create vehicle', function () {
+test('can create client resource', function () {
     $response = $this->actingAs($this->user)
         ->withHeader('X-Tenant', $this->tenant->slug)
-        ->postJson('/api/v1/vehicles', [
+        ->postJson('/api/v1/client-resources', [
             'plate' => 'PBA-1234',
             'brand' => 'Toyota',
             'model' => 'Corolla',
@@ -25,16 +25,16 @@ test('can create vehicle', function () {
     $response->assertStatus(201)
         ->assertJsonPath('data.plate', 'PBA-1234');
 
-    $this->assertDatabaseHas('vehicles', [
+    $this->assertDatabaseHas('client_resources', [
         'plate' => 'PBA-1234',
         'tenant_id' => $this->tenant->id,
     ]);
 });
 
-test('can create vehicle with minimal data', function () {
+test('can create client resource with minimal data', function () {
     $response = $this->actingAs($this->user)
         ->withHeader('X-Tenant', $this->tenant->slug)
-        ->postJson('/api/v1/vehicles', [
+        ->postJson('/api/v1/client-resources', [
             'plate' => 'ABC-9999',
         ]);
 
@@ -42,10 +42,10 @@ test('can create vehicle with minimal data', function () {
         ->assertJsonPath('data.plate', 'ABC-9999');
 });
 
-test('cannot create vehicle without plate', function () {
+test('cannot create client resource without plate', function () {
     $response = $this->actingAs($this->user)
         ->withHeader('X-Tenant', $this->tenant->slug)
-        ->postJson('/api/v1/vehicles', [
+        ->postJson('/api/v1/client-resources', [
             'brand' => 'Toyota',
         ]);
 
@@ -53,22 +53,22 @@ test('cannot create vehicle without plate', function () {
         ->assertJsonValidationErrors(['plate']);
 });
 
-test('can list vehicles', function () {
-    VehicleModel::factory()->count(3)->create([
+test('can list client resources', function () {
+    ClientResourceModel::factory()->count(3)->create([
         'tenant_id' => $this->tenant->id,
         'owner_id' => $this->user->id,
     ]);
 
     $response = $this->actingAs($this->user)
         ->withHeader('X-Tenant', $this->tenant->slug)
-        ->getJson('/api/v1/vehicles');
+        ->getJson('/api/v1/client-resources');
 
     $response->assertOk()
         ->assertJsonCount(3, 'data');
 });
 
-test('can show vehicle detail', function () {
-    $vehicle = VehicleModel::factory()->create([
+test('can show client resource detail', function () {
+    $clientResource = ClientResourceModel::factory()->create([
         'tenant_id' => $this->tenant->id,
         'owner_id' => $this->user->id,
         'plate' => 'XYZ-5678',
@@ -76,14 +76,14 @@ test('can show vehicle detail', function () {
 
     $response = $this->actingAs($this->user)
         ->withHeader('X-Tenant', $this->tenant->slug)
-        ->getJson("/api/v1/vehicles/{$vehicle->id}");
+        ->getJson("/api/v1/client-resources/{$clientResource->id}");
 
     $response->assertOk()
         ->assertJsonPath('data.plate', 'XYZ-5678');
 });
 
 test('cannot create duplicate plate in same tenant', function () {
-    VehicleModel::factory()->create([
+    ClientResourceModel::factory()->create([
         'tenant_id' => $this->tenant->id,
         'owner_id' => $this->user->id,
         'plate' => 'PBA-1234',
@@ -91,22 +91,22 @@ test('cannot create duplicate plate in same tenant', function () {
 
     $response = $this->actingAs($this->user)
         ->withHeader('X-Tenant', $this->tenant->slug)
-        ->postJson('/api/v1/vehicles', [
+        ->postJson('/api/v1/client-resources', [
             'plate' => 'PBA-1234',
         ]);
 
     $response->assertStatus(422);
 });
 
-test('can get vehicle wash history', function () {
-    $vehicle = VehicleModel::factory()->create([
+test('can get client resource service history', function () {
+    $clientResource = ClientResourceModel::factory()->create([
         'tenant_id' => $this->tenant->id,
         'owner_id' => $this->user->id,
     ]);
 
     $response = $this->actingAs($this->user)
         ->withHeader('X-Tenant', $this->tenant->slug)
-        ->getJson("/api/v1/vehicles/{$vehicle->id}/history");
+        ->getJson("/api/v1/client-resources/{$clientResource->id}/history");
 
     $response->assertOk()
         ->assertJsonStructure(['data']);

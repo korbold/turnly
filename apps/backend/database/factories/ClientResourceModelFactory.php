@@ -2,12 +2,12 @@
 
 namespace Database\Factories;
 
-use App\Infrastructure\Persistence\Models\VehicleModel;
+use App\Infrastructure\Persistence\Models\ClientResourceModel;
 use Illuminate\Database\Eloquent\Factories\Factory;
 
-class VehicleModelFactory extends Factory
+class ClientResourceModelFactory extends Factory
 {
-    protected $model = VehicleModel::class;
+    protected $model = ClientResourceModel::class;
 
     public function definition(): array
     {
@@ -35,6 +35,8 @@ class VehicleModelFactory extends Factory
         return [
             'tenant_id' => null, // must be set by the caller
             'owner_id'  => null, // must be set by the caller
+            'label'     => fake()->words(2, true),
+            'data'      => null,
             'plate'     => $plate,
             'brand'     => $brand,
             'model'     => $model,

@@ -17,7 +17,7 @@ class ReservationModelFactory extends Factory
         return [
             'tenant_id'    => null, // must be set by the caller
             'client_id'    => null, // must be set by the caller
-            'vehicle_id'   => null, // must be set by the caller
+            'client_resource_id' => null, // must be set by the caller
             'service_id'   => null, // must be set by the caller
             'assigned_to'  => null,
             'created_by'   => null, // must be set by the caller

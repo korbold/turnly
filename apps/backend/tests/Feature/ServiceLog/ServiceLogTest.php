@@ -3,14 +3,14 @@
 use App\Infrastructure\Persistence\Models\ServiceModel;
 use App\Infrastructure\Persistence\Models\TenantModel;
 use App\Infrastructure\Persistence\Models\UserModel;
-use App\Infrastructure\Persistence\Models\VehicleModel;
-use App\Infrastructure\Persistence\Models\WashLogModel;
+use App\Infrastructure\Persistence\Models\ClientResourceModel;
+use App\Infrastructure\Persistence\Models\ServiceLogModel;
 
 beforeEach(function () {
     $this->tenant = TenantModel::factory()->create(['status' => 'active']);
     $this->user = UserModel::factory()->create();
     $this->service = ServiceModel::factory()->create(['tenant_id' => $this->tenant->id]);
-    $this->vehicle = VehicleModel::factory()->create([
+    $this->clientResource = ClientResourceModel::factory()->create([
         'tenant_id' => $this->tenant->id,
         'owner_id' => $this->user->id,
         'type' => 'sedan',
@@ -19,11 +19,11 @@ beforeEach(function () {
     app()->instance('current_tenant_id', $this->tenant->id);
 });
 
-test('can create a walk-in wash log', function () {
+test('can create a walk-in service log', function () {
     $response = $this->actingAs($this->user)
         ->withHeader('X-Tenant', $this->tenant->slug)
-        ->postJson('/api/v1/wash-logs', [
-            'vehicle_id' => $this->vehicle->id,
+        ->postJson('/api/v1/service-logs', [
+            'client_resource_id' => $this->clientResource->id,
             'service_id' => $this->service->id,
             'attended_by' => $this->user->id,
             'price_charged' => 12.50,
@@ -33,18 +33,18 @@ test('can create a walk-in wash log', function () {
     $response->assertStatus(201)
         ->assertJsonPath('data.status', 'in_progress');
 
-    $this->assertDatabaseHas('wash_logs', [
+    $this->assertDatabaseHas('service_logs', [
         'tenant_id' => $this->tenant->id,
-        'vehicle_id' => $this->vehicle->id,
+        'client_resource_id' => $this->clientResource->id,
         'service_id' => $this->service->id,
     ]);
 });
 
-test('can list wash logs for today', function () {
+test('can list service logs for today', function () {
     $today = now()->toDateString();
-    WashLogModel::factory()->count(3)->create([
+    ServiceLogModel::factory()->count(3)->create([
         'tenant_id' => $this->tenant->id,
-        'vehicle_id' => $this->vehicle->id,
+        'client_resource_id' => $this->clientResource->id,
         'service_id' => $this->service->id,
         'attended_by' => $this->user->id,
         'created_by' => $this->user->id,
@@ -53,16 +53,16 @@ test('can list wash logs for today', function () {
 
     $response = $this->actingAs($this->user)
         ->withHeader('X-Tenant', $this->tenant->slug)
-        ->getJson("/api/v1/wash-logs?date={$today}");
+        ->getJson("/api/v1/service-logs?date={$today}");
 
     $response->assertOk()
         ->assertJsonCount(3, 'data');
 });
 
-test('can show a wash log', function () {
-    $washLog = WashLogModel::factory()->create([
+test('can show a service log', function () {
+    $serviceLog = ServiceLogModel::factory()->create([
         'tenant_id' => $this->tenant->id,
-        'vehicle_id' => $this->vehicle->id,
+        'client_resource_id' => $this->clientResource->id,
         'service_id' => $this->service->id,
         'attended_by' => $this->user->id,
         'created_by' => $this->user->id,
@@ -70,16 +70,16 @@ test('can show a wash log', function () {
 
     $response = $this->actingAs($this->user)
         ->withHeader('X-Tenant', $this->tenant->slug)
-        ->getJson("/api/v1/wash-logs/{$washLog->id}");
+        ->getJson("/api/v1/service-logs/{$serviceLog->id}");
 
     $response->assertOk()
-        ->assertJsonPath('data.id', $washLog->id);
+        ->assertJsonPath('data.id', $serviceLog->id);
 });
 
-test('can complete a wash log', function () {
-    $washLog = WashLogModel::factory()->create([
+test('can complete a service log', function () {
+    $serviceLog = ServiceLogModel::factory()->create([
         'tenant_id' => $this->tenant->id,
-        'vehicle_id' => $this->vehicle->id,
+        'client_resource_id' => $this->clientResource->id,
         'service_id' => $this->service->id,
         'attended_by' => $this->user->id,
         'created_by' => $this->user->id,
@@ -88,20 +88,20 @@ test('can complete a wash log', function () {
 
     $response = $this->actingAs($this->user)
         ->withHeader('X-Tenant', $this->tenant->slug)
-        ->patchJson("/api/v1/wash-logs/{$washLog->id}/complete");
+        ->patchJson("/api/v1/service-logs/{$serviceLog->id}/complete");
 
     $response->assertOk();
 
-    $this->assertDatabaseHas('wash_logs', [
-        'id' => $washLog->id,
+    $this->assertDatabaseHas('service_logs', [
+        'id' => $serviceLog->id,
         'status' => 'completed',
     ]);
 });
 
 test('can get daily summary', function () {
-    WashLogModel::factory()->count(5)->completed()->create([
+    ServiceLogModel::factory()->count(5)->completed()->create([
         'tenant_id' => $this->tenant->id,
-        'vehicle_id' => $this->vehicle->id,
+        'client_resource_id' => $this->clientResource->id,
         'service_id' => $this->service->id,
         'attended_by' => $this->user->id,
         'created_by' => $this->user->id,
@@ -110,36 +110,36 @@ test('can get daily summary', function () {
 
     $response = $this->actingAs($this->user)
         ->withHeader('X-Tenant', $this->tenant->slug)
-        ->getJson('/api/v1/wash-logs/summary');
+        ->getJson('/api/v1/service-logs/summary');
 
     $response->assertOk()
         ->assertJsonStructure(['data']);
 });
 
-test('create wash log requires required fields', function () {
+test('create service log requires required fields', function () {
     $response = $this->actingAs($this->user)
         ->withHeader('X-Tenant', $this->tenant->slug)
-        ->postJson('/api/v1/wash-logs', []);
+        ->postJson('/api/v1/service-logs', []);
 
     $response->assertStatus(422)
-        ->assertJsonValidationErrors(['vehicle_id', 'service_id', 'attended_by', 'price_charged', 'payment_method']);
+        ->assertJsonValidationErrors(['client_resource_id', 'service_id', 'attended_by', 'price_charged', 'payment_method']);
 });
 
-test('can filter wash logs by date', function () {
+test('can filter service logs by date', function () {
     $yesterday = now()->subDay()->toDateString();
     $today = now()->toDateString();
 
-    WashLogModel::factory()->count(2)->create([
+    ServiceLogModel::factory()->count(2)->create([
         'tenant_id' => $this->tenant->id,
-        'vehicle_id' => $this->vehicle->id,
+        'client_resource_id' => $this->clientResource->id,
         'service_id' => $this->service->id,
         'attended_by' => $this->user->id,
         'created_by' => $this->user->id,
         'log_date' => $yesterday,
     ]);
-    WashLogModel::factory()->create([
+    ServiceLogModel::factory()->create([
         'tenant_id' => $this->tenant->id,
-        'vehicle_id' => $this->vehicle->id,
+        'client_resource_id' => $this->clientResource->id,
         'service_id' => $this->service->id,
         'attended_by' => $this->user->id,
         'created_by' => $this->user->id,
@@ -148,7 +148,7 @@ test('can filter wash logs by date', function () {
 
     $response = $this->actingAs($this->user)
         ->withHeader('X-Tenant', $this->tenant->slug)
-        ->getJson("/api/v1/wash-logs?date={$yesterday}");
+        ->getJson("/api/v1/service-logs?date={$yesterday}");
 
     $response->assertOk()
         ->assertJsonCount(2, 'data');

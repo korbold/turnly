@@ -5,13 +5,13 @@ use App\Infrastructure\Persistence\Models\ReservationModel;
 use App\Infrastructure\Persistence\Models\ServiceModel;
 use App\Infrastructure\Persistence\Models\TenantModel;
 use App\Infrastructure\Persistence\Models\UserModel;
-use App\Infrastructure\Persistence\Models\VehicleModel;
+use App\Infrastructure\Persistence\Models\ClientResourceModel;
 
 beforeEach(function () {
     $this->tenant = TenantModel::factory()->create(['status' => 'active']);
     $this->user = UserModel::factory()->create();
     $this->service = ServiceModel::factory()->create(['tenant_id' => $this->tenant->id]);
-    $this->vehicle = VehicleModel::factory()->create([
+    $this->clientResource = ClientResourceModel::factory()->create([
         'tenant_id' => $this->tenant->id,
         'owner_id' => $this->user->id,
         'type' => 'sedan',
@@ -39,7 +39,7 @@ test('can create a reservation', function () {
     $response = $this->actingAs($this->user)
         ->withHeader('X-Tenant', $this->tenant->slug)
         ->postJson('/api/v1/reservations', [
-            'vehicle_id' => $this->vehicle->id,
+            'client_resource_id' => $this->clientResource->id,
             'service_id' => $this->service->id,
             'scheduled_at' => $scheduledAt->toIso8601String(),
         ]);
@@ -49,7 +49,7 @@ test('can create a reservation', function () {
 
     $this->assertDatabaseHas('reservations', [
         'tenant_id' => $this->tenant->id,
-        'vehicle_id' => $this->vehicle->id,
+        'client_resource_id' => $this->clientResource->id,
         'service_id' => $this->service->id,
     ]);
 });
@@ -58,7 +58,7 @@ test('can list reservations', function () {
     ReservationModel::factory()->count(3)->create([
         'tenant_id' => $this->tenant->id,
         'client_id' => $this->user->id,
-        'vehicle_id' => $this->vehicle->id,
+        'client_resource_id' => $this->clientResource->id,
         'service_id' => $this->service->id,
         'created_by' => $this->user->id,
     ]);
@@ -75,7 +75,7 @@ test('can show a reservation', function () {
     $reservation = ReservationModel::factory()->create([
         'tenant_id' => $this->tenant->id,
         'client_id' => $this->user->id,
-        'vehicle_id' => $this->vehicle->id,
+        'client_resource_id' => $this->clientResource->id,
         'service_id' => $this->service->id,
         'created_by' => $this->user->id,
     ]);
@@ -92,7 +92,7 @@ test('can confirm a reservation', function () {
     $reservation = ReservationModel::factory()->create([
         'tenant_id' => $this->tenant->id,
         'client_id' => $this->user->id,
-        'vehicle_id' => $this->vehicle->id,
+        'client_resource_id' => $this->clientResource->id,
         'service_id' => $this->service->id,
         'created_by' => $this->user->id,
         'status' => 'pending',
@@ -114,7 +114,7 @@ test('can start a wash from confirmed reservation', function () {
     $reservation = ReservationModel::factory()->confirmed()->create([
         'tenant_id' => $this->tenant->id,
         'client_id' => $this->user->id,
-        'vehicle_id' => $this->vehicle->id,
+        'client_resource_id' => $this->clientResource->id,
         'service_id' => $this->service->id,
         'created_by' => $this->user->id,
     ]);
@@ -135,7 +135,7 @@ test('can complete a reservation in progress', function () {
     $reservation = ReservationModel::factory()->create([
         'tenant_id' => $this->tenant->id,
         'client_id' => $this->user->id,
-        'vehicle_id' => $this->vehicle->id,
+        'client_resource_id' => $this->clientResource->id,
         'service_id' => $this->service->id,
         'created_by' => $this->user->id,
         'status' => 'in_progress',
@@ -157,7 +157,7 @@ test('can cancel a reservation', function () {
     $reservation = ReservationModel::factory()->create([
         'tenant_id' => $this->tenant->id,
         'client_id' => $this->user->id,
-        'vehicle_id' => $this->vehicle->id,
+        'client_resource_id' => $this->clientResource->id,
         'service_id' => $this->service->id,
         'created_by' => $this->user->id,
         'status' => 'pending',
@@ -177,20 +177,20 @@ test('can cancel a reservation', function () {
     ]);
 });
 
-test('create reservation requires vehicle_id service_id and scheduled_at', function () {
+test('create reservation requires client_resource_id service_id and scheduled_at', function () {
     $response = $this->actingAs($this->user)
         ->withHeader('X-Tenant', $this->tenant->slug)
         ->postJson('/api/v1/reservations', []);
 
     $response->assertStatus(422)
-        ->assertJsonValidationErrors(['vehicle_id', 'service_id', 'scheduled_at']);
+        ->assertJsonValidationErrors(['client_resource_id', 'service_id', 'scheduled_at']);
 });
 
 test('can filter reservations by status', function () {
     ReservationModel::factory()->count(2)->create([
         'tenant_id' => $this->tenant->id,
         'client_id' => $this->user->id,
-        'vehicle_id' => $this->vehicle->id,
+        'client_resource_id' => $this->clientResource->id,
         'service_id' => $this->service->id,
         'created_by' => $this->user->id,
         'status' => 'pending',
@@ -198,7 +198,7 @@ test('can filter reservations by status', function () {
     ReservationModel::factory()->confirmed()->create([
         'tenant_id' => $this->tenant->id,
         'client_id' => $this->user->id,
-        'vehicle_id' => $this->vehicle->id,
+        'client_resource_id' => $this->clientResource->id,
         'service_id' => $this->service->id,
         'created_by' => $this->user->id,
     ]);
