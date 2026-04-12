@@ -44,6 +44,9 @@ Route::prefix('v1')->group(function () {
 
         // Tenant-scoped routes
         Route::middleware('tenant')->group(function () {
+            // Auth
+            Route::get('auth/me', [AuthController::class, 'me']);
+
             // Tenant settings
             Route::get('tenant/settings', [TenantSettingsController::class, 'show']);
             Route::patch('tenant/settings', [TenantSettingsController::class, 'update']);

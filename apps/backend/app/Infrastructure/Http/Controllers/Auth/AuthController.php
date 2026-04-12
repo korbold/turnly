@@ -88,4 +88,24 @@ class AuthController extends Controller
             'meta' => ['timestamp' => now()->toIso8601String()],
         ]);
     }
+
+    public function me(Request $request): JsonResponse
+    {
+        $user = $request->user();
+        $tenantId = app('current_tenant_id');
+
+        $tenantUser = TenantUserModel::where('user_id', $user->id)
+            ->where('tenant_id', $tenantId)
+            ->first();
+
+        return response()->json([
+            'data' => [
+                'id' => $user->id,
+                'name' => $user->name,
+                'email' => $user->email,
+                'is_super_admin' => $user->is_super_admin,
+                'role' => $tenantUser?->role,
+            ],
+        ]);
+    }
 }
