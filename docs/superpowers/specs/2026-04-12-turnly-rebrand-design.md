@@ -2,13 +2,13 @@
 
 **Date:** 2026-04-12
 **Status:** Approved
-**Scope:** Rebrand WashFlow → Turnly, generalize for multiple business types, add super admin
+**Scope:** Rebrand WashFlow → Turnly, generalize for multiple business types, add super admin, business profiles, public marketplace
 
 ---
 
 ## 1. Overview
 
-Transform WashFlow (car wash specific) into Turnly, a generic appointment and service management platform that supports multiple business types: car washes, barbershops, medical offices, spas, gyms, and more.
+Transform WashFlow (car wash specific) into Turnly, a generic appointment and service management platform that supports multiple business types: car washes, barbershops, medical offices, spas, gyms, and more. Includes business profiles with media, a public-facing page per business, and a marketplace model where clients discover and book services directly.
 
 ## 2. Branding Changes
 
@@ -42,7 +42,37 @@ custom_fields  JSON NULLABLE  — schema definition for client resource fields
 
 Supported field types: `text`, `number`, `textarea`, `select`
 
-### 3.2 Table `vehicles` → Rename to `client_resources`
+### 3.2 Table `tenants` — Add profile columns
+
+```
+description     TEXT NULLABLE — business description (rich text)
+address         VARCHAR(255) NULLABLE
+logo_url        VARCHAR(500) NULLABLE — path to uploaded logo
+cover_url       VARCHAR(500) NULLABLE — path to cover/banner image
+social_links    JSON NULLABLE — { "instagram": "...", "facebook": "...", "whatsapp": "..." }
+```
+
+### 3.3 Table `tenant_images` — NEW
+
+Gallery images for the business profile page.
+
+```
+id          UUID PRIMARY
+tenant_id   UUID FK → tenants
+url         VARCHAR(500) — path to uploaded image
+caption     VARCHAR(255) NULLABLE
+sort_order  INTEGER DEFAULT 0
+created_at  TIMESTAMP
+updated_at  TIMESTAMP
+```
+
+### 3.4 Table `services` — Add image column
+
+```
+image_url   VARCHAR(500) NULLABLE — path to service image
+```
+
+### 3.5 Table `vehicles` → Rename to `client_resources`
 
 Remove fixed columns: `plate`, `brand`, `model`, `color`, `type`
 
@@ -58,11 +88,11 @@ updated_at  TIMESTAMP
 deleted_at  TIMESTAMP (soft delete)
 ```
 
-### 3.3 Table `wash_logs` → Rename to `service_logs`
+### 3.6 Table `wash_logs` → Rename to `service_logs`
 
 Same structure, only rename table and all code references. No column changes.
 
-### 3.4 Table `reservations` — Column rename
+### 3.7 Table `reservations` — Column rename
 
 ```
 vehicle_id → client_resource_id  (NULLABLE, FK → client_resources)
@@ -134,20 +164,116 @@ Step 3 sets `business_type`, `custom_fields`, and `settings.features` on the ten
 
 Replace every "WashFlow", "lavado", "car wash", "lavadero", "vehículo" reference with generic Turnly equivalents.
 
-## 8. Super Admin
+## 8. Business Profile & Settings (Owner Panel)
 
-### 8.1 User
+### 8.1 Settings page — enhanced
+
+The existing Settings page gets expanded with these sections:
+
+**Información del negocio:**
+- Logo (image upload, max 2MB, displayed at 128x128)
+- Nombre del negocio (editable)
+- Descripción (textarea, rich text)
+- Dirección
+- Teléfono
+- Redes sociales (Instagram, Facebook, WhatsApp)
+
+**Galería de fotos:**
+- Upload multiple images (max 5MB each, up to 10 images)
+- Drag to reorder
+- Add optional caption per image
+- These appear on the public page
+
+**Recursos del cliente:**
+- Define/edit custom_fields schema
+- Add, remove, reorder fields
+- Set field type, label, required flag, options (for select)
+
+**Características:**
+- Toggle feature flags (client_resources, walk_ins, payment_tracking)
+
+### 10.2 Service images
+
+- Each service can have one optional image
+- Upload in the service create/edit modal
+- Displayed on the public page and in the services table
+
+## 9. Public Business Page
+
+Each active tenant gets a public page at `turnly.app/[slug]`. This page is accessible without authentication.
+
+### 9.1 Page layout
+
+```
+┌─────────────────────────────────────┐
+│ Cover image / gradient fallback     │
+│   ┌──────┐                          │
+│   │ Logo │  Business Name           │
+│   └──────┘  Business Type badge     │
+│             Description             │
+│             Address · Phone         │
+│             Social links            │
+├─────────────────────────────────────┤
+│ Galería de fotos (horizontal scroll)│
+├─────────────────────────────────────┤
+│ Servicios                           │
+│ ┌─────────┐ ┌─────────┐ ┌────────┐ │
+│ │ Image   │ │ Image   │ │ Image  │ │
+│ │ Name    │ │ Name    │ │ Name   │ │
+│ │ Price   │ │ Price   │ │ Price  │ │
+│ │ [Reserv]│ │ [Reserv]│ │[Reserv]│ │
+│ └─────────┘ └─────────┘ └────────┘ │
+├─────────────────────────────────────┤
+│ Horarios de atención                │
+│ Lunes: 8:00 - 18:00                │
+│ Martes: 8:00 - 18:00               │
+│ ...                                 │
+├─────────────────────────────────────┤
+│ Powered by Turnly                   │
+└─────────────────────────────────────┘
+```
+
+### 9.2 Booking flow (from public page)
+
+1. Client clicks "Reservar" on a service
+2. Calendar picker shows available dates (from availability_slots)
+3. Time picker shows available slots for selected date
+4. Client enters name, email, phone (and client_resource fields if applicable)
+5. Confirmation screen with summary
+6. Creates reservation with status `pending`
+
+No login required for the client. The client receives a confirmation by email (future) or just gets a confirmation code on screen.
+
+### 9.3 Technical implementation
+
+- Public page is a Next.js route: `app/(public)/[slug]/page.tsx`
+- Uses a public API endpoint: `GET /api/v1/public/tenants/[slug]` — returns tenant profile, services, availability (no auth required)
+- `GET /api/v1/public/tenants/[slug]/available-slots?service_id=X&date=Y` — available times
+- `POST /api/v1/public/tenants/[slug]/book` — create reservation (no auth required)
+- These public routes bypass tenant middleware and auth middleware
+
+### 9.4 Landing page
+
+`turnly.app/` shows a simple landing page:
+- Hero: "Gestiona tu negocio, acepta reservas online"
+- CTA: "Registra tu negocio gratis"
+- Link to `/register`
+- No business directory/search for now (future feature)
+
+## 10. Super Admin
+
+### 10.1 User
 
 Created via seeder: `super@turnly.com` / `password`, `is_super_admin = true`
 
-### 8.2 Auth flow
+### 10.2 Auth flow
 
 - Login checks `is_super_admin` flag
 - If super admin → redirect to `/super-admin`
 - If regular user → redirect to `/dashboard` (existing behavior)
 - Super admin routes do NOT require `tenant_slug` or `X-Tenant` header
 
-### 8.3 Layout
+### 10.3 Layout
 
 New route group `(super-admin)` in the admin Next.js app with its own layout and sidebar:
 
@@ -156,18 +282,18 @@ New route group `(super-admin)` in the admin Next.js app with its own layout and
 - Negocios — list all tenants with filters
 - Usuarios — list all users in the system
 
-### 8.4 Negocios page
+### 10.4 Negocios page
 
 - Table: name, business_type, plan, status, created_at, actions
 - Actions: activate, suspend, view detail
 - Filters: by business type, by status, by plan
 
-### 8.5 Usuarios page
+### 10.5 Usuarios page
 
 - Table: name, email, tenant(s), role, is_super_admin
 - Read-only for now
 
-### 8.6 Switch tenant (impersonate)
+### 10.6 Switch tenant (impersonate)
 
 - Super admin can "enter" any tenant from the Negocios list
 - Sets a temporary `tenant_slug` in the session/localStorage
@@ -175,7 +301,7 @@ New route group `(super-admin)` in the admin Next.js app with its own layout and
 - Shows a banner: "Viendo: [tenant name]" with a "Volver al panel" button
 - Exiting clears the temporary tenant context and returns to `/super-admin`
 
-### 8.7 Backend
+### 10.7 Backend
 
 Already implemented:
 - `EnsureSuperAdminMiddleware` — checks `is_super_admin`
@@ -187,14 +313,14 @@ Need to add:
 - `GET /api/v1/superadmin/users` — list all users with their tenant associations
 - `GET /api/v1/superadmin/stats` — system-wide stats for dashboard
 
-## 9. Staff App (Flutter)
+## 11. Staff App (Flutter)
 
 - Rebrand WashFlow → Turnly in all text
 - Vehicle references → client resource references
 - wash_log → service_log references
 - Dynamic form rendering for client resources based on tenant custom_fields (fetched from API)
 
-## 10. What Does NOT Change
+## 12. What Does NOT Change
 
 - Multi-tenant architecture (single database with TenantScope)
 - Auth system (Sanctum + tokens)
@@ -202,11 +328,15 @@ Need to add:
 - Services, availability slots, permissions
 - Project structure (monorepo with apps/)
 
-## 11. Implementation Order
+## 13. Implementation Order
 
 1. **Rebranding** — WashFlow → Turnly across all code and UI
-2. **Database migrations** — business_type, custom_fields, client_resources, service_logs, reservation column rename
-3. **Dynamic fields** — custom_fields schema on tenant, dynamic form rendering
-4. **Onboarding** — new business type selection step
-5. **UI updates** — Clients page, Registro del día, dynamic tables
-6. **Super admin** — layout, pages, switch tenant functionality
+2. **Database migrations** — business_type, custom_fields, tenant profile columns, tenant_images, service image_url, client_resources, service_logs, reservation column rename
+3. **File uploads** — image upload endpoint (logo, gallery, service images) with local/S3 storage
+4. **Dynamic fields** — custom_fields schema on tenant, dynamic form rendering
+5. **Onboarding** — new business type selection step
+6. **Business settings** — enhanced settings page with profile, logo, gallery, custom fields, feature flags
+7. **UI updates** — Clients page, Registro del día, dynamic tables, service images
+8. **Public page** — public business profile at `/[slug]` with booking flow
+9. **Landing page** — Turnly homepage with registration CTA
+10. **Super admin** — layout, pages, switch tenant functionality
