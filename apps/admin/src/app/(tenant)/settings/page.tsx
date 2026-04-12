@@ -29,6 +29,7 @@ import { Trash2, Plus, X } from 'lucide-react';
 import Image from 'next/image';
 import { getAvailabilityBlocks, createAvailabilityBlock, deleteAvailabilityBlock } from '@/lib/api/availability-blocks';
 import type { AvailabilityBlock } from '@/types/availability-block';
+import { getAvailabilitySlots, updateAvailabilitySlots } from '@/lib/api/availability-slots';
 
 interface CustomField {
   key: string;
@@ -125,10 +126,6 @@ export default function SettingsPage() {
         washer: { ...DEFAULT_PERMISSIONS.washer, ...(settings.permissions as PermissionsConfig).washer },
       });
     }
-    const settingsObj = t.settings as Record<string, unknown> | null;
-    if (settingsObj?.schedule) {
-      setSchedule({ ...DEFAULT_SCHEDULE, ...(settingsObj.schedule as WeekSchedule) });
-    }
   }, [tenantSettings]);
 
   const updateMutation = useMutation({
@@ -141,7 +138,6 @@ export default function SettingsPage() {
   });
 
   function handleSave() {
-    const currentSettings = (tenantSettings as Record<string, unknown>)?.settings as Record<string, unknown> ?? {};
     updateMutation.mutate({
       name,
       description,
@@ -153,10 +149,6 @@ export default function SettingsPage() {
       cover_url: coverUrl || undefined,
       social_links: socialLinks,
       custom_fields: customFields,
-      settings: {
-        ...currentSettings,
-        schedule,
-      },
     });
   }
 
@@ -182,6 +174,54 @@ export default function SettingsPage() {
       queryClient.invalidateQueries({ queryKey: ['tenant-images'] });
     },
   });
+
+  // Availability slots (weekly schedule from DB)
+  const DAY_KEY_TO_INDEX: Record<string, number> = {
+    monday: 0, tuesday: 1, wednesday: 2, thursday: 3,
+    friday: 4, saturday: 5, sunday: 6,
+  };
+
+  const { data: slotsData } = useQuery({
+    queryKey: ['availability-slots'],
+    queryFn: getAvailabilitySlots,
+  });
+
+  // Sync schedule state from API slots
+  useEffect(() => {
+    if (!slotsData) return;
+    const updated: WeekSchedule = { ...DEFAULT_SCHEDULE };
+    for (const slot of slotsData) {
+      const dayKey = DAYS.find((_, i) => i === slot.day_of_week)?.key;
+      if (dayKey) {
+        updated[dayKey] = {
+          open: slot.start_time?.slice(0, 5) ?? '08:00',
+          close: slot.end_time?.slice(0, 5) ?? '18:00',
+          active: slot.is_active,
+        };
+      }
+    }
+    setSchedule(updated);
+  }, [slotsData]);
+
+  const [savingSchedule, setSavingSchedule] = useState(false);
+  const [scheduleSaved, setScheduleSaved] = useState(false);
+
+  async function handleSaveSchedule() {
+    setSavingSchedule(true);
+    setScheduleSaved(false);
+    const slots = DAYS.map((day, index) => ({
+      day_of_week: index,
+      start_time: schedule[day.key].open,
+      end_time: schedule[day.key].close,
+      is_active: schedule[day.key].active,
+      max_concurrent: 2,
+    }));
+    await updateAvailabilitySlots(slots);
+    queryClient.invalidateQueries({ queryKey: ['availability-slots'] });
+    setSavingSchedule(false);
+    setScheduleSaved(true);
+    setTimeout(() => setScheduleSaved(false), 3000);
+  }
 
   const { data: blocks = [] } = useQuery({
     queryKey: ['availability-blocks'],
@@ -508,9 +548,14 @@ export default function SettingsPage() {
                   </div>
                 );
               })}
-              <p className="text-xs text-[#718EBF] mt-2">
-                Los horarios se guardan con el botón &quot;Guardar cambios&quot; al final.
-              </p>
+              <div className="flex items-center justify-end gap-3 pt-2">
+                {scheduleSaved && (
+                  <p className="text-sm text-green-600">Horarios guardados.</p>
+                )}
+                <Button size="sm" onClick={handleSaveSchedule} disabled={savingSchedule}>
+                  {savingSchedule ? 'Guardando...' : 'Guardar horarios'}
+                </Button>
+              </div>
             </CardContent>
           </Card>
 

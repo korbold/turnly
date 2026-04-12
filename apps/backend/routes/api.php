@@ -100,6 +100,10 @@ Route::prefix('v1')->group(function () {
             Route::delete('tenant/images/{id}', [TenantImageController::class, 'destroy']);
             Route::post('tenant/images/reorder', [TenantImageController::class, 'reorder']);
 
+            // Availability slots (weekly schedule)
+            Route::get('availability-slots', [\App\Infrastructure\Http\Controllers\AvailabilitySlotController::class, 'index']);
+            Route::put('availability-slots', [\App\Infrastructure\Http\Controllers\AvailabilitySlotController::class, 'bulkUpdate']);
+
             // Availability blocks
             Route::get('availability-blocks', [\App\Infrastructure\Http\Controllers\AvailabilityBlockController::class, 'index']);
             Route::post('availability-blocks', [\App\Infrastructure\Http\Controllers\AvailabilityBlockController::class, 'store']);
