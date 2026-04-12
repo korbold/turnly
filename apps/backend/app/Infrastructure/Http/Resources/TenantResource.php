@@ -24,6 +24,14 @@ class TenantResource extends JsonResource
             'onboarding_step' => $this->onboarding_step,
             'activated_at'    => $this->activated_at?->toIso8601String(),
             'created_at'      => $this->created_at?->toIso8601String(),
+            'business_type'   => $this->business_type,
+            'custom_fields'   => $this->custom_fields,
+            'description'     => $this->description,
+            'address'         => $this->address,
+            'logo_url'        => $this->logo_url,
+            'cover_url'       => $this->cover_url,
+            'social_links'    => $this->social_links,
+            'brand_theme'     => $this->brand_theme,
         ];
     }
 
