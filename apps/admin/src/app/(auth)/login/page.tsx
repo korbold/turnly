@@ -32,8 +32,12 @@ export default function LoginPage() {
     setError(null);
     setLoading(true);
     try {
-      await login(data.email, data.password);
-      router.push('/dashboard');
+      const result = await login(data.email, data.password);
+      if (result.data.user.is_super_admin) {
+        router.push('/super-admin');
+      } else {
+        router.push('/dashboard');
+      }
     } catch (err: unknown) {
       const apiError = err as { message?: string };
       setError(apiError?.message ?? 'Error al iniciar sesión');
