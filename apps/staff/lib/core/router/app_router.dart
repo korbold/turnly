@@ -7,6 +7,7 @@ import '../../features/services/domain/entities/service.dart';
 import '../../features/services/presentation/screens/service_form_screen.dart';
 import '../../features/services/presentation/screens/services_screen.dart';
 import '../../features/shell/presentation/screens/shell_screen.dart';
+import '../../features/team/presentation/screens/team_screen.dart';
 import '../../features/wash_log/presentation/screens/register_wash_screen.dart';
 
 final goRouter = GoRouter(
@@ -67,7 +68,7 @@ final goRouter = GoRouter(
     ),
     GoRoute(
       path: '/team',
-      builder: (context, state) => const _Placeholder(title: 'Equipo'),
+      builder: (context, state) => const TeamScreen(),
     ),
     GoRoute(
       path: '/reports',
