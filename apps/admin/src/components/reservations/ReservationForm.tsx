@@ -3,7 +3,7 @@
 import { useState } from 'react';
 import { useQuery, useMutation } from '@tanstack/react-query';
 import { format } from 'date-fns';
-import { getVehicles } from '@/lib/api/vehicles';
+import { getClientResources } from '@/lib/api/client-resources';
 import { getServices } from '@/lib/api/services';
 import { createReservation, getAvailableSlots } from '@/lib/api/reservations';
 import { Button } from '@/components/ui/button';
@@ -26,16 +26,16 @@ interface ReservationFormProps {
 export function ReservationForm({ onSuccess, onCancel }: ReservationFormProps) {
   const today = format(new Date(), 'yyyy-MM-dd');
 
-  const [vehicleId, setVehicleId] = useState('');
+  const [clientResourceId, setClientResourceId] = useState('');
   const [serviceId, setServiceId] = useState('');
   const [date, setDate] = useState(today);
   const [selectedSlot, setSelectedSlot] = useState<string | null>(null);
   const [notes, setNotes] = useState('');
   const [error, setError] = useState<string | null>(null);
 
-  const { data: vehiclesData } = useQuery({
-    queryKey: ['vehicles', 'all'],
-    queryFn: () => getVehicles({ per_page: 200 }),
+  const { data: clientResourcesData } = useQuery({
+    queryKey: ['client-resources', 'all'],
+    queryFn: () => getClientResources({ per_page: 200 }),
   });
 
   const { data: servicesData } = useQuery({
@@ -64,20 +64,20 @@ export function ReservationForm({ onSuccess, onCancel }: ReservationFormProps) {
     e.preventDefault();
     setError(null);
 
-    if (!vehicleId || !serviceId || !date || !selectedSlot) {
+    if (!clientResourceId || !serviceId || !date || !selectedSlot) {
       setError('Por favor completa todos los campos requeridos.');
       return;
     }
 
     mutate({
-      vehicle_id: vehicleId,
+      client_resource_id: clientResourceId,
       service_id: serviceId,
       scheduled_at: selectedSlot,
       notes: notes || undefined,
     });
   };
 
-  const vehicles = vehiclesData?.data ?? [];
+  const clientResources = clientResourcesData?.data ?? [];
   const services = servicesData?.data ?? [];
 
   return (
@@ -85,12 +85,12 @@ export function ReservationForm({ onSuccess, onCancel }: ReservationFormProps) {
       {/* Vehicle */}
       <div className="space-y-1">
         <Label htmlFor="res-vehicle">Vehículo (placa)</Label>
-        <Select value={vehicleId} onValueChange={(v) => setVehicleId(v ?? '')}>
+        <Select value={clientResourceId} onValueChange={(v) => setClientResourceId(v ?? '')}>
           <SelectTrigger id="res-vehicle" className="w-full">
             <SelectValue placeholder="Seleccionar vehículo" />
           </SelectTrigger>
           <SelectContent>
-            {vehicles.map((v) => (
+            {clientResources.map((v) => (
               <SelectItem key={v.id} value={v.id}>
                 {v.plate}
                 {v.brand ? ` — ${v.brand}${v.model ? ` ${v.model}` : ''}` : ''}

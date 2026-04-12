@@ -3,8 +3,8 @@
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { useMutation } from '@tanstack/react-query';
-import { createWashLog } from '@/lib/api/wash-log';
-import type { Vehicle } from '@/types/vehicle';
+import { createServiceLog } from '@/lib/api/service-log';
+import type { ClientResource } from '@/types/client-resource';
 import type { Service } from '@/types/service';
 import type { User } from '@/types/user';
 import { Button } from '@/components/ui/button';
@@ -21,15 +21,15 @@ import {
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 
 interface WalkInFormProps {
-  vehicles: Vehicle[];
+  clientResources: ClientResource[];
   services: Service[];
   users: User[];
 }
 
-export function WalkInForm({ vehicles, services, users }: WalkInFormProps) {
+export function WalkInForm({ clientResources, services, users }: WalkInFormProps) {
   const router = useRouter();
 
-  const [vehicleId, setVehicleId] = useState<string>('');
+  const [clientResourceId, setClientResourceId] = useState<string>('');
   const [serviceId, setServiceId] = useState<string>('');
   const [attendedBy, setAttendedBy] = useState<string>('');
   const [paymentMethod, setPaymentMethod] = useState<string>('');
@@ -38,9 +38,9 @@ export function WalkInForm({ vehicles, services, users }: WalkInFormProps) {
   const [error, setError] = useState<string | null>(null);
 
   const { mutate, isPending } = useMutation({
-    mutationFn: createWashLog,
+    mutationFn: createServiceLog,
     onSuccess: () => {
-      router.push('/wash-log');
+      router.push('/service-log');
     },
     onError: (err: unknown) => {
       const message = (err as { message?: string })?.message ?? 'Error al registrar el servicio';
@@ -62,13 +62,13 @@ export function WalkInForm({ vehicles, services, users }: WalkInFormProps) {
     e.preventDefault();
     setError(null);
 
-    if (!vehicleId || !serviceId || !attendedBy || !paymentMethod || !price) {
+    if (!clientResourceId || !serviceId || !attendedBy || !paymentMethod || !price) {
       setError('Por favor completa todos los campos requeridos.');
       return;
     }
 
     mutate({
-      vehicle_id: vehicleId,
+      client_resource_id: clientResourceId,
       service_id: serviceId,
       attended_by: attendedBy,
       price_charged: Number(price),
@@ -87,12 +87,12 @@ export function WalkInForm({ vehicles, services, users }: WalkInFormProps) {
           {/* Vehicle */}
           <div className="space-y-1">
             <Label htmlFor="vehicle">Vehículo (placa)</Label>
-            <Select value={vehicleId} onValueChange={(v) => setVehicleId(v ?? '')}>
+            <Select value={clientResourceId} onValueChange={(v) => setClientResourceId(v ?? '')}>
               <SelectTrigger id="vehicle" className="w-full">
                 <SelectValue placeholder="Seleccionar vehículo" />
               </SelectTrigger>
               <SelectContent>
-                {vehicles.map((v) => (
+                {clientResources.map((v) => (
                   <SelectItem key={v.id} value={v.id}>
                     {v.plate}
                     {v.brand ? ` — ${v.brand}${v.model ? ` ${v.model}` : ''}` : ''}
@@ -188,7 +188,7 @@ export function WalkInForm({ vehicles, services, users }: WalkInFormProps) {
             <Button
               type="button"
               variant="outline"
-              onClick={() => router.push('/wash-log')}
+              onClick={() => router.push('/service-log')}
             >
               Cancelar
             </Button>

@@ -149,21 +149,21 @@ export default function ReservationDetailPage({ params }: PageProps) {
         <CardContent className="space-y-1 text-sm">
           <p>
             <span className="text-gray-500">Placa: </span>
-            <span className="font-mono font-medium">{reservation.vehicle?.plate ?? '—'}</span>
+            <span className="font-mono font-medium">{reservation.client_resource?.plate ?? '—'}</span>
           </p>
-          {reservation.vehicle?.brand && (
+          {reservation.client_resource?.brand && (
             <p>
               <span className="text-gray-500">Marca/Modelo: </span>
               <span>
-                {reservation.vehicle.brand}
-                {reservation.vehicle.model ? ` ${reservation.vehicle.model}` : ''}
+                {reservation.client_resource.brand}
+                {reservation.client_resource.model ? ` ${reservation.client_resource.model}` : ''}
               </span>
             </p>
           )}
-          {reservation.vehicle?.color && (
+          {reservation.client_resource?.color && (
             <p>
               <span className="text-gray-500">Color: </span>
-              <span>{reservation.vehicle.color}</span>
+              <span>{reservation.client_resource.color}</span>
             </p>
           )}
         </CardContent>

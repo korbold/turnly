@@ -1,8 +1,8 @@
 'use client';
 
 import { useMutation, useQueryClient } from '@tanstack/react-query';
-import { completeWashLog } from '@/lib/api/wash-log';
-import type { WashLog } from '@/types/wash-log';
+import { completeServiceLog } from '@/lib/api/service-log';
+import type { ServiceLog } from '@/types/service-log';
 import {
   Table,
   TableHeader,
@@ -33,7 +33,7 @@ const statusVariants: Record<string, 'default' | 'secondary' | 'outline'> = {
 };
 
 interface DailyLogTableProps {
-  logs: WashLog[];
+  logs: ServiceLog[];
   date: string;
 }
 
@@ -41,9 +41,9 @@ export function DailyLogTable({ logs, date }: DailyLogTableProps) {
   const queryClient = useQueryClient();
 
   const { mutate: complete, isPending } = useMutation({
-    mutationFn: completeWashLog,
+    mutationFn: completeServiceLog,
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['wash-logs', date] });
+      queryClient.invalidateQueries({ queryKey: ['service-logs', date] });
       queryClient.invalidateQueries({ queryKey: ['daily-summary', date] });
     },
   });
@@ -77,7 +77,7 @@ export function DailyLogTable({ logs, date }: DailyLogTableProps) {
               {format(new Date(log.started_at), 'HH:mm')}
             </TableCell>
             <TableCell className="font-mono font-medium">
-              {log.vehicle?.plate ?? '—'}
+              {log.client_resource?.plate ?? '—'}
             </TableCell>
             <TableCell>{log.service?.name ?? '—'}</TableCell>
             <TableCell>{log.attendant?.name ?? '—'}</TableCell>

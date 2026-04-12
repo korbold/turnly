@@ -58,7 +58,7 @@ export default function DashboardPage() {
               Nueva reservación
             </Button>
           </Link>
-          <Link href="/wash-log/new">
+          <Link href="/service-log/new">
             <Button variant="outline" size="sm">
               <Plus className="h-4 w-4 mr-1" />
               Registrar servicio
@@ -139,7 +139,7 @@ export default function DashboardPage() {
                     <div>
                       <p className="font-medium text-sm">{res.client?.name ?? 'Cliente'}</p>
                       <p className="text-xs text-gray-500">
-                        {res.vehicle?.plate} · {res.service?.name}
+                        {res.client_resource?.plate} · {res.service?.name}
                       </p>
                     </div>
                   </div>

@@ -1,6 +1,6 @@
 'use client';
 
-import type { DailySummary } from '@/types/wash-log';
+import type { DailySummary } from '@/types/service-log';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Car, DollarSign } from 'lucide-react';
 

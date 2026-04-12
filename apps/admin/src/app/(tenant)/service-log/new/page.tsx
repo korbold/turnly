@@ -1,18 +1,18 @@
 'use client';
 
 import { useQuery } from '@tanstack/react-query';
-import { getVehicles } from '@/lib/api/vehicles';
+import { getClientResources } from '@/lib/api/client-resources';
 import { getServices } from '@/lib/api/services';
 import { getUsers } from '@/lib/api/users';
-import { WalkInForm } from '@/components/wash-log/WalkInForm';
+import { WalkInForm } from '@/components/service-log/WalkInForm';
 import Link from 'next/link';
 import { Button } from '@/components/ui/button';
 import { ArrowLeft } from 'lucide-react';
 
-export default function NewWashLogPage() {
-  const { data: vehiclesData, isLoading: vehiclesLoading } = useQuery({
-    queryKey: ['vehicles', 'all'],
-    queryFn: () => getVehicles({ per_page: 200 }),
+export default function NewServiceLogPage() {
+  const { data: clientResourcesData, isLoading: clientResourcesLoading } = useQuery({
+    queryKey: ['client-resources', 'all'],
+    queryFn: () => getClientResources({ per_page: 200 }),
   });
 
   const { data: servicesData, isLoading: servicesLoading } = useQuery({
@@ -25,12 +25,12 @@ export default function NewWashLogPage() {
     queryFn: () => getUsers({ per_page: 100 }),
   });
 
-  const isLoading = vehiclesLoading || servicesLoading || usersLoading;
+  const isLoading = clientResourcesLoading || servicesLoading || usersLoading;
 
   return (
     <div className="space-y-6">
       <div className="flex items-center gap-3">
-        <Link href="/wash-log">
+        <Link href="/service-log">
           <Button variant="ghost" size="sm">
             <ArrowLeft className="h-4 w-4 mr-1" />
             Volver
@@ -46,7 +46,7 @@ export default function NewWashLogPage() {
         <div className="text-center py-10 text-muted-foreground">Cargando datos...</div>
       ) : (
         <WalkInForm
-          vehicles={vehiclesData?.data ?? []}
+          clientResources={clientResourcesData?.data ?? []}
           services={servicesData?.data ?? []}
           users={usersData?.data ?? []}
         />

@@ -4,20 +4,20 @@ import { useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { format } from 'date-fns';
 import Link from 'next/link';
-import { getWashLogs, getDailySummary } from '@/lib/api/wash-log';
-import { DailyLogTable } from '@/components/wash-log/DailyLogTable';
-import { DailySummaryCard } from '@/components/wash-log/DailySummaryCard';
+import { getServiceLogs, getDailySummary } from '@/lib/api/service-log';
+import { DailyLogTable } from '@/components/service-log/DailyLogTable';
+import { DailySummaryCard } from '@/components/service-log/DailySummaryCard';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Plus } from 'lucide-react';
 
-export default function WashLogPage() {
+export default function ServiceLogPage() {
   const [date, setDate] = useState<string>(format(new Date(), 'yyyy-MM-dd'));
 
   const { data: logsData, isLoading: logsLoading } = useQuery({
-    queryKey: ['wash-logs', date],
-    queryFn: () => getWashLogs({ date, per_page: 100 }),
+    queryKey: ['service-logs', date],
+    queryFn: () => getServiceLogs({ date, per_page: 100 }),
   });
 
   const { data: summary, isLoading: summaryLoading } = useQuery({
@@ -33,7 +33,7 @@ export default function WashLogPage() {
           <h1 className="text-2xl font-bold text-gray-900">Registro del día</h1>
           <p className="text-gray-500">Registro de servicios del día</p>
         </div>
-        <Link href="/wash-log/new">
+        <Link href="/service-log/new">
           <Button>
             <Plus className="h-4 w-4 mr-1" />
             Registrar servicio

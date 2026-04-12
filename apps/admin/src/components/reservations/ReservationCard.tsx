@@ -67,9 +67,9 @@ export function ReservationCard({ reservation, queryKey }: ReservationCardProps)
 
   const time = format(new Date(reservation.scheduled_at), 'HH:mm');
   const clientName = reservation.client?.name ?? '—';
-  const plate = reservation.vehicle?.plate ?? '—';
-  const vehicleLabel = reservation.vehicle
-    ? `${plate}${reservation.vehicle.brand ? ` · ${reservation.vehicle.brand}${reservation.vehicle.model ? ` ${reservation.vehicle.model}` : ''}` : ''}`
+  const plate = reservation.client_resource?.plate ?? '—';
+  const resourceLabel = reservation.client_resource
+    ? `${plate}${reservation.client_resource.brand ? ` · ${reservation.client_resource.brand}${reservation.client_resource.model ? ` ${reservation.client_resource.model}` : ''}` : ''}`
     : plate;
   const serviceName = reservation.service?.name ?? '—';
 
@@ -84,7 +84,7 @@ export function ReservationCard({ reservation, queryKey }: ReservationCardProps)
             </div>
             <div className="space-y-0.5">
               <p className="font-medium text-gray-900">{clientName}</p>
-              <p className="text-sm text-gray-500 font-mono">{vehicleLabel}</p>
+              <p className="text-sm text-gray-500 font-mono">{resourceLabel}</p>
               <p className="text-sm text-gray-600">{serviceName}</p>
             </div>
           </div>

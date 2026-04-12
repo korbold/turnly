@@ -3,7 +3,7 @@ export type ReservationStatus = 'pending' | 'confirmed' | 'in_progress' | 'compl
 export interface Reservation {
   id: string;
   client_id: string;
-  vehicle_id: string;
+  client_resource_id: string;
   service_id: string;
   assigned_to: string | null;
   scheduled_at: string;
@@ -14,7 +14,7 @@ export interface Reservation {
   cancel_reason: string | null;
   created_by: string;
   created_at: string;
-  vehicle?: { plate: string; brand: string | null; model: string | null; color: string | null };
+  client_resource?: { label: string | null; data: Record<string, unknown> | null; plate: string | null; brand: string | null; model: string | null; color: string | null };
   service?: { name: string; price: string };
   client?: { name: string; email: string };
 }

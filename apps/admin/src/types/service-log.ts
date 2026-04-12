@@ -1,8 +1,8 @@
 export type PaymentMethod = 'cash' | 'card' | 'transfer' | 'other';
 
-export interface WashLog {
+export interface ServiceLog {
   id: string;
-  vehicle_id: string;
+  client_resource_id: string;
   service_id: string;
   reservation_id: string | null;
   attended_by: string;
@@ -15,7 +15,7 @@ export interface WashLog {
   notes: string | null;
   log_date: string;
   created_at: string;
-  vehicle?: { plate: string; brand: string | null };
+  client_resource?: { plate: string; brand: string | null };
   service?: { name: string };
   attendant?: { name: string };
 }

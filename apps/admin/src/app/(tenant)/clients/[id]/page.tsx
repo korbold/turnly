@@ -4,7 +4,7 @@ import { use } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { ArrowLeft } from 'lucide-react';
 import Link from 'next/link';
-import { getVehicle, getVehicleHistory } from '@/lib/api/vehicles';
+import { getClientResource, getClientResourceHistory } from '@/lib/api/client-resources';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
@@ -42,28 +42,28 @@ const STATUS_COLORS: Record<string, string> = {
   cancelled: 'bg-red-100 text-red-800',
 };
 
-export default function VehicleDetailPage({ params }: { params: Promise<{ id: string }> }) {
+export default function ClientResourceDetailPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = use(params);
 
-  const { data: vehicle, isLoading: vehicleLoading } = useQuery({
-    queryKey: ['vehicle', id],
-    queryFn: () => getVehicle(id),
+  const { data: clientResource, isLoading: resourceLoading } = useQuery({
+    queryKey: ['client-resource', id],
+    queryFn: () => getClientResource(id),
   });
 
   const { data: history, isLoading: historyLoading } = useQuery({
-    queryKey: ['vehicle-history', id],
-    queryFn: () => getVehicleHistory(id),
+    queryKey: ['client-resource-history', id],
+    queryFn: () => getClientResourceHistory(id),
   });
 
-  const washHistory = Array.isArray(history) ? history : [];
+  const serviceHistory = Array.isArray(history) ? history : [];
 
-  if (vehicleLoading) {
+  if (resourceLoading) {
     return (
       <div className="text-center py-12 text-muted-foreground">Cargando vehículo...</div>
     );
   }
 
-  if (!vehicle) {
+  if (!clientResource) {
     return (
       <div className="text-center py-12 text-muted-foreground">Vehículo no encontrado.</div>
     );
@@ -72,16 +72,16 @@ export default function VehicleDetailPage({ params }: { params: Promise<{ id: st
   return (
     <div className="space-y-6">
       <div className="flex items-center gap-4">
-        <Link href="/vehicles">
+        <Link href="/clients">
           <Button variant="ghost" size="sm">
             <ArrowLeft className="h-4 w-4 mr-1" />
             Volver
           </Button>
         </Link>
         <div>
-          <h1 className="text-2xl font-bold text-gray-900 font-mono">{vehicle.plate}</h1>
+          <h1 className="text-2xl font-bold text-gray-900 font-mono">{clientResource.plate}</h1>
           <p className="text-gray-500">
-            {[vehicle.brand, vehicle.model, vehicle.color].filter(Boolean).join(' · ')}
+            {[clientResource.brand, clientResource.model, clientResource.color].filter(Boolean).join(' · ')}
           </p>
         </div>
       </div>
@@ -95,38 +95,28 @@ export default function VehicleDetailPage({ params }: { params: Promise<{ id: st
           <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
             <div>
               <p className="text-xs text-gray-500 uppercase tracking-wide">Placa</p>
-              <p className="font-medium font-mono">{vehicle.plate}</p>
+              <p className="font-medium font-mono">{clientResource.plate}</p>
             </div>
             <div>
               <p className="text-xs text-gray-500 uppercase tracking-wide">Marca</p>
-              <p className="font-medium">{vehicle.brand ?? '—'}</p>
+              <p className="font-medium">{clientResource.brand ?? '—'}</p>
             </div>
             <div>
               <p className="text-xs text-gray-500 uppercase tracking-wide">Modelo</p>
-              <p className="font-medium">{vehicle.model ?? '—'}</p>
+              <p className="font-medium">{clientResource.model ?? '—'}</p>
             </div>
             <div>
               <p className="text-xs text-gray-500 uppercase tracking-wide">Color</p>
-              <p className="font-medium">{vehicle.color ?? '—'}</p>
+              <p className="font-medium">{clientResource.color ?? '—'}</p>
             </div>
             <div>
               <p className="text-xs text-gray-500 uppercase tracking-wide">Tipo</p>
-              <p className="font-medium">{VEHICLE_TYPE_LABELS[vehicle.type] ?? vehicle.type}</p>
+              <p className="font-medium">{VEHICLE_TYPE_LABELS[clientResource.type ?? ''] ?? clientResource.type}</p>
             </div>
-            <div>
-              <p className="text-xs text-gray-500 uppercase tracking-wide">Propietario</p>
-              <p className="font-medium">{vehicle.owner?.name ?? '—'}</p>
-            </div>
-            {vehicle.owner?.email && (
-              <div>
-                <p className="text-xs text-gray-500 uppercase tracking-wide">Email propietario</p>
-                <p className="font-medium">{vehicle.owner.email}</p>
-              </div>
-            )}
             <div>
               <p className="text-xs text-gray-500 uppercase tracking-wide">Registrado</p>
               <p className="font-medium">
-                {format(new Date(vehicle.created_at), "d 'de' MMMM yyyy", { locale: es })}
+                {format(new Date(clientResource.created_at), "d 'de' MMMM yyyy", { locale: es })}
               </p>
             </div>
           </div>
@@ -141,7 +131,7 @@ export default function VehicleDetailPage({ params }: { params: Promise<{ id: st
         <CardContent>
           {historyLoading ? (
             <div className="text-center py-8 text-muted-foreground">Cargando historial...</div>
-          ) : washHistory.length === 0 ? (
+          ) : serviceHistory.length === 0 ? (
             <div className="text-center py-8 text-muted-foreground">
               No hay servicios registrados para este vehículo.
             </div>
@@ -157,35 +147,35 @@ export default function VehicleDetailPage({ params }: { params: Promise<{ id: st
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {washHistory.map((wash: Record<string, unknown>) => (
-                  <TableRow key={String(wash.id)}>
+                {serviceHistory.map((entry: Record<string, unknown>) => (
+                  <TableRow key={String(entry.id)}>
                     <TableCell>
-                      {wash.started_at
-                        ? format(new Date(String(wash.started_at)), "d MMM yyyy HH:mm", { locale: es })
-                        : wash.created_at
-                        ? format(new Date(String(wash.created_at)), "d MMM yyyy HH:mm", { locale: es })
+                      {entry.started_at
+                        ? format(new Date(String(entry.started_at)), "d MMM yyyy HH:mm", { locale: es })
+                        : entry.created_at
+                        ? format(new Date(String(entry.created_at)), "d MMM yyyy HH:mm", { locale: es })
                         : '—'}
                     </TableCell>
                     <TableCell>
-                      {(wash.service as Record<string, unknown> | null)?.name
-                        ? String((wash.service as Record<string, unknown>).name)
+                      {(entry.service as Record<string, unknown> | null)?.name
+                        ? String((entry.service as Record<string, unknown>).name)
                         : '—'}
                     </TableCell>
                     <TableCell>
-                      {wash.status ? (
+                      {entry.status ? (
                         <span
-                          className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${STATUS_COLORS[String(wash.status)] ?? 'bg-gray-100 text-gray-800'}`}
+                          className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${STATUS_COLORS[String(entry.status)] ?? 'bg-gray-100 text-gray-800'}`}
                         >
-                          {STATUS_LABELS[String(wash.status)] ?? String(wash.status)}
+                          {STATUS_LABELS[String(entry.status)] ?? String(entry.status)}
                         </span>
                       ) : (
                         '—'
                       )}
                     </TableCell>
                     <TableCell>
-                      {wash.price != null ? `$${parseFloat(String(wash.price)).toFixed(2)}` : '—'}
+                      {entry.price != null ? `$${parseFloat(String(entry.price)).toFixed(2)}` : '—'}
                     </TableCell>
-                    <TableCell>{wash.payment_method ? String(wash.payment_method) : '—'}</TableCell>
+                    <TableCell>{entry.payment_method ? String(entry.payment_method) : '—'}</TableCell>
                   </TableRow>
                 ))}
               </TableBody>

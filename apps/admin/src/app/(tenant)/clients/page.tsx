@@ -4,7 +4,7 @@ import { useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { Plus } from 'lucide-react';
 import { useRouter } from 'next/navigation';
-import { getVehicles, createVehicle } from '@/lib/api/vehicles';
+import { getClientResources, createClientResource } from '@/lib/api/client-resources';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -41,7 +41,7 @@ const VEHICLE_TYPES = [
   { value: 'other', label: 'Otro' },
 ];
 
-interface VehicleFormData {
+interface ClientResourceFormData {
   plate: string;
   brand: string;
   model: string;
@@ -49,7 +49,7 @@ interface VehicleFormData {
   type: string;
 }
 
-const emptyForm: VehicleFormData = {
+const emptyForm: ClientResourceFormData = {
   plate: '',
   brand: '',
   model: '',
@@ -57,23 +57,23 @@ const emptyForm: VehicleFormData = {
   type: '',
 };
 
-export default function VehiclesPage() {
+export default function ClientsPage() {
   const queryClient = useQueryClient();
   const router = useRouter();
   const [dialogOpen, setDialogOpen] = useState(false);
-  const [form, setForm] = useState<VehicleFormData>(emptyForm);
+  const [form, setForm] = useState<ClientResourceFormData>(emptyForm);
 
   const { data, isLoading } = useQuery({
-    queryKey: ['vehicles'],
-    queryFn: () => getVehicles({ per_page: 100 }),
+    queryKey: ['client-resources'],
+    queryFn: () => getClientResources({ per_page: 100 }),
   });
 
-  const vehicles = data?.data ?? [];
+  const clientResources = data?.data ?? [];
 
   const createMutation = useMutation({
-    mutationFn: createVehicle,
+    mutationFn: createClientResource,
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['vehicles'] });
+      queryClient.invalidateQueries({ queryKey: ['client-resources'] });
       setDialogOpen(false);
       setForm(emptyForm);
     },
@@ -182,13 +182,13 @@ export default function VehiclesPage() {
           <CardTitle>
             {isLoading
               ? 'Cargando...'
-              : `${vehicles.length} vehículo${vehicles.length !== 1 ? 's' : ''}`}
+              : `${clientResources.length} vehículo${clientResources.length !== 1 ? 's' : ''}`}
           </CardTitle>
         </CardHeader>
         <CardContent>
           {isLoading ? (
             <div className="text-center py-8 text-muted-foreground">Cargando vehículos...</div>
-          ) : vehicles.length === 0 ? (
+          ) : clientResources.length === 0 ? (
             <div className="text-center py-8 text-muted-foreground">
               No hay vehículos registrados.
             </div>
@@ -201,24 +201,22 @@ export default function VehiclesPage() {
                   <TableHead>Modelo</TableHead>
                   <TableHead>Color</TableHead>
                   <TableHead>Tipo</TableHead>
-                  <TableHead>Propietario</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {vehicles.map((vehicle) => (
+                {clientResources.map((cr) => (
                   <TableRow
-                    key={vehicle.id}
+                    key={cr.id}
                     className="cursor-pointer"
-                    onClick={() => router.push(`/vehicles/${vehicle.id}`)}
+                    onClick={() => router.push(`/clients/${cr.id}`)}
                   >
-                    <TableCell className="font-medium font-mono">{vehicle.plate}</TableCell>
-                    <TableCell>{vehicle.brand ?? '—'}</TableCell>
-                    <TableCell>{vehicle.model ?? '—'}</TableCell>
-                    <TableCell>{vehicle.color ?? '—'}</TableCell>
+                    <TableCell className="font-medium font-mono">{cr.plate ?? '—'}</TableCell>
+                    <TableCell>{cr.brand ?? '—'}</TableCell>
+                    <TableCell>{cr.model ?? '—'}</TableCell>
+                    <TableCell>{cr.color ?? '—'}</TableCell>
                     <TableCell>
-                      {VEHICLE_TYPES.find((t) => t.value === vehicle.type)?.label ?? vehicle.type}
+                      {VEHICLE_TYPES.find((t) => t.value === cr.type)?.label ?? cr.type ?? '—'}
                     </TableCell>
-                    <TableCell>{vehicle.owner?.name ?? '—'}</TableCell>
                   </TableRow>
                 ))}
               </TableBody>

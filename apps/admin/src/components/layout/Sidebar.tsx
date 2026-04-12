@@ -11,7 +11,7 @@ import { cn } from '@/lib/utils';
 const navItems = [
   { href: '/dashboard', label: 'Dashboard', icon: LayoutDashboard },
   { href: '/reservations', label: 'Reservaciones', icon: CalendarDays },
-  { href: '/wash-log', label: 'Registro del día', icon: BookOpen },
+  { href: '/service-log', label: 'Registro del día', icon: BookOpen },
   { href: '/clients', label: 'Clientes', icon: Contact },
   { href: '/services', label: 'Servicios', icon: Wrench },
   { href: '/team', label: 'Equipo', icon: Users },
