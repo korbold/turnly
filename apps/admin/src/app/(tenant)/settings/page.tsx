@@ -480,6 +480,58 @@ export default function SettingsPage() {
               {updateMutation.isPending ? 'Guardando...' : 'Guardar cambios'}
             </Button>
           </div>
+
+          {/* Roles & Permissions */}
+          <Card>
+            <CardHeader>
+              <CardTitle>Permisos por rol</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <p className="text-sm text-muted-foreground mb-4">
+                Los permisos están predefinidos para cada rol. Asigna roles desde la sección Equipo.
+              </p>
+              <div className="overflow-x-auto">
+                <table className="w-full text-sm">
+                  <thead>
+                    <tr className="border-b">
+                      <th className="text-left py-2 pr-4 font-medium text-gray-700">Sección</th>
+                      <th className="text-center py-2 px-3 font-medium text-purple-700">Admin</th>
+                      <th className="text-center py-2 px-3 font-medium text-blue-700">Cajero</th>
+                      <th className="text-center py-2 px-3 font-medium text-green-700">Operador</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {[
+                      { section: 'Dashboard', admin: 'full', cashier: 'full', washer: 'full' },
+                      { section: 'Reservaciones', admin: 'full', cashier: 'full', washer: 'view' },
+                      { section: 'Registro del día', admin: 'full', cashier: 'full', washer: 'none' },
+                      { section: 'Clientes', admin: 'full', cashier: 'view', washer: 'none' },
+                      { section: 'Servicios', admin: 'full', cashier: 'none', washer: 'none' },
+                      { section: 'Equipo', admin: 'full', cashier: 'none', washer: 'none' },
+                      { section: 'Reportes', admin: 'full', cashier: 'full', washer: 'none' },
+                      { section: 'Configuración', admin: 'full', cashier: 'none', washer: 'none' },
+                    ].map((row) => (
+                      <tr key={row.section} className="border-b last:border-0">
+                        <td className="py-2 pr-4 text-gray-700">{row.section}</td>
+                        {[row.admin, row.cashier, row.washer].map((perm, i) => (
+                          <td key={i} className="text-center py-2 px-3">
+                            {perm === 'full' && <span className="inline-flex items-center justify-center w-6 h-6 rounded-full bg-green-100 text-green-600 text-xs font-bold">✓</span>}
+                            {perm === 'view' && <span className="inline-flex items-center justify-center w-6 h-6 rounded-full bg-yellow-100 text-yellow-600 text-xs font-bold">◉</span>}
+                            {perm === 'none' && <span className="inline-flex items-center justify-center w-6 h-6 rounded-full bg-gray-100 text-gray-400 text-xs">✕</span>}
+                          </td>
+                        ))}
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+              <div className="flex gap-4 mt-3 text-xs text-muted-foreground">
+                <span className="flex items-center gap-1"><span className="inline-block w-3 h-3 rounded-full bg-green-100 border border-green-300" /> Acceso completo</span>
+                <span className="flex items-center gap-1"><span className="inline-block w-3 h-3 rounded-full bg-yellow-100 border border-yellow-300" /> Solo ver</span>
+                <span className="flex items-center gap-1"><span className="inline-block w-3 h-3 rounded-full bg-gray-100 border border-gray-300" /> Sin acceso</span>
+              </div>
+            </CardContent>
+          </Card>
         </>
       )}
     </div>
