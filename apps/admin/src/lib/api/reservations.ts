@@ -7,6 +7,7 @@ export async function getReservations(params?: {
   status?: string;
   service_id?: string;
   per_page?: number;
+  page?: number;
 }): Promise<PaginatedResponse<Reservation>> {
   const response = await api.get('/reservations', { params });
   return response.data;
