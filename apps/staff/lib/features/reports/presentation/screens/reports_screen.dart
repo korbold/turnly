@@ -112,7 +112,7 @@ class _DailyTabState extends State<_DailyTab> {
       child: ListView(
         padding: const EdgeInsets.all(16),
         children: [
-          _StatCard(title: 'Total lavados', value: '$totalWashes', icon: Icons.local_car_wash, iconColor: Colors.blue),
+          _StatCard(title: 'Total servicios', value: '$totalWashes', icon: Icons.event_available, iconColor: Colors.blue),
           const SizedBox(height: 12),
           _StatCard(title: 'Ingresos totales', value: currency.format(totalRevenue), icon: Icons.attach_money, iconColor: Colors.green),
           if (paymentBreakdown != null) ...[
@@ -237,7 +237,7 @@ class _WeeklyTabState extends State<_WeeklyTab> {
       child: ListView(
         padding: const EdgeInsets.all(16),
         children: [
-          _StatCard(title: 'Total lavados', value: '${_extract(data, 'total_washes')}', icon: Icons.local_car_wash, iconColor: Colors.blue),
+          _StatCard(title: 'Total servicios', value: '${_extract(data, 'total_washes')}', icon: Icons.event_available, iconColor: Colors.blue),
           const SizedBox(height: 12),
           _StatCard(title: 'Ingresos totales', value: currency.format(_extractDouble(data, 'total_revenue')), icon: Icons.attach_money, iconColor: Colors.green),
         ],
@@ -324,7 +324,7 @@ class _MonthlyTabState extends State<_MonthlyTab> {
       child: ListView(
         padding: const EdgeInsets.all(16),
         children: [
-          _StatCard(title: 'Total lavados', value: '${_extract(data, 'total_washes')}', icon: Icons.local_car_wash, iconColor: Colors.blue),
+          _StatCard(title: 'Total servicios', value: '${_extract(data, 'total_washes')}', icon: Icons.event_available, iconColor: Colors.blue),
           const SizedBox(height: 12),
           _StatCard(title: 'Ingresos totales', value: currency.format(_extractDouble(data, 'total_revenue')), icon: Icons.attach_money, iconColor: Colors.green),
         ],

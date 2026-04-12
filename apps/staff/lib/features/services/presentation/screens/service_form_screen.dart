@@ -17,7 +17,6 @@ class _ServiceFormScreenState extends State<ServiceFormScreen> {
 
   late final TextEditingController _nameController;
   late final TextEditingController _priceController;
-  late final TextEditingController _durationController;
   late final TextEditingController _descriptionController;
   bool _isActive = true;
   bool _saving = false;
@@ -30,7 +29,6 @@ class _ServiceFormScreenState extends State<ServiceFormScreen> {
     final s = widget.service;
     _nameController = TextEditingController(text: s?.name ?? '');
     _priceController = TextEditingController(text: s != null ? s.price.toStringAsFixed(2) : '');
-    _durationController = TextEditingController(text: s != null ? '${s.durationMinutes}' : '');
     _descriptionController = TextEditingController(text: s?.description ?? '');
     _isActive = s?.isActive ?? true;
   }
@@ -39,7 +37,6 @@ class _ServiceFormScreenState extends State<ServiceFormScreen> {
   void dispose() {
     _nameController.dispose();
     _priceController.dispose();
-    _durationController.dispose();
     _descriptionController.dispose();
     super.dispose();
   }
@@ -50,7 +47,6 @@ class _ServiceFormScreenState extends State<ServiceFormScreen> {
 
     final name = _nameController.text.trim();
     final price = double.parse(_priceController.text.trim());
-    final duration = int.parse(_durationController.text.trim());
     final description = _descriptionController.text.trim();
 
     if (_isEdit) {
@@ -58,7 +54,6 @@ class _ServiceFormScreenState extends State<ServiceFormScreen> {
         widget.service!.id,
         name: name,
         price: price,
-        durationMinutes: duration,
         description: description.isNotEmpty ? description : null,
         isActive: _isActive,
       );
@@ -74,7 +69,6 @@ class _ServiceFormScreenState extends State<ServiceFormScreen> {
       final result = await _repo.create(
         name: name,
         price: price,
-        durationMinutes: duration,
         description: description.isNotEmpty ? description : null,
       );
       if (!mounted) return;
@@ -123,23 +117,6 @@ class _ServiceFormScreenState extends State<ServiceFormScreen> {
                 if (v == null || v.trim().isEmpty) return 'El precio es obligatorio';
                 final parsed = double.tryParse(v.trim());
                 if (parsed == null || parsed < 0) return 'Ingresa un precio válido';
-                return null;
-              },
-            ),
-            const SizedBox(height: 16),
-            TextFormField(
-              controller: _durationController,
-              decoration: const InputDecoration(
-                labelText: 'Duración (minutos) *',
-                hintText: '30',
-                suffixText: 'min',
-                border: OutlineInputBorder(),
-              ),
-              keyboardType: TextInputType.number,
-              validator: (v) {
-                if (v == null || v.trim().isEmpty) return 'La duración es obligatoria';
-                final parsed = int.tryParse(v.trim());
-                if (parsed == null || parsed <= 0) return 'Ingresa una duración válida';
                 return null;
               },
             ),

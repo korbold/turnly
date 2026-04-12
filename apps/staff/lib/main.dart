@@ -4,16 +4,16 @@ import 'core/router/app_router.dart';
 import 'core/theme/app_theme.dart';
 
 void main() {
-  runApp(const ProviderScope(child: WashFlowStaffApp()));
+  runApp(const ProviderScope(child: TurnlyStaffApp()));
 }
 
-class WashFlowStaffApp extends StatelessWidget {
-  const WashFlowStaffApp({super.key});
+class TurnlyStaffApp extends StatelessWidget {
+  const TurnlyStaffApp({super.key});
 
   @override
   Widget build(BuildContext context) {
     return MaterialApp.router(
-      title: 'WashFlow Staff',
+      title: 'Turnly Staff',
       theme: AppTheme.light,
       routerConfig: goRouter,
       debugShowCheckedModeBanner: false,

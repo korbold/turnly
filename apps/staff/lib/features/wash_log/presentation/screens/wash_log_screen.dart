@@ -103,7 +103,7 @@ class _WashLogScreenState extends State<WashLogScreen> {
                       if (_summary != null) DailySummaryCard(summary: _summary!),
                       Expanded(
                         child: _logs.isEmpty
-                            ? const Center(child: Text('No hay lavados registrados', style: TextStyle(color: Colors.grey)))
+                            ? const Center(child: Text('No hay servicios registrados', style: TextStyle(color: Colors.grey)))
                             : ListView.builder(
                                 itemCount: _logs.length,
                                 itemBuilder: (context, index) {

@@ -57,9 +57,9 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
               child: Column(
                 mainAxisSize: MainAxisSize.min,
                 children: [
-                  Icon(Icons.local_car_wash, size: 64, color: Theme.of(context).colorScheme.primary),
+                  Icon(Icons.calendar_month, size: 64, color: Theme.of(context).colorScheme.primary),
                   const SizedBox(height: 16),
-                  Text('WashFlow Staff', style: Theme.of(context).textTheme.headlineMedium?.copyWith(fontWeight: FontWeight.bold)),
+                  Text('Turnly Staff', style: Theme.of(context).textTheme.headlineMedium?.copyWith(fontWeight: FontWeight.bold)),
                   const SizedBox(height: 8),
                   Text('Acceso para empleados', style: Theme.of(context).textTheme.bodyLarge?.copyWith(color: Colors.grey)),
                   const SizedBox(height: 32),
@@ -79,7 +79,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                     controller: _slugController,
                     decoration: const InputDecoration(
                       labelText: 'Slug del negocio',
-                      hintText: 'ej: lavadora-lopez',
+                      hintText: 'ej: mi-negocio',
                       prefixIcon: Icon(Icons.store),
                     ),
                     textInputAction: TextInputAction.next,

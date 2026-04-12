@@ -17,7 +17,7 @@ class WashLogRepositoryImpl implements IWashLogRepository {
       final data = response.data['data'] as List<dynamic>;
       return Right(data.map((e) => WashLogDto.fromJson(e as Map<String, dynamic>)).toList());
     } on DioException catch (e) {
-      return Left(ServerFailure(e.response?.data?['error']?['message']?.toString() ?? 'Error al cargar lavados'));
+      return Left(ServerFailure(e.response?.data?['error']?['message']?.toString() ?? 'Error al cargar servicios'));
     } catch (e) {
       return Left(ServerFailure(e.toString()));
     }
@@ -45,7 +45,7 @@ class WashLogRepositoryImpl implements IWashLogRepository {
       });
       return Right(WashLogDto.fromJson(response.data['data'] as Map<String, dynamic>));
     } on DioException catch (e) {
-      return Left(ServerFailure(e.response?.data?['error']?['message']?.toString() ?? 'Error al registrar lavado'));
+      return Left(ServerFailure(e.response?.data?['error']?['message']?.toString() ?? 'Error al registrar servicio'));
     } catch (e) {
       return Left(ServerFailure(e.toString()));
     }

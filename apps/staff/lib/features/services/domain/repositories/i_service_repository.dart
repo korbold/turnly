@@ -7,14 +7,12 @@ abstract class IServiceRepository {
   Future<Either<Failure, Service>> create({
     required String name,
     required double price,
-    required int durationMinutes,
     String? description,
   });
   Future<Either<Failure, Service>> update(
     String id, {
     String? name,
     double? price,
-    int? durationMinutes,
     String? description,
     bool? isActive,
   });

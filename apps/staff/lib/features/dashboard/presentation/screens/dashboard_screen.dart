@@ -183,7 +183,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
           child: FilledButton.icon(
             onPressed: () => context.push('/wash-log/register'),
             icon: const Icon(Icons.add),
-            label: const Text('Registrar lavado'),
+            label: const Text('Registrar servicio'),
           ),
         ),
       ],

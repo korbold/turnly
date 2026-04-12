@@ -1,4 +1,4 @@
-package com.washflow.washflow_staff
+package com.turnly.turnly_staff
 
 import io.flutter.embedding.android.FlutterActivity
 

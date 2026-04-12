@@ -14,7 +14,6 @@ class ServiceRepositoryImpl implements IServiceRepository {
       name: json['name'] as String,
       description: json['description'] as String?,
       price: (json['price'] as num).toDouble(),
-      durationMinutes: json['duration_minutes'] as int,
       isActive: json['is_active'] as bool? ?? true,
       sortOrder: json['sort_order'] as int? ?? 0,
     );
@@ -39,14 +38,12 @@ class ServiceRepositoryImpl implements IServiceRepository {
   Future<Either<Failure, Service>> create({
     required String name,
     required double price,
-    required int durationMinutes,
     String? description,
   }) async {
     try {
       final body = <String, dynamic>{
         'name': name,
         'price': price,
-        'duration_minutes': durationMinutes,
         if (description != null && description.isNotEmpty) 'description': description,
       };
       final response = await _dio.post('/services', data: body);
@@ -65,7 +62,6 @@ class ServiceRepositoryImpl implements IServiceRepository {
     String id, {
     String? name,
     double? price,
-    int? durationMinutes,
     String? description,
     bool? isActive,
   }) async {
@@ -73,7 +69,6 @@ class ServiceRepositoryImpl implements IServiceRepository {
       final body = <String, dynamic>{
         if (name != null) 'name': name,
         if (price != null) 'price': price,
-        if (durationMinutes != null) 'duration_minutes': durationMinutes,
         if (description != null) 'description': description,
         if (isActive != null) 'is_active': isActive,
       };

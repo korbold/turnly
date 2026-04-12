@@ -3,7 +3,6 @@ class Service {
   final String name;
   final String? description;
   final double price;
-  final int durationMinutes;
   final bool isActive;
   final int sortOrder;
 
@@ -12,7 +11,6 @@ class Service {
     required this.name,
     this.description,
     required this.price,
-    required this.durationMinutes,
     required this.isActive,
     required this.sortOrder,
   });

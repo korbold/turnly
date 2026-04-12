@@ -141,7 +141,7 @@ class _RegisterWashScreenState extends State<RegisterWashScreen> {
     if (!_formKey.currentState!.validate()) return;
     if (_selectedVehicle == null || _selectedService == null || _selectedUser == null) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Selecciona vehículo, servicio y lavador')),
+        const SnackBar(content: Text('Selecciona vehículo, servicio y operador')),
       );
       return;
     }
@@ -166,7 +166,7 @@ class _RegisterWashScreenState extends State<RegisterWashScreen> {
       },
       (_) {
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Lavado registrado'), backgroundColor: Colors.green),
+          const SnackBar(content: Text('Servicio registrado'), backgroundColor: Colors.green),
         );
         context.pop();
       },
@@ -176,7 +176,7 @@ class _RegisterWashScreenState extends State<RegisterWashScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(title: const Text('Registrar Lavado')),
+      appBar: AppBar(title: const Text('Registrar Servicio')),
       body: _loadingData
           ? const Center(child: CircularProgressIndicator())
           : _loadError != null
@@ -248,7 +248,7 @@ class _RegisterWashScreenState extends State<RegisterWashScreen> {
                         DropdownButtonFormField<_User>(
                           value: _selectedUser,
                           decoration: const InputDecoration(
-                            labelText: 'Lavador',
+                            labelText: 'Operador',
                             border: OutlineInputBorder(),
                           ),
                           items: _users.map((u) {
@@ -258,7 +258,7 @@ class _RegisterWashScreenState extends State<RegisterWashScreen> {
                             );
                           }).toList(),
                           onChanged: (u) => setState(() => _selectedUser = u),
-                          validator: (v) => v == null ? 'Selecciona un lavador' : null,
+                          validator: (v) => v == null ? 'Selecciona un operador' : null,
                         ),
                         const SizedBox(height: 16),
                         // Payment method
@@ -313,7 +313,7 @@ class _RegisterWashScreenState extends State<RegisterWashScreen> {
                                   width: 20,
                                   child: CircularProgressIndicator(strokeWidth: 2),
                                 )
-                              : const Text('Registrar Lavado', style: TextStyle(fontSize: 16)),
+                              : const Text('Registrar Servicio', style: TextStyle(fontSize: 16)),
                         ),
                       ],
                     ),

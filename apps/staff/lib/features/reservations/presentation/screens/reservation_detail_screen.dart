@@ -202,7 +202,7 @@ class _ReservationDetailScreenState extends State<ReservationDetailScreen> {
         // Service info
         _SectionCard(
           title: 'Servicio',
-          icon: Icons.local_car_wash_outlined,
+          icon: Icons.event_available,
           children: [
             _InfoRow(label: 'Servicio', value: r.serviceName ?? '—'),
             if (r.servicePrice != null) _InfoRow(label: 'Precio', value: '\$${r.servicePrice}'),

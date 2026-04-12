@@ -88,7 +88,7 @@ class ReservationCard extends StatelessWidget {
               if (reservation.serviceName != null)
                 Row(
                   children: [
-                    const Icon(Icons.local_car_wash_outlined, size: 15, color: Colors.grey),
+                    const Icon(Icons.event_available, size: 15, color: Colors.grey),
                     const SizedBox(width: 4),
                     Text(reservation.serviceName!, style: const TextStyle(fontSize: 14)),
                   ],
