@@ -19,12 +19,13 @@ import {
 } from '@/components/ui/select';
 
 interface ReservationFormProps {
+  defaultDate?: string;
   onSuccess?: () => void;
   onCancel?: () => void;
 }
 
-export function ReservationForm({ onSuccess, onCancel }: ReservationFormProps) {
-  const today = format(new Date(), 'yyyy-MM-dd');
+export function ReservationForm({ defaultDate, onSuccess, onCancel }: ReservationFormProps) {
+  const today = defaultDate || format(new Date(), 'yyyy-MM-dd');
 
   const [clientResourceId, setClientResourceId] = useState('');
   const [serviceId, setServiceId] = useState('');

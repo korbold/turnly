@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useCallback } from 'react';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { format } from 'date-fns';
 import { Plus } from 'lucide-react';
@@ -8,9 +8,8 @@ import { getReservations } from '@/lib/api/reservations';
 import { getServices } from '@/lib/api/services';
 import { ReservationCard } from '@/components/reservations/ReservationCard';
 import { ReservationForm } from '@/components/reservations/ReservationForm';
+import { ReservationCalendar } from '@/components/reservations/ReservationCalendar';
 import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import {
   Dialog,
   DialogContent,
@@ -25,6 +24,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
+import type { Reservation } from '@/types/reservation';
 
 const STATUS_OPTIONS = [
   { value: 'all', label: 'Todos los estados' },
@@ -36,28 +36,36 @@ const STATUS_OPTIONS = [
   { value: 'no_show', label: 'No asistió' },
 ];
 
-const PER_PAGE = 20;
-
 export default function ReservationsPage() {
   const queryClient = useQueryClient();
 
-  const [date, setDate] = useState<string>(format(new Date(), 'yyyy-MM-dd'));
-  const [status, setStatus] = useState<string>('all');
-  const [serviceId, setServiceId] = useState<string>('all');
-  const [page, setPage] = useState(1);
-  const [dialogOpen, setDialogOpen] = useState(false);
+  const [status, setStatus] = useState('all');
+  const [serviceId, setServiceId] = useState('all');
+  const [dateRange, setDateRange] = useState<{ from: string; to: string }>(() => {
+    const now = new Date();
+    const from = new Date(now.getFullYear(), now.getMonth(), 1);
+    const to = new Date(now.getFullYear(), now.getMonth() + 1, 0);
+    return {
+      from: format(from, 'yyyy-MM-dd'),
+      to: format(to, 'yyyy-MM-dd'),
+    };
+  });
+
+  const [createDialogOpen, setCreateDialogOpen] = useState(false);
+  const [createDate, setCreateDate] = useState<string | undefined>();
+  const [detailDialogOpen, setDetailDialogOpen] = useState(false);
+  const [selectedReservation, setSelectedReservation] = useState<Reservation | null>(null);
 
   const queryParams = {
-    date: date || undefined,
+    date_from: dateRange.from,
+    date_to: dateRange.to,
     status: status !== 'all' ? status : undefined,
     service_id: serviceId !== 'all' ? serviceId : undefined,
-    per_page: PER_PAGE,
-    page,
   };
 
   const queryKey = ['reservations', queryParams];
 
-  const { data, isLoading } = useQuery({
+  const { data } = useQuery({
     queryKey,
     queryFn: () => getReservations(queryParams),
   });
@@ -69,11 +77,30 @@ export default function ReservationsPage() {
 
   const reservations = data?.data ?? [];
   const services = servicesData?.data ?? [];
-  const total = data?.meta?.total ?? 0;
-  const lastPage = data?.meta?.last_page ?? 1;
 
-  const handleFilterChange = () => {
-    setPage(1);
+  const handleDatesChange = useCallback((from: string, to: string) => {
+    setDateRange({ from, to });
+  }, []);
+
+  const handleEventClick = useCallback((reservation: Reservation) => {
+    setSelectedReservation(reservation);
+    setDetailDialogOpen(true);
+  }, []);
+
+  const handleDateSelect = useCallback((dateStr: string) => {
+    setCreateDate(dateStr);
+    setCreateDialogOpen(true);
+  }, []);
+
+  const handleCreated = () => {
+    setCreateDialogOpen(false);
+    setCreateDate(undefined);
+    queryClient.invalidateQueries({ queryKey: ['reservations'] });
+  };
+
+  const handleDetailClose = () => {
+    setDetailDialogOpen(false);
+    setSelectedReservation(null);
   };
 
   return (
@@ -81,10 +108,10 @@ export default function ReservationsPage() {
       {/* Header */}
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-2xl font-bold text-gray-900">Reservaciones</h1>
-          <p className="text-gray-500">Gestión de citas y reservaciones</p>
+          <h1 className="text-2xl font-semibold text-[#343C6A]">Reservaciones</h1>
+          <p className="text-[#718EBF]">Gestión de citas y reservaciones</p>
         </div>
-        <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
+        <Dialog open={createDialogOpen} onOpenChange={setCreateDialogOpen}>
           <DialogTrigger render={<Button />}>
             <Plus className="h-4 w-4 mr-1" />
             Nueva reservación
@@ -94,11 +121,9 @@ export default function ReservationsPage() {
               <DialogTitle>Nueva reservación</DialogTitle>
             </DialogHeader>
             <ReservationForm
-              onSuccess={() => {
-                setDialogOpen(false);
-                queryClient.invalidateQueries({ queryKey: ['reservations'] });
-              }}
-              onCancel={() => setDialogOpen(false)}
+              defaultDate={createDate}
+              onSuccess={handleCreated}
+              onCancel={() => setCreateDialogOpen(false)}
             />
           </DialogContent>
         </Dialog>
@@ -107,27 +132,8 @@ export default function ReservationsPage() {
       {/* Filters */}
       <div className="flex flex-wrap items-center gap-3">
         <div className="flex items-center gap-2">
-          <label className="text-sm font-medium text-gray-700">Fecha:</label>
-          <Input
-            type="date"
-            value={date}
-            onChange={(e) => {
-              setDate(e.target.value);
-              handleFilterChange();
-            }}
-            className="w-44"
-          />
-        </div>
-
-        <div className="flex items-center gap-2">
-          <label className="text-sm font-medium text-gray-700">Estado:</label>
-          <Select
-            value={status}
-            onValueChange={(v) => {
-              setStatus(v ?? 'all');
-              handleFilterChange();
-            }}
-          >
+          <label className="text-sm font-medium text-[#343C6A]">Estado:</label>
+          <Select value={status} onValueChange={(v) => setStatus(v ?? 'all')}>
             <SelectTrigger className="w-44">
               <SelectValue />
             </SelectTrigger>
@@ -142,14 +148,8 @@ export default function ReservationsPage() {
         </div>
 
         <div className="flex items-center gap-2">
-          <label className="text-sm font-medium text-gray-700">Servicio:</label>
-          <Select
-            value={serviceId}
-            onValueChange={(v) => {
-              setServiceId(v ?? 'all');
-              handleFilterChange();
-            }}
-          >
+          <label className="text-sm font-medium text-[#343C6A]">Servicio:</label>
+          <Select value={serviceId} onValueChange={(v) => setServiceId(v ?? 'all')}>
             <SelectTrigger className="w-48">
               <SelectValue />
             </SelectTrigger>
@@ -163,69 +163,32 @@ export default function ReservationsPage() {
             </SelectContent>
           </Select>
         </div>
-
-        {date && (
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={() => {
-              setDate('');
-              handleFilterChange();
-            }}
-          >
-            Limpiar fecha
-          </Button>
-        )}
       </div>
 
-      {/* List */}
-      <Card>
-        <CardHeader>
-          <CardTitle>
-            {isLoading ? 'Cargando...' : `${total} reservación${total !== 1 ? 'es' : ''}`}
-          </CardTitle>
-        </CardHeader>
-        <CardContent>
-          {isLoading ? (
-            <div className="text-center py-8 text-muted-foreground">Cargando reservaciones...</div>
-          ) : reservations.length === 0 ? (
-            <div className="text-center py-8 text-muted-foreground">
-              No hay reservaciones para los filtros seleccionados.
-            </div>
-          ) : (
-            <div className="space-y-3">
-              {reservations.map((r) => (
-                <ReservationCard key={r.id} reservation={r} queryKey={queryKey} />
-              ))}
-            </div>
-          )}
-        </CardContent>
-      </Card>
+      {/* Calendar */}
+      <div className="bg-white rounded-[1.5625rem] p-4 shadow-sm">
+        <ReservationCalendar
+          reservations={reservations}
+          onEventClick={handleEventClick}
+          onDateSelect={handleDateSelect}
+          onDatesChange={handleDatesChange}
+        />
+      </div>
 
-      {/* Pagination */}
-      {lastPage > 1 && (
-        <div className="flex items-center justify-center gap-2">
-          <Button
-            variant="outline"
-            size="sm"
-            disabled={page === 1}
-            onClick={() => setPage((p) => p - 1)}
-          >
-            Anterior
-          </Button>
-          <span className="text-sm text-gray-600">
-            Página {page} de {lastPage}
-          </span>
-          <Button
-            variant="outline"
-            size="sm"
-            disabled={page === lastPage}
-            onClick={() => setPage((p) => p + 1)}
-          >
-            Siguiente
-          </Button>
-        </div>
-      )}
+      {/* Detail Dialog */}
+      <Dialog open={detailDialogOpen} onOpenChange={(open) => { if (!open) handleDetailClose(); }}>
+        <DialogContent className="sm:max-w-lg">
+          <DialogHeader>
+            <DialogTitle>Detalle de reservación</DialogTitle>
+          </DialogHeader>
+          {selectedReservation && (
+            <ReservationCard
+              reservation={selectedReservation}
+              queryKey={queryKey}
+            />
+          )}
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
