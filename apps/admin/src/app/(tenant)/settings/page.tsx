@@ -147,7 +147,7 @@ export default function SettingsPage() {
                 </div>
                 <div className="space-y-1.5">
                   <label className="text-sm font-medium text-gray-700">Tipo de negocio</label>
-                  <Select value={businessType} onValueChange={setBusinessType}>
+                  <Select value={businessType} onValueChange={(v) => v && setBusinessType(v)}>
                     <SelectTrigger>
                       <SelectValue placeholder="Seleccionar tipo" />
                     </SelectTrigger>
@@ -295,7 +295,7 @@ export default function SettingsPage() {
                     />
                     <Select
                       value={field.type}
-                      onValueChange={(val) => updateCustomField(index, { type: val, options: val === 'select' ? [] : null })}
+                      onValueChange={(val) => val && updateCustomField(index, { type: val, options: val === 'select' ? [] : null })}
                     >
                       <SelectTrigger className="w-36">
                         <SelectValue />
