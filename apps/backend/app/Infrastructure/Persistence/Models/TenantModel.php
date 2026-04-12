@@ -50,6 +50,11 @@ class TenantModel extends Model
         return $this->hasMany(AvailabilitySlotModel::class, 'tenant_id');
     }
 
+    public function images()
+    {
+        return $this->hasMany(TenantImageModel::class, 'tenant_id')->orderBy('sort_order');
+    }
+
     // Factory linkage
     protected static function newFactory()
     {
