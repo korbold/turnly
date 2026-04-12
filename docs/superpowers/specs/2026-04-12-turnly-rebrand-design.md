@@ -50,6 +50,7 @@ address         VARCHAR(255) NULLABLE
 logo_url        VARCHAR(500) NULLABLE — path to uploaded logo
 cover_url       VARCHAR(500) NULLABLE — path to cover/banner image
 social_links    JSON NULLABLE — { "instagram": "...", "facebook": "...", "whatsapp": "..." }
+brand_colors    JSON NULLABLE — { "primary": "#3B82F6", "secondary": "#1E40AF" }
 ```
 
 ### 3.3 Table `tenant_images` — NEW
@@ -183,6 +184,18 @@ The existing Settings page gets expanded with these sections:
 - Drag to reorder
 - Add optional caption per image
 - These appear on the public page
+
+**Colores de marca:**
+- Color primario (color picker) — usado en sidebar, botones, acentos del panel admin y página pública
+- Color secundario (color picker) — usado en hover states, badges, elementos secundarios
+- Vista previa en tiempo real al elegir colores
+- Colores por defecto: azul primario `#3B82F6`, azul oscuro secundario `#1E40AF`
+- Se aplican via CSS custom properties (`--color-primary`, `--color-secondary`) inyectadas según el tenant
+
+**Dónde se aplican los colores:**
+- Panel del dueño/staff: sidebar activo, botones primarios, badges, toggle switches
+- Página pública: header, botones "Reservar", acentos
+- App Flutter staff: theme color del tenant (fetched from API)
 
 **Recursos del cliente:**
 - Define/edit custom_fields schema
