@@ -1,5 +1,13 @@
 import api from './client';
 
+export interface MeResponse {
+  id: string;
+  name: string;
+  email: string;
+  is_super_admin: boolean;
+  role: string | null;
+}
+
 interface LoginResponse {
   data: {
     user: { id: string; name: string; email: string; is_super_admin?: boolean };
@@ -58,4 +66,9 @@ export function getToken(): string | null {
 
 export function isAuthenticated(): boolean {
   return getToken() !== null;
+}
+
+export async function getMe(): Promise<MeResponse> {
+  const response = await api.get<{ data: MeResponse }>('/auth/me');
+  return response.data.data;
 }
