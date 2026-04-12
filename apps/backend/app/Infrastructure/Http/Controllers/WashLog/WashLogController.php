@@ -26,9 +26,9 @@ class WashLogController extends Controller
         $query = WashLogModel::with(['vehicle', 'service', 'attendant']);
 
         if ($request->has('date')) {
-            $query->where('log_date', $request->date);
+            $query->whereDate('log_date', $request->date);
         } else {
-            $query->where('log_date', now()->toDateString());
+            $query->whereDate('log_date', now()->toDateString());
         }
 
         $logs = $query->orderBy('started_at', 'desc')->paginate($request->get('per_page', 50));

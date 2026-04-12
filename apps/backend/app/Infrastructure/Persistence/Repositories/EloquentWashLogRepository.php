@@ -18,7 +18,7 @@ class EloquentWashLogRepository implements WashLogRepositoryInterface
 
     public function findByTenantAndDate(string $tenantId, string $date): array
     {
-        return WashLogModel::where('log_date', $date)
+        return WashLogModel::whereDate('log_date', $date)
             ->orderBy('started_at')
             ->get()
             ->map(fn (WashLogModel $m) => $this->mapToEntity($m))
@@ -66,7 +66,7 @@ class EloquentWashLogRepository implements WashLogRepositoryInterface
 
     public function getDailySummary(string $tenantId, string $date): array
     {
-        $rows = WashLogModel::where('log_date', $date)->get();
+        $rows = WashLogModel::whereDate('log_date', $date)->get();
 
         $totalWashes  = $rows->count();
         $totalRevenue = $rows->sum('price_charged');
@@ -98,7 +98,7 @@ class EloquentWashLogRepository implements WashLogRepositoryInterface
         $query = WashLogModel::orderBy('started_at', 'desc');
 
         if (!empty($filters['date'])) {
-            $query->where('log_date', $filters['date']);
+            $query->whereDate('log_date', $filters['date']);
         }
 
         if (!empty($filters['status'])) {

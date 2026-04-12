@@ -23,7 +23,7 @@ class VehicleModelFactory extends Factory
             'Honda'     => ['Civic', 'CR-V', 'HR-V', 'Accord', 'Pilot'],
         ];
         $colors = ['White', 'Black', 'Silver', 'Gray', 'Red', 'Blue', 'Green', 'Yellow', 'Orange'];
-        $types  = ['sedan', 'suv', 'pickup', 'hatchback', 'van', 'coupe'];
+        $types  = ['sedan', 'suv', 'pickup', 'van', 'motorcycle', 'other'];
 
         $brand = fake()->randomElement($brands);
         $model = fake()->randomElement($models[$brand]);
