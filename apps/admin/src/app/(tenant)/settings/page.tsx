@@ -258,7 +258,9 @@ export default function SettingsPage() {
                   <label className="text-sm font-medium text-gray-700">Tipo de negocio</label>
                   <Select value={businessType} onValueChange={(v) => v && setBusinessType(v)}>
                     <SelectTrigger>
-                      <SelectValue placeholder="Seleccionar tipo" />
+                      <SelectValue placeholder="Seleccionar tipo">
+                        {BUSINESS_TYPES.find(bt => bt.value === businessType)?.label ?? 'Seleccionar tipo'}
+                      </SelectValue>
                     </SelectTrigger>
                     <SelectContent>
                       {BUSINESS_TYPES.map((bt) => (
@@ -474,7 +476,9 @@ export default function SettingsPage() {
                       onValueChange={(val) => val && updateCustomField(index, { type: val, options: val === 'select' ? [] : null })}
                     >
                       <SelectTrigger className="w-36">
-                        <SelectValue />
+                        <SelectValue>
+                          {FIELD_TYPES.find(ft => ft.value === field.type)?.label ?? field.type}
+                        </SelectValue>
                       </SelectTrigger>
                       <SelectContent>
                         {FIELD_TYPES.map((ft) => (
