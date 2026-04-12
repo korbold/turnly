@@ -83,17 +83,24 @@ export function ReservationForm({ defaultDate, onSuccess, onCancel }: Reservatio
 
   return (
     <form onSubmit={handleSubmit} className="space-y-4">
-      {/* Vehicle */}
+      {/* Client Resource */}
       <div className="space-y-1">
-        <Label htmlFor="res-vehicle">Vehículo (placa)</Label>
+        <Label htmlFor="res-resource">Recurso del cliente</Label>
         <Select value={clientResourceId} onValueChange={(v) => setClientResourceId(v ?? '')}>
-          <SelectTrigger id="res-vehicle" className="w-full">
-            <SelectValue placeholder="Seleccionar vehículo" />
+          <SelectTrigger id="res-resource" className="w-full">
+            <SelectValue placeholder="Seleccionar recurso">
+              {clientResourceId
+                ? (() => {
+                    const r = clientResources.find((v) => v.id === clientResourceId);
+                    return r ? (r.label || r.plate || r.id) : clientResourceId;
+                  })()
+                : undefined}
+            </SelectValue>
           </SelectTrigger>
           <SelectContent>
             {clientResources.map((v) => (
               <SelectItem key={v.id} value={v.id}>
-                {v.plate}
+                {v.label || v.plate || 'Sin etiqueta'}
                 {v.brand ? ` — ${v.brand}${v.model ? ` ${v.model}` : ''}` : ''}
               </SelectItem>
             ))}
@@ -112,7 +119,14 @@ export function ReservationForm({ defaultDate, onSuccess, onCancel }: Reservatio
           }}
         >
           <SelectTrigger id="res-service" className="w-full">
-            <SelectValue placeholder="Seleccionar servicio" />
+            <SelectValue placeholder="Seleccionar servicio">
+              {serviceId
+                ? (() => {
+                    const s = services.find((s) => s.id === serviceId);
+                    return s ? `${s.name} — $${Number(s.price).toFixed(2)}` : serviceId;
+                  })()
+                : undefined}
+            </SelectValue>
           </SelectTrigger>
           <SelectContent>
             {services.map((s) => (
