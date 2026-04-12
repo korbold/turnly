@@ -19,6 +19,7 @@ class UpdateServiceRequest extends FormRequest
             'price'            => ['nullable', 'numeric', 'min:0'],
             'is_active'        => ['nullable', 'boolean'],
             'sort_order'       => ['nullable', 'integer', 'min:0'],
+            'image_url'        => ['nullable', 'string', 'max:500'],
         ];
     }
 }

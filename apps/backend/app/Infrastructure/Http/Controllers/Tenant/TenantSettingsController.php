@@ -32,6 +32,8 @@ class TenantSettingsController extends Controller
             'brand_theme' => 'sometimes|string|in:blue,green,red,purple,orange,teal,pink,gray',
             'settings' => 'sometimes|nullable|array',
             'onboarding_step' => 'sometimes|nullable|integer|min:0',
+            'logo_url' => 'nullable|string|max:500',
+            'cover_url' => 'nullable|string|max:500',
         ]);
 
         $tenant = TenantModel::findOrFail(app('current_tenant_id'));
@@ -47,6 +49,8 @@ class TenantSettingsController extends Controller
             'brand_theme',
             'settings',
             'onboarding_step',
+            'logo_url',
+            'cover_url',
         ]));
 
         return new TenantResource($tenant);
