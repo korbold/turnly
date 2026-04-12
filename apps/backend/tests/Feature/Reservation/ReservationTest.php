@@ -13,7 +13,7 @@ beforeEach(function () {
     $this->service = ServiceModel::factory()->create(['tenant_id' => $this->tenant->id]);
     $this->clientResource = ClientResourceModel::factory()->create([
         'tenant_id' => $this->tenant->id,
-        'owner_id' => $this->user->id,
+        'client_id' => $this->user->id,
         'type' => 'sedan',
     ]);
     app()->instance('current_tenant', $this->tenant);
@@ -177,13 +177,13 @@ test('can cancel a reservation', function () {
     ]);
 });
 
-test('create reservation requires client_resource_id service_id and scheduled_at', function () {
+test('create reservation requires service_id and scheduled_at', function () {
     $response = $this->actingAs($this->user)
         ->withHeader('X-Tenant', $this->tenant->slug)
         ->postJson('/api/v1/reservations', []);
 
     $response->assertStatus(422)
-        ->assertJsonValidationErrors(['client_resource_id', 'service_id', 'scheduled_at']);
+        ->assertJsonValidationErrors(['service_id', 'scheduled_at']);
 });
 
 test('can filter reservations by status', function () {

@@ -33,15 +33,15 @@ class ClientResourceModelFactory extends Factory
         $plate    = "{$letters}-{$digits}";
 
         return [
-            'tenant_id' => null, // must be set by the caller
-            'owner_id'  => null, // must be set by the caller
-            'label'     => fake()->words(2, true),
-            'data'      => null,
-            'plate'     => $plate,
-            'brand'     => $brand,
-            'model'     => $model,
-            'color'     => fake()->randomElement($colors),
-            'type'      => fake()->randomElement($types),
+            'tenant_id'  => null, // must be set by the caller
+            'client_id'  => null, // must be set by the caller
+            'label'      => fake()->words(2, true),
+            'data'       => null,
+            'plate'      => $plate,
+            'brand'      => $brand,
+            'model'      => $model,
+            'color'      => fake()->randomElement($colors),
+            'type'       => fake()->randomElement($types),
         ];
     }
 }

@@ -73,7 +73,7 @@ class ReservationController extends Controller
 
     public function show(string $id): ReservationResource
     {
-        $reservation = ReservationModel::with(['vehicle', 'service', 'client', 'assignedEmployee'])->findOrFail($id);
+        $reservation = ReservationModel::with(['clientResource', 'service', 'client', 'assignedEmployee'])->findOrFail($id);
         return new ReservationResource($reservation);
     }
 

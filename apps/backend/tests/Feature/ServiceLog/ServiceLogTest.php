@@ -12,7 +12,7 @@ beforeEach(function () {
     $this->service = ServiceModel::factory()->create(['tenant_id' => $this->tenant->id]);
     $this->clientResource = ClientResourceModel::factory()->create([
         'tenant_id' => $this->tenant->id,
-        'owner_id' => $this->user->id,
+        'client_id' => $this->user->id,
         'type' => 'sedan',
     ]);
     app()->instance('current_tenant', $this->tenant);

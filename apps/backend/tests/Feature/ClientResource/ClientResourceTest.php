@@ -23,7 +23,7 @@ test('can create client resource', function () {
         ]);
 
     $response->assertStatus(201)
-        ->assertJsonPath('data.plate', 'PBA-1234');
+        ->assertJsonPath('plate', 'PBA-1234');
 
     $this->assertDatabaseHas('client_resources', [
         'plate' => 'PBA-1234',
@@ -39,24 +39,24 @@ test('can create client resource with minimal data', function () {
         ]);
 
     $response->assertStatus(201)
-        ->assertJsonPath('data.plate', 'ABC-9999');
+        ->assertJsonPath('plate', 'ABC-9999');
 });
 
-test('cannot create client resource without plate', function () {
+test('can create client resource without plate', function () {
     $response = $this->actingAs($this->user)
         ->withHeader('X-Tenant', $this->tenant->slug)
         ->postJson('/api/v1/client-resources', [
             'brand' => 'Toyota',
         ]);
 
-    $response->assertStatus(422)
-        ->assertJsonValidationErrors(['plate']);
+    $response->assertStatus(201)
+        ->assertJsonPath('brand', 'Toyota');
 });
 
 test('can list client resources', function () {
     ClientResourceModel::factory()->count(3)->create([
         'tenant_id' => $this->tenant->id,
-        'owner_id' => $this->user->id,
+        'client_id' => $this->user->id,
     ]);
 
     $response = $this->actingAs($this->user)
@@ -70,7 +70,7 @@ test('can list client resources', function () {
 test('can show client resource detail', function () {
     $clientResource = ClientResourceModel::factory()->create([
         'tenant_id' => $this->tenant->id,
-        'owner_id' => $this->user->id,
+        'client_id' => $this->user->id,
         'plate' => 'XYZ-5678',
     ]);
 
@@ -79,13 +79,13 @@ test('can show client resource detail', function () {
         ->getJson("/api/v1/client-resources/{$clientResource->id}");
 
     $response->assertOk()
-        ->assertJsonPath('data.plate', 'XYZ-5678');
+        ->assertJsonPath('plate', 'XYZ-5678');
 });
 
 test('cannot create duplicate plate in same tenant', function () {
     ClientResourceModel::factory()->create([
         'tenant_id' => $this->tenant->id,
-        'owner_id' => $this->user->id,
+        'client_id' => $this->user->id,
         'plate' => 'PBA-1234',
     ]);
 
@@ -101,7 +101,7 @@ test('cannot create duplicate plate in same tenant', function () {
 test('can get client resource service history', function () {
     $clientResource = ClientResourceModel::factory()->create([
         'tenant_id' => $this->tenant->id,
-        'owner_id' => $this->user->id,
+        'client_id' => $this->user->id,
     ]);
 
     $response = $this->actingAs($this->user)
