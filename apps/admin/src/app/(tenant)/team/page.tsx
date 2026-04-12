@@ -171,10 +171,12 @@ export default function TeamPage() {
                 <label className="text-sm font-medium text-gray-700 block mb-1">Rol</label>
                 <Select
                   value={inviteForm.role}
-                  onValueChange={(value) => setInviteForm({ ...inviteForm, role: value })}
+                  onValueChange={(value) => value && setInviteForm({ ...inviteForm, role: value })}
                 >
                   <SelectTrigger>
-                    <SelectValue placeholder="Seleccionar rol" />
+                    <SelectValue placeholder="Seleccionar rol">
+                      {roleLabels[inviteForm.role] ?? 'Seleccionar rol'}
+                    </SelectValue>
                   </SelectTrigger>
                   <SelectContent>
                     {ROLES.map((r) => (
