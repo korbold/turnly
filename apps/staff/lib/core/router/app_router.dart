@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import '../storage/secure_storage.dart';
+import '../../features/auth/presentation/screens/login_screen.dart';
 
 final goRouter = GoRouter(
   initialLocation: '/login',
@@ -20,7 +21,7 @@ final goRouter = GoRouter(
   routes: [
     GoRoute(
       path: '/login',
-      builder: (context, state) => const _PlaceholderScreen(text: 'Login'),
+      builder: (context, state) => const LoginScreen(),
     ),
     GoRoute(
       path: '/shell',
