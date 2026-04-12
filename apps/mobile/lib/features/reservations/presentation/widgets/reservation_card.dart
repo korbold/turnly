@@ -59,11 +59,11 @@ class ReservationCard extends StatelessWidget {
               const SizedBox(height: 12),
               Row(
                 children: [
-                  const Icon(Icons.directions_car, size: 16, color: Colors.grey),
+                  const Icon(Icons.label, size: 16, color: Colors.grey),
                   const SizedBox(width: 6),
                   Expanded(
                     child: Text(
-                      _vehicleLabel,
+                      _clientResourceLabel,
                       style: const TextStyle(fontSize: 13),
                       overflow: TextOverflow.ellipsis,
                     ),
@@ -122,10 +122,7 @@ class ReservationCard extends StatelessWidget {
     );
   }
 
-  String get _vehicleLabel {
-    final parts = <String>[];
-    if (reservation.vehicleBrand != null) parts.add(reservation.vehicleBrand!);
-    if (reservation.vehiclePlate != null) parts.add('(${reservation.vehiclePlate})');
-    return parts.isNotEmpty ? parts.join(' ') : 'Vehículo';
+  String get _clientResourceLabel {
+    return reservation.clientResourceLabel ?? 'Recurso';
   }
 }

@@ -2,29 +2,29 @@ import 'package:dio/dio.dart';
 import 'package:fpdart/fpdart.dart';
 import '../../../core/error/failures.dart';
 import '../../../core/network/dio_client.dart';
-import '../domain/entities/vehicle.dart';
+import '../domain/entities/client_resource.dart';
 import '../domain/entities/wash_history_entry.dart';
-import '../domain/repositories/i_vehicle_repository.dart';
+import '../domain/repositories/i_client_resource_repository.dart';
 
-class VehicleRepositoryImpl implements IVehicleRepository {
+class ClientResourceRepositoryImpl implements IClientResourceRepository {
   final Dio _dio = DioClient.instance;
 
   @override
-  Future<Either<Failure, List<Vehicle>>> getAll() async {
+  Future<Either<Failure, List<ClientResource>>> getAll() async {
     try {
-      final response = await _dio.get('/vehicles');
+      final response = await _dio.get('/client-resources');
       final data = response.data['data'] as List<dynamic>;
-      final vehicles = data
-          .map((e) => _vehicleFromJson(e as Map<String, dynamic>))
+      final resources = data
+          .map((e) => _clientResourceFromJson(e as Map<String, dynamic>))
           .toList();
-      return Right(vehicles);
+      return Right(resources);
     } on DioException catch (e) {
       if (e.response?.statusCode == 401) {
         return const Left(AuthFailure());
       }
       return Left(
         ServerFailure(
-          e.response?.data?['error']?['message'] ?? 'Error al obtener vehículos',
+          e.response?.data?['error']?['message'] ?? 'Error al obtener recursos',
         ),
       );
     } catch (e) {
@@ -33,32 +33,26 @@ class VehicleRepositoryImpl implements IVehicleRepository {
   }
 
   @override
-  Future<Either<Failure, Vehicle>> create({
-    required String plate,
-    String? brand,
-    String? model,
-    String? color,
-    String type = 'sedan',
+  Future<Either<Failure, ClientResource>> create({
+    required String label,
+    Map<String, dynamic>? data,
   }) async {
     try {
-      final response = await _dio.post('/vehicles', data: {
-        'plate': plate,
-        'type': type,
-        if (brand != null) 'brand': brand,
-        if (model != null) 'model': model,
-        if (color != null) 'color': color,
+      final response = await _dio.post('/client-resources', data: {
+        'label': label,
+        if (data != null) 'data': data,
       });
-      final vehicle = _vehicleFromJson(
+      final resource = _clientResourceFromJson(
         response.data['data'] as Map<String, dynamic>,
       );
-      return Right(vehicle);
+      return Right(resource);
     } on DioException catch (e) {
       if (e.response?.statusCode == 401) {
         return const Left(AuthFailure());
       }
       return Left(
         ServerFailure(
-          e.response?.data?['error']?['message'] ?? 'Error al crear vehículo',
+          e.response?.data?['error']?['message'] ?? 'Error al crear recurso',
         ),
       );
     } catch (e) {
@@ -68,9 +62,9 @@ class VehicleRepositoryImpl implements IVehicleRepository {
 
   @override
   Future<Either<Failure, List<WashHistoryEntry>>> getHistory(
-      String vehicleId) async {
+      String clientResourceId) async {
     try {
-      final response = await _dio.get('/vehicles/$vehicleId/history');
+      final response = await _dio.get('/client-resources/$clientResourceId/history');
       final data = response.data['data'] as List<dynamic>;
       final entries = data
           .map((e) => _historyEntryFromJson(e as Map<String, dynamic>))
@@ -81,7 +75,7 @@ class VehicleRepositoryImpl implements IVehicleRepository {
         return const Left(AuthFailure());
       }
       if (e.response?.statusCode == 404) {
-        return const Left(NotFoundFailure('Vehículo no encontrado'));
+        return const Left(NotFoundFailure('Recurso no encontrado'));
       }
       return Left(
         ServerFailure(
@@ -94,15 +88,11 @@ class VehicleRepositoryImpl implements IVehicleRepository {
     }
   }
 
-  Vehicle _vehicleFromJson(Map<String, dynamic> json) {
-    return Vehicle(
+  ClientResource _clientResourceFromJson(Map<String, dynamic> json) {
+    return ClientResource(
       id: json['id'] as String,
-      plate: json['plate'] as String,
-      brand: json['brand'] as String?,
-      model: json['model'] as String?,
-      color: json['color'] as String?,
-      type: json['type'] as String? ?? 'sedan',
-      ownerName: json['owner_name'] as String?,
+      label: json['label'] as String? ?? json['id'] as String,
+      data: json['data'] as Map<String, dynamic>?,
     );
   }
 

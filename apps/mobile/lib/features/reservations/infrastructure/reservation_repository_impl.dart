@@ -66,14 +66,14 @@ class ReservationRepositoryImpl implements IReservationRepository {
 
   @override
   Future<Either<Failure, Reservation>> create({
-    required String vehicleId,
+    required String clientResourceId,
     required String serviceId,
     required String scheduledAt,
     String? notes,
   }) async {
     try {
       final response = await _dio.post('/reservations', data: {
-        'vehicle_id': vehicleId,
+        'client_resource_id': clientResourceId,
         'service_id': serviceId,
         'scheduled_at': scheduledAt,
         if (notes != null) 'notes': notes,

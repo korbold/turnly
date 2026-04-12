@@ -1,24 +1,24 @@
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 import '../../domain/entities/wash_history_entry.dart';
-import '../../infrastructure/vehicle_repository_impl.dart';
+import '../../infrastructure/client_resource_repository_impl.dart';
 
-class VehicleHistoryScreen extends StatefulWidget {
-  final String vehicleId;
-  final String plate;
+class ClientResourceHistoryScreen extends StatefulWidget {
+  final String clientResourceId;
+  final String label;
 
-  const VehicleHistoryScreen({
+  const ClientResourceHistoryScreen({
     super.key,
-    required this.vehicleId,
-    required this.plate,
+    required this.clientResourceId,
+    required this.label,
   });
 
   @override
-  State<VehicleHistoryScreen> createState() => _VehicleHistoryScreenState();
+  State<ClientResourceHistoryScreen> createState() => _ClientResourceHistoryScreenState();
 }
 
-class _VehicleHistoryScreenState extends State<VehicleHistoryScreen> {
-  final _repo = VehicleRepositoryImpl();
+class _ClientResourceHistoryScreenState extends State<ClientResourceHistoryScreen> {
+  final _repo = ClientResourceRepositoryImpl();
   List<WashHistoryEntry> _entries = [];
   bool _loading = true;
   String? _error;
@@ -34,7 +34,7 @@ class _VehicleHistoryScreenState extends State<VehicleHistoryScreen> {
       _loading = true;
       _error = null;
     });
-    final result = await _repo.getHistory(widget.vehicleId);
+    final result = await _repo.getHistory(widget.clientResourceId);
     if (!mounted) return;
     result.fold(
       (failure) => setState(() {
@@ -51,7 +51,7 @@ class _VehicleHistoryScreenState extends State<VehicleHistoryScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(title: Text('Historial - ${widget.plate}')),
+      appBar: AppBar(title: Text('Historial - ${widget.label}')),
       body: Builder(builder: (_) {
         if (_loading) {
           return const Center(child: CircularProgressIndicator());
@@ -73,7 +73,7 @@ class _VehicleHistoryScreenState extends State<VehicleHistoryScreen> {
         }
         if (_entries.isEmpty) {
           return const Center(
-            child: Text('Este vehículo aún no tiene historial de servicios.'),
+            child: Text('Este recurso aún no tiene historial de servicios.'),
           );
         }
         return RefreshIndicator(

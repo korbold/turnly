@@ -182,9 +182,9 @@ class _ReservationDetailScreenState extends State<ReservationDetailScreen> {
                         ),
                         const Divider(height: 20),
                         _detailRow(
-                          Icons.directions_car,
-                          'Vehículo',
-                          _vehicleLabel(reservation),
+                          Icons.label,
+                          'Recurso',
+                          _clientResourceLabel(reservation),
                         ),
                         const Divider(height: 20),
                         _detailRow(
@@ -294,10 +294,7 @@ class _ReservationDetailScreenState extends State<ReservationDetailScreen> {
     );
   }
 
-  String _vehicleLabel(Reservation r) {
-    final parts = <String>[];
-    if (r.vehicleBrand != null) parts.add(r.vehicleBrand!);
-    if (r.vehiclePlate != null) parts.add('(${r.vehiclePlate})');
-    return parts.isNotEmpty ? parts.join(' ') : 'Vehículo';
+  String _clientResourceLabel(Reservation r) {
+    return r.clientResourceLabel ?? 'Recurso';
   }
 }

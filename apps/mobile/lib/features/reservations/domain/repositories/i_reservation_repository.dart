@@ -18,7 +18,7 @@ abstract class IReservationRepository {
   Future<Either<Failure, List<Reservation>>> getAll({String? status});
   Future<Either<Failure, Reservation>> getById(String id);
   Future<Either<Failure, Reservation>> create({
-    required String vehicleId,
+    required String clientResourceId,
     required String serviceId,
     required String scheduledAt,
     String? notes,

@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import '../../../reservations/presentation/screens/reservations_screen.dart';
-import '../../../vehicles/presentation/screens/vehicles_screen.dart';
+import '../../../client_resources/presentation/screens/client_resources_screen.dart';
 
 class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key});
@@ -16,7 +16,7 @@ class _HomeScreenState extends State<HomeScreen> {
   final _screens = const [
     _HomeTab(),
     ReservationsScreen(),
-    VehiclesScreen(),
+    ClientResourcesScreen(),
   ];
 
   @override
@@ -31,7 +31,7 @@ class _HomeScreenState extends State<HomeScreen> {
           NavigationDestination(
               icon: Icon(Icons.calendar_today), label: 'Reservaciones'),
           NavigationDestination(
-              icon: Icon(Icons.directions_car), label: 'Vehículos'),
+              icon: Icon(Icons.label), label: 'Recursos'),
         ],
       ),
     );
@@ -79,10 +79,10 @@ class _HomeTab extends StatelessWidget {
                 const SizedBox(width: 12),
                 Expanded(
                   child: _QuickActionCard(
-                    icon: Icons.directions_car,
-                    title: 'Mis\nVehículos',
+                    icon: Icons.label,
+                    title: 'Mis\nRecursos',
                     color: Theme.of(context).colorScheme.secondary,
-                    onTap: () => context.go('/vehicles'),
+                    onTap: () => context.go('/client-resources'),
                   ),
                 ),
               ],

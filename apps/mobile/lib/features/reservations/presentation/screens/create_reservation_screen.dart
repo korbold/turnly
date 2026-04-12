@@ -7,10 +7,10 @@ import '../widgets/slot_picker.dart';
 import '../../../../core/network/dio_client.dart';
 import '../../../../shared/extensions/date_extensions.dart';
 
-class _Vehicle {
+class _ClientResource {
   final String id;
   final String label;
-  _Vehicle({required this.id, required this.label});
+  _ClientResource({required this.id, required this.label});
 }
 
 class _Service {
@@ -34,11 +34,11 @@ class _CreateReservationScreenState extends State<CreateReservationScreen> {
 
   int _step = 0;
 
-  // Step 1: vehicle
-  List<_Vehicle> _vehicles = [];
-  _Vehicle? _selectedVehicle;
-  bool _loadingVehicles = false;
-  String? _vehiclesError;
+  // Step 1: client resource
+  List<_ClientResource> _clientResources = [];
+  _ClientResource? _selectedClientResource;
+  bool _loadingClientResources = false;
+  String? _clientResourcesError;
 
   // Step 2: service
   List<_Service> _services = [];
@@ -63,7 +63,7 @@ class _CreateReservationScreenState extends State<CreateReservationScreen> {
   @override
   void initState() {
     super.initState();
-    _loadVehicles();
+    _loadClientResources();
   }
 
   @override
@@ -72,28 +72,26 @@ class _CreateReservationScreenState extends State<CreateReservationScreen> {
     super.dispose();
   }
 
-  Future<void> _loadVehicles() async {
+  Future<void> _loadClientResources() async {
     setState(() {
-      _loadingVehicles = true;
-      _vehiclesError = null;
+      _loadingClientResources = true;
+      _clientResourcesError = null;
     });
     try {
-      final response = await _dio.get('/vehicles');
+      final response = await _dio.get('/client-resources');
       final data = response.data['data'] as List<dynamic>;
       setState(() {
-        _vehicles = data.map((e) {
+        _clientResources = data.map((e) {
           final map = e as Map<String, dynamic>;
-          final plate = map['plate'] as String? ?? '';
-          final brand = map['brand'] as String? ?? '';
-          final label = [brand, plate].where((s) => s.isNotEmpty).join(' - ');
-          return _Vehicle(id: map['id'] as String, label: label);
+          final label = map['label'] as String? ?? map['id'] as String;
+          return _ClientResource(id: map['id'] as String, label: label);
         }).toList();
-        _loadingVehicles = false;
+        _loadingClientResources = false;
       });
     } catch (e) {
       setState(() {
-        _vehiclesError = 'Error al cargar vehículos';
-        _loadingVehicles = false;
+        _clientResourcesError = 'Error al cargar recursos';
+        _loadingClientResources = false;
       });
     }
   }
@@ -152,7 +150,7 @@ class _CreateReservationScreenState extends State<CreateReservationScreen> {
   }
 
   Future<void> _submit() async {
-    if (_selectedVehicle == null ||
+    if (_selectedClientResource == null ||
         _selectedService == null ||
         _selectedSlot == null) {
       return;
@@ -163,7 +161,7 @@ class _CreateReservationScreenState extends State<CreateReservationScreen> {
     });
 
     final result = await _repo.create(
-      vehicleId: _selectedVehicle!.id,
+      clientResourceId: _selectedClientResource!.id,
       serviceId: _selectedService!.id,
       scheduledAt: _selectedSlot!.toApiFormat(),
       notes: _notesController.text.trim().isEmpty
@@ -234,10 +232,10 @@ class _CreateReservationScreenState extends State<CreateReservationScreen> {
         },
         steps: [
           Step(
-            title: const Text('Vehículo'),
+            title: const Text('Recurso'),
             isActive: _step >= 0,
             state: _step > 0 ? StepState.complete : StepState.indexed,
-            content: _buildVehicleStep(),
+            content: _buildClientResourceStep(),
           ),
           Step(
             title: const Text('Servicio'),
@@ -263,9 +261,9 @@ class _CreateReservationScreenState extends State<CreateReservationScreen> {
   }
 
   void _onStepContinue() {
-    if (_step == 0 && _selectedVehicle == null) {
+    if (_step == 0 && _selectedClientResource == null) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Selecciona un vehículo')),
+        const SnackBar(content: Text('Selecciona un recurso')),
       );
       return;
     }
@@ -291,36 +289,36 @@ class _CreateReservationScreenState extends State<CreateReservationScreen> {
     if (_step > 0) setState(() => _step--);
   }
 
-  Widget _buildVehicleStep() {
-    if (_loadingVehicles) {
+  Widget _buildClientResourceStep() {
+    if (_loadingClientResources) {
       return const Center(
           child: Padding(
         padding: EdgeInsets.all(16),
         child: CircularProgressIndicator(),
       ));
     }
-    if (_vehiclesError != null) {
+    if (_clientResourcesError != null) {
       return Column(
         children: [
-          Text(_vehiclesError!, style: const TextStyle(color: Colors.red)),
+          Text(_clientResourcesError!, style: const TextStyle(color: Colors.red)),
           TextButton(
-            onPressed: _loadVehicles,
+            onPressed: _loadClientResources,
             child: const Text('Reintentar'),
           ),
         ],
       );
     }
-    if (_vehicles.isEmpty) {
-      return const Text('No tienes vehículos registrados.');
+    if (_clientResources.isEmpty) {
+      return const Text('No tienes recursos registrados.');
     }
     return Column(
-      children: _vehicles
+      children: _clientResources
           .map(
-            (v) => RadioListTile<_Vehicle>(
+            (v) => RadioListTile<_ClientResource>(
               title: Text(v.label),
               value: v,
-              groupValue: _selectedVehicle,
-              onChanged: (val) => setState(() => _selectedVehicle = val),
+              groupValue: _selectedClientResource,
+              onChanged: (val) => setState(() => _selectedClientResource = val),
             ),
           )
           .toList(),
@@ -421,9 +419,9 @@ class _CreateReservationScreenState extends State<CreateReservationScreen> {
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         _confirmRow(
-          Icons.directions_car,
-          'Vehículo',
-          _selectedVehicle?.label ?? '-',
+          Icons.label,
+          'Recurso',
+          _selectedClientResource?.label ?? '-',
         ),
         const SizedBox(height: 8),
         _confirmRow(

@@ -6,9 +6,9 @@ import '../../features/home/presentation/screens/home_screen.dart';
 import '../../features/reservations/presentation/screens/reservations_screen.dart';
 import '../../features/reservations/presentation/screens/create_reservation_screen.dart';
 import '../../features/reservations/presentation/screens/reservation_detail_screen.dart';
-import '../../features/vehicles/presentation/screens/vehicles_screen.dart';
-import '../../features/vehicles/presentation/screens/add_vehicle_screen.dart';
-import '../../features/vehicles/presentation/screens/vehicle_history_screen.dart';
+import '../../features/client_resources/presentation/screens/client_resources_screen.dart';
+import '../../features/client_resources/presentation/screens/add_client_resource_screen.dart';
+import '../../features/client_resources/presentation/screens/client_resource_history_screen.dart';
 
 final goRouter = GoRouter(
   initialLocation: '/login',
@@ -54,19 +54,19 @@ final goRouter = GoRouter(
       ),
     ),
     GoRoute(
-      path: '/vehicles',
-      builder: (context, state) => const VehiclesScreen(),
+      path: '/client-resources',
+      builder: (context, state) => const ClientResourcesScreen(),
     ),
     GoRoute(
-      path: '/vehicles/add',
-      builder: (context, state) => const AddVehicleScreen(),
+      path: '/client-resources/add',
+      builder: (context, state) => const AddClientResourceScreen(),
     ),
     GoRoute(
-      path: '/vehicles/:id/history',
+      path: '/client-resources/:id/history',
       builder: (context, state) {
         final id = state.pathParameters['id']!;
-        final plate = state.extra as String? ?? id;
-        return VehicleHistoryScreen(vehicleId: id, plate: plate);
+        final label = state.extra as String? ?? id;
+        return ClientResourceHistoryScreen(clientResourceId: id, label: label);
       },
     ),
   ],

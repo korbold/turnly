@@ -1,18 +1,18 @@
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
-import '../../domain/entities/vehicle.dart';
-import '../../infrastructure/vehicle_repository_impl.dart';
+import '../../domain/entities/client_resource.dart';
+import '../../infrastructure/client_resource_repository_impl.dart';
 
-class VehiclesScreen extends StatefulWidget {
-  const VehiclesScreen({super.key});
+class ClientResourcesScreen extends StatefulWidget {
+  const ClientResourcesScreen({super.key});
 
   @override
-  State<VehiclesScreen> createState() => _VehiclesScreenState();
+  State<ClientResourcesScreen> createState() => _ClientResourcesScreenState();
 }
 
-class _VehiclesScreenState extends State<VehiclesScreen> {
-  final _repo = VehicleRepositoryImpl();
-  List<Vehicle> _vehicles = [];
+class _ClientResourcesScreenState extends State<ClientResourcesScreen> {
+  final _repo = ClientResourceRepositoryImpl();
+  List<ClientResource> _resources = [];
   bool _loading = true;
   String? _error;
 
@@ -34,8 +34,8 @@ class _VehiclesScreenState extends State<VehiclesScreen> {
         _error = failure.message;
         _loading = false;
       }),
-      (vehicles) => setState(() {
-        _vehicles = vehicles;
+      (resources) => setState(() {
+        _resources = resources;
         _loading = false;
       }),
     );
@@ -44,7 +44,7 @@ class _VehiclesScreenState extends State<VehiclesScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(title: const Text('Mis Vehículos')),
+      appBar: AppBar(title: const Text('Mis Recursos')),
       body: Builder(builder: (_) {
         if (_loading) {
           return const Center(child: CircularProgressIndicator());
@@ -64,10 +64,10 @@ class _VehiclesScreenState extends State<VehiclesScreen> {
             ),
           );
         }
-        if (_vehicles.isEmpty) {
+        if (_resources.isEmpty) {
           return const Center(
             child: Text(
-              'No tienes vehículos registrados.\nAgrega uno con el botón +.',
+              'No tienes recursos registrados.\nAgrega uno con el botón +.',
               textAlign: TextAlign.center,
             ),
           );
@@ -75,15 +75,15 @@ class _VehiclesScreenState extends State<VehiclesScreen> {
         return RefreshIndicator(
           onRefresh: _load,
           child: ListView.builder(
-            itemCount: _vehicles.length,
+            itemCount: _resources.length,
             itemBuilder: (context, index) {
-              final v = _vehicles[index];
-              return _VehicleCard(
-                vehicle: v,
+              final r = _resources[index];
+              return _ClientResourceCard(
+                resource: r,
                 onTap: () => context.push(
-                '/vehicles/${v.id}/history',
-                extra: v.plate,
-              ),
+                  '/client-resources/${r.id}/history',
+                  extra: r.label,
+                ),
               );
             },
           ),
@@ -91,7 +91,7 @@ class _VehiclesScreenState extends State<VehiclesScreen> {
       }),
       floatingActionButton: FloatingActionButton(
         onPressed: () async {
-          await context.push('/vehicles/add');
+          await context.push('/client-resources/add');
           _load();
         },
         child: const Icon(Icons.add),
@@ -100,29 +100,22 @@ class _VehiclesScreenState extends State<VehiclesScreen> {
   }
 }
 
-class _VehicleCard extends StatelessWidget {
-  final Vehicle vehicle;
+class _ClientResourceCard extends StatelessWidget {
+  final ClientResource resource;
   final VoidCallback onTap;
 
-  const _VehicleCard({required this.vehicle, required this.onTap});
+  const _ClientResourceCard({required this.resource, required this.onTap});
 
   @override
   Widget build(BuildContext context) {
-    final subtitle = [
-      if (vehicle.brand != null) vehicle.brand!,
-      if (vehicle.model != null) vehicle.model!,
-      if (vehicle.color != null) vehicle.color!,
-    ].join(' · ');
-
     return Card(
       margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 6),
       child: ListTile(
-        leading: const Icon(Icons.directions_car, size: 36),
+        leading: const Icon(Icons.label, size: 36),
         title: Text(
-          vehicle.plate,
+          resource.label,
           style: const TextStyle(fontWeight: FontWeight.bold),
         ),
-        subtitle: subtitle.isNotEmpty ? Text(subtitle) : null,
         trailing: const Icon(Icons.chevron_right),
         onTap: onTap,
       ),
