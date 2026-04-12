@@ -9,7 +9,8 @@ import {
 import { useQuery } from '@tanstack/react-query';
 import { cn } from '@/lib/utils';
 import { getMe } from '@/lib/api/auth';
-import { canAccess } from '@/lib/constants/permissions';
+import { getTenantSettings } from '@/lib/api/tenant';
+import { canAccess, mergePermissions, type PermissionsConfig } from '@/lib/constants/permissions';
 
 const navItems = [
   { href: '/dashboard', label: 'Dashboard', icon: LayoutDashboard, key: 'dashboard' },
@@ -31,8 +32,17 @@ export function Sidebar() {
     staleTime: 5 * 60 * 1000,
   });
 
+  const { data: tenantData } = useQuery({
+    queryKey: ['tenant-settings'],
+    queryFn: getTenantSettings,
+    staleTime: 5 * 60 * 1000,
+  });
+
   const role = me?.role ?? null;
-  const visibleItems = navItems.filter(item => canAccess(role, item.key));
+  const settings = tenantData?.settings as Record<string, unknown> | undefined;
+  const customPerms = settings?.permissions as PermissionsConfig | undefined;
+  const perms = mergePermissions(customPerms);
+  const visibleItems = navItems.filter(item => canAccess(role, item.key, perms));
 
   return (
     <aside className="hidden lg:flex lg:flex-col lg:w-64 lg:border-r bg-white h-screen sticky top-0">

@@ -16,6 +16,14 @@ import {
   SelectValue,
 } from '@/components/ui/select';
 import { BUSINESS_TYPES, BRAND_THEMES } from '@/lib/constants/business-types';
+import {
+  SECTIONS as permSections,
+  EDITABLE_ROLES as permEditable,
+  DEFAULT_PERMISSIONS,
+  cyclePermission,
+  type PermissionsConfig,
+  type RolePermissions,
+} from '@/lib/constants/permissions';
 import { ImageUpload } from '@/components/ui/image-upload';
 import { Trash2, Plus, X } from 'lucide-react';
 import Image from 'next/image';
@@ -47,6 +55,9 @@ export default function SettingsPage() {
     whatsapp: '',
   });
   const [customFields, setCustomFields] = useState<CustomField[]>([]);
+  const [permissions, setPermissions] = useState<PermissionsConfig>({ ...DEFAULT_PERMISSIONS });
+  const [savingPerms, setSavingPerms] = useState(false);
+  const [permsSaved, setPermsSaved] = useState(false);
 
   const { data: tenantSettings, isLoading } = useQuery({
     queryKey: ['tenant-settings'],
@@ -72,6 +83,15 @@ export default function SettingsPage() {
     });
     if (Array.isArray(t.custom_fields)) {
       setCustomFields(t.custom_fields as CustomField[]);
+    }
+    // Load custom permissions from settings.permissions
+    const settings = t.settings as Record<string, unknown> | null;
+    if (settings?.permissions) {
+      setPermissions({
+        tenant_admin: DEFAULT_PERMISSIONS.tenant_admin,
+        cashier: { ...DEFAULT_PERMISSIONS.cashier, ...(settings.permissions as PermissionsConfig).cashier },
+        washer: { ...DEFAULT_PERMISSIONS.washer, ...(settings.permissions as PermissionsConfig).washer },
+      });
     }
   }, [tenantSettings]);
 
@@ -139,6 +159,39 @@ export default function SettingsPage() {
     setCustomFields((prev) =>
       prev.map((f, i) => (i === index ? { ...f, ...updates } : f)),
     );
+  }
+
+  function handlePermClick(role: string, section: string) {
+    setPermissions((prev) => ({
+      ...prev,
+      [role]: {
+        ...prev[role],
+        [section]: cyclePermission(prev[role]?.[section as keyof RolePermissions] ?? 'none'),
+      },
+    }));
+  }
+
+  async function handleSavePermissions() {
+    setSavingPerms(true);
+    setPermsSaved(false);
+    try {
+      // Save permissions inside settings.permissions
+      const currentSettings = (tenantSettings as Record<string, unknown>)?.settings as Record<string, unknown> ?? {};
+      await updateTenantSettings({
+        settings: {
+          ...currentSettings,
+          permissions: {
+            cashier: permissions.cashier,
+            washer: permissions.washer,
+          },
+        },
+      });
+      queryClient.invalidateQueries({ queryKey: ['tenant-settings'] });
+      setPermsSaved(true);
+      setTimeout(() => setPermsSaved(false), 3000);
+    } finally {
+      setSavingPerms(false);
+    }
   }
 
   function removeCustomField(index: number) {
@@ -481,14 +534,14 @@ export default function SettingsPage() {
             </Button>
           </div>
 
-          {/* Roles & Permissions */}
+          {/* Roles & Permissions — Editable */}
           <Card>
             <CardHeader>
               <CardTitle>Permisos por rol</CardTitle>
             </CardHeader>
             <CardContent>
               <p className="text-sm text-muted-foreground mb-4">
-                Los permisos están predefinidos para cada rol. Asigna roles desde la sección Equipo.
+                Haz click en cada icono para cambiar el permiso. Admin siempre tiene acceso completo.
               </p>
               <div className="overflow-x-auto">
                 <table className="w-full text-sm">
@@ -496,40 +549,51 @@ export default function SettingsPage() {
                     <tr className="border-b">
                       <th className="text-left py-2 pr-4 font-medium text-gray-700">Sección</th>
                       <th className="text-center py-2 px-3 font-medium text-purple-700">Admin</th>
-                      <th className="text-center py-2 px-3 font-medium text-blue-700">Cajero</th>
-                      <th className="text-center py-2 px-3 font-medium text-green-700">Operador</th>
+                      {permEditable.map((r) => (
+                        <th key={r.key} className={`text-center py-2 px-3 font-medium ${r.color}`}>{r.label}</th>
+                      ))}
                     </tr>
                   </thead>
                   <tbody>
-                    {[
-                      { section: 'Dashboard', admin: 'full', cashier: 'full', washer: 'full' },
-                      { section: 'Reservaciones', admin: 'full', cashier: 'full', washer: 'view' },
-                      { section: 'Registro del día', admin: 'full', cashier: 'full', washer: 'none' },
-                      { section: 'Clientes', admin: 'full', cashier: 'view', washer: 'none' },
-                      { section: 'Servicios', admin: 'full', cashier: 'none', washer: 'none' },
-                      { section: 'Equipo', admin: 'full', cashier: 'none', washer: 'none' },
-                      { section: 'Reportes', admin: 'full', cashier: 'full', washer: 'none' },
-                      { section: 'Configuración', admin: 'full', cashier: 'none', washer: 'none' },
-                    ].map((row) => (
-                      <tr key={row.section} className="border-b last:border-0">
-                        <td className="py-2 pr-4 text-gray-700">{row.section}</td>
-                        {[row.admin, row.cashier, row.washer].map((perm, i) => (
-                          <td key={i} className="text-center py-2 px-3">
-                            {perm === 'full' && <span className="inline-flex items-center justify-center w-6 h-6 rounded-full bg-green-100 text-green-600 text-xs font-bold">✓</span>}
-                            {perm === 'view' && <span className="inline-flex items-center justify-center w-6 h-6 rounded-full bg-yellow-100 text-yellow-600 text-xs font-bold">◉</span>}
-                            {perm === 'none' && <span className="inline-flex items-center justify-center w-6 h-6 rounded-full bg-gray-100 text-gray-400 text-xs">✕</span>}
-                          </td>
-                        ))}
+                    {permSections.map((sec) => (
+                      <tr key={sec.key} className="border-b last:border-0">
+                        <td className="py-2 pr-4 text-gray-700">{sec.label}</td>
+                        <td className="text-center py-2 px-3">
+                          <span className="inline-flex items-center justify-center w-6 h-6 rounded-full bg-green-100 text-green-600 text-xs font-bold">✓</span>
+                        </td>
+                        {permEditable.map((role) => {
+                          const perm = permissions[role.key]?.[sec.key as keyof typeof permissions.cashier] ?? 'none';
+                          return (
+                            <td key={role.key} className="text-center py-2 px-3">
+                              <button
+                                type="button"
+                                onClick={() => handlePermClick(role.key, sec.key)}
+                                className="cursor-pointer hover:scale-110 transition-transform"
+                                title={`Click para cambiar: ${perm === 'full' ? 'Acceso completo' : perm === 'view' ? 'Solo ver' : 'Sin acceso'}`}
+                              >
+                                {perm === 'full' && <span className="inline-flex items-center justify-center w-6 h-6 rounded-full bg-green-100 text-green-600 text-xs font-bold">✓</span>}
+                                {perm === 'view' && <span className="inline-flex items-center justify-center w-6 h-6 rounded-full bg-yellow-100 text-yellow-600 text-xs font-bold">◉</span>}
+                                {perm === 'none' && <span className="inline-flex items-center justify-center w-6 h-6 rounded-full bg-gray-100 text-gray-400 text-xs">✕</span>}
+                              </button>
+                            </td>
+                          );
+                        })}
                       </tr>
                     ))}
                   </tbody>
                 </table>
               </div>
-              <div className="flex gap-4 mt-3 text-xs text-muted-foreground">
-                <span className="flex items-center gap-1"><span className="inline-block w-3 h-3 rounded-full bg-green-100 border border-green-300" /> Acceso completo</span>
-                <span className="flex items-center gap-1"><span className="inline-block w-3 h-3 rounded-full bg-yellow-100 border border-yellow-300" /> Solo ver</span>
-                <span className="flex items-center gap-1"><span className="inline-block w-3 h-3 rounded-full bg-gray-100 border border-gray-300" /> Sin acceso</span>
+              <div className="flex items-center justify-between mt-4">
+                <div className="flex gap-4 text-xs text-muted-foreground">
+                  <span className="flex items-center gap-1"><span className="inline-block w-3 h-3 rounded-full bg-green-100 border border-green-300" /> Acceso completo</span>
+                  <span className="flex items-center gap-1"><span className="inline-block w-3 h-3 rounded-full bg-yellow-100 border border-yellow-300" /> Solo ver</span>
+                  <span className="flex items-center gap-1"><span className="inline-block w-3 h-3 rounded-full bg-gray-100 border border-gray-300" /> Sin acceso</span>
+                </div>
+                <Button size="sm" onClick={handleSavePermissions} disabled={savingPerms}>
+                  {savingPerms ? 'Guardando...' : 'Guardar permisos'}
+                </Button>
               </div>
+              {permsSaved && <p className="text-sm text-green-600 mt-2">Permisos guardados.</p>}
             </CardContent>
           </Card>
         </>

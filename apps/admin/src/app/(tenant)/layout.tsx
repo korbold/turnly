@@ -3,7 +3,8 @@
 import { useEffect, useState } from 'react';
 import { useRouter, usePathname } from 'next/navigation';
 import { isAuthenticated, getMe } from '@/lib/api/auth';
-import { canAccess } from '@/lib/constants/permissions';
+import { getTenantSettings } from '@/lib/api/tenant';
+import { canAccess, mergePermissions, type PermissionsConfig } from '@/lib/constants/permissions';
 import { Sidebar } from '@/components/layout/Sidebar';
 import { TopBar } from '@/components/layout/TopBar';
 
@@ -25,6 +26,7 @@ export default function TenantLayout({ children }: { children: React.ReactNode }
   const [superAdminMode, setSuperAdminMode] = useState(false);
   const [viewingSlug, setViewingSlug] = useState('');
   const [userRole, setUserRole] = useState<string | null>(null);
+  const [customPerms, setCustomPerms] = useState<PermissionsConfig | null>(null);
   const [accessDenied, setAccessDenied] = useState(false);
 
   useEffect(() => {
@@ -37,26 +39,30 @@ export default function TenantLayout({ children }: { children: React.ReactNode }
       setViewingSlug(localStorage.getItem('tenant_slug') ?? '');
     }
 
-    // Fetch user role for access control
-    getMe()
-      .then((me) => {
+    // Fetch user role and tenant permissions for access control
+    Promise.all([getMe(), getTenantSettings()])
+      .then(([me, tenant]) => {
         setUserRole(me.role ?? null);
+        const settings = (tenant as Record<string, unknown>)?.settings as Record<string, unknown> | undefined;
+        if (settings?.permissions) {
+          setCustomPerms(settings.permissions as PermissionsConfig);
+        }
         setReady(true);
       })
       .catch(() => {
-        setReady(true); // allow access on error (fallback)
+        setReady(true);
       });
   }, [router]);
 
   // Check access whenever pathname or role changes
   useEffect(() => {
     if (!ready || !userRole) return;
-    // Super admin mode bypasses role checks
     if (superAdminMode) return;
 
     const basePath = '/' + (pathname.split('/')[1] ?? '');
     const section = PATH_TO_SECTION[basePath];
-    if (section && !canAccess(userRole, section)) {
+    const perms = mergePermissions(customPerms);
+    if (section && !canAccess(userRole, section, perms)) {
       setAccessDenied(true);
       router.replace('/dashboard');
     } else {
