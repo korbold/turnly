@@ -8,13 +8,23 @@ export async function getClientResources(params?: { per_page?: number }): Promis
 }
 
 export async function createClientResource(data: {
-  plate: string;
+  label?: string;
+  data?: Record<string, string>;
+  plate?: string;
   brand?: string;
   model?: string;
   color?: string;
   type?: string;
 }): Promise<ClientResource> {
   const response = await api.post('/client-resources', data);
+  return response.data.data;
+}
+
+export async function updateClientResource(id: string, data: {
+  label?: string;
+  data?: Record<string, string>;
+}): Promise<ClientResource> {
+  const response = await api.patch(`/client-resources/${id}`, data);
   return response.data.data;
 }
 

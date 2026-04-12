@@ -2,9 +2,11 @@
 
 import { useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { Plus } from 'lucide-react';
+import { Plus, Settings } from 'lucide-react';
 import { useRouter } from 'next/navigation';
 import { getClientResources, createClientResource } from '@/lib/api/client-resources';
+import type { ClientResource } from '@/types/client-resource';
+import { getTenantSettings } from '@/lib/api/tenant';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -24,44 +26,40 @@ import {
   DialogTrigger,
   DialogFooter,
 } from '@/components/ui/dialog';
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from '@/components/ui/select';
 
-const VEHICLE_TYPES = [
-  { value: 'sedan', label: 'Sedán' },
-  { value: 'suv', label: 'SUV' },
-  { value: 'pickup', label: 'Pickup' },
-  { value: 'van', label: 'Van' },
-  { value: 'motorcycle', label: 'Moto' },
-  { value: 'other', label: 'Otro' },
-];
-
-interface ClientResourceFormData {
-  plate: string;
-  brand: string;
-  model: string;
-  color: string;
-  type: string;
+interface CustomField {
+  key: string;
+  label: string;
+  type: 'text' | 'number' | 'textarea' | 'select';
+  required: boolean;
+  options?: string[] | null;
 }
 
-const emptyForm: ClientResourceFormData = {
-  plate: '',
-  brand: '',
-  model: '',
-  color: '',
-  type: '',
-};
+interface DynamicFormData {
+  label: string;
+  data: Record<string, string>;
+}
+
+function emptyDynamicForm(customFields: CustomField[]): DynamicFormData {
+  const data: Record<string, string> = {};
+  for (const field of customFields) {
+    data[field.key] = '';
+  }
+  return { label: '', data };
+}
 
 export default function ClientsPage() {
   const queryClient = useQueryClient();
   const router = useRouter();
   const [dialogOpen, setDialogOpen] = useState(false);
-  const [form, setForm] = useState<ClientResourceFormData>(emptyForm);
+  const [form, setForm] = useState<DynamicFormData>({ label: '', data: {} });
+
+  const { data: tenantData } = useQuery({
+    queryKey: ['tenant-settings'],
+    queryFn: getTenantSettings,
+  });
+
+  const customFields: CustomField[] = tenantData?.custom_fields ?? [];
 
   const { data, isLoading } = useQuery({
     queryKey: ['client-resources'],
@@ -75,19 +73,37 @@ export default function ClientsPage() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['client-resources'] });
       setDialogOpen(false);
-      setForm(emptyForm);
+      setForm(emptyDynamicForm(customFields));
     },
   });
+
+  function handleOpenDialog() {
+    setForm(emptyDynamicForm(customFields));
+    setDialogOpen(true);
+  }
+
+  function handleFieldChange(key: string, value: string) {
+    setForm((prev) => ({ ...prev, data: { ...prev.data, [key]: value } }));
+  }
 
   function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
     createMutation.mutate({
-      plate: form.plate,
-      brand: form.brand || undefined,
-      model: form.model || undefined,
-      color: form.color || undefined,
-      type: form.type || undefined,
+      label: form.label || undefined,
+      data: form.data,
     });
+  }
+
+  function getFieldValue(cr: ClientResource, fieldKey: string): string {
+    if (cr.data && cr.data[fieldKey] != null) {
+      return String(cr.data[fieldKey]);
+    }
+    // Fallback to old flat fields (plate, brand, model, color, type)
+    const flatValue = (cr as unknown as Record<string, unknown>)[fieldKey];
+    if (flatValue != null) {
+      return String(flatValue);
+    }
+    return '—';
   }
 
   return (
@@ -98,72 +114,79 @@ export default function ClientsPage() {
           <p className="text-gray-500">Registro de clientes</p>
         </div>
         <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
-          <DialogTrigger render={<Button />}>
+          <DialogTrigger render={<Button onClick={handleOpenDialog} />}>
             <Plus className="h-4 w-4 mr-1" />
-            Nuevo vehículo
+            Nuevo cliente
           </DialogTrigger>
           <DialogContent className="sm:max-w-md">
             <DialogHeader>
-              <DialogTitle>Nuevo vehículo</DialogTitle>
+              <DialogTitle>Nuevo cliente</DialogTitle>
             </DialogHeader>
             <form onSubmit={handleSubmit} className="space-y-4">
               <div>
                 <label className="text-sm font-medium text-gray-700 block mb-1">
-                  Placa <span className="text-red-500">*</span>
+                  Etiqueta
                 </label>
                 <Input
-                  required
-                  value={form.plate}
-                  onChange={(e) => setForm({ ...form, plate: e.target.value.toUpperCase() })}
-                  placeholder="ABC-123"
+                  value={form.label}
+                  onChange={(e) => setForm((prev) => ({ ...prev, label: e.target.value }))}
+                  placeholder="Ej: Toyota ABC-123"
                 />
               </div>
-              <div className="grid grid-cols-2 gap-4">
-                <div>
-                  <label className="text-sm font-medium text-gray-700 block mb-1">Marca</label>
-                  <Input
-                    value={form.brand}
-                    onChange={(e) => setForm({ ...form, brand: e.target.value })}
-                    placeholder="Toyota"
-                  />
+
+              {customFields.length === 0 ? (
+                <div className="text-sm text-muted-foreground flex items-start gap-2 rounded-md border border-dashed p-3">
+                  <Settings className="h-4 w-4 mt-0.5 shrink-0" />
+                  <span>
+                    No hay campos personalizados configurados. Ve a{' '}
+                    <a href="/settings" className="underline text-primary">
+                      Configuración
+                    </a>{' '}
+                    para definir los campos del cliente.
+                  </span>
                 </div>
-                <div>
-                  <label className="text-sm font-medium text-gray-700 block mb-1">Modelo</label>
-                  <Input
-                    value={form.model}
-                    onChange={(e) => setForm({ ...form, model: e.target.value })}
-                    placeholder="Corolla"
-                  />
-                </div>
-              </div>
-              <div className="grid grid-cols-2 gap-4">
-                <div>
-                  <label className="text-sm font-medium text-gray-700 block mb-1">Color</label>
-                  <Input
-                    value={form.color}
-                    onChange={(e) => setForm({ ...form, color: e.target.value })}
-                    placeholder="Blanco"
-                  />
-                </div>
-                <div>
-                  <label className="text-sm font-medium text-gray-700 block mb-1">Tipo</label>
-                  <Select
-                    value={form.type}
-                    onValueChange={(v) => setForm({ ...form, type: v ?? '' })}
-                  >
-                    <SelectTrigger className="w-full">
-                      <SelectValue placeholder="Seleccionar" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {VEHICLE_TYPES.map((t) => (
-                        <SelectItem key={t.value} value={t.value}>
-                          {t.label}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                </div>
-              </div>
+              ) : (
+                customFields.map((field) => (
+                  <div key={field.key}>
+                    <label className="text-sm font-medium text-gray-700 block mb-1">
+                      {field.label}
+                      {field.required && <span className="text-red-500 ml-1">*</span>}
+                    </label>
+                    {field.type === 'textarea' ? (
+                      <textarea
+                        required={field.required}
+                        value={form.data[field.key] ?? ''}
+                        onChange={(e) => handleFieldChange(field.key, e.target.value)}
+                        className="w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50 min-h-[80px] resize-y"
+                        placeholder={field.label}
+                      />
+                    ) : field.type === 'select' ? (
+                      <select
+                        required={field.required}
+                        value={form.data[field.key] ?? ''}
+                        onChange={(e) => handleFieldChange(field.key, e.target.value)}
+                        className="w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
+                      >
+                        <option value="">Seleccionar...</option>
+                        {(field.options ?? []).map((opt) => (
+                          <option key={opt} value={opt}>
+                            {opt}
+                          </option>
+                        ))}
+                      </select>
+                    ) : (
+                      <Input
+                        type={field.type === 'number' ? 'number' : 'text'}
+                        required={field.required}
+                        value={form.data[field.key] ?? ''}
+                        onChange={(e) => handleFieldChange(field.key, e.target.value)}
+                        placeholder={field.label}
+                      />
+                    )}
+                  </div>
+                ))
+              )}
+
               <DialogFooter>
                 <Button type="button" variant="outline" onClick={() => setDialogOpen(false)}>
                   Cancelar
@@ -182,25 +205,55 @@ export default function ClientsPage() {
           <CardTitle>
             {isLoading
               ? 'Cargando...'
-              : `${clientResources.length} vehículo${clientResources.length !== 1 ? 's' : ''}`}
+              : `${clientResources.length} cliente${clientResources.length !== 1 ? 's' : ''}`}
           </CardTitle>
         </CardHeader>
         <CardContent>
           {isLoading ? (
-            <div className="text-center py-8 text-muted-foreground">Cargando vehículos...</div>
+            <div className="text-center py-8 text-muted-foreground">Cargando clientes...</div>
           ) : clientResources.length === 0 ? (
             <div className="text-center py-8 text-muted-foreground">
-              No hay vehículos registrados.
+              No hay clientes registrados.
+            </div>
+          ) : customFields.length === 0 ? (
+            <div className="space-y-4">
+              <div className="text-sm text-muted-foreground flex items-start gap-2 rounded-md border border-dashed p-3">
+                <Settings className="h-4 w-4 mt-0.5 shrink-0" />
+                <span>
+                  No hay campos personalizados configurados. Ve a{' '}
+                  <a href="/settings" className="underline text-primary">
+                    Configuración
+                  </a>{' '}
+                  para definir los campos del cliente.
+                </span>
+              </div>
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead>Etiqueta</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {clientResources.map((cr) => (
+                    <TableRow
+                      key={cr.id}
+                      className="cursor-pointer"
+                      onClick={() => router.push(`/clients/${cr.id}`)}
+                    >
+                      <TableCell className="font-medium">{cr.label ?? '—'}</TableCell>
+                    </TableRow>
+                  ))}
+                </TableBody>
+              </Table>
             </div>
           ) : (
             <Table>
               <TableHeader>
                 <TableRow>
-                  <TableHead>Placa</TableHead>
-                  <TableHead>Marca</TableHead>
-                  <TableHead>Modelo</TableHead>
-                  <TableHead>Color</TableHead>
-                  <TableHead>Tipo</TableHead>
+                  <TableHead>Etiqueta</TableHead>
+                  {customFields.map((field) => (
+                    <TableHead key={field.key}>{field.label}</TableHead>
+                  ))}
                 </TableRow>
               </TableHeader>
               <TableBody>
@@ -210,13 +263,10 @@ export default function ClientsPage() {
                     className="cursor-pointer"
                     onClick={() => router.push(`/clients/${cr.id}`)}
                   >
-                    <TableCell className="font-medium font-mono">{cr.plate ?? '—'}</TableCell>
-                    <TableCell>{cr.brand ?? '—'}</TableCell>
-                    <TableCell>{cr.model ?? '—'}</TableCell>
-                    <TableCell>{cr.color ?? '—'}</TableCell>
-                    <TableCell>
-                      {VEHICLE_TYPES.find((t) => t.value === cr.type)?.label ?? cr.type ?? '—'}
-                    </TableCell>
+                    <TableCell className="font-medium">{cr.label ?? '—'}</TableCell>
+                    {customFields.map((field) => (
+                      <TableCell key={field.key}>{getFieldValue(cr, field.key)}</TableCell>
+                    ))}
                   </TableRow>
                 ))}
               </TableBody>
