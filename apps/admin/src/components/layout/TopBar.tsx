@@ -2,7 +2,7 @@
 
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
-import { Menu, LogOut, User } from 'lucide-react';
+import { Menu, LogOut, User, Bell } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Sheet, SheetContent, SheetTrigger } from '@/components/ui/sheet';
 import {
@@ -25,8 +25,8 @@ export function TopBar() {
   };
 
   return (
-    <header className="sticky top-0 z-30 border-b bg-white">
-      <div className="flex h-14 items-center gap-4 px-4 lg:px-6">
+    <header className="sticky top-0 z-30 border-b border-[#E2E8F0] bg-white">
+      <div className="flex h-16 items-center gap-4 px-4 lg:px-8">
         <Sheet open={open} onOpenChange={setOpen}>
           <SheetTrigger
             render={<Button variant="ghost" size="icon" className="lg:hidden" />}
@@ -40,14 +40,20 @@ export function TopBar() {
 
         <div className="flex-1" />
 
+        {/* Notification bell */}
+        <Button variant="ghost" size="icon" className="text-[#6A84A8] hover:text-[#1a1a2e]">
+          <Bell className="h-5 w-5" />
+        </Button>
+
+        {/* User avatar dropdown */}
         <DropdownMenu>
           <DropdownMenuTrigger
             render={
-              <Button variant="ghost" className="gap-2" />
+              <Button variant="ghost" size="icon" className="rounded-full" />
             }
           >
-            <Avatar className="h-8 w-8">
-              <AvatarFallback>
+            <Avatar className="h-9 w-9 bg-[#304FDB]">
+              <AvatarFallback className="bg-[#304FDB] text-white text-sm font-medium">
                 <User className="h-4 w-4" />
               </AvatarFallback>
             </Avatar>
