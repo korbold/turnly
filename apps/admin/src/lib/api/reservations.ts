@@ -4,6 +4,8 @@ import type { PaginatedResponse } from '@/types/api';
 
 export async function getReservations(params?: {
   date?: string;
+  date_from?: string;
+  date_to?: string;
   status?: string;
   service_id?: string;
   per_page?: number;
