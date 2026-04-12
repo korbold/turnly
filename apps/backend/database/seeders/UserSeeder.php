@@ -14,14 +14,14 @@ class UserSeeder extends Seeder
 {
     public function run(): void
     {
-        $tenantLopez  = TenantModel::where('slug', 'lavadora-lopez')->first();
-        $tenantSpa    = TenantModel::where('slug', 'auto-spa-centro')->first();
+        $tenantLopez  = TenantModel::where('slug', 'barber-demo')->first();
+        $tenantSpa    = TenantModel::where('slug', 'spa-demo')->first();
 
         // ── Super admin ────────────────────────────────────────────────────────
         $superAdmin = UserModel::create([
             'id'             => Str::uuid(),
             'name'           => 'Super Admin',
-            'email'          => 'super@washflow.com',
+            'email'          => 'super@turnly.com',
             'password'       => Hash::make('password'),
             'is_super_admin' => true,
         ]);
@@ -45,26 +45,26 @@ class UserSeeder extends Seeder
             return $user;
         };
 
-        // ── Lavadora López ─────────────────────────────────────────────────────
+        // ── Barbería López ─────────────────────────────────────────────────────
         $adminLopez = $makeUser([
-            'name'  => 'Admin Lavadora López',
-            'email' => 'admin@lavadora-lopez.com',
+            'name'  => 'Admin Barbería López',
+            'email' => 'admin@barber-demo.com',
             'phone' => '+593911000001',
         ], $tenantLopez, 'tenant_admin');
 
         $cashierLopez = $makeUser([
-            'name'  => 'Cajero Lavadora López',
-            'email' => 'cajero@lavadora-lopez.com',
+            'name'  => 'Cajero Barbería López',
+            'email' => 'cajero@barber-demo.com',
             'phone' => '+593911000002',
         ], $tenantLopez, 'cashier');
 
-        $washerLopez = $makeUser([
-            'name'  => 'Lavador Lavadora López',
-            'email' => 'lavador@lavadora-lopez.com',
+        $staffLopez = $makeUser([
+            'name'  => 'Staff Barbería López',
+            'email' => 'staff@barber-demo.com',
             'phone' => '+593911000003',
         ], $tenantLopez, 'washer');
 
-        // Clients 1-5 for Lavadora López
+        // Clients 1-5 for Barbería López
         $clientsLopezData = [
             ['name' => 'Ana Ramírez',    'email' => 'cliente1@example.com', 'phone' => '+593921000001', 'plate' => 'PBA-1234', 'brand' => 'Toyota',    'model' => 'Corolla',  'color' => 'Blanco',  'type' => 'sedan'],
             ['name' => 'Luis Morales',   'email' => 'cliente2@example.com', 'phone' => '+593921000002', 'plate' => 'AAB-5678', 'brand' => 'Chevrolet', 'model' => 'Sail',     'color' => 'Gris',    'type' => 'sedan'],
@@ -92,26 +92,26 @@ class UserSeeder extends Seeder
             ]);
         }
 
-        // ── Auto Spa Centro ────────────────────────────────────────────────────
+        // ── Spa Centro ────────────────────────────────────────────────────
         $adminSpa = $makeUser([
-            'name'  => 'Admin Auto Spa Centro',
-            'email' => 'admin@auto-spa.com',
+            'name'  => 'Admin Spa Centro',
+            'email' => 'admin@spa-demo.com',
             'phone' => '+593911000011',
         ], $tenantSpa, 'tenant_admin');
 
         $cashierSpa = $makeUser([
-            'name'  => 'Cajero Auto Spa Centro',
-            'email' => 'cajero@auto-spa.com',
+            'name'  => 'Cajero Spa Centro',
+            'email' => 'cajero@spa-demo.com',
             'phone' => '+593911000012',
         ], $tenantSpa, 'cashier');
 
-        $washerSpa = $makeUser([
-            'name'  => 'Lavador Auto Spa Centro',
-            'email' => 'lavador@auto-spa.com',
+        $staffSpa = $makeUser([
+            'name'  => 'Staff Spa Centro',
+            'email' => 'staff@spa-demo.com',
             'phone' => '+593911000013',
         ], $tenantSpa, 'washer');
 
-        // Clients 6-10 for Auto Spa Centro
+        // Clients 6-10 for Spa Centro
         $clientsSpaData = [
             ['name' => 'Gabriela Vega',    'email' => 'cliente6@example.com',  'phone' => '+593921000006', 'plate' => 'GYE-5678', 'brand' => 'Nissan',    'model' => 'Sentra',   'color' => 'Plateado', 'type' => 'sedan'],
             ['name' => 'Roberto Espinoza', 'email' => 'cliente7@example.com',  'phone' => '+593921000007', 'plate' => 'GBA-1122', 'brand' => 'Ford',      'model' => 'Escape',   'color' => 'Blanco',   'type' => 'suv'],

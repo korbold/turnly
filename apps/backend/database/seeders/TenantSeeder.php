@@ -13,10 +13,10 @@ class TenantSeeder extends Seeder
         TenantModel::insert([
             [
                 'id'             => Str::uuid(),
-                'slug'           => 'lavadora-lopez',
-                'name'           => 'Lavadora López',
+                'slug'           => 'barber-demo',
+                'name'           => 'Barbería López',
                 'owner_name'     => 'Carlos López',
-                'email'          => 'lopez@washflow.com',
+                'email'          => 'lopez@turnly.com',
                 'phone'          => '+593987654321',
                 'city'           => 'Quito',
                 'country'        => 'EC',
@@ -29,10 +29,10 @@ class TenantSeeder extends Seeder
             ],
             [
                 'id'             => Str::uuid(),
-                'slug'           => 'auto-spa-centro',
-                'name'           => 'Auto Spa Centro',
+                'slug'           => 'spa-demo',
+                'name'           => 'Spa Centro',
                 'owner_name'     => 'María Fernanda Torres',
-                'email'          => 'autospa@washflow.com',
+                'email'          => 'spa@turnly.com',
                 'phone'          => '+593991234567',
                 'city'           => 'Guayaquil',
                 'country'        => 'EC',
