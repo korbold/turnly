@@ -27,3 +27,15 @@ export async function getDailyReport(date?: string): Promise<DailyReport> {
   const response = await api.get('/reports/daily', { params });
   return response.data.data;
 }
+
+export async function getWeeklyReport(week?: string) {
+  const params = week ? { week } : {};
+  const response = await api.get('/reports/weekly', { params });
+  return response.data.data;
+}
+
+export async function getMonthlyReport(month?: string) {
+  const params = month ? { month } : {};
+  const response = await api.get('/reports/monthly', { params });
+  return response.data.data;
+}
