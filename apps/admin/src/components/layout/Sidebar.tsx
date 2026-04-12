@@ -6,21 +6,33 @@ import {
   LayoutDashboard, CalendarDays, BookOpen, Contact,
   Wrench, Users, BarChart3, Settings,
 } from 'lucide-react';
+import { useQuery } from '@tanstack/react-query';
 import { cn } from '@/lib/utils';
+import { getMe } from '@/lib/api/auth';
+import { canAccess } from '@/lib/constants/permissions';
 
 const navItems = [
-  { href: '/dashboard', label: 'Dashboard', icon: LayoutDashboard },
-  { href: '/reservations', label: 'Reservaciones', icon: CalendarDays },
-  { href: '/service-log', label: 'Registro del día', icon: BookOpen },
-  { href: '/clients', label: 'Clientes', icon: Contact },
-  { href: '/services', label: 'Servicios', icon: Wrench },
-  { href: '/team', label: 'Equipo', icon: Users },
-  { href: '/reports', label: 'Reportes', icon: BarChart3 },
-  { href: '/settings', label: 'Configuración', icon: Settings },
+  { href: '/dashboard', label: 'Dashboard', icon: LayoutDashboard, key: 'dashboard' },
+  { href: '/reservations', label: 'Reservaciones', icon: CalendarDays, key: 'reservations' },
+  { href: '/service-log', label: 'Registro del día', icon: BookOpen, key: 'service-log' },
+  { href: '/clients', label: 'Clientes', icon: Contact, key: 'clients' },
+  { href: '/services', label: 'Servicios', icon: Wrench, key: 'services' },
+  { href: '/team', label: 'Equipo', icon: Users, key: 'team' },
+  { href: '/reports', label: 'Reportes', icon: BarChart3, key: 'reports' },
+  { href: '/settings', label: 'Configuración', icon: Settings, key: 'settings' },
 ];
 
 export function Sidebar() {
   const pathname = usePathname();
+
+  const { data: me } = useQuery({
+    queryKey: ['auth', 'me'],
+    queryFn: getMe,
+    staleTime: 5 * 60 * 1000,
+  });
+
+  const role = me?.role ?? null;
+  const visibleItems = navItems.filter(item => canAccess(role, item.key));
 
   return (
     <aside className="hidden lg:flex lg:flex-col lg:w-64 lg:border-r bg-white h-screen sticky top-0">
@@ -29,7 +41,7 @@ export function Sidebar() {
         <p className="text-sm text-gray-500 mt-1">Panel de administración</p>
       </div>
       <nav className="flex-1 p-4 space-y-1">
-        {navItems.map((item) => {
+        {visibleItems.map((item) => {
           const Icon = item.icon;
           const isActive = pathname.startsWith(item.href);
           return (
