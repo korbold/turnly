@@ -3,6 +3,7 @@ import 'package:go_router/go_router.dart';
 import '../storage/secure_storage.dart';
 import '../../features/auth/presentation/screens/login_screen.dart';
 import '../../features/shell/presentation/screens/shell_screen.dart';
+import '../../features/wash_log/presentation/screens/register_wash_screen.dart';
 
 final goRouter = GoRouter(
   initialLocation: '/login',
@@ -41,7 +42,7 @@ final goRouter = GoRouter(
     // Routes pushed from navigation
     GoRoute(
       path: '/wash-log/register',
-      builder: (context, state) => const _Placeholder(title: 'Registrar Lavado'),
+      builder: (context, state) => const RegisterWashScreen(),
     ),
     GoRoute(
       path: '/reservations/:id',

@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import '../../../../core/storage/secure_storage.dart';
 import '../../../../shared/enums/user_role.dart';
+import '../../../wash_log/presentation/screens/wash_log_screen.dart';
 import 'more_screen.dart';
 
 class ShellScreen extends StatefulWidget {
@@ -33,14 +34,14 @@ class _ShellScreenState extends State<ShellScreen> {
     if (_role.isAdmin) {
       return const [
         _PlaceholderTab(title: 'Dashboard'),
-        _PlaceholderTab(title: 'Libro Diario'),
+        WashLogScreen(),
         _PlaceholderTab(title: 'Reservaciones'),
         MoreScreen(),
       ];
     } else {
       return const [
         _PlaceholderTab(title: 'Dashboard'),
-        _PlaceholderTab(title: 'Libro Diario'),
+        WashLogScreen(),
         _PlaceholderTab(title: 'Reservaciones'),
         _PlaceholderTab(title: 'Servicios'),
       ];
