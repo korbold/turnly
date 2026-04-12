@@ -12,6 +12,7 @@ use App\Infrastructure\Http\Requests\Onboarding\RegisterTenantRequest;
 use App\Infrastructure\Http\Resources\TenantResource;
 use App\Infrastructure\Persistence\Models\ServiceModel;
 use App\Infrastructure\Persistence\Models\TenantModel;
+use App\Infrastructure\Persistence\Models\TenantUserModel;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 
@@ -76,7 +77,14 @@ class OnboardingController extends Controller
             'create_suggested_services' => 'nullable|boolean',
         ]);
 
-        $tenantId = app('current_tenant_id');
+        // Resolve tenant from authenticated user (no tenant middleware during onboarding)
+        $tenantUser = TenantUserModel::where('user_id', $request->user()->id)->first();
+        if (!$tenantUser) {
+            return response()->json([
+                'error' => ['code' => 'NO_TENANT', 'message' => 'No se encontró un negocio asociado'],
+            ], 404);
+        }
+        $tenantId = $tenantUser->tenant_id;
         $businessType = $request->business_type;
         $createSuggestedServices = $request->boolean('create_suggested_services', true);
 
