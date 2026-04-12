@@ -5,7 +5,7 @@ import { useQuery, useMutation } from '@tanstack/react-query';
 import { format } from 'date-fns';
 import { getClientResources } from '@/lib/api/client-resources';
 import { getServices } from '@/lib/api/services';
-import { createReservation, getAvailableSlots } from '@/lib/api/reservations';
+import { createReservation } from '@/lib/api/reservations';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -29,8 +29,7 @@ export function ReservationForm({ defaultDate, onSuccess, onCancel }: Reservatio
 
   const [clientResourceId, setClientResourceId] = useState('');
   const [serviceId, setServiceId] = useState('');
-  const [date, setDate] = useState(today);
-  const [selectedSlot, setSelectedSlot] = useState<string | null>(null);
+  const [datetime, setDatetime] = useState(defaultDate ? `${defaultDate}T09:00` : `${today}T09:00`);
   const [notes, setNotes] = useState('');
   const [error, setError] = useState<string | null>(null);
 
@@ -42,12 +41,6 @@ export function ReservationForm({ defaultDate, onSuccess, onCancel }: Reservatio
   const { data: servicesData } = useQuery({
     queryKey: ['services', 'all'],
     queryFn: () => getServices({ per_page: 100 }),
-  });
-
-  const { data: slots, isLoading: slotsLoading } = useQuery({
-    queryKey: ['available-slots', date, serviceId],
-    queryFn: () => getAvailableSlots(date, serviceId),
-    enabled: !!date && !!serviceId,
   });
 
   const { mutate, isPending } = useMutation({
@@ -65,7 +58,7 @@ export function ReservationForm({ defaultDate, onSuccess, onCancel }: Reservatio
     e.preventDefault();
     setError(null);
 
-    if (!clientResourceId || !serviceId || !date || !selectedSlot) {
+    if (!clientResourceId || !serviceId || !datetime) {
       setError('Por favor completa todos los campos requeridos.');
       return;
     }
@@ -73,7 +66,7 @@ export function ReservationForm({ defaultDate, onSuccess, onCancel }: Reservatio
     mutate({
       client_resource_id: clientResourceId,
       service_id: serviceId,
-      scheduled_at: selectedSlot,
+      scheduled_at: new Date(datetime).toISOString(),
       notes: notes || undefined,
     });
   };
@@ -138,54 +131,17 @@ export function ReservationForm({ defaultDate, onSuccess, onCancel }: Reservatio
         </Select>
       </div>
 
-      {/* Date */}
+      {/* Date & Time */}
       <div className="space-y-1">
-        <Label htmlFor="res-date">Fecha</Label>
+        <Label htmlFor="res-datetime">Fecha y hora</Label>
         <Input
-          id="res-date"
-          type="date"
-          min={today}
-          value={date}
-          onChange={(e) => {
-            setDate(e.target.value);
-            setSelectedSlot(null);
-          }}
+          id="res-datetime"
+          type="datetime-local"
+          value={datetime}
+          onChange={(e) => setDatetime(e.target.value)}
           className="w-full"
         />
       </div>
-
-      {/* Available slots */}
-      {serviceId && date && (
-        <div className="space-y-2">
-          <Label>Horario disponible</Label>
-          {slotsLoading ? (
-            <p className="text-sm text-muted-foreground">Cargando horarios...</p>
-          ) : slots && slots.length > 0 ? (
-            <div className="grid grid-cols-4 gap-2">
-              {slots.map((slot) => {
-                const timeLabel = format(new Date(slot.start), 'HH:mm');
-                const isSelected = selectedSlot === slot.start;
-                return (
-                  <Button
-                    key={slot.start}
-                    type="button"
-                    variant={isSelected ? 'default' : 'outline'}
-                    size="sm"
-                    className={isSelected ? 'bg-blue-600 text-white hover:bg-blue-700' : ''}
-                    onClick={() => setSelectedSlot(slot.start)}
-                  >
-                    {timeLabel}
-                  </Button>
-                );
-              })}
-            </div>
-          ) : (
-            <p className="text-sm text-muted-foreground">
-              No hay horarios disponibles para esta fecha y servicio.
-            </p>
-          )}
-        </div>
-      )}
 
       {/* Notes */}
       <div className="space-y-1">
@@ -202,7 +158,7 @@ export function ReservationForm({ defaultDate, onSuccess, onCancel }: Reservatio
       {error && <p className="text-sm text-destructive">{error}</p>}
 
       <div className="flex gap-3 pt-2">
-        <Button type="submit" disabled={isPending || !selectedSlot}>
+        <Button type="submit" disabled={isPending || !datetime}>
           {isPending ? 'Creando...' : 'Crear reservación'}
         </Button>
         {onCancel && (
