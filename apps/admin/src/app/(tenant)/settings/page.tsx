@@ -27,6 +27,8 @@ import {
 import { ImageUpload } from '@/components/ui/image-upload';
 import { Trash2, Plus, X } from 'lucide-react';
 import Image from 'next/image';
+import { getAvailabilityBlocks, createAvailabilityBlock, deleteAvailabilityBlock } from '@/lib/api/availability-blocks';
+import type { AvailabilityBlock } from '@/types/availability-block';
 
 interface CustomField {
   key: string;
@@ -58,6 +60,36 @@ export default function SettingsPage() {
   const [permissions, setPermissions] = useState<PermissionsConfig>({ ...DEFAULT_PERMISSIONS });
   const [savingPerms, setSavingPerms] = useState(false);
   const [permsSaved, setPermsSaved] = useState(false);
+
+  const DAYS = [
+    { key: 'monday', label: 'Lunes' },
+    { key: 'tuesday', label: 'Martes' },
+    { key: 'wednesday', label: 'Miércoles' },
+    { key: 'thursday', label: 'Jueves' },
+    { key: 'friday', label: 'Viernes' },
+    { key: 'saturday', label: 'Sábado' },
+    { key: 'sunday', label: 'Domingo' },
+  ] as const;
+
+  type DaySchedule = { open: string | null; close: string | null; active: boolean };
+  type WeekSchedule = Record<string, DaySchedule>;
+
+  const DEFAULT_SCHEDULE: WeekSchedule = {
+    monday:    { open: '08:00', close: '18:00', active: true },
+    tuesday:   { open: '08:00', close: '18:00', active: true },
+    wednesday: { open: '08:00', close: '18:00', active: true },
+    thursday:  { open: '08:00', close: '18:00', active: true },
+    friday:    { open: '08:00', close: '18:00', active: true },
+    saturday:  { open: '09:00', close: '14:00', active: true },
+    sunday:    { open: null, close: null, active: false },
+  };
+
+  const [schedule, setSchedule] = useState<WeekSchedule>(DEFAULT_SCHEDULE);
+  const [blockDate, setBlockDate] = useState('');
+  const [blockStartTime, setBlockStartTime] = useState('');
+  const [blockEndTime, setBlockEndTime] = useState('');
+  const [blockReason, setBlockReason] = useState('');
+  const [blockAllDay, setBlockAllDay] = useState(true);
 
   const { data: tenantSettings, isLoading } = useQuery({
     queryKey: ['tenant-settings'],
@@ -93,6 +125,10 @@ export default function SettingsPage() {
         washer: { ...DEFAULT_PERMISSIONS.washer, ...(settings.permissions as PermissionsConfig).washer },
       });
     }
+    const settingsObj = t.settings as Record<string, unknown> | null;
+    if (settingsObj?.schedule) {
+      setSchedule({ ...DEFAULT_SCHEDULE, ...(settingsObj.schedule as WeekSchedule) });
+    }
   }, [tenantSettings]);
 
   const updateMutation = useMutation({
@@ -105,6 +141,7 @@ export default function SettingsPage() {
   });
 
   function handleSave() {
+    const currentSettings = (tenantSettings as Record<string, unknown>)?.settings as Record<string, unknown> ?? {};
     updateMutation.mutate({
       name,
       description,
@@ -116,6 +153,10 @@ export default function SettingsPage() {
       cover_url: coverUrl || undefined,
       social_links: socialLinks,
       custom_fields: customFields,
+      settings: {
+        ...currentSettings,
+        schedule,
+      },
     });
   }
 
@@ -141,6 +182,35 @@ export default function SettingsPage() {
       queryClient.invalidateQueries({ queryKey: ['tenant-images'] });
     },
   });
+
+  const { data: blocks = [] } = useQuery({
+    queryKey: ['availability-blocks'],
+    queryFn: getAvailabilityBlocks,
+  });
+
+  const deleteBlockMutation = useMutation({
+    mutationFn: deleteAvailabilityBlock,
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['availability-blocks'] });
+    },
+  });
+
+  function handleAddBlock() {
+    if (!blockDate) return;
+    createAvailabilityBlock({
+      date: blockDate,
+      start_time: blockAllDay ? null : (blockStartTime || null),
+      end_time: blockAllDay ? null : (blockEndTime || null),
+      reason: blockReason || null,
+    }).then(() => {
+      queryClient.invalidateQueries({ queryKey: ['availability-blocks'] });
+      setBlockDate('');
+      setBlockStartTime('');
+      setBlockEndTime('');
+      setBlockReason('');
+      setBlockAllDay(true);
+    });
+  }
 
   function addCustomField() {
     setCustomFields((prev) => [
@@ -373,6 +443,183 @@ export default function SettingsPage() {
                   }
                   placeholder="+1 234 567 890"
                 />
+              </div>
+            </CardContent>
+          </Card>
+
+          {/* Section: Schedule */}
+          <Card>
+            <CardHeader>
+              <CardTitle>Horarios de atención</CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-3">
+              {DAYS.map((day) => {
+                const daySchedule = schedule[day.key];
+                return (
+                  <div key={day.key} className="flex items-center gap-3">
+                    <label className="flex items-center gap-2 w-28">
+                      <input
+                        type="checkbox"
+                        checked={daySchedule.active}
+                        onChange={(e) =>
+                          setSchedule((prev) => ({
+                            ...prev,
+                            [day.key]: {
+                              ...prev[day.key],
+                              active: e.target.checked,
+                              open: e.target.checked ? (prev[day.key].open ?? '08:00') : null,
+                              close: e.target.checked ? (prev[day.key].close ?? '18:00') : null,
+                            },
+                          }))
+                        }
+                        className="rounded border-gray-300"
+                      />
+                      <span className="text-sm font-medium text-[#343C6A]">{day.label}</span>
+                    </label>
+                    {daySchedule.active ? (
+                      <div className="flex items-center gap-2">
+                        <Input
+                          type="time"
+                          value={daySchedule.open ?? '08:00'}
+                          onChange={(e) =>
+                            setSchedule((prev) => ({
+                              ...prev,
+                              [day.key]: { ...prev[day.key], open: e.target.value },
+                            }))
+                          }
+                          className="w-32"
+                        />
+                        <span className="text-sm text-[#718EBF]">a</span>
+                        <Input
+                          type="time"
+                          value={daySchedule.close ?? '18:00'}
+                          onChange={(e) =>
+                            setSchedule((prev) => ({
+                              ...prev,
+                              [day.key]: { ...prev[day.key], close: e.target.value },
+                            }))
+                          }
+                          className="w-32"
+                        />
+                      </div>
+                    ) : (
+                      <span className="text-sm text-[#718EBF]">Cerrado</span>
+                    )}
+                  </div>
+                );
+              })}
+              <p className="text-xs text-[#718EBF] mt-2">
+                Los horarios se guardan con el botón &quot;Guardar cambios&quot; al final.
+              </p>
+            </CardContent>
+          </Card>
+
+          {/* Section: Availability Blocks */}
+          <Card>
+            <CardHeader>
+              <CardTitle>Bloqueos excepcionales</CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              {(blocks as AvailabilityBlock[]).length > 0 && (
+                <div className="space-y-2">
+                  {(blocks as AvailabilityBlock[]).map((block) => (
+                    <div
+                      key={block.id}
+                      className="flex items-center justify-between p-3 bg-[#F5F7FA] rounded-lg"
+                    >
+                      <div className="flex items-center gap-3">
+                        <span className="text-sm font-medium text-[#343C6A]">
+                          {new Date(block.date).toLocaleDateString('es', { day: '2-digit', month: '2-digit', year: 'numeric' })}
+                        </span>
+                        <span className="text-sm text-[#718EBF]">
+                          {block.start_time && block.end_time
+                            ? `${block.start_time.slice(0, 5)} - ${block.end_time.slice(0, 5)}`
+                            : 'Todo el día'}
+                        </span>
+                        {block.reason && (
+                          <span className="text-sm text-[#718EBF]">&mdash; {block.reason}</span>
+                        )}
+                      </div>
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        onClick={() => deleteBlockMutation.mutate(block.id)}
+                        disabled={deleteBlockMutation.isPending}
+                        className="text-destructive hover:text-destructive"
+                      >
+                        <Trash2 className="w-4 h-4" />
+                      </Button>
+                    </div>
+                  ))}
+                </div>
+              )}
+
+              {(blocks as AvailabilityBlock[]).length === 0 && (
+                <p className="text-sm text-[#718EBF] text-center py-2">
+                  No hay bloqueos configurados.
+                </p>
+              )}
+
+              <div className="border border-[#DFE5EE] rounded-lg p-4 space-y-3">
+                <p className="text-sm font-medium text-[#343C6A]">Agregar bloqueo</p>
+                <div className="flex flex-wrap items-end gap-3">
+                  <div className="space-y-1">
+                    <label className="text-xs text-[#718EBF]">Fecha</label>
+                    <Input
+                      type="date"
+                      value={blockDate}
+                      onChange={(e) => setBlockDate(e.target.value)}
+                      className="w-40"
+                    />
+                  </div>
+                  <label className="flex items-center gap-2 text-sm text-[#343C6A] pb-2">
+                    <input
+                      type="checkbox"
+                      checked={blockAllDay}
+                      onChange={(e) => setBlockAllDay(e.target.checked)}
+                      className="rounded border-gray-300"
+                    />
+                    Todo el día
+                  </label>
+                  {!blockAllDay && (
+                    <>
+                      <div className="space-y-1">
+                        <label className="text-xs text-[#718EBF]">Desde</label>
+                        <Input
+                          type="time"
+                          value={blockStartTime}
+                          onChange={(e) => setBlockStartTime(e.target.value)}
+                          className="w-32"
+                        />
+                      </div>
+                      <div className="space-y-1">
+                        <label className="text-xs text-[#718EBF]">Hasta</label>
+                        <Input
+                          type="time"
+                          value={blockEndTime}
+                          onChange={(e) => setBlockEndTime(e.target.value)}
+                          className="w-32"
+                        />
+                      </div>
+                    </>
+                  )}
+                  <div className="space-y-1 flex-1 min-w-[150px]">
+                    <label className="text-xs text-[#718EBF]">Motivo (opcional)</label>
+                    <Input
+                      value={blockReason}
+                      onChange={(e) => setBlockReason(e.target.value)}
+                      placeholder="Ej: Feriado, mantenimiento..."
+                    />
+                  </div>
+                  <Button
+                    size="sm"
+                    onClick={handleAddBlock}
+                    disabled={!blockDate}
+                  >
+                    <Plus className="w-4 h-4 mr-1" />
+                    Agregar
+                  </Button>
+                </div>
               </div>
             </CardContent>
           </Card>
