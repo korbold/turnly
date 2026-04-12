@@ -54,27 +54,27 @@ export function MobileSidebar({ onNavigate }: MobileSidebarProps) {
   const visibleSettingsItems = settingsItems.filter(item => canAccess(role, item.key, perms));
 
   return (
-    <div className="flex flex-col h-full bg-gradient-to-b from-[#050417] to-[#171365]">
+    <div className="flex flex-col h-full bg-white">
       {/* Logo */}
       <div className="px-6 py-5">
-        <h2 className="text-xl font-bold text-white tracking-tight">Turnly</h2>
+        <h2 className="text-xl font-bold text-[#343C6A] tracking-tight">Turnly</h2>
       </div>
 
       {/* Search */}
       <div className="mx-4 my-3">
         <div className="relative">
-          <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-white/40" />
+          <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-[#718EBF]" />
           <input
             type="text"
             placeholder="Buscar..."
-            className="w-full h-9 bg-white/10 border-none rounded-lg pl-9 pr-3 text-sm text-white placeholder:text-white/40 focus:outline-none focus:ring-1 focus:ring-white/20"
+            className="w-full h-9 bg-[#EDF1F7] border-none rounded-lg pl-9 pr-3 text-sm text-[#343C6A] placeholder:text-[#718EBF] focus:outline-none focus:ring-1 focus:ring-[#396AFF]"
           />
         </div>
       </div>
 
       {/* Menu section */}
       <div className="flex-1 overflow-y-auto">
-        <p className="px-6 mt-6 mb-2 text-[10px] uppercase tracking-widest text-white/40 font-medium">
+        <p className="px-6 mt-6 mb-2 text-[10px] uppercase tracking-widest text-[#718EBF] font-medium">
           Menu
         </p>
         <nav className="space-y-0.5">
@@ -89,8 +89,8 @@ export function MobileSidebar({ onNavigate }: MobileSidebarProps) {
                 className={cn(
                   'flex items-center mx-3 px-3 py-2.5 rounded-lg text-sm transition-colors',
                   isActive
-                    ? 'bg-white/10 text-white font-medium border-l-2 border-[#304FDB]'
-                    : 'text-white/70 hover:bg-white/[0.06] hover:text-white'
+                    ? 'bg-[#E7EDFF] text-[#1814F3] font-medium border-l-[3px] border-[#1814F3]'
+                    : 'text-[#B1B1B1] hover:bg-[#F5F7FA] hover:text-[#343C6A]'
                 )}
               >
                 <Icon className="h-5 w-5 mr-3 shrink-0" />
@@ -103,8 +103,8 @@ export function MobileSidebar({ onNavigate }: MobileSidebarProps) {
 
       {/* Settings section */}
       {visibleSettingsItems.length > 0 && (
-        <div className="mt-auto border-t border-white/10 pt-4 pb-6">
-          <p className="px-6 mb-2 text-[10px] uppercase tracking-widest text-white/40 font-medium">
+        <div className="mt-auto border-t border-[#DFE5EE] pt-4 pb-6">
+          <p className="px-6 mb-2 text-[10px] uppercase tracking-widest text-[#718EBF] font-medium">
             Configuración
           </p>
           <nav className="space-y-0.5">
@@ -119,8 +119,8 @@ export function MobileSidebar({ onNavigate }: MobileSidebarProps) {
                   className={cn(
                     'flex items-center mx-3 px-3 py-2.5 rounded-lg text-sm transition-colors',
                     isActive
-                      ? 'bg-white/10 text-white font-medium border-l-2 border-[#304FDB]'
-                      : 'text-white/70 hover:bg-white/[0.06] hover:text-white'
+                      ? 'bg-[#E7EDFF] text-[#1814F3] font-medium border-l-[3px] border-[#1814F3]'
+                      : 'text-[#B1B1B1] hover:bg-[#F5F7FA] hover:text-[#343C6A]'
                   )}
                 >
                   <Icon className="h-5 w-5 mr-3 shrink-0" />
