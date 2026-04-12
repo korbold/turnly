@@ -99,7 +99,7 @@ export default function TenantLayout({ children }: { children: React.ReactNode }
           </button>
         </div>
       )}
-      <div className={`flex min-h-screen bg-[#F1F6FD]${superAdminMode ? ' pt-10' : ''}`}>
+      <div className={`flex min-h-screen bg-[#F5F7FA]${superAdminMode ? ' pt-10' : ''}`}>
         <Sidebar />
         <div className="flex-1 flex flex-col">
           <TopBar />
