@@ -108,7 +108,6 @@ export function ReservationForm({ defaultDate, onSuccess, onCancel }: Reservatio
           value={serviceId}
           onValueChange={(v) => {
             setServiceId(v ?? '');
-            setSelectedSlot(null);
           }}
         >
           <SelectTrigger id="res-service" className="w-full">
