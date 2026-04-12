@@ -3,6 +3,7 @@
 use App\Infrastructure\Http\Controllers\Auth\AuthController;
 use App\Infrastructure\Http\Controllers\Auth\OnboardingController;
 use App\Infrastructure\Http\Controllers\Tenant\TenantSettingsController;
+use App\Infrastructure\Http\Controllers\Tenant\TenantImageController;
 use App\Infrastructure\Http\Controllers\Reservation\ReservationController;
 use App\Infrastructure\Http\Controllers\ServiceLog\ServiceLogController;
 use App\Infrastructure\Http\Controllers\ClientResource\ClientResourceController;
@@ -10,6 +11,7 @@ use App\Infrastructure\Http\Controllers\Service\ServiceController;
 use App\Infrastructure\Http\Controllers\User\UserController;
 use App\Infrastructure\Http\Controllers\Report\ReportController;
 use App\Infrastructure\Http\Controllers\SuperAdmin\SuperAdminController;
+use App\Infrastructure\Http\Controllers\Upload\UploadController;
 use Illuminate\Support\Facades\Route;
 
 Route::prefix('v1')->group(function () {
@@ -78,6 +80,15 @@ Route::prefix('v1')->group(function () {
             Route::get('reports/daily', [ReportController::class, 'daily']);
             Route::get('reports/weekly', [ReportController::class, 'weekly']);
             Route::get('reports/monthly', [ReportController::class, 'monthly']);
+
+            // Uploads
+            Route::post('uploads', [UploadController::class, 'store']);
+
+            // Tenant gallery images
+            Route::get('tenant/images', [TenantImageController::class, 'index']);
+            Route::post('tenant/images', [TenantImageController::class, 'store']);
+            Route::delete('tenant/images/{id}', [TenantImageController::class, 'destroy']);
+            Route::post('tenant/images/reorder', [TenantImageController::class, 'reorder']);
         });
 
         // Super admin routes
