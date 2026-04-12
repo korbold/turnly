@@ -3,6 +3,8 @@
 import { useState, useEffect } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { getTenantSettings, updateTenantSettings } from '@/lib/api/tenant';
+import { getTenantImages, addTenantImage, deleteTenantImage } from '@/lib/api/tenant-images';
+import type { TenantImage } from '@/lib/api/tenant-images';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
@@ -15,7 +17,8 @@ import {
 } from '@/components/ui/select';
 import { BUSINESS_TYPES, BRAND_THEMES } from '@/lib/constants/business-types';
 import { ImageUpload } from '@/components/ui/image-upload';
-import { Trash2, Plus } from 'lucide-react';
+import { Trash2, Plus, X } from 'lucide-react';
+import Image from 'next/image';
 
 interface CustomField {
   key: string;
@@ -95,6 +98,29 @@ export default function SettingsPage() {
       custom_fields: customFields,
     });
   }
+
+  // Gallery
+  const [showGalleryUpload, setShowGalleryUpload] = useState(false);
+
+  const { data: galleryImages = [] } = useQuery({
+    queryKey: ['tenant-images'],
+    queryFn: getTenantImages,
+  });
+
+  const addImageMutation = useMutation({
+    mutationFn: addTenantImage,
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['tenant-images'] });
+      setShowGalleryUpload(false);
+    },
+  });
+
+  const deleteImageMutation = useMutation({
+    mutationFn: deleteTenantImage,
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['tenant-images'] });
+    },
+  });
 
   function addCustomField() {
     setCustomFields((prev) => [
@@ -296,7 +322,74 @@ export default function SettingsPage() {
             </CardContent>
           </Card>
 
-          {/* Section 4: Custom Fields */}
+          {/* Section 4: Gallery */}
+          <Card>
+            <CardHeader className="flex flex-row items-center justify-between">
+              <CardTitle>Galeria de fotos</CardTitle>
+              <span className="text-sm text-muted-foreground">{galleryImages.length}/10 fotos</span>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              {galleryImages.length > 0 && (
+                <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
+                  {galleryImages.map((img: TenantImage) => (
+                    <div key={img.id} className="relative aspect-square rounded-lg overflow-hidden group">
+                      <Image
+                        src={img.url}
+                        alt={img.caption ?? 'Foto de galeria'}
+                        fill
+                        className="object-cover"
+                      />
+                      <button
+                        type="button"
+                        onClick={() => deleteImageMutation.mutate(img.id)}
+                        disabled={deleteImageMutation.isPending}
+                        className="absolute top-2 right-2 z-10 flex items-center justify-center size-6 rounded-full bg-destructive text-destructive-foreground shadow opacity-0 group-hover:opacity-100 transition-opacity hover:opacity-90"
+                        aria-label="Eliminar foto"
+                      >
+                        <X className="size-3.5" />
+                      </button>
+                    </div>
+                  ))}
+                </div>
+              )}
+              {galleryImages.length === 0 && !showGalleryUpload && (
+                <p className="text-sm text-muted-foreground text-center py-4">
+                  No hay fotos en la galeria. Agrega hasta 10 fotos de tu negocio.
+                </p>
+              )}
+              {showGalleryUpload ? (
+                <div className="space-y-2">
+                  <ImageUpload
+                    folder="gallery"
+                    label="Seleccionar foto"
+                    onUpload={(url) => addImageMutation.mutate({ url })}
+                    onRemove={() => setShowGalleryUpload(false)}
+                  />
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="sm"
+                    onClick={() => setShowGalleryUpload(false)}
+                  >
+                    Cancelar
+                  </Button>
+                </div>
+              ) : (
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  onClick={() => setShowGalleryUpload(true)}
+                  disabled={galleryImages.length >= 10}
+                >
+                  <Plus className="w-4 h-4 mr-1" />
+                  Agregar foto
+                </Button>
+              )}
+            </CardContent>
+          </Card>
+
+          {/* Section 5: Custom Fields */}
           <Card>
             <CardHeader className="flex flex-row items-center justify-between">
               <CardTitle>Campos del cliente</CardTitle>
