@@ -17,6 +17,8 @@ class TenantModel extends Model
         'slug', 'name', 'owner_name', 'email', 'phone',
         'city', 'country', 'plan', 'status',
         'trial_ends_at', 'settings', 'onboarding_step', 'activated_at',
+        'business_type', 'custom_fields', 'description', 'address',
+        'logo_url', 'cover_url', 'social_links', 'brand_theme',
     ];
 
     protected function casts(): array
@@ -26,6 +28,8 @@ class TenantModel extends Model
             'trial_ends_at' => 'datetime',
             'activated_at' => 'datetime',
             'onboarding_step' => 'integer',
+            'custom_fields' => 'array',
+            'social_links' => 'array',
         ];
     }
 
