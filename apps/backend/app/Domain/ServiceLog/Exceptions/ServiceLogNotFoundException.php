@@ -1,19 +1,19 @@
 <?php
 
-namespace App\Domain\WashLog\Exceptions;
+namespace App\Domain\ServiceLog\Exceptions;
 
 use App\Domain\Shared\Exceptions\AppException;
 
-final class WashLogNotFoundException extends AppException
+final class ServiceLogNotFoundException extends AppException
 {
     public function __construct()
     {
-        parent::__construct('Wash log not found', 404);
+        parent::__construct('Service log not found', 404);
     }
 
     public function getErrorCode(): string
     {
-        return 'WASH_LOG_NOT_FOUND';
+        return 'SERVICE_LOG_NOT_FOUND';
     }
 
     public function getStatusCode(): int

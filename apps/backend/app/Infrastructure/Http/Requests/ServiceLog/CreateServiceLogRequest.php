@@ -1,10 +1,10 @@
 <?php
 
-namespace App\Infrastructure\Http\Requests\WashLog;
+namespace App\Infrastructure\Http\Requests\ServiceLog;
 
 use Illuminate\Foundation\Http\FormRequest;
 
-class CreateWashLogRequest extends FormRequest
+class CreateServiceLogRequest extends FormRequest
 {
     public function authorize(): bool
     {

@@ -28,7 +28,6 @@ test('can create service', function () {
         ->postJson('/api/v1/services', [
             'name' => 'Lavado Premium',
             'price' => 15.00,
-            'duration_minutes' => 45,
         ]);
 
     $response->assertStatus(201)
@@ -48,7 +47,6 @@ test('can update service', function () {
         ->putJson("/api/v1/services/{$service->id}", [
             'name' => $service->name,
             'price' => 20.00,
-            'duration_minutes' => $service->duration_minutes,
         ]);
 
     $response->assertOk()
@@ -68,13 +66,13 @@ test('can delete service', function () {
     $this->assertSoftDeleted('services', ['id' => $service->id]);
 });
 
-test('create service requires name price and duration', function () {
+test('create service requires name and price', function () {
     $response = $this->actingAs($this->user)
         ->withHeader('X-Tenant', $this->tenant->slug)
         ->postJson('/api/v1/services', []);
 
     $response->assertStatus(422)
-        ->assertJsonValidationErrors(['name', 'price', 'duration_minutes']);
+        ->assertJsonValidationErrors(['name', 'price']);
 });
 
 test('list services returns empty array when no services exist', function () {

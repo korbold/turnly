@@ -1,8 +1,8 @@
 <?php
 
-namespace App\Application\DTOs\WashLog;
+namespace App\Application\DTOs\ServiceLog;
 
-final readonly class CreateWashLogDTO
+final readonly class CreateServiceLogDTO
 {
     public function __construct(
         public string $tenantId,

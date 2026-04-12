@@ -93,7 +93,7 @@ class ReservationSeeder extends Seeder
                 ->where('owner_id', $client->id)
                 ->first();
 
-            $estimatedEnd = $scheduledAt->copy()->addMinutes($service->duration_minutes);
+            $estimatedEnd = $scheduledAt->copy()->addMinutes(30);
 
             $cancelledAt  = null;
             $cancelReason = null;

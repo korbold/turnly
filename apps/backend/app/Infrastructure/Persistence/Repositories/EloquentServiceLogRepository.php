@@ -2,55 +2,55 @@
 
 namespace App\Infrastructure\Persistence\Repositories;
 
-use App\Domain\WashLog\Contracts\WashLogRepositoryInterface;
-use App\Domain\WashLog\Entities\WashLog;
-use App\Infrastructure\Persistence\Models\WashLogModel;
+use App\Domain\ServiceLog\Contracts\ServiceLogRepositoryInterface;
+use App\Domain\ServiceLog\Entities\ServiceLog;
+use App\Infrastructure\Persistence\Models\ServiceLogModel;
 use Illuminate\Support\Str;
 
-class EloquentWashLogRepository implements WashLogRepositoryInterface
+class EloquentServiceLogRepository implements ServiceLogRepositoryInterface
 {
-    public function findById(string $id): ?WashLog
+    public function findById(string $id): ?ServiceLog
     {
-        $model = WashLogModel::find($id);
+        $model = ServiceLogModel::find($id);
 
         return $model ? $this->mapToEntity($model) : null;
     }
 
     public function findByTenantAndDate(string $tenantId, string $date): array
     {
-        return WashLogModel::whereDate('log_date', $date)
+        return ServiceLogModel::whereDate('log_date', $date)
             ->orderBy('started_at')
             ->get()
-            ->map(fn (WashLogModel $m) => $this->mapToEntity($m))
+            ->map(fn (ServiceLogModel $m) => $this->mapToEntity($m))
             ->all();
     }
 
-    public function save(WashLog $washLog): WashLog
+    public function save(ServiceLog $serviceLog): ServiceLog
     {
-        $model = WashLogModel::find($washLog->id);
+        $model = ServiceLogModel::find($serviceLog->id);
 
         $data = [
-            'tenant_id'      => $washLog->tenantId,
-            'client_resource_id'     => $washLog->clientResourceId,
-            'service_id'     => $washLog->serviceId,
-            'reservation_id' => $washLog->reservationId,
-            'attended_by'    => $washLog->attendedBy,
-            'created_by'     => $washLog->createdBy,
-            'started_at'     => $washLog->startedAt->format('Y-m-d H:i:s'),
-            'finished_at'    => $washLog->finishedAt?->format('Y-m-d H:i:s'),
-            'price_charged'  => $washLog->priceCharged,
-            'payment_method' => $washLog->paymentMethod,
-            'status'         => $washLog->status,
-            'notes'          => $washLog->notes,
-            'log_date'       => $washLog->logDate,
+            'tenant_id'      => $serviceLog->tenantId,
+            'client_resource_id'     => $serviceLog->clientResourceId,
+            'service_id'     => $serviceLog->serviceId,
+            'reservation_id' => $serviceLog->reservationId,
+            'attended_by'    => $serviceLog->attendedBy,
+            'created_by'     => $serviceLog->createdBy,
+            'started_at'     => $serviceLog->startedAt->format('Y-m-d H:i:s'),
+            'finished_at'    => $serviceLog->finishedAt?->format('Y-m-d H:i:s'),
+            'price_charged'  => $serviceLog->priceCharged,
+            'payment_method' => $serviceLog->paymentMethod,
+            'status'         => $serviceLog->status,
+            'notes'          => $serviceLog->notes,
+            'log_date'       => $serviceLog->logDate,
         ];
 
         if ($model) {
             $model->update($data);
             $model->refresh();
         } else {
-            $id = $washLog->id ?: (string) Str::uuid();
-            $model = WashLogModel::create(array_merge(['id' => $id], $data));
+            $id = $serviceLog->id ?: (string) Str::uuid();
+            $model = ServiceLogModel::create(array_merge(['id' => $id], $data));
         }
 
         return $this->mapToEntity($model);
@@ -58,7 +58,7 @@ class EloquentWashLogRepository implements WashLogRepositoryInterface
 
     public function complete(string $id, \DateTimeImmutable $finishedAt): void
     {
-        WashLogModel::where('id', $id)->update([
+        ServiceLogModel::where('id', $id)->update([
             'status'      => 'completed',
             'finished_at' => $finishedAt->format('Y-m-d H:i:s'),
         ]);
@@ -66,9 +66,9 @@ class EloquentWashLogRepository implements WashLogRepositoryInterface
 
     public function getDailySummary(string $tenantId, string $date): array
     {
-        $rows = WashLogModel::whereDate('log_date', $date)->get();
+        $rows = ServiceLogModel::whereDate('log_date', $date)->get();
 
-        $totalWashes  = $rows->count();
+        $totalServices  = $rows->count();
         $totalRevenue = $rows->sum('price_charged');
 
         $byPaymentMethod = [];
@@ -86,7 +86,7 @@ class EloquentWashLogRepository implements WashLogRepositoryInterface
         ];
 
         return [
-            'total_washes'       => $totalWashes,
+            'total_washes'       => $totalServices,
             'total_revenue'      => (float) $totalRevenue,
             'by_payment_method'  => $byPaymentMethod,
             'by_status'          => $byStatus,
@@ -95,7 +95,7 @@ class EloquentWashLogRepository implements WashLogRepositoryInterface
 
     public function paginate(int $perPage = 15, array $filters = []): array
     {
-        $query = WashLogModel::orderBy('started_at', 'desc');
+        $query = ServiceLogModel::orderBy('started_at', 'desc');
 
         if (!empty($filters['date'])) {
             $query->whereDate('log_date', $filters['date']);
@@ -112,7 +112,7 @@ class EloquentWashLogRepository implements WashLogRepositoryInterface
         $paginator = $query->paginate($perPage);
 
         return [
-            'data'         => $paginator->map(fn (WashLogModel $m) => $this->mapToEntity($m))->all(),
+            'data'         => $paginator->map(fn (ServiceLogModel $m) => $this->mapToEntity($m))->all(),
             'total'        => $paginator->total(),
             'per_page'     => $paginator->perPage(),
             'current_page' => $paginator->currentPage(),
@@ -120,9 +120,9 @@ class EloquentWashLogRepository implements WashLogRepositoryInterface
         ];
     }
 
-    private function mapToEntity(WashLogModel $model): WashLog
+    private function mapToEntity(ServiceLogModel $model): ServiceLog
     {
-        return new WashLog(
+        return new ServiceLog(
             id: $model->id,
             tenantId: $model->tenant_id,
             clientResourceId: $model->client_resource_id,

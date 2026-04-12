@@ -4,7 +4,7 @@ namespace App\Infrastructure\Http\Controllers\Report;
 
 use App\Infrastructure\Http\Controllers\Controller;
 use App\Infrastructure\Persistence\Models\ReservationModel;
-use App\Infrastructure\Persistence\Models\WashLogModel;
+use App\Infrastructure\Persistence\Models\ServiceLogModel;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 
@@ -15,7 +15,7 @@ class ReportController extends Controller
         $date = $request->get('date', now()->toDateString());
         $tenantId = app('current_tenant_id');
 
-        $washLogs = WashLogModel::where('log_date', $date)->get();
+        $washLogs = ServiceLogModel::where('log_date', $date)->get();
         $reservations = ReservationModel::whereDate('scheduled_at', $date)->get();
 
         return response()->json([
@@ -56,7 +56,7 @@ class ReportController extends Controller
         $endOfWeek = clone $startOfWeek;
         $endOfWeek->modify('+6 days');
 
-        $washLogs = WashLogModel::whereBetween('log_date', [
+        $washLogs = ServiceLogModel::whereBetween('log_date', [
             $startOfWeek->format('Y-m-d'),
             $endOfWeek->format('Y-m-d'),
         ])->get();
@@ -96,7 +96,7 @@ class ReportController extends Controller
         $startDate = "{$month}-01";
         $endDate = date('Y-m-t', mktime(0, 0, 0, $mon, 1, $year));
 
-        $washLogs = WashLogModel::whereBetween('log_date', [$startDate, $endDate])->get();
+        $washLogs = ServiceLogModel::whereBetween('log_date', [$startDate, $endDate])->get();
 
         return response()->json([
             'data' => [

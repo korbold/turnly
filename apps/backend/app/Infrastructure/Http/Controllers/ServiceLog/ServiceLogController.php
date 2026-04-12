@@ -1,29 +1,29 @@
 <?php
 
-namespace App\Infrastructure\Http\Controllers\WashLog;
+namespace App\Infrastructure\Http\Controllers\ServiceLog;
 
-use App\Application\DTOs\WashLog\CreateWashLogDTO;
-use App\Application\UseCases\WashLog\CreateWashLogUseCase;
-use App\Application\UseCases\WashLog\GetDailyLogUseCase;
-use App\Domain\WashLog\Contracts\WashLogRepositoryInterface;
+use App\Application\DTOs\ServiceLog\CreateServiceLogDTO;
+use App\Application\UseCases\ServiceLog\CreateServiceLogUseCase;
+use App\Application\UseCases\ServiceLog\GetDailyLogUseCase;
+use App\Domain\ServiceLog\Contracts\ServiceLogRepositoryInterface;
 use App\Infrastructure\Http\Controllers\Controller;
-use App\Infrastructure\Http\Requests\WashLog\CreateWashLogRequest;
-use App\Infrastructure\Http\Resources\WashLogResource;
-use App\Infrastructure\Persistence\Models\WashLogModel;
+use App\Infrastructure\Http\Requests\ServiceLog\CreateServiceLogRequest;
+use App\Infrastructure\Http\Resources\ServiceLogResource;
+use App\Infrastructure\Persistence\Models\ServiceLogModel;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 
-class WashLogController extends Controller
+class ServiceLogController extends Controller
 {
     public function __construct(
-        private CreateWashLogUseCase $createWashLog,
+        private CreateServiceLogUseCase $createServiceLog,
         private GetDailyLogUseCase $getDailyLog,
-        private WashLogRepositoryInterface $washLogRepository,
+        private ServiceLogRepositoryInterface $serviceLogRepository,
     ) {}
 
     public function index(Request $request)
     {
-        $query = WashLogModel::with(['clientResource', 'service', 'attendant']);
+        $query = ServiceLogModel::with(['clientResource', 'service', 'attendant']);
 
         if ($request->has('date')) {
             $query->whereDate('log_date', $request->date);
@@ -33,12 +33,12 @@ class WashLogController extends Controller
 
         $logs = $query->orderBy('started_at', 'desc')->paginate($request->get('per_page', 50));
 
-        return WashLogResource::collection($logs);
+        return ServiceLogResource::collection($logs);
     }
 
-    public function store(CreateWashLogRequest $request): JsonResponse
+    public function store(CreateServiceLogRequest $request): JsonResponse
     {
-        $dto = new CreateWashLogDTO(
+        $dto = new CreateServiceLogDTO(
             tenantId: app('current_tenant_id'),
             clientResourceId: $request->client_resource_id,
             serviceId: $request->service_id,
@@ -50,26 +50,26 @@ class WashLogController extends Controller
             notes: $request->notes,
         );
 
-        $washLog = $this->createWashLog->execute($dto);
-        $model = WashLogModel::with(['clientResource', 'service', 'attendant'])->find($washLog->id);
+        $serviceLog = $this->createServiceLog->execute($dto);
+        $model = ServiceLogModel::with(['clientResource', 'service', 'attendant'])->find($serviceLog->id);
 
-        return (new WashLogResource($model))
+        return (new ServiceLogResource($model))
             ->response()
             ->setStatusCode(201);
     }
 
-    public function show(string $id): WashLogResource
+    public function show(string $id): ServiceLogResource
     {
-        $washLog = WashLogModel::with(['vehicle', 'service', 'attendant', 'reservation'])->findOrFail($id);
-        return new WashLogResource($washLog);
+        $serviceLog = ServiceLogModel::with(['clientResource', 'service', 'attendant', 'reservation'])->findOrFail($id);
+        return new ServiceLogResource($serviceLog);
     }
 
     public function complete(string $id): JsonResponse
     {
-        $this->washLogRepository->complete($id, new \DateTimeImmutable());
+        $this->serviceLogRepository->complete($id, new \DateTimeImmutable());
 
         return response()->json([
-            'data' => ['message' => 'Wash log completed'],
+            'data' => ['message' => 'Service log completed'],
             'meta' => ['timestamp' => now()->toIso8601String()],
         ]);
     }

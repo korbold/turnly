@@ -7,11 +7,11 @@ use Illuminate\Database\Eloquent\Concerns\HasUuids;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 
-class WashLogModel extends Model
+class ServiceLogModel extends Model
 {
     use HasUuids, HasFactory;
 
-    protected $table = 'wash_logs';
+    protected $table = 'service_logs';
 
     protected $fillable = [
         'tenant_id', 'client_resource_id', 'service_id', 'reservation_id',
@@ -66,6 +66,6 @@ class WashLogModel extends Model
 
     protected static function newFactory()
     {
-        return \Database\Factories\WashLogModelFactory::new();
+        return \Database\Factories\ServiceLogModelFactory::new();
     }
 }

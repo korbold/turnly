@@ -68,7 +68,7 @@ class WashLogSeeder extends Seeder
             // Business-hour start time
             $startHour = rand(8, 16);
             $startedAt = $logDate->copy()->setTime($startHour, rand(0, 59), 0);
-            $finishedAt = $startedAt->copy()->addMinutes($service->duration_minutes);
+            $finishedAt = $startedAt->copy()->addMinutes(30);
 
             WashLogModel::withoutGlobalScopes()->create([
                 'id'             => Str::uuid(),

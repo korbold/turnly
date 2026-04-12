@@ -17,7 +17,6 @@ class UpdateServiceRequest extends FormRequest
             'name'             => ['nullable', 'string', 'max:255'],
             'description'      => ['nullable', 'string'],
             'price'            => ['nullable', 'numeric', 'min:0'],
-            'duration_minutes' => ['nullable', 'integer', 'min:5', 'max:480'],
             'is_active'        => ['nullable', 'boolean'],
             'sort_order'       => ['nullable', 'integer', 'min:0'],
         ];

@@ -64,9 +64,9 @@ class ReservationModel extends Model
         return $this->belongsTo(UserModel::class, 'created_by');
     }
 
-    public function washLog()
+    public function serviceLog()
     {
-        return $this->hasOne(WashLogModel::class, 'reservation_id');
+        return $this->hasOne(ServiceLogModel::class, 'reservation_id');
     }
 
     protected static function newFactory()

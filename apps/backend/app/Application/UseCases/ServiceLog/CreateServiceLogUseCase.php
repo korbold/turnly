@@ -1,23 +1,23 @@
 <?php
 
-namespace App\Application\UseCases\WashLog;
+namespace App\Application\UseCases\ServiceLog;
 
-use App\Application\DTOs\WashLog\CreateWashLogDTO;
-use App\Domain\WashLog\Contracts\WashLogRepositoryInterface;
-use App\Domain\WashLog\Entities\WashLog;
+use App\Application\DTOs\ServiceLog\CreateServiceLogDTO;
+use App\Domain\ServiceLog\Contracts\ServiceLogRepositoryInterface;
+use App\Domain\ServiceLog\Entities\ServiceLog;
 use Illuminate\Support\Str;
 
-class CreateWashLogUseCase
+class CreateServiceLogUseCase
 {
     public function __construct(
-        private WashLogRepositoryInterface $washLogRepository,
+        private ServiceLogRepositoryInterface $serviceLogRepository,
     ) {}
 
-    public function execute(CreateWashLogDTO $dto): WashLog
+    public function execute(CreateServiceLogDTO $dto): ServiceLog
     {
         $now = new \DateTimeImmutable();
 
-        $washLog = new WashLog(
+        $serviceLog = new ServiceLog(
             id: (string) Str::uuid(),
             tenantId: $dto->tenantId,
             clientResourceId: $dto->clientResourceId,
@@ -34,6 +34,6 @@ class CreateWashLogUseCase
             logDate: $now->format('Y-m-d'),
         );
 
-        return $this->washLogRepository->save($washLog);
+        return $this->serviceLogRepository->save($serviceLog);
     }
 }

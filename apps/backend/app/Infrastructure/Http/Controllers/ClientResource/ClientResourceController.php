@@ -8,7 +8,7 @@ use App\Application\UseCases\ClientResource\GetClientResourceHistoryUseCase;
 use App\Infrastructure\Http\Controllers\Controller;
 use App\Infrastructure\Http\Requests\ClientResource\CreateClientResourceRequest;
 use App\Infrastructure\Http\Resources\ClientResourceResource;
-use App\Infrastructure\Http\Resources\WashLogResource;
+use App\Infrastructure\Http\Resources\ServiceLogResource;
 use App\Infrastructure\Persistence\Models\ClientResourceModel;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;

@@ -4,9 +4,9 @@ namespace App\Infrastructure\Persistence\Repositories;
 
 use App\Domain\ClientResource\Contracts\ClientResourceRepositoryInterface;
 use App\Domain\ClientResource\Entities\ClientResource;
-use App\Domain\WashLog\Entities\WashLog;
+use App\Domain\ServiceLog\Entities\ServiceLog;
 use App\Infrastructure\Persistence\Models\ClientResourceModel;
-use App\Infrastructure\Persistence\Models\WashLogModel;
+use App\Infrastructure\Persistence\Models\ServiceLogModel;
 use Illuminate\Support\Str;
 
 class EloquentClientResourceRepository implements ClientResourceRepositoryInterface
@@ -62,10 +62,10 @@ class EloquentClientResourceRepository implements ClientResourceRepositoryInterf
 
     public function getHistory(string $clientResourceId): array
     {
-        return WashLogModel::where('client_resource_id', $clientResourceId)
+        return ServiceLogModel::where('client_resource_id', $clientResourceId)
             ->orderBy('started_at', 'desc')
             ->get()
-            ->map(fn (WashLogModel $m) => $this->mapWashLogToEntity($m))
+            ->map(fn (ServiceLogModel $m) => $this->mapServiceLogToEntity($m))
             ->all();
     }
 
@@ -108,9 +108,9 @@ class EloquentClientResourceRepository implements ClientResourceRepositoryInterf
         );
     }
 
-    private function mapWashLogToEntity(WashLogModel $model): WashLog
+    private function mapServiceLogToEntity(ServiceLogModel $model): ServiceLog
     {
-        return new WashLog(
+        return new ServiceLog(
             id: $model->id,
             tenantId: $model->tenant_id,
             clientResourceId: $model->client_resource_id,

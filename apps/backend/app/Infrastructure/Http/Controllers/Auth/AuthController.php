@@ -5,6 +5,7 @@ namespace App\Infrastructure\Http\Controllers\Auth;
 use App\Infrastructure\Http\Controllers\Controller;
 use App\Infrastructure\Http\Requests\Auth\LoginRequest;
 use App\Infrastructure\Http\Requests\Auth\RegisterRequest;
+use App\Infrastructure\Persistence\Models\TenantUserModel;
 use App\Infrastructure\Persistence\Models\UserModel;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
@@ -51,6 +52,14 @@ class AuthController extends Controller
 
         $token = $user->createToken('auth_token')->plainTextToken;
 
+        // Get the user's first active tenant
+        $tenantUser = TenantUserModel::where('user_id', $user->id)
+            ->where('is_active', true)
+            ->with('tenant')
+            ->first();
+
+        $tenant = $tenantUser?->tenant;
+
         return response()->json([
             'data' => [
                 'user' => [
@@ -59,6 +68,11 @@ class AuthController extends Controller
                     'email' => $user->email,
                 ],
                 'token' => $token,
+                'tenant' => $tenant ? [
+                    'id' => $tenant->id,
+                    'slug' => $tenant->slug,
+                    'name' => $tenant->name,
+                ] : null,
             ],
             'meta' => ['timestamp' => now()->toIso8601String()],
         ]);

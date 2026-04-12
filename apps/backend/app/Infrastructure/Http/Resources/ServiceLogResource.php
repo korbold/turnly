@@ -5,7 +5,7 @@ namespace App\Infrastructure\Http\Resources;
 use Illuminate\Http\Request;
 use Illuminate\Http\Resources\Json\JsonResource;
 
-class WashLogResource extends JsonResource
+class ServiceLogResource extends JsonResource
 {
     public function toArray(Request $request): array
     {

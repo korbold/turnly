@@ -1,8 +1,8 @@
 <?php
 
-namespace App\Domain\WashLog\Entities;
+namespace App\Domain\ServiceLog\Entities;
 
-final readonly class WashLog
+final readonly class ServiceLog
 {
     public function __construct(
         public string $id,

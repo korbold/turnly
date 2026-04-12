@@ -18,8 +18,8 @@ class UserResource extends JsonResource
             'created_at'     => $this->created_at?->toIso8601String(),
 
             'role' => $this->when(
-                $this->relationLoaded('tenants') && $this->pivot !== null,
-                fn () => $this->pivot?->role
+                $this->relationLoaded('tenants'),
+                fn () => $this->tenants->first()?->pivot?->role
             ),
         ];
     }

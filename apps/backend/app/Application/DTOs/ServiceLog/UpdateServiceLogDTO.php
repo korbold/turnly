@@ -1,8 +1,8 @@
 <?php
 
-namespace App\Application\DTOs\WashLog;
+namespace App\Application\DTOs\ServiceLog;
 
-final readonly class UpdateWashLogDTO
+final readonly class UpdateServiceLogDTO
 {
     public function __construct(
         public string $id,

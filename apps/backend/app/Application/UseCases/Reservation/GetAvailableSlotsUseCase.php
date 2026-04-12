@@ -5,7 +5,7 @@ namespace App\Application\UseCases\Reservation;
 use App\Application\DTOs\Reservation\AvailableSlotsQueryDTO;
 use App\Domain\Reservation\Contracts\ReservationRepositoryInterface;
 use App\Infrastructure\Persistence\Models\AvailabilitySlotModel;
-use App\Infrastructure\Persistence\Models\ServiceModel;
+
 
 class GetAvailableSlotsUseCase
 {
@@ -18,9 +18,8 @@ class GetAvailableSlotsUseCase
         $date = new \DateTimeImmutable($dto->date);
         $dayOfWeek = (int) $date->format('N') - 1; // 0=Monday
 
-        // Get service duration
-        $service = ServiceModel::withoutGlobalScopes()->findOrFail($dto->serviceId);
-        $durationMinutes = $service->duration_minutes;
+        // Fixed 30-minute slot duration
+        $durationMinutes = 30;
 
         // Get availability slots for this day
         $availabilitySlots = AvailabilitySlotModel::withoutGlobalScopes()

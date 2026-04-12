@@ -4,7 +4,7 @@ use App\Infrastructure\Http\Controllers\Auth\AuthController;
 use App\Infrastructure\Http\Controllers\Auth\OnboardingController;
 use App\Infrastructure\Http\Controllers\Tenant\TenantSettingsController;
 use App\Infrastructure\Http\Controllers\Reservation\ReservationController;
-use App\Infrastructure\Http\Controllers\WashLog\WashLogController;
+use App\Infrastructure\Http\Controllers\ServiceLog\ServiceLogController;
 use App\Infrastructure\Http\Controllers\ClientResource\ClientResourceController;
 use App\Infrastructure\Http\Controllers\Service\ServiceController;
 use App\Infrastructure\Http\Controllers\User\UserController;
@@ -45,12 +45,12 @@ Route::prefix('v1')->group(function () {
             Route::patch('reservations/{id}/complete', [ReservationController::class, 'complete']);
             Route::patch('reservations/{id}/cancel', [ReservationController::class, 'cancel']);
 
-            // Wash logs
-            Route::get('wash-logs/summary', [WashLogController::class, 'summary']);
-            Route::get('wash-logs', [WashLogController::class, 'index']);
-            Route::post('wash-logs', [WashLogController::class, 'store']);
-            Route::get('wash-logs/{id}', [WashLogController::class, 'show']);
-            Route::patch('wash-logs/{id}/complete', [WashLogController::class, 'complete']);
+            // Service logs
+            Route::get('service-logs/summary', [ServiceLogController::class, 'summary']);
+            Route::get('service-logs', [ServiceLogController::class, 'index']);
+            Route::post('service-logs', [ServiceLogController::class, 'store']);
+            Route::get('service-logs/{id}', [ServiceLogController::class, 'show']);
+            Route::patch('service-logs/{id}/complete', [ServiceLogController::class, 'complete']);
 
             // Client Resources
             Route::get('client-resources', [ClientResourceController::class, 'index']);

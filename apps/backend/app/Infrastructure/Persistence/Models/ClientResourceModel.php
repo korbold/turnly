@@ -40,9 +40,9 @@ class ClientResourceModel extends Model
         return $this->belongsTo(TenantModel::class, 'tenant_id');
     }
 
-    public function washLogs()
+    public function serviceLogs()
     {
-        return $this->hasMany(WashLogModel::class, 'client_resource_id');
+        return $this->hasMany(ServiceLogModel::class, 'client_resource_id');
     }
 
     protected static function newFactory()
