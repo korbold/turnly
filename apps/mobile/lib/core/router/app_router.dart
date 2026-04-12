@@ -3,6 +3,9 @@ import 'package:go_router/go_router.dart';
 import '../storage/secure_storage.dart';
 import '../../features/auth/presentation/screens/login_screen.dart';
 import '../../features/auth/presentation/screens/register_screen.dart';
+import '../../features/reservations/presentation/screens/reservations_screen.dart';
+import '../../features/reservations/presentation/screens/create_reservation_screen.dart';
+import '../../features/reservations/presentation/screens/reservation_detail_screen.dart';
 
 final goRouter = GoRouter(
   initialLocation: '/login',
@@ -15,7 +18,7 @@ final goRouter = GoRouter(
       return '/login';
     }
     if (isAuthenticated && isAuthRoute) {
-      return '/home';
+      return '/reservations';
     }
     return null;
   },
@@ -34,15 +37,17 @@ final goRouter = GoRouter(
     ),
     GoRoute(
       path: '/reservations',
-      builder: (context, state) => const PlaceholderScreen(text: 'Reservations'),
+      builder: (context, state) => const ReservationsScreen(),
     ),
     GoRoute(
       path: '/reservations/create',
-      builder: (context, state) => const PlaceholderScreen(text: 'Create Reservation'),
+      builder: (context, state) => const CreateReservationScreen(),
     ),
     GoRoute(
       path: '/reservations/:id',
-      builder: (context, state) => PlaceholderScreen(text: 'Reservation ${state.pathParameters['id']}'),
+      builder: (context, state) => ReservationDetailScreen(
+        reservationId: state.pathParameters['id']!,
+      ),
     ),
     GoRoute(
       path: '/vehicles',
@@ -50,7 +55,8 @@ final goRouter = GoRouter(
     ),
     GoRoute(
       path: '/vehicles/:id/history',
-      builder: (context, state) => PlaceholderScreen(text: 'Vehicle History ${state.pathParameters['id']}'),
+      builder: (context, state) =>
+          PlaceholderScreen(text: 'Vehicle History ${state.pathParameters['id']}'),
     ),
   ],
 );
