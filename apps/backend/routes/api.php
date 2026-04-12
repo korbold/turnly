@@ -99,6 +99,11 @@ Route::prefix('v1')->group(function () {
             Route::post('tenant/images', [TenantImageController::class, 'store']);
             Route::delete('tenant/images/{id}', [TenantImageController::class, 'destroy']);
             Route::post('tenant/images/reorder', [TenantImageController::class, 'reorder']);
+
+            // Availability blocks
+            Route::get('availability-blocks', [\App\Infrastructure\Http\Controllers\AvailabilityBlockController::class, 'index']);
+            Route::post('availability-blocks', [\App\Infrastructure\Http\Controllers\AvailabilityBlockController::class, 'store']);
+            Route::delete('availability-blocks/{id}', [\App\Infrastructure\Http\Controllers\AvailabilityBlockController::class, 'destroy']);
         });
 
         // Super admin routes
