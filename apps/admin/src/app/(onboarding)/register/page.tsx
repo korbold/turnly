@@ -48,7 +48,7 @@ export default function RegisterPage() {
     setLoading(true);
     try {
       const result = await registerTenant(data);
-      const tenantId = result.data?.tenant_id ?? result.data?.id;
+      const tenantId = result.data?.tenant?.id;
       if (tenantId) {
         localStorage.setItem('onboarding_tenant_id', String(tenantId));
       }
@@ -57,8 +57,13 @@ export default function RegisterPage() {
       }
       router.push('/verify-email');
     } catch (err: unknown) {
-      const apiError = err as { message?: string };
-      setError(apiError?.message ?? 'Error al registrar el negocio');
+      const apiError = err as { message?: string; fieldErrors?: Record<string, string[]> };
+      if (apiError?.fieldErrors) {
+        const messages = Object.values(apiError.fieldErrors).flat().join('. ');
+        setError(messages);
+      } else {
+        setError(apiError?.message ?? 'Error al registrar el negocio');
+      }
     } finally {
       setLoading(false);
     }
@@ -79,7 +84,7 @@ export default function RegisterPage() {
             <Label htmlFor="name">Nombre del negocio</Label>
             <Input
               id="name"
-              placeholder="Mi Car Wash"
+              placeholder="Mi negocio"
               {...register('name')}
             />
             {errors.name && (

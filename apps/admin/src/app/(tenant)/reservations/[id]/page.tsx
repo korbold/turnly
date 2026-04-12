@@ -185,12 +185,6 @@ export default function ReservationDetailPage({ params }: PageProps) {
               <span>${Number(reservation.service.price).toFixed(2)}</span>
             </p>
           )}
-          {reservation.service?.duration_minutes && (
-            <p>
-              <span className="text-gray-500">Duración: </span>
-              <span>{reservation.service.duration_minutes} minutos</span>
-            </p>
-          )}
         </CardContent>
       </Card>
 

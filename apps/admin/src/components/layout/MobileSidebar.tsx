@@ -3,7 +3,7 @@
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import {
-  LayoutDashboard, CalendarDays, BookOpen, Car,
+  LayoutDashboard, CalendarDays, BookOpen, Contact,
   Wrench, Users, BarChart3, Settings,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
@@ -11,8 +11,8 @@ import { cn } from '@/lib/utils';
 const navItems = [
   { href: '/dashboard', label: 'Dashboard', icon: LayoutDashboard },
   { href: '/reservations', label: 'Reservaciones', icon: CalendarDays },
-  { href: '/wash-log', label: 'Libro Diario', icon: BookOpen },
-  { href: '/vehicles', label: 'Vehículos', icon: Car },
+  { href: '/wash-log', label: 'Registro del día', icon: BookOpen },
+  { href: '/clients', label: 'Clientes', icon: Contact },
   { href: '/services', label: 'Servicios', icon: Wrench },
   { href: '/team', label: 'Equipo', icon: Users },
   { href: '/reports', label: 'Reportes', icon: BarChart3 },
@@ -29,7 +29,7 @@ export function MobileSidebar({ onNavigate }: MobileSidebarProps) {
   return (
     <div className="flex flex-col h-full bg-white">
       <div className="p-6 border-b">
-        <h2 className="text-xl font-bold text-gray-900">WashFlow</h2>
+        <h2 className="text-xl font-bold text-gray-900">Turnly</h2>
         <p className="text-sm text-gray-500 mt-1">Panel de administración</p>
       </div>
       <nav className="flex-1 p-4 space-y-1">

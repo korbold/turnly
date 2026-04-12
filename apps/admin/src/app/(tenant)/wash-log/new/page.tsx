@@ -37,7 +37,7 @@ export default function NewWashLogPage() {
           </Button>
         </Link>
         <div>
-          <h1 className="text-2xl font-bold text-gray-900">Registrar lavado</h1>
+          <h1 className="text-2xl font-bold text-gray-900">Registrar servicio</h1>
           <p className="text-gray-500">Registro de cliente sin cita previa</p>
         </div>
       </div>

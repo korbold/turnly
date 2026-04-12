@@ -15,7 +15,7 @@ export interface Reservation {
   created_by: string;
   created_at: string;
   vehicle?: { plate: string; brand: string | null; model: string | null; color: string | null };
-  service?: { name: string; price: string; duration_minutes: number };
+  service?: { name: string; price: string };
   client?: { name: string; email: string };
 }
 

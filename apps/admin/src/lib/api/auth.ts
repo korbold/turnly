@@ -4,6 +4,7 @@ interface LoginResponse {
   data: {
     user: { id: string; name: string; email: string };
     token: string;
+    tenant?: { id: string; slug: string; name: string } | null;
   };
 }
 
@@ -16,8 +17,11 @@ interface RegisterResponse {
 
 export async function login(email: string, password: string): Promise<LoginResponse> {
   const response = await api.post<LoginResponse>('/auth/login', { email, password });
-  const { token } = response.data.data;
+  const { token, tenant } = response.data.data;
   localStorage.setItem('auth_token', token);
+  if (tenant?.slug) {
+    localStorage.setItem('tenant_slug', tenant.slug);
+  }
   return response.data;
 }
 

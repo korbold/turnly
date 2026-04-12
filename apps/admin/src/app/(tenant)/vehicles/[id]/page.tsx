@@ -136,14 +136,14 @@ export default function VehicleDetailPage({ params }: { params: Promise<{ id: st
       {/* Wash History */}
       <Card>
         <CardHeader>
-          <CardTitle>Historial de lavados</CardTitle>
+          <CardTitle>Historial de servicios</CardTitle>
         </CardHeader>
         <CardContent>
           {historyLoading ? (
             <div className="text-center py-8 text-muted-foreground">Cargando historial...</div>
           ) : washHistory.length === 0 ? (
             <div className="text-center py-8 text-muted-foreground">
-              No hay lavados registrados para este vehículo.
+              No hay servicios registrados para este vehículo.
             </div>
           ) : (
             <Table>

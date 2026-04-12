@@ -14,8 +14,8 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "CarWash Admin",
-  description: "CarWash Admin Panel",
+  title: "Turnly",
+  description: "Gestión de citas y servicios",
 };
 
 export default function RootLayout({

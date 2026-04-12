@@ -23,7 +23,7 @@ import {
 const ROLES = [
   { value: 'tenant_admin', label: 'Admin' },
   { value: 'cashier', label: 'Cajero' },
-  { value: 'washer', label: 'Lavador' },
+  { value: 'washer', label: 'Operador' },
 ];
 
 const roleBadgeColors: Record<string, string> = {
@@ -35,7 +35,7 @@ const roleBadgeColors: Record<string, string> = {
 const roleLabels: Record<string, string> = {
   tenant_admin: 'Admin',
   cashier: 'Cajero',
-  washer: 'Lavador',
+  washer: 'Operador',
 };
 
 export default function TeamPage() {
@@ -112,7 +112,9 @@ export default function TeamPage() {
                         }}
                       >
                         <SelectTrigger className="w-36">
-                          <SelectValue placeholder="Seleccionar rol" />
+                          <SelectValue placeholder="Seleccionar rol">
+                            {roleLabels[user.role ?? ''] ?? 'Seleccionar rol'}
+                          </SelectValue>
                         </SelectTrigger>
                         <SelectContent>
                           {ROLES.map((r) => (

@@ -61,7 +61,7 @@ export default function DashboardPage() {
           <Link href="/wash-log/new">
             <Button variant="outline" size="sm">
               <Plus className="h-4 w-4 mr-1" />
-              Registrar lavado
+              Registrar servicio
             </Button>
           </Link>
         </div>
@@ -84,7 +84,7 @@ export default function DashboardPage() {
 
         <Card>
           <CardHeader className="flex flex-row items-center justify-between pb-2">
-            <CardTitle className="text-sm font-medium text-gray-500">Autos lavados</CardTitle>
+            <CardTitle className="text-sm font-medium text-gray-500">Servicios realizados</CardTitle>
             <Car className="h-4 w-4 text-gray-400" />
           </CardHeader>
           <CardContent>
@@ -112,7 +112,7 @@ export default function DashboardPage() {
 
         <Card>
           <CardHeader className="flex flex-row items-center justify-between pb-2">
-            <CardTitle className="text-sm font-medium text-gray-500">Total lavados</CardTitle>
+            <CardTitle className="text-sm font-medium text-gray-500">Total servicios</CardTitle>
             <Clock className="h-4 w-4 text-gray-400" />
           </CardHeader>
           <CardContent>

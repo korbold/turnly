@@ -28,7 +28,7 @@ export function DailySummaryCard({ summary }: DailySummaryCardProps) {
         </CardHeader>
         <CardContent className="space-y-3">
           <div className="flex justify-between items-center">
-            <span className="text-muted-foreground text-sm">Total autos lavados</span>
+            <span className="text-muted-foreground text-sm">Total servicios realizados</span>
             <span className="font-bold text-lg">{summary.total_washes}</span>
           </div>
           <div className="flex justify-between items-center">
@@ -55,7 +55,7 @@ export function DailySummaryCard({ summary }: DailySummaryCardProps) {
                 <div key={method} className="flex justify-between items-center py-1 border-b last:border-0">
                   <div>
                     <span className="text-sm font-medium">{paymentLabels[method] ?? method}</span>
-                    <span className="text-xs text-muted-foreground ml-2">({stats.count} lavados)</span>
+                    <span className="text-xs text-muted-foreground ml-2">({stats.count} servicios)</span>
                   </div>
                   <span className="font-medium">${Number(stats.total).toFixed(2)}</span>
                 </div>

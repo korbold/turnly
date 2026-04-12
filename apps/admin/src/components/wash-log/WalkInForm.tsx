@@ -43,7 +43,7 @@ export function WalkInForm({ vehicles, services, users }: WalkInFormProps) {
       router.push('/wash-log');
     },
     onError: (err: unknown) => {
-      const message = (err as { message?: string })?.message ?? 'Error al registrar el lavado';
+      const message = (err as { message?: string })?.message ?? 'Error al registrar el servicio';
       setError(message);
     },
   });
@@ -80,7 +80,7 @@ export function WalkInForm({ vehicles, services, users }: WalkInFormProps) {
   return (
     <Card className="max-w-2xl">
       <CardHeader>
-        <CardTitle>Registrar lavado</CardTitle>
+        <CardTitle>Registrar servicio</CardTitle>
       </CardHeader>
       <CardContent>
         <form onSubmit={handleSubmit} className="space-y-4">
@@ -183,7 +183,7 @@ export function WalkInForm({ vehicles, services, users }: WalkInFormProps) {
 
           <div className="flex gap-3 pt-2">
             <Button type="submit" disabled={isPending}>
-              {isPending ? 'Registrando...' : 'Registrar lavado'}
+              {isPending ? 'Registrando...' : 'Registrar servicio'}
             </Button>
             <Button
               type="button"

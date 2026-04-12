@@ -30,13 +30,13 @@ export default function WashLogPage() {
       {/* Header */}
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-2xl font-bold text-gray-900">Libro Diario</h1>
-          <p className="text-gray-500">Registro de lavados del día</p>
+          <h1 className="text-2xl font-bold text-gray-900">Registro del día</h1>
+          <p className="text-gray-500">Registro de servicios del día</p>
         </div>
         <Link href="/wash-log/new">
           <Button>
             <Plus className="h-4 w-4 mr-1" />
-            Registrar lavado
+            Registrar servicio
           </Button>
         </Link>
       </div>
@@ -55,7 +55,7 @@ export default function WashLogPage() {
       {/* Log table */}
       <Card>
         <CardHeader>
-          <CardTitle>Lavados del día</CardTitle>
+          <CardTitle>Servicios del día</CardTitle>
         </CardHeader>
         <CardContent>
           {logsLoading ? (

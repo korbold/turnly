@@ -16,6 +16,9 @@ export default function WelcomePage() {
   }, []);
 
   const handleGoToDashboard = () => {
+    if (slug) {
+      localStorage.setItem('tenant_slug', slug);
+    }
     router.push('/dashboard');
   };
 
@@ -30,13 +33,13 @@ export default function WelcomePage() {
         </div>
         <h2 className="text-2xl font-bold text-gray-900">¡Tu negocio está activo!</h2>
         <p className="text-gray-600">
-          Ya puedes comenzar a gestionar tu lavadero de autos.
+          Ya puedes comenzar a gestionar tu negocio.
         </p>
         {slug && (
           <div className="bg-gray-100 rounded-md p-3 text-sm">
             <p className="text-gray-500 mb-1">Tu URL personalizada:</p>
             <p className="font-mono font-medium text-gray-800">
-              {slug}.washflow.com
+              {slug}.turnly.app
             </p>
           </div>
         )}

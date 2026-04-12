@@ -61,7 +61,7 @@ function DailyTab() {
         <>
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
             <StatCard
-              title="Total lavados"
+              title="Total servicios"
               value={data.washes.total}
               subtitle={`${data.washes.completed} completados`}
               icon={Car}
@@ -164,7 +164,7 @@ function WeeklyTab() {
       ) : report ? (
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
           <StatCard
-            title="Total lavados"
+            title="Total servicios"
             value={String(totalWashes)}
             icon={Car}
           />
@@ -225,7 +225,7 @@ function MonthlyTab() {
       ) : report ? (
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
           <StatCard
-            title="Total lavados"
+            title="Total servicios"
             value={String(totalWashes)}
             icon={Car}
           />

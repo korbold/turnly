@@ -94,8 +94,8 @@ export default function VehiclesPage() {
     <div className="space-y-6">
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-2xl font-bold text-gray-900">Vehículos</h1>
-          <p className="text-gray-500">Registro de vehículos</p>
+          <h1 className="text-2xl font-bold text-gray-900">Clientes</h1>
+          <p className="text-gray-500">Registro de clientes</p>
         </div>
         <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
           <DialogTrigger render={<Button />}>

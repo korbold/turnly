@@ -28,14 +28,12 @@ import type { Service } from '@/types/service';
 interface ServiceFormData {
   name: string;
   price: string;
-  duration_minutes: string;
   description: string;
 }
 
 const emptyForm: ServiceFormData = {
   name: '',
   price: '',
-  duration_minutes: '',
   description: '',
 };
 
@@ -100,7 +98,6 @@ export default function ServicesPage() {
     setForm({
       name: service.name,
       price: service.price,
-      duration_minutes: String(service.duration_minutes),
       description: service.description ?? '',
     });
     setDialogOpen(true);
@@ -111,7 +108,6 @@ export default function ServicesPage() {
     const payload = {
       name: form.name,
       price: parseFloat(form.price),
-      duration_minutes: parseInt(form.duration_minutes),
       description: form.description || undefined,
     };
     if (editingService) {
@@ -128,7 +124,7 @@ export default function ServicesPage() {
       <div className="flex items-center justify-between">
         <div>
           <h1 className="text-2xl font-bold text-gray-900">Servicios</h1>
-          <p className="text-gray-500">Gestión de servicios de lavado</p>
+          <p className="text-gray-500">Gestión de servicios</p>
         </div>
         <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
           <DialogTrigger render={<Button onClick={openCreate} />}>
@@ -146,7 +142,7 @@ export default function ServicesPage() {
                   required
                   value={form.name}
                   onChange={(e) => setForm({ ...form, name: e.target.value })}
-                  placeholder="Ej. Lavado básico"
+                  placeholder="Ej. Servicio básico"
                 />
               </div>
               <div>
@@ -159,19 +155,6 @@ export default function ServicesPage() {
                   value={form.price}
                   onChange={(e) => setForm({ ...form, price: e.target.value })}
                   placeholder="0.00"
-                />
-              </div>
-              <div>
-                <label className="text-sm font-medium text-gray-700 block mb-1">
-                  Duración (minutos)
-                </label>
-                <Input
-                  required
-                  type="number"
-                  min="1"
-                  value={form.duration_minutes}
-                  onChange={(e) => setForm({ ...form, duration_minutes: e.target.value })}
-                  placeholder="30"
                 />
               </div>
               <div>
@@ -244,7 +227,6 @@ export default function ServicesPage() {
                 <TableRow>
                   <TableHead>Nombre</TableHead>
                   <TableHead>Precio</TableHead>
-                  <TableHead>Duración</TableHead>
                   <TableHead>Activo</TableHead>
                   <TableHead className="text-right">Acciones</TableHead>
                 </TableRow>
@@ -254,7 +236,6 @@ export default function ServicesPage() {
                   <TableRow key={service.id}>
                     <TableCell className="font-medium">{service.name}</TableCell>
                     <TableCell>${parseFloat(service.price).toFixed(2)}</TableCell>
-                    <TableCell>{service.duration_minutes} min</TableCell>
                     <TableCell>
                       <button
                         onClick={() =>

@@ -51,7 +51,7 @@ export function DailyLogTable({ logs, date }: DailyLogTableProps) {
   if (logs.length === 0) {
     return (
       <div className="text-center py-10 text-muted-foreground">
-        No hay lavados registrados para este día.
+        No hay registros para este día.
       </div>
     );
   }

@@ -20,8 +20,13 @@ export default function VerifyEmailPage() {
       await verifyTenant(tenantId);
       router.push('/configure');
     } catch (err: unknown) {
-      const apiError = err as { message?: string };
-      setError(apiError?.message ?? 'Error al activar la cuenta');
+      const apiError = err as { message?: string; fieldErrors?: Record<string, string[]> };
+      if (apiError?.fieldErrors) {
+        const messages = Object.values(apiError.fieldErrors).flat().join('. ');
+        setError(messages);
+      } else {
+        setError(apiError?.message ?? 'Error al activar la cuenta');
+      }
     } finally {
       setLoading(false);
     }

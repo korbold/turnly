@@ -10,7 +10,6 @@ export async function getServices(params?: { per_page?: number }): Promise<Pagin
 export async function createService(data: {
   name: string;
   price: number;
-  duration_minutes: number;
   description?: string;
 }): Promise<Service> {
   const response = await api.post('/services', data);
@@ -20,7 +19,6 @@ export async function createService(data: {
 export async function updateService(id: string, data: Partial<{
   name: string;
   price: number;
-  duration_minutes: number;
   description: string;
   is_active: boolean;
   sort_order: number;

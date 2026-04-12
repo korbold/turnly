@@ -28,7 +28,7 @@ export default function ConfigurePage() {
         <div className="bg-blue-50 text-blue-700 text-sm p-3 rounded-md text-left space-y-1">
           <p className="font-medium">Próximos pasos sugeridos:</p>
           <ul className="list-disc list-inside space-y-1 text-blue-600">
-            <li>Agregar servicios de lavado</li>
+            <li>Agregar servicios</li>
             <li>Configurar horarios de atención</li>
             <li>Invitar a tu equipo</li>
           </ul>
