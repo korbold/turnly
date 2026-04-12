@@ -135,7 +135,9 @@ export default function ReservationsPage() {
           <label className="text-sm font-medium text-[#343C6A]">Estado:</label>
           <Select value={status} onValueChange={(v) => setStatus(v ?? 'all')}>
             <SelectTrigger className="w-44">
-              <SelectValue />
+              <SelectValue placeholder="Todos los estados">
+                {STATUS_OPTIONS.find((o) => o.value === status)?.label}
+              </SelectValue>
             </SelectTrigger>
             <SelectContent>
               {STATUS_OPTIONS.map((opt) => (
@@ -151,7 +153,9 @@ export default function ReservationsPage() {
           <label className="text-sm font-medium text-[#343C6A]">Servicio:</label>
           <Select value={serviceId} onValueChange={(v) => setServiceId(v ?? 'all')}>
             <SelectTrigger className="w-48">
-              <SelectValue />
+              <SelectValue placeholder="Todos los servicios">
+                {serviceId === 'all' ? 'Todos los servicios' : services.find((s) => s.id === serviceId)?.name}
+              </SelectValue>
             </SelectTrigger>
             <SelectContent>
               <SelectItem value="all">Todos los servicios</SelectItem>
