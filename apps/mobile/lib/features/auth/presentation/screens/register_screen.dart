@@ -61,7 +61,7 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
               child: Column(
                 mainAxisSize: MainAxisSize.min,
                 children: [
-                  Text('WashFlow', style: Theme.of(context).textTheme.headlineLarge?.copyWith(fontWeight: FontWeight.bold)),
+                  Text('Turnly', style: Theme.of(context).textTheme.headlineLarge?.copyWith(fontWeight: FontWeight.bold)),
                   const SizedBox(height: 8),
                   Text('Crea tu cuenta', style: Theme.of(context).textTheme.bodyLarge?.copyWith(color: Colors.grey)),
                   const SizedBox(height: 32),

@@ -73,7 +73,7 @@ class _VehicleHistoryScreenState extends State<VehicleHistoryScreen> {
         }
         if (_entries.isEmpty) {
           return const Center(
-            child: Text('Este vehículo aún no tiene historial de lavados.'),
+            child: Text('Este vehículo aún no tiene historial de servicios.'),
           );
         }
         return RefreshIndicator(

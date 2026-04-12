@@ -1,4 +1,4 @@
-package com.washflow.washflow_mobile
+package com.turnly.turnly_mobile
 
 import io.flutter.embedding.android.FlutterActivity
 
