@@ -1,9 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import '../storage/secure_storage.dart';
-
-// Import placeholder screens - we'll create real ones in later tasks
-// For now, create minimal placeholder screens
+import '../../features/auth/presentation/screens/login_screen.dart';
+import '../../features/auth/presentation/screens/register_screen.dart';
 
 final goRouter = GoRouter(
   initialLocation: '/login',
@@ -23,11 +22,11 @@ final goRouter = GoRouter(
   routes: [
     GoRoute(
       path: '/login',
-      builder: (context, state) => const PlaceholderScreen(text: 'Login'),
+      builder: (context, state) => const LoginScreen(),
     ),
     GoRoute(
       path: '/register',
-      builder: (context, state) => const PlaceholderScreen(text: 'Register'),
+      builder: (context, state) => const RegisterScreen(),
     ),
     GoRoute(
       path: '/home',
