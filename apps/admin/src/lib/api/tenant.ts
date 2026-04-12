@@ -14,6 +14,8 @@ export async function updateTenantSettings(data: {
   custom_fields?: Array<{ key: string; label: string; type: string; required: boolean; options?: string[] | null }>;
   social_links?: Record<string, string>;
   brand_theme?: string;
+  logo_url?: string;
+  cover_url?: string;
   settings?: Record<string, unknown>;
   onboarding_step?: number;
 }) {

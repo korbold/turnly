@@ -14,6 +14,7 @@ import {
   SelectValue,
 } from '@/components/ui/select';
 import { BUSINESS_TYPES, BRAND_THEMES } from '@/lib/constants/business-types';
+import { ImageUpload } from '@/components/ui/image-upload';
 import { Trash2, Plus } from 'lucide-react';
 
 interface CustomField {
@@ -35,6 +36,8 @@ export default function SettingsPage() {
   const [address, setAddress] = useState('');
   const [phone, setPhone] = useState('');
   const [brandTheme, setBrandTheme] = useState('blue');
+  const [logoUrl, setLogoUrl] = useState('');
+  const [coverUrl, setCoverUrl] = useState('');
   const [socialLinks, setSocialLinks] = useState<Record<string, string>>({
     instagram: '',
     facebook: '',
@@ -52,6 +55,8 @@ export default function SettingsPage() {
     if (!tenantSettings) return;
     const t = tenantSettings as Record<string, unknown>;
     setName((t.name as string) ?? '');
+    setLogoUrl((t.logo_url as string) ?? '');
+    setCoverUrl((t.cover_url as string) ?? '');
     setBusinessType((t.business_type as string) ?? '');
     setDescription((t.description as string) ?? '');
     setAddress((t.address as string) ?? '');
@@ -84,6 +89,8 @@ export default function SettingsPage() {
       phone,
       business_type: businessType,
       brand_theme: brandTheme,
+      logo_url: logoUrl || undefined,
+      cover_url: coverUrl || undefined,
       social_links: socialLinks,
       custom_fields: customFields,
     });
@@ -136,6 +143,29 @@ export default function SettingsPage() {
               <CardTitle>Información del negocio</CardTitle>
             </CardHeader>
             <CardContent className="space-y-4">
+              <div className="flex flex-col sm:flex-row gap-6">
+                <div className="space-y-1.5">
+                  <label className="text-sm font-medium text-gray-700">Logo del negocio</label>
+                  <ImageUpload
+                    currentUrl={logoUrl || null}
+                    folder="logos"
+                    label="Logo del negocio"
+                    rounded
+                    onUpload={(url) => setLogoUrl(url)}
+                    onRemove={() => setLogoUrl('')}
+                  />
+                </div>
+                <div className="flex-1 space-y-1.5">
+                  <label className="text-sm font-medium text-gray-700">Imagen de portada</label>
+                  <ImageUpload
+                    currentUrl={coverUrl || null}
+                    folder="covers"
+                    label="Imagen de portada"
+                    onUpload={(url) => setCoverUrl(url)}
+                    onRemove={() => setCoverUrl('')}
+                  />
+                </div>
+              </div>
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div className="space-y-1.5">
                   <label className="text-sm font-medium text-gray-700">Nombre</label>
