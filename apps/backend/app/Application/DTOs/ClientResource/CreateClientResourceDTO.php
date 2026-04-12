@@ -1,13 +1,15 @@
 <?php
 
-namespace App\Application\DTOs\Vehicle;
+namespace App\Application\DTOs\ClientResource;
 
-final readonly class CreateVehicleDTO
+final readonly class CreateClientResourceDTO
 {
     public function __construct(
         public string $tenantId,
-        public string $ownerId,
-        public string $plate,
+        public string $clientId,
+        public ?string $label = null,
+        public ?array $data = null,
+        public string $plate = '',
         public ?string $brand = null,
         public ?string $model = null,
         public ?string $color = null,
@@ -18,8 +20,10 @@ final readonly class CreateVehicleDTO
     {
         return new static(
             tenantId: $data['tenant_id'],
-            ownerId: $data['owner_id'],
-            plate: $data['plate'],
+            clientId: $data['client_id'],
+            label: $data['label'] ?? null,
+            data: $data['data'] ?? null,
+            plate: $data['plate'] ?? '',
             brand: $data['brand'] ?? null,
             model: $data['model'] ?? null,
             color: $data['color'] ?? null,

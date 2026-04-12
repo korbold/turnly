@@ -6,7 +6,7 @@ final readonly class CreateWashLogDTO
 {
     public function __construct(
         public string $tenantId,
-        public string $vehicleId,
+        public string $clientResourceId,
         public string $serviceId,
         public string $attendedBy,
         public string $createdBy,
@@ -20,7 +20,7 @@ final readonly class CreateWashLogDTO
     {
         return new static(
             tenantId: $data['tenant_id'],
-            vehicleId: $data['vehicle_id'],
+            clientResourceId: $data['client_resource_id'],
             serviceId: $data['service_id'],
             attendedBy: $data['attended_by'],
             createdBy: $data['created_by'],

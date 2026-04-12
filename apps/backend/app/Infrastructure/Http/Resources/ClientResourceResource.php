@@ -5,13 +5,15 @@ namespace App\Infrastructure\Http\Resources;
 use Illuminate\Http\Request;
 use Illuminate\Http\Resources\Json\JsonResource;
 
-class VehicleResource extends JsonResource
+class ClientResourceResource extends JsonResource
 {
     public function toArray(Request $request): array
     {
         return [
             'id'         => $this->id,
-            'owner_id'   => $this->owner_id,
+            'client_id'  => $this->client_id,
+            'label'      => $this->label,
+            'data'       => $this->data,
             'plate'      => $this->plate,
             'brand'      => $this->brand,
             'model'      => $this->model,
@@ -19,9 +21,9 @@ class VehicleResource extends JsonResource
             'type'       => $this->type,
             'created_at' => $this->created_at?->toIso8601String(),
 
-            'owner' => $this->whenLoaded('owner', fn () => [
-                'name'  => $this->owner->name,
-                'email' => $this->owner->email,
+            'client' => $this->whenLoaded('client', fn () => [
+                'name'  => $this->client->name,
+                'email' => $this->client->email,
             ]),
         ];
     }

@@ -2,65 +2,67 @@
 
 namespace App\Infrastructure\Persistence\Repositories;
 
-use App\Domain\Vehicle\Contracts\VehicleRepositoryInterface;
-use App\Domain\Vehicle\Entities\Vehicle;
+use App\Domain\ClientResource\Contracts\ClientResourceRepositoryInterface;
+use App\Domain\ClientResource\Entities\ClientResource;
 use App\Domain\WashLog\Entities\WashLog;
-use App\Infrastructure\Persistence\Models\VehicleModel;
+use App\Infrastructure\Persistence\Models\ClientResourceModel;
 use App\Infrastructure\Persistence\Models\WashLogModel;
 use Illuminate\Support\Str;
 
-class EloquentVehicleRepository implements VehicleRepositoryInterface
+class EloquentClientResourceRepository implements ClientResourceRepositoryInterface
 {
-    public function findById(string $id): ?Vehicle
+    public function findById(string $id): ?ClientResource
     {
-        $model = VehicleModel::find($id);
+        $model = ClientResourceModel::find($id);
 
         return $model ? $this->mapToEntity($model) : null;
     }
 
-    public function findByPlate(string $tenantId, string $plate): ?Vehicle
+    public function findByPlate(string $tenantId, string $plate): ?ClientResource
     {
-        $model = VehicleModel::where('plate', $plate)->first();
+        $model = ClientResourceModel::where('plate', $plate)->first();
 
         return $model ? $this->mapToEntity($model) : null;
     }
 
-    public function findByOwner(string $ownerId): array
+    public function findByClient(string $clientId): array
     {
-        return VehicleModel::where('owner_id', $ownerId)
+        return ClientResourceModel::where('client_id', $clientId)
             ->get()
-            ->map(fn (VehicleModel $m) => $this->mapToEntity($m))
+            ->map(fn (ClientResourceModel $m) => $this->mapToEntity($m))
             ->all();
     }
 
-    public function save(Vehicle $vehicle): Vehicle
+    public function save(ClientResource $clientResource): ClientResource
     {
-        $model = VehicleModel::find($vehicle->id);
+        $model = ClientResourceModel::find($clientResource->id);
 
         $data = [
-            'tenant_id' => $vehicle->tenantId,
-            'owner_id'  => $vehicle->ownerId,
-            'plate'     => $vehicle->plate,
-            'brand'     => $vehicle->brand,
-            'model'     => $vehicle->model,
-            'color'     => $vehicle->color,
-            'type'      => $vehicle->type,
+            'tenant_id'  => $clientResource->tenantId,
+            'client_id'  => $clientResource->clientId,
+            'label'      => $clientResource->label,
+            'data'       => $clientResource->data,
+            'plate'      => $clientResource->plate,
+            'brand'      => $clientResource->brand,
+            'model'      => $clientResource->model,
+            'color'      => $clientResource->color,
+            'type'       => $clientResource->type,
         ];
 
         if ($model) {
             $model->update($data);
             $model->refresh();
         } else {
-            $id = $vehicle->id ?: (string) Str::uuid();
-            $model = VehicleModel::create(array_merge(['id' => $id], $data));
+            $id = $clientResource->id ?: (string) Str::uuid();
+            $model = ClientResourceModel::create(array_merge(['id' => $id], $data));
         }
 
         return $this->mapToEntity($model);
     }
 
-    public function getHistory(string $vehicleId): array
+    public function getHistory(string $clientResourceId): array
     {
-        return WashLogModel::where('vehicle_id', $vehicleId)
+        return WashLogModel::where('client_resource_id', $clientResourceId)
             ->orderBy('started_at', 'desc')
             ->get()
             ->map(fn (WashLogModel $m) => $this->mapWashLogToEntity($m))
@@ -69,10 +71,10 @@ class EloquentVehicleRepository implements VehicleRepositoryInterface
 
     public function paginate(int $perPage = 15, array $filters = []): array
     {
-        $query = VehicleModel::orderBy('created_at', 'desc');
+        $query = ClientResourceModel::orderBy('created_at', 'desc');
 
-        if (!empty($filters['owner_id'])) {
-            $query->where('owner_id', $filters['owner_id']);
+        if (!empty($filters['client_id'])) {
+            $query->where('client_id', $filters['client_id']);
         }
 
         if (!empty($filters['plate'])) {
@@ -82,7 +84,7 @@ class EloquentVehicleRepository implements VehicleRepositoryInterface
         $paginator = $query->paginate($perPage);
 
         return [
-            'data'         => $paginator->map(fn (VehicleModel $m) => $this->mapToEntity($m))->all(),
+            'data'         => $paginator->map(fn (ClientResourceModel $m) => $this->mapToEntity($m))->all(),
             'total'        => $paginator->total(),
             'per_page'     => $paginator->perPage(),
             'current_page' => $paginator->currentPage(),
@@ -90,12 +92,14 @@ class EloquentVehicleRepository implements VehicleRepositoryInterface
         ];
     }
 
-    private function mapToEntity(VehicleModel $model): Vehicle
+    private function mapToEntity(ClientResourceModel $model): ClientResource
     {
-        return new Vehicle(
+        return new ClientResource(
             id: $model->id,
             tenantId: $model->tenant_id,
-            ownerId: $model->owner_id,
+            clientId: $model->client_id,
+            label: $model->label,
+            data: $model->data,
             plate: $model->plate,
             brand: $model->brand,
             model: $model->model,
@@ -109,7 +113,7 @@ class EloquentVehicleRepository implements VehicleRepositoryInterface
         return new WashLog(
             id: $model->id,
             tenantId: $model->tenant_id,
-            vehicleId: $model->vehicle_id,
+            clientResourceId: $model->client_resource_id,
             serviceId: $model->service_id,
             reservationId: $model->reservation_id,
             attendedBy: $model->attended_by,

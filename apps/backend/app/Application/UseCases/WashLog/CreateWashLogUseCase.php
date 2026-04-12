@@ -20,7 +20,7 @@ class CreateWashLogUseCase
         $washLog = new WashLog(
             id: (string) Str::uuid(),
             tenantId: $dto->tenantId,
-            vehicleId: $dto->vehicleId,
+            clientResourceId: $dto->clientResourceId,
             serviceId: $dto->serviceId,
             reservationId: $dto->reservationId,
             attendedBy: $dto->attendedBy,

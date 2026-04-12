@@ -7,7 +7,7 @@ final readonly class WashLog
     public function __construct(
         public string $id,
         public string $tenantId,
-        public string $vehicleId,
+        public ?string $clientResourceId,
         public string $serviceId,
         public ?string $reservationId,
         public string $attendedBy,

@@ -12,7 +12,7 @@ class ReservationResource extends JsonResource
         return [
             'id'            => $this->id,
             'client_id'     => $this->client_id,
-            'vehicle_id'    => $this->vehicle_id,
+            'client_resource_id' => $this->client_resource_id,
             'service_id'    => $this->service_id,
             'assigned_to'   => $this->assigned_to,
             'scheduled_at'  => $this->scheduled_at?->toIso8601String(),
@@ -24,17 +24,18 @@ class ReservationResource extends JsonResource
             'created_by'    => $this->created_by,
             'created_at'    => $this->created_at?->toIso8601String(),
 
-            'vehicle' => $this->whenLoaded('vehicle', fn () => [
-                'plate' => $this->vehicle->plate,
-                'brand' => $this->vehicle->brand,
-                'model' => $this->vehicle->model,
-                'color' => $this->vehicle->color,
+            'client_resource' => $this->whenLoaded('clientResource', fn () => [
+                'label' => $this->clientResource->label,
+                'data'  => $this->clientResource->data,
+                'plate' => $this->clientResource->plate,
+                'brand' => $this->clientResource->brand,
+                'model' => $this->clientResource->model,
+                'color' => $this->clientResource->color,
             ]),
 
             'service' => $this->whenLoaded('service', fn () => [
                 'name'             => $this->service->name,
                 'price'            => $this->service->price,
-                'duration_minutes' => $this->service->duration_minutes,
             ]),
 
             'client' => $this->whenLoaded('client', fn () => [

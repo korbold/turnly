@@ -23,7 +23,7 @@ class WashLogController extends Controller
 
     public function index(Request $request)
     {
-        $query = WashLogModel::with(['vehicle', 'service', 'attendant']);
+        $query = WashLogModel::with(['clientResource', 'service', 'attendant']);
 
         if ($request->has('date')) {
             $query->whereDate('log_date', $request->date);
@@ -40,7 +40,7 @@ class WashLogController extends Controller
     {
         $dto = new CreateWashLogDTO(
             tenantId: app('current_tenant_id'),
-            vehicleId: $request->vehicle_id,
+            clientResourceId: $request->client_resource_id,
             serviceId: $request->service_id,
             attendedBy: $request->attended_by,
             createdBy: $request->user()->id,
@@ -51,7 +51,7 @@ class WashLogController extends Controller
         );
 
         $washLog = $this->createWashLog->execute($dto);
-        $model = WashLogModel::with(['vehicle', 'service', 'attendant'])->find($washLog->id);
+        $model = WashLogModel::with(['clientResource', 'service', 'attendant'])->find($washLog->id);
 
         return (new WashLogResource($model))
             ->response()

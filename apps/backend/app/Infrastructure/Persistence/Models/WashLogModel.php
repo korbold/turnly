@@ -14,7 +14,7 @@ class WashLogModel extends Model
     protected $table = 'wash_logs';
 
     protected $fillable = [
-        'tenant_id', 'vehicle_id', 'service_id', 'reservation_id',
+        'tenant_id', 'client_resource_id', 'service_id', 'reservation_id',
         'attended_by', 'created_by', 'started_at', 'finished_at',
         'price_charged', 'payment_method', 'status', 'notes', 'log_date',
     ];
@@ -39,9 +39,9 @@ class WashLogModel extends Model
         return $this->belongsTo(TenantModel::class, 'tenant_id');
     }
 
-    public function vehicle()
+    public function clientResource()
     {
-        return $this->belongsTo(VehicleModel::class, 'vehicle_id');
+        return $this->belongsTo(ClientResourceModel::class, 'client_resource_id');
     }
 
     public function service()

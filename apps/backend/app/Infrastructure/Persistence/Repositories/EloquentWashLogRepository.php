@@ -31,7 +31,7 @@ class EloquentWashLogRepository implements WashLogRepositoryInterface
 
         $data = [
             'tenant_id'      => $washLog->tenantId,
-            'vehicle_id'     => $washLog->vehicleId,
+            'client_resource_id'     => $washLog->clientResourceId,
             'service_id'     => $washLog->serviceId,
             'reservation_id' => $washLog->reservationId,
             'attended_by'    => $washLog->attendedBy,
@@ -125,7 +125,7 @@ class EloquentWashLogRepository implements WashLogRepositoryInterface
         return new WashLog(
             id: $model->id,
             tenantId: $model->tenant_id,
-            vehicleId: $model->vehicle_id,
+            clientResourceId: $model->client_resource_id,
             serviceId: $model->service_id,
             reservationId: $model->reservation_id,
             attendedBy: $model->attended_by,

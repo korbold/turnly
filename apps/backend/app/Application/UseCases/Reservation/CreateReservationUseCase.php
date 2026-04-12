@@ -9,7 +9,7 @@ use App\Domain\Reservation\Enums\ReservationStatus;
 use App\Domain\Reservation\Exceptions\OutsideBusinessHoursException;
 use App\Domain\Reservation\Exceptions\ReservationConflictException;
 use App\Infrastructure\Persistence\Models\AvailabilitySlotModel;
-use App\Infrastructure\Persistence\Models\ServiceModel;
+
 use Illuminate\Support\Str;
 
 class CreateReservationUseCase
@@ -22,9 +22,8 @@ class CreateReservationUseCase
     {
         $scheduledAt = new \DateTimeImmutable($dto->scheduledAt);
 
-        // Get service to calculate estimated_end
-        $service = ServiceModel::withoutGlobalScopes()->findOrFail($dto->serviceId);
-        $estimatedEnd = $scheduledAt->modify("+{$service->duration_minutes} minutes");
+        // Calculate estimated_end using a fixed 30-minute slot
+        $estimatedEnd = $scheduledAt->modify('+30 minutes');
 
         // Check business hours
         $dayOfWeek = (int) $scheduledAt->format('N') - 1; // 0=Monday
@@ -55,7 +54,7 @@ class CreateReservationUseCase
             id: (string) Str::uuid(),
             tenantId: $dto->tenantId,
             clientId: $dto->clientId,
-            vehicleId: $dto->vehicleId,
+            clientResourceId: $dto->clientResourceId,
             serviceId: $dto->serviceId,
             assignedTo: $dto->assignedTo,
             scheduledAt: $scheduledAt,

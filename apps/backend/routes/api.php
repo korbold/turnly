@@ -5,7 +5,7 @@ use App\Infrastructure\Http\Controllers\Auth\OnboardingController;
 use App\Infrastructure\Http\Controllers\Tenant\TenantSettingsController;
 use App\Infrastructure\Http\Controllers\Reservation\ReservationController;
 use App\Infrastructure\Http\Controllers\WashLog\WashLogController;
-use App\Infrastructure\Http\Controllers\Vehicle\VehicleController;
+use App\Infrastructure\Http\Controllers\ClientResource\ClientResourceController;
 use App\Infrastructure\Http\Controllers\Service\ServiceController;
 use App\Infrastructure\Http\Controllers\User\UserController;
 use App\Infrastructure\Http\Controllers\Report\ReportController;
@@ -52,11 +52,11 @@ Route::prefix('v1')->group(function () {
             Route::get('wash-logs/{id}', [WashLogController::class, 'show']);
             Route::patch('wash-logs/{id}/complete', [WashLogController::class, 'complete']);
 
-            // Vehicles
-            Route::get('vehicles', [VehicleController::class, 'index']);
-            Route::post('vehicles', [VehicleController::class, 'store']);
-            Route::get('vehicles/{id}', [VehicleController::class, 'show']);
-            Route::get('vehicles/{id}/history', [VehicleController::class, 'history']);
+            // Client Resources
+            Route::get('client-resources', [ClientResourceController::class, 'index']);
+            Route::post('client-resources', [ClientResourceController::class, 'store']);
+            Route::get('client-resources/{id}', [ClientResourceController::class, 'show']);
+            Route::get('client-resources/{id}/history', [ClientResourceController::class, 'history']);
 
             // Services
             Route::get('services', [ServiceController::class, 'index']);

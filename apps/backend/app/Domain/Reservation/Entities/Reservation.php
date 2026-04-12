@@ -10,7 +10,7 @@ final readonly class Reservation
         public string $id,
         public string $tenantId,
         public string $clientId,
-        public string $vehicleId,
+        public ?string $clientResourceId,
         public string $serviceId,
         public ?string $assignedTo,
         public \DateTimeImmutable $scheduledAt,

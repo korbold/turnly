@@ -8,24 +8,31 @@ use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\SoftDeletes;
 
-class VehicleModel extends Model
+class ClientResourceModel extends Model
 {
     use HasUuids, HasFactory, SoftDeletes;
 
-    protected $table = 'vehicles';
+    protected $table = 'client_resources';
 
     protected $fillable = [
-        'tenant_id', 'owner_id', 'plate', 'brand', 'model', 'color', 'type',
+        'tenant_id', 'client_id', 'label', 'data', 'plate', 'brand', 'model', 'color', 'type',
     ];
+
+    protected function casts(): array
+    {
+        return [
+            'data' => 'array',
+        ];
+    }
 
     protected static function booted(): void
     {
         static::addGlobalScope(new TenantScope());
     }
 
-    public function owner()
+    public function client()
     {
-        return $this->belongsTo(UserModel::class, 'owner_id');
+        return $this->belongsTo(UserModel::class, 'client_id');
     }
 
     public function tenant()
@@ -35,11 +42,11 @@ class VehicleModel extends Model
 
     public function washLogs()
     {
-        return $this->hasMany(WashLogModel::class, 'vehicle_id');
+        return $this->hasMany(WashLogModel::class, 'client_resource_id');
     }
 
     protected static function newFactory()
     {
-        return \Database\Factories\VehicleModelFactory::new();
+        return \Database\Factories\ClientResourceModelFactory::new();
     }
 }

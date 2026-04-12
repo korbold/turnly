@@ -1,13 +1,15 @@
 <?php
 
-namespace App\Domain\Vehicle\Entities;
+namespace App\Domain\ClientResource\Entities;
 
-final readonly class Vehicle
+final readonly class ClientResource
 {
     public function __construct(
         public string $id,
         public string $tenantId,
-        public string $ownerId,
+        public string $clientId,
+        public ?string $label,
+        public ?array $data,
         public string $plate,
         public ?string $brand,
         public ?string $model,

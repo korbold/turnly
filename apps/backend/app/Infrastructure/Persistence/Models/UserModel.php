@@ -38,9 +38,9 @@ class UserModel extends Authenticatable
             ->withTimestamps();
     }
 
-    public function vehicles()
+    public function clientResources()
     {
-        return $this->hasMany(VehicleModel::class, 'owner_id');
+        return $this->hasMany(ClientResourceModel::class, 'client_id');
     }
 
     protected static function newFactory()

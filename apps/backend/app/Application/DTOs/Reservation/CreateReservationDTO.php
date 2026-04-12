@@ -7,7 +7,7 @@ final readonly class CreateReservationDTO
     public function __construct(
         public string $tenantId,
         public string $clientId,
-        public string $vehicleId,
+        public ?string $clientResourceId,
         public string $serviceId,
         public string $scheduledAt,
         public string $createdBy,
@@ -20,7 +20,7 @@ final readonly class CreateReservationDTO
         return new static(
             tenantId: $data['tenant_id'],
             clientId: $data['client_id'],
-            vehicleId: $data['vehicle_id'],
+            clientResourceId: $data['client_resource_id'] ?? null,
             serviceId: $data['service_id'],
             scheduledAt: $data['scheduled_at'],
             createdBy: $data['created_by'],

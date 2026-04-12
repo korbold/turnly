@@ -55,7 +55,7 @@ class EloquentReservationRepository implements ReservationRepositoryInterface
         $data = [
             'tenant_id'     => $reservation->tenantId,
             'client_id'     => $reservation->clientId,
-            'vehicle_id'    => $reservation->vehicleId,
+            'client_resource_id'    => $reservation->clientResourceId,
             'service_id'    => $reservation->serviceId,
             'assigned_to'   => $reservation->assignedTo,
             'scheduled_at'  => $reservation->scheduledAt->format('Y-m-d H:i:s'),
@@ -125,7 +125,7 @@ class EloquentReservationRepository implements ReservationRepositoryInterface
             id: $model->id,
             tenantId: $model->tenant_id,
             clientId: $model->client_id,
-            vehicleId: $model->vehicle_id,
+            clientResourceId: $model->client_resource_id,
             serviceId: $model->service_id,
             assignedTo: $model->assigned_to,
             scheduledAt: \DateTimeImmutable::createFromMutable($model->scheduled_at->toDateTime()),

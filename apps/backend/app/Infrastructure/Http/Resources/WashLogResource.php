@@ -11,7 +11,7 @@ class WashLogResource extends JsonResource
     {
         return [
             'id'             => $this->id,
-            'vehicle_id'     => $this->vehicle_id,
+            'client_resource_id' => $this->client_resource_id,
             'service_id'     => $this->service_id,
             'reservation_id' => $this->reservation_id,
             'attended_by'    => $this->attended_by,
@@ -25,9 +25,10 @@ class WashLogResource extends JsonResource
             'log_date'       => $this->log_date,
             'created_at'     => $this->created_at?->toIso8601String(),
 
-            'vehicle' => $this->whenLoaded('vehicle', fn () => [
-                'plate' => $this->vehicle->plate,
-                'brand' => $this->vehicle->brand,
+            'client_resource' => $this->whenLoaded('clientResource', fn () => [
+                'label' => $this->clientResource->label,
+                'plate' => $this->clientResource->plate,
+                'brand' => $this->clientResource->brand,
             ]),
 
             'service' => $this->whenLoaded('service', fn () => [

@@ -1,10 +1,10 @@
 <?php
 
-namespace App\Infrastructure\Http\Requests\Vehicle;
+namespace App\Infrastructure\Http\Requests\ClientResource;
 
 use Illuminate\Foundation\Http\FormRequest;
 
-class CreateVehicleRequest extends FormRequest
+class CreateClientResourceRequest extends FormRequest
 {
     public function authorize(): bool
     {
@@ -14,7 +14,9 @@ class CreateVehicleRequest extends FormRequest
     public function rules(): array
     {
         return [
-            'plate'  => ['required', 'string', 'max:20'],
+            'label'  => ['nullable', 'string', 'max:255'],
+            'data'   => ['nullable', 'array'],
+            'plate'  => ['nullable', 'string', 'max:20'],
             'brand'  => ['nullable', 'string', 'max:100'],
             'model'  => ['nullable', 'string', 'max:100'],
             'color'  => ['nullable', 'string', 'max:50'],

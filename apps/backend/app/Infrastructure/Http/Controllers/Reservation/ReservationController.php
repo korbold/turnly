@@ -31,7 +31,7 @@ class ReservationController extends Controller
 
     public function index(Request $request)
     {
-        $query = ReservationModel::with(['vehicle', 'service', 'client']);
+        $query = ReservationModel::with(['clientResource', 'service', 'client']);
 
         if ($request->has('date')) {
             $query->whereDate('scheduled_at', $request->date);
@@ -53,7 +53,7 @@ class ReservationController extends Controller
         $dto = new CreateReservationDTO(
             tenantId: app('current_tenant_id'),
             clientId: $request->user()->id,
-            vehicleId: $request->vehicle_id,
+            clientResourceId: $request->client_resource_id,
             serviceId: $request->service_id,
             scheduledAt: $request->scheduled_at,
             createdBy: $request->user()->id,
@@ -64,7 +64,7 @@ class ReservationController extends Controller
         $reservation = $this->createReservation->execute($dto);
 
         // Fetch the model with relationships for the resource
-        $model = ReservationModel::with(['vehicle', 'service', 'client'])->find($reservation->id);
+        $model = ReservationModel::with(['clientResource', 'service', 'client'])->find($reservation->id);
 
         return (new ReservationResource($model))
             ->response()

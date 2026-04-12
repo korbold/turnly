@@ -15,7 +15,7 @@ class ReservationModel extends Model
     protected $table = 'reservations';
 
     protected $fillable = [
-        'tenant_id', 'client_id', 'vehicle_id', 'service_id',
+        'tenant_id', 'client_id', 'client_resource_id', 'service_id',
         'assigned_to', 'scheduled_at', 'estimated_end', 'status',
         'notes', 'cancelled_at', 'cancel_reason', 'created_by',
     ];
@@ -44,9 +44,9 @@ class ReservationModel extends Model
         return $this->belongsTo(UserModel::class, 'client_id');
     }
 
-    public function vehicle()
+    public function clientResource()
     {
-        return $this->belongsTo(VehicleModel::class, 'vehicle_id');
+        return $this->belongsTo(ClientResourceModel::class, 'client_resource_id');
     }
 
     public function service()

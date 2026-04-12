@@ -14,7 +14,7 @@ class CreateWashLogRequest extends FormRequest
     public function rules(): array
     {
         return [
-            'vehicle_id'      => ['required', 'uuid'],
+            'client_resource_id' => ['required', 'uuid'],
             'service_id'      => ['required', 'uuid'],
             'attended_by'     => ['required', 'uuid'],
             'price_charged'   => ['required', 'numeric', 'min:0'],
