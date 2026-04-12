@@ -1,13 +1,13 @@
 import 'package:flutter/material.dart';
 import '../../../../shared/extensions/date_extensions.dart';
-import '../../domain/entities/wash_log.dart';
+import '../../domain/entities/service_log.dart';
 import 'payment_badge.dart';
 
-class WashLogCard extends StatelessWidget {
-  final WashLog washLog;
+class ServiceLogCard extends StatelessWidget {
+  final ServiceLog serviceLog;
   final VoidCallback? onComplete;
 
-  const WashLogCard({super.key, required this.washLog, this.onComplete});
+  const ServiceLogCard({super.key, required this.serviceLog, this.onComplete});
 
   @override
   Widget build(BuildContext context) {
@@ -21,7 +21,7 @@ class WashLogCard extends StatelessWidget {
             SizedBox(
               width: 48,
               child: Text(
-                washLog.startedAt.toDisplayTime(),
+                serviceLog.startedAt.toDisplayTime(),
                 style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 14),
               ),
             ),
@@ -34,19 +34,19 @@ class WashLogCard extends StatelessWidget {
                   Row(
                     children: [
                       Text(
-                        washLog.vehiclePlate ?? '---',
+                        serviceLog.vehiclePlate ?? '---',
                         style: const TextStyle(fontWeight: FontWeight.bold, fontFamily: 'monospace', fontSize: 15),
                       ),
                       const SizedBox(width: 8),
-                      if (washLog.vehicleBrand != null)
-                        Text(washLog.vehicleBrand!, style: TextStyle(color: Colors.grey.shade600, fontSize: 12)),
+                      if (serviceLog.vehicleBrand != null)
+                        Text(serviceLog.vehicleBrand!, style: TextStyle(color: Colors.grey.shade600, fontSize: 12)),
                     ],
                   ),
                   const SizedBox(height: 4),
-                  Text(washLog.serviceName ?? 'Servicio', style: const TextStyle(fontSize: 13)),
-                  if (washLog.attendantName != null) ...[
+                  Text(serviceLog.serviceName ?? 'Servicio', style: const TextStyle(fontSize: 13)),
+                  if (serviceLog.attendantName != null) ...[
                     const SizedBox(height: 2),
-                    Text(washLog.attendantName!, style: TextStyle(fontSize: 12, color: Colors.grey.shade500)),
+                    Text(serviceLog.attendantName!, style: TextStyle(fontSize: 12, color: Colors.grey.shade500)),
                   ],
                 ],
               ),
@@ -56,13 +56,13 @@ class WashLogCard extends StatelessWidget {
               crossAxisAlignment: CrossAxisAlignment.end,
               children: [
                 Text(
-                  '\$${washLog.priceCharged.toStringAsFixed(2)}',
+                  '\$${serviceLog.priceCharged.toStringAsFixed(2)}',
                   style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 15),
                 ),
                 const SizedBox(height: 4),
-                PaymentBadge(method: washLog.paymentMethod),
+                PaymentBadge(method: serviceLog.paymentMethod),
                 const SizedBox(height: 4),
-                if (washLog.isInProgress && onComplete != null)
+                if (serviceLog.isInProgress && onComplete != null)
                   SizedBox(
                     height: 28,
                     child: ElevatedButton(
@@ -79,14 +79,14 @@ class WashLogCard extends StatelessWidget {
                   Container(
                     padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
                     decoration: BoxDecoration(
-                      color: washLog.isCompleted ? Colors.green.withValues(alpha: 0.1) : Colors.orange.withValues(alpha: 0.1),
+                      color: serviceLog.isCompleted ? Colors.green.withValues(alpha: 0.1) : Colors.orange.withValues(alpha: 0.1),
                       borderRadius: BorderRadius.circular(6),
                     ),
                     child: Text(
-                      washLog.isCompleted ? 'Listo' : 'En curso',
+                      serviceLog.isCompleted ? 'Listo' : 'En curso',
                       style: TextStyle(
                         fontSize: 11,
-                        color: washLog.isCompleted ? Colors.green : Colors.orange,
+                        color: serviceLog.isCompleted ? Colors.green : Colors.orange,
                         fontWeight: FontWeight.w600,
                       ),
                     ),

@@ -1,8 +1,8 @@
 import '../enums/payment_method.dart';
 
-class WashLog {
+class ServiceLog {
   final String id;
-  final String vehicleId;
+  final String clientResourceId;
   final String serviceId;
   final String? reservationId;
   final String attendedBy;
@@ -19,9 +19,9 @@ class WashLog {
   final String? serviceName;
   final String? attendantName;
 
-  const WashLog({
+  const ServiceLog({
     required this.id,
-    required this.vehicleId,
+    required this.clientResourceId,
     required this.serviceId,
     this.reservationId,
     required this.attendedBy,

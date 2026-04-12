@@ -181,7 +181,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
         SizedBox(
           width: double.infinity,
           child: FilledButton.icon(
-            onPressed: () => context.push('/wash-log/register'),
+            onPressed: () => context.push('/service-log/register'),
             icon: const Icon(Icons.add),
             label: const Text('Registrar servicio'),
           ),

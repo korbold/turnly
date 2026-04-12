@@ -4,7 +4,7 @@ import '../../../../shared/enums/user_role.dart';
 import '../../../dashboard/presentation/screens/dashboard_screen.dart';
 import '../../../reservations/presentation/screens/reservations_screen.dart';
 import '../../../services/presentation/screens/services_screen.dart';
-import '../../../wash_log/presentation/screens/wash_log_screen.dart';
+import '../../../service_log/presentation/screens/service_log_screen.dart';
 import 'more_screen.dart';
 
 class ShellScreen extends StatefulWidget {
@@ -37,14 +37,14 @@ class _ShellScreenState extends State<ShellScreen> {
     if (_role.isAdmin) {
       return const [
         DashboardScreen(),
-        WashLogScreen(),
+        ServiceLogScreen(),
         ReservationsScreen(),
         MoreScreen(),
       ];
     } else {
       return const [
         DashboardScreen(),
-        WashLogScreen(),
+        ServiceLogScreen(),
         ReservationsScreen(),
         ServicesScreen(),
       ];

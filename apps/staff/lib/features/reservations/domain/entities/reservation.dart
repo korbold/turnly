@@ -2,7 +2,7 @@ import '../enums/reservation_status.dart';
 
 class Reservation {
   final String id;
-  final String vehicleId;
+  final String clientResourceId;
   final String serviceId;
   final String? assignedTo;
   final DateTime scheduledAt;
@@ -17,7 +17,7 @@ class Reservation {
 
   const Reservation({
     required this.id,
-    required this.vehicleId,
+    required this.clientResourceId,
     required this.serviceId,
     this.assignedTo,
     required this.scheduledAt,

@@ -9,7 +9,7 @@ import '../../features/shell/presentation/screens/shell_screen.dart';
 import '../../features/reports/presentation/screens/reports_screen.dart';
 import '../../features/settings/presentation/screens/settings_screen.dart';
 import '../../features/team/presentation/screens/team_screen.dart';
-import '../../features/wash_log/presentation/screens/register_wash_screen.dart';
+import '../../features/service_log/presentation/screens/register_service_screen.dart';
 
 final goRouter = GoRouter(
   initialLocation: '/login',
@@ -47,8 +47,8 @@ final goRouter = GoRouter(
     ),
     // Routes pushed from navigation
     GoRoute(
-      path: '/wash-log/register',
-      builder: (context, state) => const RegisterWashScreen(),
+      path: '/service-log/register',
+      builder: (context, state) => const RegisterServiceScreen(),
     ),
     GoRoute(
       path: '/reservations/:id',

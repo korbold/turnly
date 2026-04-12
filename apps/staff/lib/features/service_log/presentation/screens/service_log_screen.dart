@@ -1,23 +1,23 @@
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:intl/intl.dart';
-import '../../domain/entities/wash_log.dart';
+import '../../domain/entities/service_log.dart';
 import '../../domain/entities/daily_summary.dart';
-import '../../infrastructure/wash_log_repository_impl.dart';
-import '../widgets/wash_log_card.dart';
+import '../../infrastructure/service_log_repository_impl.dart';
+import '../widgets/service_log_card.dart';
 import '../widgets/daily_summary_card.dart';
 
-class WashLogScreen extends StatefulWidget {
-  const WashLogScreen({super.key});
+class ServiceLogScreen extends StatefulWidget {
+  const ServiceLogScreen({super.key});
 
   @override
-  State<WashLogScreen> createState() => _WashLogScreenState();
+  State<ServiceLogScreen> createState() => _ServiceLogScreenState();
 }
 
-class _WashLogScreenState extends State<WashLogScreen> {
-  final _repo = WashLogRepositoryImpl();
+class _ServiceLogScreenState extends State<ServiceLogScreen> {
+  final _repo = ServiceLogRepositoryImpl();
   DateTime _selectedDate = DateTime.now();
-  List<WashLog> _logs = [];
+  List<ServiceLog> _logs = [];
   DailySummary? _summary;
   bool _loading = true;
   String? _error;
@@ -108,8 +108,8 @@ class _WashLogScreenState extends State<WashLogScreen> {
                                 itemCount: _logs.length,
                                 itemBuilder: (context, index) {
                                   final log = _logs[index];
-                                  return WashLogCard(
-                                    washLog: log,
+                                  return ServiceLogCard(
+                                    serviceLog: log,
                                     onComplete: log.isInProgress ? () => _completeWash(log.id) : null,
                                   );
                                 },
@@ -120,7 +120,7 @@ class _WashLogScreenState extends State<WashLogScreen> {
                 ),
       floatingActionButton: FloatingActionButton.extended(
         onPressed: () async {
-          await context.push('/wash-log/register');
+          await context.push('/service-log/register');
           _loadData(); // Refresh after registering
         },
         icon: const Icon(Icons.add),

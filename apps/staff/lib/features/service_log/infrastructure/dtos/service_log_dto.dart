@@ -1,16 +1,16 @@
-import '../../domain/entities/wash_log.dart';
+import '../../domain/entities/service_log.dart';
 import '../../domain/entities/daily_summary.dart';
 import '../../domain/enums/payment_method.dart';
 
-class WashLogDto {
-  static WashLog fromJson(Map<String, dynamic> json) {
-    final vehicle = json['vehicle'] as Map<String, dynamic>?;
+class ServiceLogDto {
+  static ServiceLog fromJson(Map<String, dynamic> json) {
+    final clientResource = json['client_resource'] as Map<String, dynamic>?;
     final service = json['service'] as Map<String, dynamic>?;
     final attendant = json['attendant'] as Map<String, dynamic>?;
 
-    return WashLog(
+    return ServiceLog(
       id: json['id'] as String,
-      vehicleId: json['vehicle_id'] as String,
+      clientResourceId: json['client_resource_id'] as String,
       serviceId: json['service_id'] as String,
       reservationId: json['reservation_id'] as String?,
       attendedBy: json['attended_by'] as String,
@@ -21,8 +21,8 @@ class WashLogDto {
       status: json['status'] as String,
       notes: json['notes'] as String?,
       logDate: json['log_date'] as String,
-      vehiclePlate: vehicle?['plate'] as String?,
-      vehicleBrand: vehicle?['brand'] as String?,
+      vehiclePlate: clientResource?['plate'] as String?,
+      vehicleBrand: clientResource?['brand'] as String?,
       serviceName: service?['name'] as String?,
       attendantName: attendant?['name'] as String?,
     );

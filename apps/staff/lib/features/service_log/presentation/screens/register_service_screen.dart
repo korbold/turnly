@@ -4,13 +4,13 @@ import 'package:go_router/go_router.dart';
 import '../../../../core/network/dio_client.dart';
 import '../../../../core/storage/secure_storage.dart';
 import '../../domain/enums/payment_method.dart';
-import '../../infrastructure/wash_log_repository_impl.dart';
+import '../../infrastructure/service_log_repository_impl.dart';
 
-class _Vehicle {
+class _ClientResource {
   final String id;
   final String plate;
   final String? brand;
-  _Vehicle({required this.id, required this.plate, this.brand});
+  _ClientResource({required this.id, required this.plate, this.brand});
 }
 
 class _Service {
@@ -26,23 +26,23 @@ class _User {
   _User({required this.id, required this.name});
 }
 
-class RegisterWashScreen extends StatefulWidget {
-  const RegisterWashScreen({super.key});
+class RegisterServiceScreen extends StatefulWidget {
+  const RegisterServiceScreen({super.key});
 
   @override
-  State<RegisterWashScreen> createState() => _RegisterWashScreenState();
+  State<RegisterServiceScreen> createState() => _RegisterServiceScreenState();
 }
 
-class _RegisterWashScreenState extends State<RegisterWashScreen> {
+class _RegisterServiceScreenState extends State<RegisterServiceScreen> {
   final _formKey = GlobalKey<FormState>();
-  final _repo = WashLogRepositoryImpl();
+  final _repo = ServiceLogRepositoryImpl();
   final _dio = DioClient.instance;
 
-  List<_Vehicle> _vehicles = [];
+  List<_ClientResource> _clientResources = [];
   List<_Service> _services = [];
   List<_User> _users = [];
 
-  _Vehicle? _selectedVehicle;
+  _ClientResource? _selectedClientResource;
   _Service? _selectedService;
   _User? _selectedUser;
   PaymentMethod _selectedPayment = PaymentMethod.cash;
@@ -73,18 +73,18 @@ class _RegisterWashScreenState extends State<RegisterWashScreen> {
       final currentUserId = await SecureStorage.getUserId();
 
       final results = await Future.wait([
-        _dio.get('/vehicles', queryParameters: {'per_page': 200}),
+        _dio.get('/client-resources', queryParameters: {'per_page': 200}),
         _dio.get('/services', queryParameters: {'per_page': 100}),
         _dio.get('/users', queryParameters: {'per_page': 100}),
       ]);
 
-      final vehiclesData = results[0].data['data'] as List<dynamic>;
+      final clientResourcesData = results[0].data['data'] as List<dynamic>;
       final servicesData = results[1].data['data'] as List<dynamic>;
       final usersData = results[2].data['data'] as List<dynamic>;
 
-      final vehicles = vehiclesData.map((v) {
+      final clientResources = clientResourcesData.map((v) {
         final m = v as Map<String, dynamic>;
-        return _Vehicle(
+        return _ClientResource(
           id: m['id'] as String,
           plate: m['plate'] as String,
           brand: m['brand'] as String?,
@@ -118,7 +118,7 @@ class _RegisterWashScreenState extends State<RegisterWashScreen> {
       }
 
       setState(() {
-        _vehicles = vehicles;
+        _clientResources = clientResources;
         _services = services;
         _users = users;
         _selectedUser = defaultUser;
@@ -139,7 +139,7 @@ class _RegisterWashScreenState extends State<RegisterWashScreen> {
 
   Future<void> _submit() async {
     if (!_formKey.currentState!.validate()) return;
-    if (_selectedVehicle == null || _selectedService == null || _selectedUser == null) {
+    if (_selectedClientResource == null || _selectedService == null || _selectedUser == null) {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(content: Text('Selecciona vehículo, servicio y operador')),
       );
@@ -149,7 +149,7 @@ class _RegisterWashScreenState extends State<RegisterWashScreen> {
     setState(() => _submitting = true);
 
     final result = await _repo.create(
-      vehicleId: _selectedVehicle!.id,
+      clientResourceId: _selectedClientResource!.id,
       serviceId: _selectedService!.id,
       attendedBy: _selectedUser!.id,
       priceCharged: double.parse(_priceController.text),
@@ -197,14 +197,14 @@ class _RegisterWashScreenState extends State<RegisterWashScreen> {
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.stretch,
                       children: [
-                        // Vehicle
-                        DropdownButtonFormField<_Vehicle>(
-                          value: _selectedVehicle,
+                        // Client Resource
+                        DropdownButtonFormField<_ClientResource>(
+                          value: _selectedClientResource,
                           decoration: const InputDecoration(
                             labelText: 'Vehículo',
                             border: OutlineInputBorder(),
                           ),
-                          items: _vehicles.map((v) {
+                          items: _clientResources.map((v) {
                             return DropdownMenuItem(
                               value: v,
                               child: Text(
@@ -213,7 +213,7 @@ class _RegisterWashScreenState extends State<RegisterWashScreen> {
                               ),
                             );
                           }).toList(),
-                          onChanged: (v) => setState(() => _selectedVehicle = v),
+                          onChanged: (v) => setState(() => _selectedClientResource = v),
                           validator: (v) => v == null ? 'Selecciona un vehículo' : null,
                         ),
                         const SizedBox(height: 16),

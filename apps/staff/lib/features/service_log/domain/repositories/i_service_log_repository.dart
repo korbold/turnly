@@ -1,12 +1,12 @@
 import 'package:fpdart/fpdart.dart';
 import '../../../../core/error/failures.dart';
-import '../entities/wash_log.dart';
+import '../entities/service_log.dart';
 import '../entities/daily_summary.dart';
 
-abstract class IWashLogRepository {
-  Future<Either<Failure, List<WashLog>>> getByDate(String date);
-  Future<Either<Failure, WashLog>> create({
-    required String vehicleId,
+abstract class IServiceLogRepository {
+  Future<Either<Failure, List<ServiceLog>>> getByDate(String date);
+  Future<Either<Failure, ServiceLog>> create({
+    required String clientResourceId,
     required String serviceId,
     required String attendedBy,
     required double priceCharged,
