@@ -1,6 +1,6 @@
-# WashFlow
+# Turnly
 
-Multi-tenant SaaS for car wash business management.
+Multi-business appointment and service management platform.
 
 ## Stack
 

@@ -1,3 +1,3 @@
-# WashFlow Architecture
+# Turnly Architecture
 
 TODO: Document architecture decisions
