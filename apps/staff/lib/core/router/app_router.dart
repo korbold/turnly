@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import '../storage/secure_storage.dart';
 import '../../features/auth/presentation/screens/login_screen.dart';
+import '../../features/reservations/presentation/screens/reservation_detail_screen.dart';
 import '../../features/shell/presentation/screens/shell_screen.dart';
 import '../../features/wash_log/presentation/screens/register_wash_screen.dart';
 
@@ -46,7 +47,9 @@ final goRouter = GoRouter(
     ),
     GoRoute(
       path: '/reservations/:id',
-      builder: (context, state) => _Placeholder(title: 'Reservación ${state.pathParameters['id']}'),
+      builder: (context, state) => ReservationDetailScreen(
+        reservationId: state.pathParameters['id']!,
+      ),
     ),
     // Admin-only routes (pushed from MoreScreen)
     GoRoute(
