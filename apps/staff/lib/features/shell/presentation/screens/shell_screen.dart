@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import '../../../../core/storage/secure_storage.dart';
 import '../../../../shared/enums/user_role.dart';
+import '../../../dashboard/presentation/screens/dashboard_screen.dart';
 import '../../../wash_log/presentation/screens/wash_log_screen.dart';
 import 'more_screen.dart';
 
@@ -33,14 +34,14 @@ class _ShellScreenState extends State<ShellScreen> {
   List<Widget> _getScreens() {
     if (_role.isAdmin) {
       return const [
-        _PlaceholderTab(title: 'Dashboard'),
+        DashboardScreen(),
         WashLogScreen(),
         _PlaceholderTab(title: 'Reservaciones'),
         MoreScreen(),
       ];
     } else {
       return const [
-        _PlaceholderTab(title: 'Dashboard'),
+        DashboardScreen(),
         WashLogScreen(),
         _PlaceholderTab(title: 'Reservaciones'),
         _PlaceholderTab(title: 'Servicios'),
