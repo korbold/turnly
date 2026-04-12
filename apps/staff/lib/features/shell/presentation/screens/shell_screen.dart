@@ -3,6 +3,7 @@ import '../../../../core/storage/secure_storage.dart';
 import '../../../../shared/enums/user_role.dart';
 import '../../../dashboard/presentation/screens/dashboard_screen.dart';
 import '../../../reservations/presentation/screens/reservations_screen.dart';
+import '../../../services/presentation/screens/services_screen.dart';
 import '../../../wash_log/presentation/screens/wash_log_screen.dart';
 import 'more_screen.dart';
 
@@ -45,7 +46,7 @@ class _ShellScreenState extends State<ShellScreen> {
         DashboardScreen(),
         WashLogScreen(),
         ReservationsScreen(),
-        _PlaceholderTab(title: 'Servicios'),
+        ServicesScreen(),
       ];
     }
   }
@@ -82,22 +83,6 @@ class _ShellScreenState extends State<ShellScreen> {
         selectedIndex: _currentIndex,
         onDestinationSelected: (i) => setState(() => _currentIndex = i),
         destinations: _getDestinations(),
-      ),
-    );
-  }
-}
-
-// Placeholder tab for features not yet implemented
-class _PlaceholderTab extends StatelessWidget {
-  final String title;
-  const _PlaceholderTab({required this.title});
-
-  @override
-  Widget build(BuildContext context) {
-    return Scaffold(
-      appBar: AppBar(title: Text(title)),
-      body: Center(
-        child: Text(title, style: Theme.of(context).textTheme.headlineSmall),
       ),
     );
   }

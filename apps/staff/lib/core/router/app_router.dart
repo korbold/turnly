@@ -3,6 +3,9 @@ import 'package:go_router/go_router.dart';
 import '../storage/secure_storage.dart';
 import '../../features/auth/presentation/screens/login_screen.dart';
 import '../../features/reservations/presentation/screens/reservation_detail_screen.dart';
+import '../../features/services/domain/entities/service.dart';
+import '../../features/services/presentation/screens/service_form_screen.dart';
+import '../../features/services/presentation/screens/services_screen.dart';
 import '../../features/shell/presentation/screens/shell_screen.dart';
 import '../../features/wash_log/presentation/screens/register_wash_screen.dart';
 
@@ -51,14 +54,16 @@ final goRouter = GoRouter(
         reservationId: state.pathParameters['id']!,
       ),
     ),
-    // Admin-only routes (pushed from MoreScreen)
+    // Services routes
     GoRoute(
       path: '/services',
-      builder: (context, state) => const _Placeholder(title: 'Servicios'),
+      builder: (context, state) => const ServicesScreen(),
     ),
     GoRoute(
       path: '/services/form',
-      builder: (context, state) => const _Placeholder(title: 'Formulario Servicio'),
+      builder: (context, state) => ServiceFormScreen(
+        service: state.extra as Service?,
+      ),
     ),
     GoRoute(
       path: '/team',
