@@ -33,7 +33,10 @@ class ReservationController extends Controller
     {
         $query = ReservationModel::with(['clientResource', 'service', 'client']);
 
-        if ($request->has('date')) {
+        if ($request->has('date_from') && $request->has('date_to')) {
+            $query->whereDate('scheduled_at', '>=', $request->date_from)
+                  ->whereDate('scheduled_at', '<=', $request->date_to);
+        } elseif ($request->has('date')) {
             $query->whereDate('scheduled_at', $request->date);
         }
         if ($request->has('status')) {
@@ -43,7 +46,8 @@ class ReservationController extends Controller
             $query->where('service_id', $request->service_id);
         }
 
-        $reservations = $query->orderBy('scheduled_at')->paginate($request->get('per_page', 15));
+        $perPage = $request->has('date_from') ? 500 : (int) $request->get('per_page', 15);
+        $reservations = $query->orderBy('scheduled_at')->paginate($perPage);
 
         return ReservationResource::collection($reservations);
     }
