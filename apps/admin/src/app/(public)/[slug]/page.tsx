@@ -4,10 +4,21 @@ import { use, useRef, useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import {
   getPublicTenant,
+  getAvailableSlots,
+  bookAppointment,
   type PublicService,
   type PublicAvailability,
+  type AvailableSlot,
 } from '@/lib/api/public';
-import { MapPin, Phone, Instagram, Facebook, MessageCircle } from 'lucide-react';
+import {
+  MapPin,
+  Phone,
+  Instagram,
+  Facebook,
+  MessageCircle,
+  CheckCircle2,
+  ChevronLeft,
+} from 'lucide-react';
 
 // ---------------------------------------------------------------------------
 // Theme helpers
@@ -26,6 +37,39 @@ const themeColors: Record<string, { gradient: string; button: string }> = {
 const defaultTheme = themeColors.blue;
 
 const dayNames = ['Lunes', 'Martes', 'Miércoles', 'Jueves', 'Viernes', 'Sábado', 'Domingo'];
+const dayAbbreviations = ['Lun', 'Mar', 'Mié', 'Jue', 'Vie', 'Sáb', 'Dom'];
+
+// ---------------------------------------------------------------------------
+// Helpers
+// ---------------------------------------------------------------------------
+
+/** Generate the next N days starting from today */
+function getNextDays(count: number): Date[] {
+  const days: Date[] = [];
+  const today = new Date();
+  for (let i = 0; i < count; i++) {
+    const d = new Date(today);
+    d.setDate(today.getDate() + i);
+    days.push(d);
+  }
+  return days;
+}
+
+/** Format date as YYYY-MM-DD */
+function formatDateISO(d: Date): string {
+  return d.toISOString().split('T')[0];
+}
+
+/** Check if two dates are the same calendar day */
+function isSameDay(a: Date, b: Date): boolean {
+  return a.getFullYear() === b.getFullYear() && a.getMonth() === b.getMonth() && a.getDate() === b.getDate();
+}
+
+/** Format a time string like "09:00:00" to "9:00" */
+function formatTime(t: string): string {
+  const [h, m] = t.split(':');
+  return `${parseInt(h, 10)}:${m}`;
+}
 
 // ---------------------------------------------------------------------------
 // Page
@@ -37,7 +81,23 @@ interface PageProps {
 export default function BusinessPage({ params }: PageProps) {
   const { slug } = use(params);
   const bookingRef = useRef<HTMLDivElement>(null);
+
+  // Booking state
   const [selectedService, setSelectedService] = useState<PublicService | null>(null);
+  const [selectedDate, setSelectedDate] = useState<Date | null>(null);
+  const [selectedSlot, setSelectedSlot] = useState<AvailableSlot | null>(null);
+  const [bookingStep, setBookingStep] = useState(1);
+  const [availableSlots, setAvailableSlots] = useState<AvailableSlot[]>([]);
+  const [slotsLoading, setSlotsLoading] = useState(false);
+  const [clientForm, setClientForm] = useState<{ name: string; email: string; phone: string; custom: Record<string, string> }>({
+    name: '',
+    email: '',
+    phone: '',
+    custom: {},
+  });
+  const [bookingResult, setBookingResult] = useState<{ id: string } | null>(null);
+  const [bookingError, setBookingError] = useState<string | null>(null);
+  const [bookingLoading, setBookingLoading] = useState(false);
 
   const { data, isLoading, error } = useQuery({
     queryKey: ['public-tenant', slug],
@@ -73,9 +133,82 @@ export default function BusinessPage({ params }: PageProps) {
 
   function handleReservar(service: PublicService) {
     setSelectedService(service);
+    setBookingStep(1);
+    setSelectedDate(null);
+    setSelectedSlot(null);
+    setAvailableSlots([]);
+    setBookingResult(null);
+    setBookingError(null);
+    setClientForm({ name: '', email: '', phone: '', custom: {} });
     setTimeout(() => {
       bookingRef.current?.scrollIntoView({ behavior: 'smooth' });
     }, 100);
+  }
+
+  async function handleSelectDate(date: Date) {
+    if (!selectedService) return;
+    setSelectedDate(date);
+    setSelectedSlot(null);
+    setBookingStep(1);
+    setSlotsLoading(true);
+    try {
+      const slots = await getAvailableSlots(slug, selectedService.id, formatDateISO(date));
+      setAvailableSlots(slots);
+      setBookingStep(2);
+    } catch {
+      setAvailableSlots([]);
+      setBookingStep(2);
+    } finally {
+      setSlotsLoading(false);
+    }
+  }
+
+  function handleSelectSlot(slot: AvailableSlot) {
+    setSelectedSlot(slot);
+    setBookingStep(3);
+  }
+
+  function handleClientSubmit(e: React.FormEvent) {
+    e.preventDefault();
+    setBookingStep(4);
+  }
+
+  async function handleConfirmBooking() {
+    if (!selectedService || !selectedDate || !selectedSlot) return;
+    setBookingLoading(true);
+    setBookingError(null);
+    try {
+      const scheduledAt = `${formatDateISO(selectedDate)}T${selectedSlot.start}`;
+      const result = await bookAppointment(slug, {
+        service_id: selectedService.id,
+        scheduled_at: scheduledAt,
+        client_name: clientForm.name,
+        client_email: clientForm.email,
+        client_phone: clientForm.phone || undefined,
+        client_resource_data: Object.keys(clientForm.custom).length > 0 ? clientForm.custom : undefined,
+      });
+      setBookingResult(result);
+    } catch (err: unknown) {
+      const message =
+        err && typeof err === 'object' && 'response' in err
+          ? ((err as { response?: { data?: { message?: string } } }).response?.data?.message ?? 'Error al crear la reserva')
+          : 'Error al crear la reserva';
+      setBookingError(message);
+    } finally {
+      setBookingLoading(false);
+    }
+  }
+
+  function handleResetBooking() {
+    setSelectedService(null);
+    setSelectedDate(null);
+    setSelectedSlot(null);
+    setBookingStep(1);
+    setAvailableSlots([]);
+    setBookingResult(null);
+    setBookingError(null);
+    setBookingLoading(false);
+    setClientForm({ name: '', email: '', phone: '', custom: {} });
   }
 
   // Build schedule map: day_of_week -> list of time ranges
@@ -85,6 +218,10 @@ export default function BusinessPage({ params }: PageProps) {
     existing.push(slot);
     scheduleMap.set(slot.day_of_week, existing);
   }
+
+  const next14Days = getNextDays(14);
+  const today = new Date();
+  const customFields = tenant.custom_fields ?? [];
 
   return (
     <div>
@@ -265,18 +402,268 @@ export default function BusinessPage({ params }: PageProps) {
       )}
 
       {/* ---------------------------------------------------------------- */}
-      {/* E) Booking section (placeholder - will be expanded) */}
+      {/* E) Booking section */}
       {/* ---------------------------------------------------------------- */}
       <div ref={bookingRef}>
-        {selectedService && (
+        {selectedService && !bookingResult && (
           <section className="mt-10 mb-10 px-4 md:px-8 max-w-5xl mx-auto">
-            <div className="bg-white rounded-xl border border-gray-200 p-6">
-              <h2 className="text-xl font-bold text-gray-900 mb-1">Reservar</h2>
-              <p className="text-gray-600">
-                {selectedService.name} &mdash;{' '}
-                <span className="font-semibold">${Number(selectedService.price).toFixed(2)}</span>
+            <div className="bg-white rounded-xl border border-gray-200 p-6 space-y-6">
+              <div>
+                <h2 className="text-xl font-bold text-gray-900">Reservar</h2>
+                <p className="text-gray-600">
+                  {selectedService.name} &mdash;{' '}
+                  <span className="font-semibold">${Number(selectedService.price).toFixed(2)}</span>
+                </p>
+              </div>
+
+              {/* Step 1: Select date */}
+              <div>
+                <h3 className="text-sm font-semibold text-gray-700 mb-3">Selecciona una fecha</h3>
+                <div className="flex gap-2 overflow-x-auto pb-2 scrollbar-hide">
+                  {next14Days.map((day) => {
+                    const dayOfWeek = (day.getDay() + 6) % 7; // JS Sunday=0 -> our Monday=0
+                    const abbr = dayAbbreviations[dayOfWeek];
+                    const isToday = isSameDay(day, today);
+                    const isSelected = selectedDate && isSameDay(day, selectedDate);
+                    return (
+                      <button
+                        key={formatDateISO(day)}
+                        onClick={() => handleSelectDate(day)}
+                        className={`flex-shrink-0 flex flex-col items-center px-3 py-2 rounded-lg border text-sm transition-colors ${
+                          isSelected
+                            ? `${theme.button} text-white border-transparent`
+                            : isToday
+                              ? 'border-gray-400 bg-gray-50 text-gray-800'
+                              : 'border-gray-200 bg-white text-gray-600 hover:border-gray-300'
+                        }`}
+                      >
+                        <span className="text-xs font-medium">{abbr}</span>
+                        <span className="text-lg font-bold">{day.getDate()}</span>
+                      </button>
+                    );
+                  })}
+                </div>
+              </div>
+
+              {/* Step 2: Select time */}
+              {bookingStep >= 2 && selectedDate && (
+                <div>
+                  <h3 className="text-sm font-semibold text-gray-700 mb-3">Selecciona un horario</h3>
+                  {slotsLoading ? (
+                    <div className="flex items-center gap-2 text-gray-500 text-sm">
+                      <div className="h-4 w-4 animate-spin rounded-full border-2 border-gray-300 border-t-gray-600" />
+                      Cargando horarios...
+                    </div>
+                  ) : availableSlots.length === 0 ? (
+                    <p className="text-sm text-gray-500">No hay horarios disponibles para esta fecha</p>
+                  ) : (
+                    <div className="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-6 gap-2">
+                      {availableSlots.map((slot) => {
+                        const isSelected = selectedSlot?.start === slot.start;
+                        return (
+                          <button
+                            key={slot.start}
+                            onClick={() => handleSelectSlot(slot)}
+                            className={`py-2 px-3 rounded-lg border text-sm font-medium transition-colors ${
+                              isSelected
+                                ? `${theme.button} text-white border-transparent`
+                                : 'border-gray-200 bg-white text-gray-700 hover:border-gray-300'
+                            }`}
+                          >
+                            {formatTime(slot.start)}
+                          </button>
+                        );
+                      })}
+                    </div>
+                  )}
+                </div>
+              )}
+
+              {/* Step 3: Client info */}
+              {bookingStep >= 3 && (
+                <div>
+                  <h3 className="text-sm font-semibold text-gray-700 mb-3">Tus datos</h3>
+                  <form onSubmit={handleClientSubmit} className="space-y-3 max-w-md">
+                    <div>
+                      <label className="text-sm font-medium text-gray-700 block mb-1">
+                        Nombre <span className="text-red-500">*</span>
+                      </label>
+                      <input
+                        type="text"
+                        required
+                        value={clientForm.name}
+                        onChange={(e) => setClientForm((prev) => ({ ...prev, name: e.target.value }))}
+                        className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                        placeholder="Tu nombre completo"
+                      />
+                    </div>
+                    <div>
+                      <label className="text-sm font-medium text-gray-700 block mb-1">
+                        Email <span className="text-red-500">*</span>
+                      </label>
+                      <input
+                        type="email"
+                        required
+                        value={clientForm.email}
+                        onChange={(e) => setClientForm((prev) => ({ ...prev, email: e.target.value }))}
+                        className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                        placeholder="tu@email.com"
+                      />
+                    </div>
+                    <div>
+                      <label className="text-sm font-medium text-gray-700 block mb-1">
+                        Teléfono
+                      </label>
+                      <input
+                        type="tel"
+                        value={clientForm.phone}
+                        onChange={(e) => setClientForm((prev) => ({ ...prev, phone: e.target.value }))}
+                        className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                        placeholder="+1 234 567 8900"
+                      />
+                    </div>
+
+                    {/* Custom fields */}
+                    {customFields.map((field) => (
+                      <div key={field.key}>
+                        <label className="text-sm font-medium text-gray-700 block mb-1">
+                          {field.label}
+                          {field.required && <span className="text-red-500 ml-1">*</span>}
+                        </label>
+                        {field.type === 'textarea' ? (
+                          <textarea
+                            required={field.required}
+                            value={clientForm.custom[field.key] ?? ''}
+                            onChange={(e) =>
+                              setClientForm((prev) => ({
+                                ...prev,
+                                custom: { ...prev.custom, [field.key]: e.target.value },
+                              }))
+                            }
+                            className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent min-h-[80px] resize-y"
+                            placeholder={field.label}
+                          />
+                        ) : field.type === 'select' ? (
+                          <select
+                            required={field.required}
+                            value={clientForm.custom[field.key] ?? ''}
+                            onChange={(e) =>
+                              setClientForm((prev) => ({
+                                ...prev,
+                                custom: { ...prev.custom, [field.key]: e.target.value },
+                              }))
+                            }
+                            className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                          >
+                            <option value="">Seleccionar...</option>
+                            {(field.options ?? []).map((opt) => (
+                              <option key={opt} value={opt}>
+                                {opt}
+                              </option>
+                            ))}
+                          </select>
+                        ) : (
+                          <input
+                            type={field.type === 'number' ? 'number' : 'text'}
+                            required={field.required}
+                            value={clientForm.custom[field.key] ?? ''}
+                            onChange={(e) =>
+                              setClientForm((prev) => ({
+                                ...prev,
+                                custom: { ...prev.custom, [field.key]: e.target.value },
+                              }))
+                            }
+                            className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                            placeholder={field.label}
+                          />
+                        )}
+                      </div>
+                    ))}
+
+                    {bookingStep === 3 && (
+                      <button
+                        type="submit"
+                        className={`text-white text-sm font-medium py-2 px-6 rounded-lg transition-colors ${theme.button}`}
+                      >
+                        Continuar
+                      </button>
+                    )}
+                  </form>
+                </div>
+              )}
+
+              {/* Step 4: Confirmation */}
+              {bookingStep >= 4 && selectedDate && selectedSlot && (
+                <div>
+                  <h3 className="text-sm font-semibold text-gray-700 mb-3">Confirmar reserva</h3>
+                  <div className="bg-gray-50 rounded-lg p-4 space-y-2 text-sm max-w-md">
+                    <p>
+                      <span className="text-gray-500">Servicio:</span>{' '}
+                      <span className="font-medium">{selectedService.name}</span>
+                    </p>
+                    <p>
+                      <span className="text-gray-500">Fecha:</span>{' '}
+                      <span className="font-medium">
+                        {selectedDate.toLocaleDateString('es', {
+                          weekday: 'long',
+                          year: 'numeric',
+                          month: 'long',
+                          day: 'numeric',
+                        })}
+                      </span>
+                    </p>
+                    <p>
+                      <span className="text-gray-500">Hora:</span>{' '}
+                      <span className="font-medium">{formatTime(selectedSlot.start)}</span>
+                    </p>
+                    <p>
+                      <span className="text-gray-500">Cliente:</span>{' '}
+                      <span className="font-medium">{clientForm.name}</span>
+                    </p>
+                  </div>
+
+                  {bookingError && (
+                    <p className="mt-3 text-sm text-red-600">{bookingError}</p>
+                  )}
+
+                  <div className="mt-4 flex gap-3">
+                    <button
+                      onClick={() => setBookingStep(3)}
+                      className="text-sm font-medium py-2 px-4 rounded-lg border border-gray-300 text-gray-700 hover:bg-gray-50 transition-colors flex items-center gap-1"
+                    >
+                      <ChevronLeft className="h-4 w-4" />
+                      Volver
+                    </button>
+                    <button
+                      onClick={handleConfirmBooking}
+                      disabled={bookingLoading}
+                      className={`text-white text-sm font-medium py-2 px-6 rounded-lg transition-colors disabled:opacity-50 ${theme.button}`}
+                    >
+                      {bookingLoading ? 'Reservando...' : 'Confirmar reserva'}
+                    </button>
+                  </div>
+                </div>
+              )}
+            </div>
+          </section>
+        )}
+
+        {/* Success state */}
+        {bookingResult && (
+          <section className="mt-10 mb-10 px-4 md:px-8 max-w-5xl mx-auto">
+            <div className="bg-white rounded-xl border border-gray-200 p-8 text-center space-y-4 max-w-md mx-auto">
+              <CheckCircle2 className="h-12 w-12 text-green-500 mx-auto" />
+              <h2 className="text-xl font-bold text-gray-900">Reserva creada</h2>
+              <p className="text-gray-600">Tu reserva está pendiente de confirmación</p>
+              <p className="text-sm text-gray-400">
+                ID: <span className="font-mono">{bookingResult.id}</span>
               </p>
-              {/* Booking flow steps will go here */}
+              <button
+                onClick={handleResetBooking}
+                className={`text-white text-sm font-medium py-2 px-6 rounded-lg transition-colors ${theme.button}`}
+              >
+                Reservar otro servicio
+              </button>
             </div>
           </section>
         )}
