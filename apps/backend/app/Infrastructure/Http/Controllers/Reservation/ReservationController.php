@@ -56,7 +56,7 @@ class ReservationController extends Controller
     {
         $dto = new CreateReservationDTO(
             tenantId: app('current_tenant_id'),
-            clientId: $request->user()->id,
+            clientId: $request->client_id ?? $request->user()->id,
             clientResourceId: $request->client_resource_id,
             serviceId: $request->service_id,
             scheduledAt: $request->scheduled_at,

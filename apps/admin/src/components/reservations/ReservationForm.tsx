@@ -5,6 +5,7 @@ import { useQuery, useMutation } from '@tanstack/react-query';
 import { format } from 'date-fns';
 import { getClientResources } from '@/lib/api/client-resources';
 import { getServices } from '@/lib/api/services';
+import { getUsers } from '@/lib/api/users';
 import { createReservation } from '@/lib/api/reservations';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -27,11 +28,17 @@ interface ReservationFormProps {
 export function ReservationForm({ defaultDate, onSuccess, onCancel }: ReservationFormProps) {
   const today = defaultDate || format(new Date(), 'yyyy-MM-dd');
 
+  const [clientId, setClientId] = useState('');
   const [clientResourceId, setClientResourceId] = useState('');
   const [serviceId, setServiceId] = useState('');
   const [datetime, setDatetime] = useState(defaultDate ? `${defaultDate}T09:00` : `${today}T09:00`);
   const [notes, setNotes] = useState('');
   const [error, setError] = useState<string | null>(null);
+
+  const { data: usersData } = useQuery({
+    queryKey: ['users', 'all'],
+    queryFn: () => getUsers({ per_page: 200 }),
+  });
 
   const { data: clientResourcesData } = useQuery({
     queryKey: ['client-resources', 'all'],
@@ -58,24 +65,50 @@ export function ReservationForm({ defaultDate, onSuccess, onCancel }: Reservatio
     e.preventDefault();
     setError(null);
 
-    if (!clientResourceId || !serviceId || !datetime) {
+    if (!clientId || !serviceId || !datetime) {
       setError('Por favor completa todos los campos requeridos.');
       return;
     }
 
     mutate({
-      client_resource_id: clientResourceId,
+      client_id: clientId,
+      client_resource_id: clientResourceId || undefined,
       service_id: serviceId,
       scheduled_at: new Date(datetime).toISOString(),
       notes: notes || undefined,
     });
   };
 
+  const users = usersData?.data ?? [];
   const clientResources = clientResourcesData?.data ?? [];
   const services = servicesData?.data ?? [];
 
   return (
     <form onSubmit={handleSubmit} className="space-y-4">
+      {/* Client */}
+      <div className="space-y-1">
+        <Label htmlFor="res-client">Cliente</Label>
+        <Select value={clientId} onValueChange={(v) => setClientId(v ?? '')}>
+          <SelectTrigger id="res-client" className="w-full">
+            <SelectValue placeholder="Seleccionar cliente">
+              {clientId
+                ? (() => {
+                    const u = users.find((u) => u.id === clientId);
+                    return u ? u.name : clientId;
+                  })()
+                : undefined}
+            </SelectValue>
+          </SelectTrigger>
+          <SelectContent>
+            {users.map((u) => (
+              <SelectItem key={u.id} value={u.id}>
+                {u.name} — {u.email}
+              </SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
+      </div>
+
       {/* Client Resource */}
       <div className="space-y-1">
         <Label htmlFor="res-resource">Recurso del cliente</Label>

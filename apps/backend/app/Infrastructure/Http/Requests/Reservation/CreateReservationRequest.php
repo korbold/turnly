@@ -14,6 +14,7 @@ class CreateReservationRequest extends FormRequest
     public function rules(): array
     {
         return [
+            'client_id'          => ['nullable', 'uuid'],
             'client_resource_id' => ['nullable', 'uuid'],
             'service_id'   => ['required', 'uuid'],
             'scheduled_at' => ['required', 'date', 'after:now'],

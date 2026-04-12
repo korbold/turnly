@@ -21,7 +21,8 @@ export async function getReservation(id: string): Promise<Reservation> {
 }
 
 export async function createReservation(data: {
-  client_resource_id: string;
+  client_id?: string;
+  client_resource_id?: string;
   service_id: string;
   scheduled_at: string;
   assigned_to?: string;
