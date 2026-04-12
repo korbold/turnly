@@ -27,3 +27,11 @@ export async function checkSlug(slug: string): Promise<boolean> {
   const response = await api.get('/onboarding/check-slug', { params: { slug } });
   return response.data.data.available;
 }
+
+export async function setBusinessType(data: {
+  business_type: string;
+  create_suggested_services?: boolean;
+}) {
+  const response = await api.post('/onboarding/business-type', data);
+  return response.data;
+}
