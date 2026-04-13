@@ -22,4 +22,13 @@ class CreateReservationRequest extends FormRequest
             'notes'        => ['nullable', 'string', 'max:500'],
         ];
     }
+
+    public function messages(): array
+    {
+        return [
+            'scheduled_at.after' => 'La fecha y hora debe ser posterior a la actual.',
+            'scheduled_at.required' => 'La fecha y hora es obligatoria.',
+            'service_id.required' => 'El servicio es obligatorio.',
+        ];
+    }
 }

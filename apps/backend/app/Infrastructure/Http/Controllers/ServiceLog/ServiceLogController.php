@@ -64,6 +64,33 @@ class ServiceLogController extends Controller
         return new ServiceLogResource($serviceLog);
     }
 
+    public function update(Request $request, string $id): ServiceLogResource
+    {
+        $serviceLog = ServiceLogModel::findOrFail($id);
+
+        $request->validate([
+            'service_id' => 'nullable|uuid',
+            'attended_by' => 'nullable|uuid',
+            'price_charged' => 'nullable|numeric|min:0',
+            'payment_method' => 'nullable|in:cash,card,transfer,other',
+            'notes' => 'nullable|string|max:500',
+        ]);
+
+        $serviceLog->update($request->only([
+            'service_id', 'attended_by', 'price_charged', 'payment_method', 'notes',
+        ]));
+
+        return new ServiceLogResource($serviceLog->load(['clientResource', 'service', 'attendant']));
+    }
+
+    public function destroy(string $id): JsonResponse
+    {
+        $serviceLog = ServiceLogModel::findOrFail($id);
+        $serviceLog->delete();
+
+        return response()->json(['data' => ['message' => 'Registro eliminado']], 200);
+    }
+
     public function complete(string $id): JsonResponse
     {
         $this->serviceLogRepository->complete($id, new \DateTimeImmutable());

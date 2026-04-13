@@ -74,7 +74,7 @@ export default function DashboardPage() {
       </div>
 
       {/* Stats cards */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+      <div className="stat-cards-scroll">
         {/* Reservaciones hoy */}
         <div className="bg-white rounded-xl shadow-sm p-6">
           <div className="flex items-center justify-center w-10 h-10 rounded-full bg-blue-100 mb-4">

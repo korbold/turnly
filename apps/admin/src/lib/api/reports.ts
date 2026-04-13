@@ -28,6 +28,24 @@ export async function getDailyReport(date?: string): Promise<DailyReport> {
   return response.data.data;
 }
 
+export interface RangeReport {
+  from: string;
+  to: string;
+  total_services: number;
+  total_revenue: number;
+  services_count: number;
+  reservations_count: number;
+  reservations_total: number;
+  reservations_cancelled: number;
+  by_payment_method: { cash: number; card: number; transfer: number };
+  daily: { date: string; services: number; reservations: number; revenue: number }[];
+}
+
+export async function getRangeReport(from: string, to: string): Promise<RangeReport> {
+  const response = await api.get('/reports/range', { params: { from, to } });
+  return response.data.data;
+}
+
 export async function getWeeklyReport(week?: string) {
   const params = week ? { week } : {};
   const response = await api.get('/reports/weekly', { params });

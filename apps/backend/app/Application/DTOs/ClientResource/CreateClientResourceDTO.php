@@ -7,7 +7,6 @@ final readonly class CreateClientResourceDTO
     public function __construct(
         public string $tenantId,
         public string $clientId,
-        public ?string $label = null,
         public ?array $data = null,
         public string $plate = '',
         public ?string $brand = null,
@@ -21,7 +20,6 @@ final readonly class CreateClientResourceDTO
         return new static(
             tenantId: $data['tenant_id'],
             clientId: $data['client_id'],
-            label: $data['label'] ?? null,
             data: $data['data'] ?? null,
             plate: $data['plate'] ?? '',
             brand: $data['brand'] ?? null,

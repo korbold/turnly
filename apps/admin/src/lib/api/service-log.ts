@@ -23,6 +23,21 @@ export async function createServiceLog(data: {
   return response.data.data;
 }
 
+export async function updateServiceLog(id: string, data: {
+  service_id?: string;
+  attended_by?: string;
+  price_charged?: number;
+  payment_method?: string;
+  notes?: string;
+}): Promise<ServiceLog> {
+  const response = await api.patch(`/service-logs/${id}`, data);
+  return response.data.data;
+}
+
+export async function deleteServiceLog(id: string): Promise<void> {
+  await api.delete(`/service-logs/${id}`);
+}
+
 export async function completeServiceLog(id: string): Promise<void> {
   await api.patch(`/service-logs/${id}/complete`);
 }

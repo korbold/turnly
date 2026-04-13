@@ -40,7 +40,6 @@ class EloquentClientResourceRepository implements ClientResourceRepositoryInterf
         $data = [
             'tenant_id'  => $clientResource->tenantId,
             'client_id'  => $clientResource->clientId,
-            'label'      => $clientResource->label,
             'data'       => $clientResource->data,
             'plate'      => $clientResource->plate,
             'brand'      => $clientResource->brand,
@@ -98,7 +97,6 @@ class EloquentClientResourceRepository implements ClientResourceRepositoryInterf
             id: $model->id,
             tenantId: $model->tenant_id,
             clientId: $model->client_id,
-            label: $model->label,
             data: $model->data,
             plate: $model->plate,
             brand: $model->brand,

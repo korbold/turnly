@@ -189,6 +189,7 @@ export default function ReservationsPage() {
             <ReservationCard
               reservation={selectedReservation}
               queryKey={queryKey}
+              onAction={handleDetailClose}
             />
           )}
         </DialogContent>

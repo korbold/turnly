@@ -21,8 +21,8 @@ export default function NewServiceLogPage() {
   });
 
   const { data: usersData, isLoading: usersLoading } = useQuery({
-    queryKey: ['users', 'all'],
-    queryFn: () => getUsers({ per_page: 100 }),
+    queryKey: ['users', 'staff'],
+    queryFn: () => getUsers({ per_page: 100, exclude_role: 'client' }),
   });
 
   const isLoading = clientResourcesLoading || servicesLoading || usersLoading;

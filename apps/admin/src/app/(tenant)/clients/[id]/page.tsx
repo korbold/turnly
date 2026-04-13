@@ -116,7 +116,9 @@ export default function ClientResourceDetailPage({ params }: { params: Promise<{
             <div>
               <p className="text-xs text-gray-500 uppercase tracking-wide">Registrado</p>
               <p className="font-medium">
-                {format(new Date(clientResource.created_at), "d 'de' MMMM yyyy", { locale: es })}
+                {clientResource.created_at
+                  ? format(new Date(clientResource.created_at), "d 'de' MMMM yyyy", { locale: es })
+                  : '—'}
               </p>
             </div>
           </div>

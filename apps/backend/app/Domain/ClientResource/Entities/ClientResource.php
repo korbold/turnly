@@ -8,7 +8,6 @@ final readonly class ClientResource
         public string $id,
         public string $tenantId,
         public string $clientId,
-        public ?string $label,
         public ?array $data,
         public string $plate,
         public ?string $brand,

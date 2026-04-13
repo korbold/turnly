@@ -20,6 +20,9 @@ class UserController extends Controller
             if ($request->has('role')) {
                 $q->where('tenant_users.role', $request->role);
             }
+            if ($request->has('exclude_role')) {
+                $q->where('tenant_users.role', '!=', $request->exclude_role);
+            }
         })->with(['tenants' => function ($q) use ($tenantId) {
             $q->where('tenants.id', $tenantId);
         }]);

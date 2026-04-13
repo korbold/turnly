@@ -86,16 +86,25 @@ export function WalkInForm({ clientResources, services, users }: WalkInFormProps
         <form onSubmit={handleSubmit} className="space-y-4">
           {/* Vehicle */}
           <div className="space-y-1">
-            <Label htmlFor="vehicle">Vehículo (placa)</Label>
+            <Label htmlFor="vehicle">Cliente</Label>
             <Select value={clientResourceId} onValueChange={(v) => setClientResourceId(v ?? '')}>
               <SelectTrigger id="vehicle" className="w-full">
-                <SelectValue placeholder="Seleccionar vehículo" />
+                <SelectValue placeholder="Seleccionar cliente">
+                  {clientResourceId
+                    ? (() => {
+                        const v = clientResources.find((r) => r.id === clientResourceId);
+                        if (!v) return clientResourceId;
+                        return `${v.client?.name ?? 'Sin nombre'}${v.plate ? ` — ${v.plate}` : ''}`;
+                      })()
+                    : undefined}
+                </SelectValue>
               </SelectTrigger>
               <SelectContent>
                 {clientResources.map((v) => (
                   <SelectItem key={v.id} value={v.id}>
-                    {v.plate}
-                    {v.brand ? ` — ${v.brand}${v.model ? ` ${v.model}` : ''}` : ''}
+                    {v.client?.name ?? 'Sin nombre'}
+                    {v.plate ? ` — ${v.plate}` : ''}
+                    {v.brand ? ` (${v.brand}${v.model ? ` ${v.model}` : ''})` : ''}
                   </SelectItem>
                 ))}
               </SelectContent>
@@ -107,7 +116,14 @@ export function WalkInForm({ clientResources, services, users }: WalkInFormProps
             <Label htmlFor="service">Servicio</Label>
             <Select value={serviceId} onValueChange={(v) => handleServiceChange(v)}>
               <SelectTrigger id="service" className="w-full">
-                <SelectValue placeholder="Seleccionar servicio" />
+                <SelectValue placeholder="Seleccionar servicio">
+                  {serviceId
+                    ? (() => {
+                        const s = services.find((s) => s.id === serviceId);
+                        return s ? `${s.name} — $${Number(s.price).toFixed(2)}` : serviceId;
+                      })()
+                    : undefined}
+                </SelectValue>
               </SelectTrigger>
               <SelectContent>
                 {services.map((s) => (
@@ -124,7 +140,14 @@ export function WalkInForm({ clientResources, services, users }: WalkInFormProps
             <Label htmlFor="employee">Empleado</Label>
             <Select value={attendedBy} onValueChange={(v) => setAttendedBy(v ?? '')}>
               <SelectTrigger id="employee" className="w-full">
-                <SelectValue placeholder="Seleccionar empleado" />
+                <SelectValue placeholder="Seleccionar empleado">
+                  {attendedBy
+                    ? (() => {
+                        const u = users.find((u) => u.id === attendedBy);
+                        return u ? u.name : attendedBy;
+                      })()
+                    : undefined}
+                </SelectValue>
               </SelectTrigger>
               <SelectContent>
                 {users.map((u) => (
@@ -141,7 +164,11 @@ export function WalkInForm({ clientResources, services, users }: WalkInFormProps
             <Label htmlFor="payment">Método de pago</Label>
             <Select value={paymentMethod} onValueChange={(v) => setPaymentMethod(v ?? '')}>
               <SelectTrigger id="payment" className="w-full">
-                <SelectValue placeholder="Seleccionar método" />
+                <SelectValue placeholder="Seleccionar método">
+                  {paymentMethod
+                    ? { cash: 'Efectivo', card: 'Tarjeta', transfer: 'Transferencia' }[paymentMethod] ?? paymentMethod
+                    : undefined}
+                </SelectValue>
               </SelectTrigger>
               <SelectContent>
                 <SelectItem value="cash">Efectivo</SelectItem>

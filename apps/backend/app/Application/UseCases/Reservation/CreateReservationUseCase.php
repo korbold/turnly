@@ -25,14 +25,19 @@ class CreateReservationUseCase
         // Calculate estimated_end using a fixed 30-minute slot
         $estimatedEnd = $scheduledAt->modify('+30 minutes');
 
+        // Convert to app timezone for business hours comparison
+        $appTz = new \DateTimeZone(config('app.timezone', 'UTC'));
+        $localScheduled = $scheduledAt->setTimezone($appTz);
+        $localEnd = $estimatedEnd->setTimezone($appTz);
+
         // Check business hours
-        $dayOfWeek = (int) $scheduledAt->format('N') - 1; // 0=Monday
+        $dayOfWeek = (int) $localScheduled->format('N') - 1; // 0=Monday
         $slot = AvailabilitySlotModel::withoutGlobalScopes()
             ->where('tenant_id', $dto->tenantId)
             ->where('day_of_week', $dayOfWeek)
             ->where('is_active', true)
-            ->where('start_time', '<=', $scheduledAt->format('H:i:s'))
-            ->where('end_time', '>=', $estimatedEnd->format('H:i:s'))
+            ->where('start_time', '<=', $localScheduled->format('H:i:s'))
+            ->where('end_time', '>=', $localEnd->format('H:i:s'))
             ->first();
 
         if (!$slot) {

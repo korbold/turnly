@@ -3,9 +3,9 @@
 import { useState } from 'react';
 import { useQuery, useMutation } from '@tanstack/react-query';
 import { format } from 'date-fns';
+import { toast } from 'sonner';
 import { getClientResources } from '@/lib/api/client-resources';
 import { getServices } from '@/lib/api/services';
-import { getUsers } from '@/lib/api/users';
 import { createReservation } from '@/lib/api/reservations';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -28,17 +28,10 @@ interface ReservationFormProps {
 export function ReservationForm({ defaultDate, onSuccess, onCancel }: ReservationFormProps) {
   const today = defaultDate || format(new Date(), 'yyyy-MM-dd');
 
-  const [clientId, setClientId] = useState('');
   const [clientResourceId, setClientResourceId] = useState('');
   const [serviceId, setServiceId] = useState('');
   const [datetime, setDatetime] = useState(defaultDate ? `${defaultDate}T09:00` : `${today}T09:00`);
   const [notes, setNotes] = useState('');
-  const [error, setError] = useState<string | null>(null);
-
-  const { data: clientsData } = useQuery({
-    queryKey: ['users', 'clients'],
-    queryFn: () => getUsers({ per_page: 200, role: 'client' }),
-  });
 
   const { data: clientResourcesData } = useQuery({
     queryKey: ['client-resources', 'all'],
@@ -53,108 +46,67 @@ export function ReservationForm({ defaultDate, onSuccess, onCancel }: Reservatio
   const { mutate, isPending } = useMutation({
     mutationFn: createReservation,
     onSuccess: () => {
+      toast.success('Reservación creada exitosamente');
       onSuccess?.();
     },
     onError: (err: unknown) => {
       const message = (err as { message?: string })?.message ?? 'Error al crear la reservación';
-      setError(message);
+      toast.error(message);
     },
   });
 
+  const clientResources = clientResourcesData?.data ?? [];
+  const services = servicesData?.data ?? [];
+
+  const selectedResource = clientResources.find((r) => r.id === clientResourceId);
+
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    setError(null);
 
-    if (!clientId || !serviceId || !datetime) {
-      setError('Por favor completa todos los campos requeridos.');
+    if (!clientResourceId || !serviceId || !datetime) {
+      toast.error('Por favor completa todos los campos requeridos.');
+      return;
+    }
+
+    if (!selectedResource?.client_id) {
+      toast.error('El recurso seleccionado no tiene un cliente asociado.');
       return;
     }
 
     mutate({
-      client_id: clientId,
-      client_resource_id: clientResourceId || undefined,
+      client_id: selectedResource.client_id,
+      client_resource_id: clientResourceId,
       service_id: serviceId,
       scheduled_at: new Date(datetime).toISOString(),
       notes: notes || undefined,
     });
   };
 
-  const clients = clientsData?.data ?? [];
-  const clientResources = clientResourcesData?.data ?? [];
-  const services = servicesData?.data ?? [];
-
-  // Filter resources by selected client
-  const filteredResources = clientId
-    ? clientResources.filter((r) => r.client_id === clientId)
-    : clientResources;
-
-  const handleClientChange = (v: string | null) => {
-    setClientId(v ?? '');
-    // Reset resource if it doesn't belong to the new client
-    if (v && clientResourceId) {
-      const resource = clientResources.find((r) => r.id === clientResourceId);
-      if (resource && resource.client_id !== v) {
-        setClientResourceId('');
-      }
-    }
-  };
-
-  const handleResourceChange = (v: string | null) => {
-    setClientResourceId(v ?? '');
-    // Auto-select client from resource owner
-    if (v) {
-      const resource = clientResources.find((r) => r.id === v);
-      if (resource?.client_id && resource.client_id !== clientId) {
-        setClientId(resource.client_id);
-      }
-    }
-  };
-
   return (
     <form onSubmit={handleSubmit} className="space-y-4">
-      {/* Client */}
-      <div className="space-y-1">
-        <Label htmlFor="res-client">Cliente</Label>
-        <Select value={clientId} onValueChange={handleClientChange}>
-          <SelectTrigger id="res-client" className="w-full">
-            <SelectValue placeholder="Seleccionar cliente">
-              {clientId
-                ? (() => {
-                    const c = clients.find((c) => c.id === clientId);
-                    return c ? c.name : clientId;
-                  })()
-                : undefined}
-            </SelectValue>
-          </SelectTrigger>
-          <SelectContent>
-            {clients.map((c) => (
-              <SelectItem key={c.id} value={c.id}>
-                {c.name} — {c.email}
-              </SelectItem>
-            ))}
-          </SelectContent>
-        </Select>
-      </div>
-
       {/* Client Resource */}
       <div className="space-y-1">
-        <Label htmlFor="res-resource">Recurso del cliente</Label>
-        <Select value={clientResourceId} onValueChange={handleResourceChange}>
+        <Label htmlFor="res-resource">Cliente</Label>
+        <Select value={clientResourceId} onValueChange={(v) => setClientResourceId(v ?? '')}>
           <SelectTrigger id="res-resource" className="w-full">
-            <SelectValue placeholder="Seleccionar recurso">
-              {clientResourceId
+            <SelectValue placeholder="Seleccionar cliente">
+              {clientResourceId && selectedResource
                 ? (() => {
-                    const r = clientResources.find((v) => v.id === clientResourceId);
-                    return r ? (r.label || r.plate || r.id) : clientResourceId;
+                    const clientName = selectedResource.client?.name ?? '';
+                    const plate = selectedResource.plate ?? '';
+                    return clientName && plate
+                      ? `${clientName} — ${plate}`
+                      : clientName || plate || clientResourceId;
                   })()
                 : undefined}
             </SelectValue>
           </SelectTrigger>
           <SelectContent>
-            {filteredResources.map((v) => (
-              <SelectItem key={v.id} value={v.id}>
-                {v.label || v.plate || 'Sin etiqueta'}
-                {v.brand ? ` — ${v.brand}${v.model ? ` ${v.model}` : ''}` : ''}
+            {clientResources.map((r) => (
+              <SelectItem key={r.id} value={r.id}>
+                {r.client?.name ?? 'Sin nombre'}
+                {r.plate ? ` — ${r.plate}` : ''}
+                {r.brand ? ` (${r.brand}${r.model ? ` ${r.model}` : ''})` : ''}
               </SelectItem>
             ))}
           </SelectContent>
@@ -213,8 +165,6 @@ export function ReservationForm({ defaultDate, onSuccess, onCancel }: Reservatio
           rows={2}
         />
       </div>
-
-      {error && <p className="text-sm text-destructive">{error}</p>}
 
       <div className="flex gap-3 pt-2">
         <Button type="submit" disabled={isPending || !datetime}>

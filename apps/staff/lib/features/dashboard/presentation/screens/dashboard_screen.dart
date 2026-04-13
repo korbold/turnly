@@ -4,6 +4,7 @@ import 'package:go_router/go_router.dart';
 import 'package:intl/intl.dart';
 import '../../../../core/network/dio_client.dart';
 import '../../../../core/storage/secure_storage.dart';
+import '../../../../core/theme/app_theme.dart';
 import '../../../../shared/enums/user_role.dart';
 import '../../../../shared/widgets/stat_card.dart';
 import '../../domain/entities/daily_report.dart';
@@ -88,10 +89,14 @@ class _DashboardScreenState extends State<DashboardScreen> {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Dashboard'),
+        title: const Text('Inicio'),
         actions: [
           IconButton(
-            icon: const Icon(Icons.refresh),
+            icon: const Icon(Icons.notifications_none, color: AppColors.bodyText),
+            onPressed: () {},
+          ),
+          IconButton(
+            icon: const Icon(Icons.refresh, color: AppColors.bodyText),
             onPressed: _loadData,
           ),
         ],
@@ -148,25 +153,25 @@ class _DashboardScreenState extends State<DashboardScreen> {
           title: 'Reservaciones hoy',
           value: '${report.totalReservations}',
           icon: Icons.calendar_today,
-          iconColor: Colors.blue,
+          iconColor: AppColors.primary,
         ),
         StatCard(
-          title: 'Lavados completados',
+          title: 'Completados',
           value: '${report.completedWashes}',
           icon: Icons.check_circle,
-          iconColor: Colors.green,
+          iconColor: AppColors.success,
         ),
         StatCard(
           title: 'Ingresos del día',
           value: currency.format(report.revenue),
           icon: Icons.attach_money,
-          iconColor: Colors.amber.shade700,
+          iconColor: AppColors.warning,
         ),
         StatCard(
           title: 'En progreso',
           value: '${report.inProgressWashes}',
           icon: Icons.hourglass_top,
-          iconColor: Colors.purple,
+          iconColor: const Color(0xFF9B59B6),
         ),
       ],
     );
@@ -323,12 +328,12 @@ class _UpcomingReservationTile extends StatelessWidget {
       margin: const EdgeInsets.only(bottom: 8),
       child: ListTile(
         leading: CircleAvatar(
-          backgroundColor: Colors.blue.withValues(alpha: 0.1),
-          child: Text(timeStr, style: const TextStyle(fontSize: 11, color: Colors.blue, fontWeight: FontWeight.bold)),
+          backgroundColor: AppColors.accent,
+          child: Text(timeStr, style: const TextStyle(fontSize: 11, color: AppColors.activeNav, fontWeight: FontWeight.bold)),
         ),
-        title: Text('$clientName — $plate'),
-        subtitle: Text(serviceName),
-        trailing: const Icon(Icons.chevron_right, color: Colors.grey),
+        title: Text('$clientName — $plate', style: const TextStyle(color: AppColors.darkText, fontWeight: FontWeight.w500)),
+        subtitle: Text(serviceName, style: const TextStyle(color: AppColors.bodyText)),
+        trailing: const Icon(Icons.chevron_right, color: AppColors.bodyText),
         onTap: () {
           final id = data['id'] as String?;
           if (id != null) context.push('/reservations/$id');

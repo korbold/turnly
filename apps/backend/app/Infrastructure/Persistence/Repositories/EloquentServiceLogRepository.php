@@ -68,8 +68,15 @@ class EloquentServiceLogRepository implements ServiceLogRepositoryInterface
     {
         $rows = ServiceLogModel::whereDate('log_date', $date)->get();
 
-        $totalServices  = $rows->count();
-        $totalRevenue = $rows->sum('price_charged');
+        $reservations = \App\Infrastructure\Persistence\Models\ReservationModel::withoutGlobalScopes()
+            ->where('tenant_id', $tenantId)
+            ->whereDate('scheduled_at', $date)
+            ->whereNotIn('status', ['cancelled', 'no_show'])
+            ->with('service')
+            ->get();
+
+        $serviceRevenue = (float) $rows->sum('price_charged');
+        $reservationRevenue = (float) $reservations->sum(fn ($r) => $r->service?->price ?? 0);
 
         $byPaymentMethod = [];
         foreach (['cash', 'card', 'transfer'] as $method) {
@@ -86,8 +93,8 @@ class EloquentServiceLogRepository implements ServiceLogRepositoryInterface
         ];
 
         return [
-            'total_washes'       => $totalServices,
-            'total_revenue'      => (float) $totalRevenue,
+            'total_washes'       => $rows->count() + $reservations->count(),
+            'total_revenue'      => $serviceRevenue + $reservationRevenue,
             'by_payment_method'  => $byPaymentMethod,
             'by_status'          => $byStatus,
         ];

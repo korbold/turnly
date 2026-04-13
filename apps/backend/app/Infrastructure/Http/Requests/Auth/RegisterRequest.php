@@ -20,4 +20,17 @@ class RegisterRequest extends FormRequest
             'phone'    => ['nullable', 'string', 'max:20'],
         ];
     }
+
+    public function messages(): array
+    {
+        return [
+            'name.required' => 'El nombre es obligatorio.',
+            'email.required' => 'El email es obligatorio.',
+            'email.email' => 'El email no es válido.',
+            'email.unique' => 'Este email ya está registrado.',
+            'password.required' => 'La contraseña es obligatoria.',
+            'password.min' => 'La contraseña debe tener al menos 8 caracteres.',
+            'password.confirmed' => 'Las contraseñas no coinciden.',
+        ];
+    }
 }

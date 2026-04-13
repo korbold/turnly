@@ -29,7 +29,6 @@ class CreateClientResourceUseCase
             id: (string) Str::uuid(),
             tenantId: $dto->tenantId,
             clientId: $dto->clientId,
-            label: $dto->label,
             data: $dto->data,
             plate: strtoupper($dto->plate),
             brand: $dto->brand,

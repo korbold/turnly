@@ -12,7 +12,6 @@ class ClientResourceResource extends JsonResource
         return [
             'id'         => $this->id,
             'client_id'  => $this->client_id,
-            'label'      => $this->label,
             'data'       => $this->data,
             'plate'      => $this->plate,
             'brand'      => $this->brand,

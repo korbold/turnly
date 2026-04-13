@@ -8,7 +8,7 @@ final class OutsideBusinessHoursException extends AppException
 {
     public function __construct()
     {
-        parent::__construct('The requested time is outside business hours', 422);
+        parent::__construct('La hora seleccionada está fuera del horario de atención.', 422);
     }
 
     public function getErrorCode(): string

@@ -1,7 +1,7 @@
 'use client';
 
 import { useState } from 'react';
-import { useRouter } from 'next/navigation';
+import { useRouter, usePathname } from 'next/navigation';
 import { Menu, LogOut, User, Bell, Settings } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Sheet, SheetContent, SheetTrigger } from '@/components/ui/sheet';
@@ -15,9 +15,24 @@ import { Avatar, AvatarFallback } from '@/components/ui/avatar';
 import { logout } from '@/lib/api/auth';
 import { MobileSidebar } from './MobileSidebar';
 
+const PATH_TITLES: Record<string, string> = {
+  '/dashboard': 'Dashboard',
+  '/reservations': 'Reservaciones',
+  '/service-log': 'Registro del día',
+  '/clients': 'Clientes',
+  '/services': 'Servicios',
+  '/team': 'Equipo',
+  '/reports': 'Reportes',
+  '/settings': 'Configuración',
+};
+
 export function TopBar() {
   const router = useRouter();
+  const pathname = usePathname();
   const [open, setOpen] = useState(false);
+
+  const basePath = '/' + (pathname.split('/')[1] ?? '');
+  const pageTitle = PATH_TITLES[basePath] ?? '';
 
   const handleLogout = async () => {
     await logout();
@@ -38,7 +53,13 @@ export function TopBar() {
           </SheetContent>
         </Sheet>
 
-        <div className="flex-1" />
+        {/* Mobile: page title centered / Desktop: spacer */}
+        <div className="flex-1 lg:hidden flex justify-center">
+          {pageTitle && (
+            <span className="font-semibold text-[#343C6A]">{pageTitle}</span>
+          )}
+        </div>
+        <div className="hidden lg:block flex-1" />
 
         {/* Notification bell */}
         <Button variant="ghost" size="icon" className="text-[#718EBF] hover:text-[#343C6A]">

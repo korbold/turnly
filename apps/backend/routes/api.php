@@ -66,12 +66,15 @@ Route::prefix('v1')->group(function () {
             Route::get('service-logs', [ServiceLogController::class, 'index']);
             Route::post('service-logs', [ServiceLogController::class, 'store']);
             Route::get('service-logs/{id}', [ServiceLogController::class, 'show']);
+            Route::patch('service-logs/{id}', [ServiceLogController::class, 'update']);
+            Route::delete('service-logs/{id}', [ServiceLogController::class, 'destroy']);
             Route::patch('service-logs/{id}/complete', [ServiceLogController::class, 'complete']);
 
             // Client Resources
             Route::get('client-resources', [ClientResourceController::class, 'index']);
             Route::post('client-resources', [ClientResourceController::class, 'store']);
             Route::get('client-resources/{id}', [ClientResourceController::class, 'show']);
+            Route::patch('client-resources/{id}', [ClientResourceController::class, 'update']);
             Route::get('client-resources/{id}/history', [ClientResourceController::class, 'history']);
 
             // Services
@@ -88,6 +91,7 @@ Route::prefix('v1')->group(function () {
 
             // Reports
             Route::get('reports/daily', [ReportController::class, 'daily']);
+            Route::get('reports/range', [ReportController::class, 'range']);
             Route::get('reports/weekly', [ReportController::class, 'weekly']);
             Route::get('reports/monthly', [ReportController::class, 'monthly']);
 

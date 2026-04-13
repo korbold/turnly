@@ -36,6 +36,7 @@ interface CustomField {
   label: string;
   type: string;
   required: boolean;
+  uppercase?: boolean;
   options?: string[] | null;
 }
 
@@ -788,6 +789,15 @@ export default function SettingsPage() {
                         className="rounded border-gray-300"
                       />
                       Requerido
+                    </label>
+                    <label className="flex items-center gap-1.5 text-sm text-gray-600 whitespace-nowrap">
+                      <input
+                        type="checkbox"
+                        checked={field.uppercase ?? false}
+                        onChange={(e) => updateCustomField(index, { uppercase: e.target.checked })}
+                        className="rounded border-gray-300"
+                      />
+                      ABC
                     </label>
                     <Button
                       variant="ghost"

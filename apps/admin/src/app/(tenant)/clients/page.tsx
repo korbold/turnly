@@ -2,9 +2,9 @@
 
 import { useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { Plus, Settings } from 'lucide-react';
+import { Plus, Pencil, Settings } from 'lucide-react';
 import { useRouter } from 'next/navigation';
-import { getClientResources, createClientResource } from '@/lib/api/client-resources';
+import { getClientResources, createClientResource, updateClientResource } from '@/lib/api/client-resources';
 import type { ClientResource } from '@/types/client-resource';
 import { getTenantSettings } from '@/lib/api/tenant';
 import { Button } from '@/components/ui/button';
@@ -32,11 +32,11 @@ interface CustomField {
   label: string;
   type: 'text' | 'number' | 'textarea' | 'select';
   required: boolean;
+  uppercase?: boolean;
   options?: string[] | null;
 }
 
 interface DynamicFormData {
-  label: string;
   data: Record<string, string>;
 }
 
@@ -45,14 +45,16 @@ function emptyDynamicForm(customFields: CustomField[]): DynamicFormData {
   for (const field of customFields) {
     data[field.key] = '';
   }
-  return { label: '', data };
+  return { data };
 }
 
 export default function ClientsPage() {
   const queryClient = useQueryClient();
   const router = useRouter();
   const [dialogOpen, setDialogOpen] = useState(false);
-  const [form, setForm] = useState<DynamicFormData>({ label: '', data: {} });
+  const [editDialogOpen, setEditDialogOpen] = useState(false);
+  const [editingResource, setEditingResource] = useState<ClientResource | null>(null);
+  const [form, setForm] = useState<DynamicFormData>({ data: {} });
 
   const { data: tenantData } = useQuery({
     queryKey: ['tenant-settings'],
@@ -77,20 +79,53 @@ export default function ClientsPage() {
     },
   });
 
+  const updateMutation = useMutation({
+    mutationFn: ({ id, data }: { id: string; data: { data?: Record<string, string> } }) =>
+      updateClientResource(id, data),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['client-resources'] });
+      setEditDialogOpen(false);
+      setEditingResource(null);
+    },
+  });
+
   function handleOpenDialog() {
     setForm(emptyDynamicForm(customFields));
     setDialogOpen(true);
   }
 
-  function handleFieldChange(key: string, value: string) {
-    setForm((prev) => ({ ...prev, data: { ...prev.data, [key]: value } }));
+  function handleOpenEdit(cr: ClientResource) {
+    setEditingResource(cr);
+    const data: Record<string, string> = {};
+    for (const field of customFields) {
+      data[field.key] = cr.data?.[field.key] != null
+        ? String(cr.data[field.key])
+        : (cr as unknown as Record<string, unknown>)[field.key] != null
+          ? String((cr as unknown as Record<string, unknown>)[field.key])
+          : '';
+    }
+    setForm({ data });
+    setEditDialogOpen(true);
+  }
+
+  function handleFieldChange(key: string, value: string, uppercase?: boolean) {
+    const val = uppercase ? value.toUpperCase() : value;
+    setForm((prev) => ({ ...prev, data: { ...prev.data, [key]: val } }));
   }
 
   function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
     createMutation.mutate({
-      label: form.label || undefined,
       data: form.data,
+    });
+  }
+
+  function handleEditSubmit(e: React.FormEvent) {
+    e.preventDefault();
+    if (!editingResource) return;
+    updateMutation.mutate({
+      id: editingResource.id,
+      data: { data: form.data },
     });
   }
 
@@ -123,17 +158,6 @@ export default function ClientsPage() {
               <DialogTitle>Nuevo cliente</DialogTitle>
             </DialogHeader>
             <form onSubmit={handleSubmit} className="space-y-4">
-              <div>
-                <label className="text-sm font-medium text-gray-700 block mb-1">
-                  Etiqueta
-                </label>
-                <Input
-                  value={form.label}
-                  onChange={(e) => setForm((prev) => ({ ...prev, label: e.target.value }))}
-                  placeholder="Ej: Toyota ABC-123"
-                />
-              </div>
-
               {customFields.length === 0 ? (
                 <div className="text-sm text-muted-foreground flex items-start gap-2 rounded-md border border-dashed p-3">
                   <Settings className="h-4 w-4 mt-0.5 shrink-0" />
@@ -156,7 +180,7 @@ export default function ClientsPage() {
                       <textarea
                         required={field.required}
                         value={form.data[field.key] ?? ''}
-                        onChange={(e) => handleFieldChange(field.key, e.target.value)}
+                        onChange={(e) => handleFieldChange(field.key, e.target.value, field.uppercase)}
                         className="w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50 min-h-[80px] resize-y"
                         placeholder={field.label}
                       />
@@ -164,7 +188,7 @@ export default function ClientsPage() {
                       <select
                         required={field.required}
                         value={form.data[field.key] ?? ''}
-                        onChange={(e) => handleFieldChange(field.key, e.target.value)}
+                        onChange={(e) => handleFieldChange(field.key, e.target.value, field.uppercase)}
                         className="w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
                       >
                         <option value="">Seleccionar...</option>
@@ -179,7 +203,7 @@ export default function ClientsPage() {
                         type={field.type === 'number' ? 'number' : 'text'}
                         required={field.required}
                         value={form.data[field.key] ?? ''}
-                        onChange={(e) => handleFieldChange(field.key, e.target.value)}
+                        onChange={(e) => handleFieldChange(field.key, e.target.value, field.uppercase)}
                         placeholder={field.label}
                       />
                     )}
@@ -230,7 +254,7 @@ export default function ClientsPage() {
               <Table>
                 <TableHeader>
                   <TableRow>
-                    <TableHead>Etiqueta</TableHead>
+                    <TableHead>ID</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
@@ -240,40 +264,150 @@ export default function ClientsPage() {
                       className="cursor-pointer"
                       onClick={() => router.push(`/clients/${cr.id}`)}
                     >
-                      <TableCell className="font-medium">{cr.label ?? '—'}</TableCell>
+                      <TableCell className="font-medium">{cr.id.slice(0, 8)}</TableCell>
                     </TableRow>
                   ))}
                 </TableBody>
               </Table>
             </div>
           ) : (
-            <Table>
-              <TableHeader>
-                <TableRow>
-                  <TableHead>Etiqueta</TableHead>
-                  {customFields.map((field) => (
-                    <TableHead key={field.key}>{field.label}</TableHead>
-                  ))}
-                </TableRow>
-              </TableHeader>
-              <TableBody>
+            <>
+              {/* Mobile cards */}
+              <div className="md:hidden space-y-3">
                 {clientResources.map((cr) => (
-                  <TableRow
-                    key={cr.id}
-                    className="cursor-pointer"
+                  <div
+                    key={`mob-${cr.id}`}
+                    className="rounded-xl border bg-white p-4 space-y-2 cursor-pointer"
                     onClick={() => router.push(`/clients/${cr.id}`)}
                   >
-                    <TableCell className="font-medium">{cr.label ?? '—'}</TableCell>
-                    {customFields.map((field) => (
-                      <TableCell key={field.key}>{getFieldValue(cr, field.key)}</TableCell>
-                    ))}
-                  </TableRow>
+                    <div className="flex items-center justify-between">
+                      <span className="text-sm font-medium">
+                        {getFieldValue(cr, customFields[0]?.key ?? '')}
+                      </span>
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          handleOpenEdit(cr);
+                        }}
+                      >
+                        <Pencil className="h-4 w-4" />
+                      </Button>
+                    </div>
+                    <div className="text-xs text-gray-500 space-y-0.5">
+                      {customFields.slice(1).map((field) => (
+                        <p key={field.key}>
+                          <span className="font-medium text-gray-600">{field.label}:</span>{' '}
+                          {getFieldValue(cr, field.key)}
+                        </p>
+                      ))}
+                    </div>
+                  </div>
                 ))}
-              </TableBody>
-            </Table>
+              </div>
+
+              {/* Desktop table */}
+              <div className="hidden md:block">
+                <Table>
+                  <TableHeader>
+                    <TableRow>
+                      {customFields.map((field) => (
+                        <TableHead key={field.key}>{field.label}</TableHead>
+                      ))}
+                      <TableHead className="w-12"></TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {clientResources.map((cr) => (
+                      <TableRow
+                        key={cr.id}
+                        className="cursor-pointer"
+                        onClick={() => router.push(`/clients/${cr.id}`)}
+                      >
+                        {customFields.map((field) => (
+                          <TableCell key={field.key}>{getFieldValue(cr, field.key)}</TableCell>
+                        ))}
+                        <TableCell>
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              handleOpenEdit(cr);
+                            }}
+                          >
+                            <Pencil className="h-4 w-4" />
+                          </Button>
+                        </TableCell>
+                      </TableRow>
+                    ))}
+                  </TableBody>
+                </Table>
+              </div>
+            </>
           )}
         </CardContent>
       </Card>
+
+      {/* Edit Dialog */}
+      <Dialog open={editDialogOpen} onOpenChange={setEditDialogOpen}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle>Editar cliente</DialogTitle>
+          </DialogHeader>
+          <form onSubmit={handleEditSubmit} className="space-y-4">
+            {customFields.map((field) => (
+              <div key={field.key}>
+                <label className="text-sm font-medium text-gray-700 block mb-1">
+                  {field.label}
+                  {field.required && <span className="text-red-500 ml-1">*</span>}
+                </label>
+                {field.type === 'textarea' ? (
+                  <textarea
+                    required={field.required}
+                    value={form.data[field.key] ?? ''}
+                    onChange={(e) => handleFieldChange(field.key, e.target.value, field.uppercase)}
+                    className="w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50 min-h-[80px] resize-y"
+                    placeholder={field.label}
+                  />
+                ) : field.type === 'select' ? (
+                  <select
+                    required={field.required}
+                    value={form.data[field.key] ?? ''}
+                    onChange={(e) => handleFieldChange(field.key, e.target.value, field.uppercase)}
+                    className="w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
+                  >
+                    <option value="">Seleccionar...</option>
+                    {(field.options ?? []).map((opt) => (
+                      <option key={opt} value={opt}>
+                        {opt}
+                      </option>
+                    ))}
+                  </select>
+                ) : (
+                  <Input
+                    type={field.type === 'number' ? 'number' : 'text'}
+                    required={field.required}
+                    value={form.data[field.key] ?? ''}
+                    onChange={(e) => handleFieldChange(field.key, e.target.value, field.uppercase)}
+                    placeholder={field.label}
+                  />
+                )}
+              </div>
+            ))}
+
+            <DialogFooter>
+              <Button type="button" variant="outline" onClick={() => setEditDialogOpen(false)}>
+                Cancelar
+              </Button>
+              <Button type="submit" disabled={updateMutation.isPending}>
+                {updateMutation.isPending ? 'Guardando...' : 'Guardar'}
+              </Button>
+            </DialogFooter>
+          </form>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

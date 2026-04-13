@@ -14,7 +14,7 @@ class CreateClientResourceRequest extends FormRequest
     public function rules(): array
     {
         return [
-            'label'  => ['nullable', 'string', 'max:255'],
+            'client_id' => ['nullable', 'uuid', 'exists:users,id'],
             'data'   => ['nullable', 'array'],
             'plate'  => ['nullable', 'string', 'max:20'],
             'brand'  => ['nullable', 'string', 'max:100'],

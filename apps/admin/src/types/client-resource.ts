@@ -2,7 +2,6 @@ export interface ClientResource {
   id: string;
   tenant_id: string;
   client_id: string;
-  label: string | null;
   data: Record<string, unknown> | null;
   plate: string | null;
   brand: string | null;

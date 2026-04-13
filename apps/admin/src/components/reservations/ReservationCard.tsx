@@ -1,7 +1,9 @@
 'use client';
 
+import { useState } from 'react';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { format } from 'date-fns';
+import { toast } from 'sonner';
 import {
   confirmReservation,
   startReservation,
@@ -11,7 +13,14 @@ import {
 import type { Reservation, ReservationStatus } from '@/types/reservation';
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { Badge } from '@/components/ui/badge';
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogFooter,
+} from '@/components/ui/dialog';
+import { Textarea } from '@/components/ui/textarea';
 
 const statusLabels: Record<ReservationStatus, string> = {
   pending: 'Pendiente',
@@ -34,10 +43,13 @@ const statusClasses: Record<ReservationStatus, string> = {
 interface ReservationCardProps {
   reservation: Reservation;
   queryKey?: unknown[];
+  onAction?: () => void;
 }
 
-export function ReservationCard({ reservation, queryKey }: ReservationCardProps) {
+export function ReservationCard({ reservation, queryKey, onAction }: ReservationCardProps) {
   const queryClient = useQueryClient();
+  const [cancelDialogOpen, setCancelDialogOpen] = useState(false);
+  const [cancelReason, setCancelReason] = useState('');
 
   const invalidate = () => {
     queryClient.invalidateQueries({ queryKey: queryKey ?? ['reservations'] });
@@ -45,23 +57,38 @@ export function ReservationCard({ reservation, queryKey }: ReservationCardProps)
 
   const { mutate: confirm, isPending: confirming } = useMutation({
     mutationFn: () => confirmReservation(reservation.id),
-    onSuccess: invalidate,
+    onSuccess: () => { toast.success('Reservación confirmada'); invalidate(); onAction?.(); },
   });
 
   const { mutate: start, isPending: starting } = useMutation({
     mutationFn: () => startReservation(reservation.id),
-    onSuccess: invalidate,
+    onSuccess: () => { toast.success('Reservación iniciada'); invalidate(); onAction?.(); },
   });
 
   const { mutate: complete, isPending: completing } = useMutation({
     mutationFn: () => completeReservation(reservation.id),
-    onSuccess: invalidate,
+    onSuccess: () => { toast.success('Reservación completada'); invalidate(); onAction?.(); },
   });
 
   const { mutate: cancel, isPending: cancelling } = useMutation({
-    mutationFn: () => cancelReservation(reservation.id),
-    onSuccess: invalidate,
+    mutationFn: (reason?: string) => cancelReservation(reservation.id, reason),
+    onSuccess: () => {
+      toast.success('Reservación cancelada');
+      setCancelDialogOpen(false);
+      setCancelReason('');
+      invalidate();
+      onAction?.();
+    },
   });
+
+  const handleCancelClick = () => {
+    setCancelReason('');
+    setCancelDialogOpen(true);
+  };
+
+  const handleCancelConfirm = () => {
+    cancel(cancelReason || undefined);
+  };
 
   const isLoading = confirming || starting || completing || cancelling;
 
@@ -112,7 +139,7 @@ export function ReservationCard({ reservation, queryKey }: ReservationCardProps)
                     size="sm"
                     variant="outline"
                     disabled={isLoading}
-                    onClick={() => cancel()}
+                    onClick={handleCancelClick}
                     className="text-destructive hover:text-destructive"
                   >
                     Cancelar
@@ -134,7 +161,7 @@ export function ReservationCard({ reservation, queryKey }: ReservationCardProps)
                     size="sm"
                     variant="outline"
                     disabled={isLoading}
-                    onClick={() => cancel()}
+                    onClick={handleCancelClick}
                     className="text-destructive hover:text-destructive"
                   >
                     Cancelar
@@ -159,6 +186,39 @@ export function ReservationCard({ reservation, queryKey }: ReservationCardProps)
           <p className="mt-2 text-xs text-gray-400 border-t pt-2">{reservation.notes}</p>
         )}
       </CardContent>
+
+      {/* Cancel confirmation dialog */}
+      <Dialog open={cancelDialogOpen} onOpenChange={setCancelDialogOpen}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle>Cancelar reservación</DialogTitle>
+          </DialogHeader>
+          <p className="text-sm text-gray-600">
+            ¿Estás seguro de que deseas cancelar la reservación de <strong>{clientName}</strong>?
+          </p>
+          <div className="space-y-1">
+            <label className="text-sm font-medium text-gray-700">Motivo (opcional)</label>
+            <Textarea
+              value={cancelReason}
+              onChange={(e) => setCancelReason(e.target.value)}
+              placeholder="Escribe el motivo de la cancelación..."
+              rows={3}
+            />
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setCancelDialogOpen(false)}>
+              Volver
+            </Button>
+            <Button
+              variant="destructive"
+              disabled={cancelling}
+              onClick={handleCancelConfirm}
+            >
+              {cancelling ? 'Cancelando...' : 'Confirmar cancelación'}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </Card>
   );
 }
