@@ -171,27 +171,43 @@ class PublicController extends Controller
 
     public function book(string $slug, Request $request): JsonResponse
     {
-        $request->validate([
-            'service_id' => 'required|uuid',
-            'scheduled_at' => 'required|date|after:now',
-            'client_name' => 'required|string|max:255',
-            'client_email' => 'required|email|max:255',
-            'client_phone' => 'nullable|string|max:20',
-            'notes' => 'nullable|string|max:500',
-            'client_resource_data' => 'nullable|array',
-        ]);
+        // If user is authenticated, use their data; otherwise require name/email
+        $authenticatedUser = $request->user('sanctum');
+
+        if ($authenticatedUser) {
+            $request->validate([
+                'service_id' => 'required|uuid',
+                'scheduled_at' => 'required|date|after:now',
+                'notes' => 'nullable|string|max:500',
+                'client_resource_data' => 'nullable|array',
+            ]);
+        } else {
+            $request->validate([
+                'service_id' => 'required|uuid',
+                'scheduled_at' => 'required|date|after:now',
+                'client_name' => 'required|string|max:255',
+                'client_email' => 'required|email|max:255',
+                'client_phone' => 'nullable|string|max:20',
+                'notes' => 'nullable|string|max:500',
+                'client_resource_data' => 'nullable|array',
+            ]);
+        }
 
         $tenant = TenantModel::where('slug', $slug)->where('status', 'active')->firstOrFail();
 
-        $client = UserModel::firstOrCreate(
-            ['email' => $request->client_email],
-            [
-                'name' => $request->client_name,
-                'phone' => $request->client_phone,
-                'password' => bcrypt(Str::random(16)),
-                'is_super_admin' => false,
-            ]
-        );
+        if ($authenticatedUser) {
+            $client = $authenticatedUser;
+        } else {
+            $client = UserModel::firstOrCreate(
+                ['email' => $request->client_email],
+                [
+                    'name' => $request->client_name,
+                    'phone' => $request->client_phone,
+                    'password' => bcrypt(Str::random(16)),
+                    'is_super_admin' => false,
+                ]
+            );
+        }
 
         // Ensure client is linked to tenant with client role
         TenantUserModel::firstOrCreate(
@@ -204,7 +220,6 @@ class PublicController extends Controller
             $resource = ClientResourceModel::withoutGlobalScopes()->create([
                 'tenant_id' => $tenant->id,
                 'client_id' => $client->id,
-                'label' => $request->client_name,
                 'data' => $request->client_resource_data,
             ]);
             $clientResourceId = $resource->id;
