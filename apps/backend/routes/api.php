@@ -17,6 +17,7 @@ use Illuminate\Support\Facades\Route;
 
 // Public business pages
 Route::prefix('v1/public')->group(function () {
+    Route::get('tenants', [PublicController::class, 'listTenants']);
     Route::get('tenants/{slug}', [PublicController::class, 'getTenant']);
     Route::get('tenants/{slug}/available-slots', [PublicController::class, 'getAvailableSlots']);
     Route::post('tenants/{slug}/book', [PublicController::class, 'book']);

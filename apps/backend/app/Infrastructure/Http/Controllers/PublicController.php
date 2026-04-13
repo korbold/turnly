@@ -15,6 +15,47 @@ use Illuminate\Support\Str;
 
 class PublicController extends Controller
 {
+    public function listTenants(Request $request): JsonResponse
+    {
+        $query = TenantModel::where('status', 'active')
+            ->whereNull('deleted_at')
+            ->orderBy('name');
+
+        if ($request->has('search')) {
+            $search = $request->search;
+            $query->where(function ($q) use ($search) {
+                $q->where('name', 'like', "%{$search}%")
+                  ->orWhere('description', 'like', "%{$search}%");
+            });
+        }
+
+        if ($request->has('business_type')) {
+            $query->where('business_type', $request->business_type);
+        }
+
+        $tenants = $query->paginate($request->get('per_page', 20));
+
+        $data = $tenants->map(fn ($t) => [
+            'slug' => $t->slug,
+            'name' => $t->name,
+            'description' => $t->description,
+            'business_type' => $t->business_type,
+            'logo_url' => $t->logo_url,
+            'cover_url' => $t->cover_url,
+            'address' => $t->address,
+            'phone' => $t->phone,
+        ]);
+
+        return response()->json([
+            'data' => $data,
+            'meta' => [
+                'current_page' => $tenants->currentPage(),
+                'last_page' => $tenants->lastPage(),
+                'total' => $tenants->total(),
+            ],
+        ]);
+    }
+
     public function getTenant(string $slug): JsonResponse
     {
         $tenant = TenantModel::where('slug', $slug)

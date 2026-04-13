@@ -3,6 +3,7 @@ import '../storage/secure_storage.dart';
 import '../../features/auth/presentation/screens/login_screen.dart';
 import '../../features/auth/presentation/screens/register_screen.dart';
 import '../../features/home/presentation/screens/home_screen.dart';
+import '../../features/home/presentation/screens/business_detail_screen.dart';
 import '../../features/reservations/presentation/screens/reservations_screen.dart';
 import '../../features/reservations/presentation/screens/create_reservation_screen.dart';
 import '../../features/reservations/presentation/screens/reservation_detail_screen.dart';
@@ -38,6 +39,12 @@ final goRouter = GoRouter(
     GoRoute(
       path: '/home',
       builder: (context, state) => const HomeScreen(),
+    ),
+    GoRoute(
+      path: '/business/:slug',
+      builder: (context, state) => BusinessDetailScreen(
+        slug: state.pathParameters['slug']!,
+      ),
     ),
     GoRoute(
       path: '/reservations',
