@@ -204,20 +204,24 @@ class _CreateReservationScreenState extends State<CreateReservationScreen> {
             child: Row(
               children: [
                 if (_step < 3)
-                  ElevatedButton(
-                    onPressed: details.onStepContinue,
-                    child: const Text('Continuar'),
+                  Expanded(
+                    child: ElevatedButton(
+                      onPressed: details.onStepContinue,
+                      child: const Text('Continuar'),
+                    ),
                   )
                 else
-                  ElevatedButton(
-                    onPressed: _submitting ? null : _submit,
-                    child: _submitting
-                        ? const SizedBox(
-                            height: 18,
-                            width: 18,
-                            child: CircularProgressIndicator(strokeWidth: 2),
-                          )
-                        : const Text('Confirmar'),
+                  Expanded(
+                    child: ElevatedButton(
+                      onPressed: _submitting ? null : _submit,
+                      child: _submitting
+                          ? const SizedBox(
+                              height: 18,
+                              width: 18,
+                              child: CircularProgressIndicator(strokeWidth: 2),
+                            )
+                          : const Text('Confirmar'),
+                    ),
                   ),
                 if (_step > 0) ...[
                   const SizedBox(width: 12),
