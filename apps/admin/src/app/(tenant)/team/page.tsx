@@ -36,18 +36,21 @@ const ROLES = [
   { value: 'tenant_admin', label: 'Admin' },
   { value: 'cashier', label: 'Cajero' },
   { value: 'washer', label: 'Operador' },
+  { value: 'client', label: 'Cliente' },
 ];
 
 const roleBadgeColors: Record<string, string> = {
   tenant_admin: 'bg-purple-100 text-purple-800',
   cashier: 'bg-blue-100 text-blue-800',
   washer: 'bg-green-100 text-green-800',
+  client: 'bg-orange-100 text-orange-800',
 };
 
 const roleLabels: Record<string, string> = {
   tenant_admin: 'Admin',
   cashier: 'Cajero',
   washer: 'Operador',
+  client: 'Cliente',
 };
 
 interface InviteFormData {

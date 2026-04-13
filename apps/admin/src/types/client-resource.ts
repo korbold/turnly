@@ -10,4 +10,5 @@ export interface ClientResource {
   color: string | null;
   type: string | null;
   created_at: string;
+  client?: { name: string; email: string };
 }

@@ -7,6 +7,7 @@ use App\Infrastructure\Persistence\Models\ClientResourceModel;
 use App\Infrastructure\Persistence\Models\ReservationModel;
 use App\Infrastructure\Persistence\Models\ServiceModel;
 use App\Infrastructure\Persistence\Models\TenantModel;
+use App\Infrastructure\Persistence\Models\TenantUserModel;
 use App\Infrastructure\Persistence\Models\UserModel;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
@@ -149,6 +150,12 @@ class PublicController extends Controller
                 'password' => bcrypt(Str::random(16)),
                 'is_super_admin' => false,
             ]
+        );
+
+        // Ensure client is linked to tenant with client role
+        TenantUserModel::firstOrCreate(
+            ['tenant_id' => $tenant->id, 'user_id' => $client->id],
+            ['role' => 'client', 'is_active' => true]
         );
 
         $clientResourceId = null;

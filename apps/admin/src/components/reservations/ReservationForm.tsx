@@ -35,9 +35,9 @@ export function ReservationForm({ defaultDate, onSuccess, onCancel }: Reservatio
   const [notes, setNotes] = useState('');
   const [error, setError] = useState<string | null>(null);
 
-  const { data: usersData } = useQuery({
-    queryKey: ['users', 'all'],
-    queryFn: () => getUsers({ per_page: 200 }),
+  const { data: clientsData } = useQuery({
+    queryKey: ['users', 'clients'],
+    queryFn: () => getUsers({ per_page: 200, role: 'client' }),
   });
 
   const { data: clientResourcesData } = useQuery({
@@ -79,30 +79,57 @@ export function ReservationForm({ defaultDate, onSuccess, onCancel }: Reservatio
     });
   };
 
-  const users = usersData?.data ?? [];
+  const clients = clientsData?.data ?? [];
   const clientResources = clientResourcesData?.data ?? [];
   const services = servicesData?.data ?? [];
+
+  // Filter resources by selected client
+  const filteredResources = clientId
+    ? clientResources.filter((r) => r.client_id === clientId)
+    : clientResources;
+
+  const handleClientChange = (v: string | null) => {
+    setClientId(v ?? '');
+    // Reset resource if it doesn't belong to the new client
+    if (v && clientResourceId) {
+      const resource = clientResources.find((r) => r.id === clientResourceId);
+      if (resource && resource.client_id !== v) {
+        setClientResourceId('');
+      }
+    }
+  };
+
+  const handleResourceChange = (v: string | null) => {
+    setClientResourceId(v ?? '');
+    // Auto-select client from resource owner
+    if (v) {
+      const resource = clientResources.find((r) => r.id === v);
+      if (resource?.client_id && resource.client_id !== clientId) {
+        setClientId(resource.client_id);
+      }
+    }
+  };
 
   return (
     <form onSubmit={handleSubmit} className="space-y-4">
       {/* Client */}
       <div className="space-y-1">
         <Label htmlFor="res-client">Cliente</Label>
-        <Select value={clientId} onValueChange={(v) => setClientId(v ?? '')}>
+        <Select value={clientId} onValueChange={handleClientChange}>
           <SelectTrigger id="res-client" className="w-full">
             <SelectValue placeholder="Seleccionar cliente">
               {clientId
                 ? (() => {
-                    const u = users.find((u) => u.id === clientId);
-                    return u ? u.name : clientId;
+                    const c = clients.find((c) => c.id === clientId);
+                    return c ? c.name : clientId;
                   })()
                 : undefined}
             </SelectValue>
           </SelectTrigger>
           <SelectContent>
-            {users.map((u) => (
-              <SelectItem key={u.id} value={u.id}>
-                {u.name} — {u.email}
+            {clients.map((c) => (
+              <SelectItem key={c.id} value={c.id}>
+                {c.name} — {c.email}
               </SelectItem>
             ))}
           </SelectContent>
@@ -112,7 +139,7 @@ export function ReservationForm({ defaultDate, onSuccess, onCancel }: Reservatio
       {/* Client Resource */}
       <div className="space-y-1">
         <Label htmlFor="res-resource">Recurso del cliente</Label>
-        <Select value={clientResourceId} onValueChange={(v) => setClientResourceId(v ?? '')}>
+        <Select value={clientResourceId} onValueChange={handleResourceChange}>
           <SelectTrigger id="res-resource" className="w-full">
             <SelectValue placeholder="Seleccionar recurso">
               {clientResourceId
@@ -124,7 +151,7 @@ export function ReservationForm({ defaultDate, onSuccess, onCancel }: Reservatio
             </SelectValue>
           </SelectTrigger>
           <SelectContent>
-            {clientResources.map((v) => (
+            {filteredResources.map((v) => (
               <SelectItem key={v.id} value={v.id}>
                 {v.label || v.plate || 'Sin etiqueta'}
                 {v.brand ? ` — ${v.brand}${v.model ? ` ${v.model}` : ''}` : ''}

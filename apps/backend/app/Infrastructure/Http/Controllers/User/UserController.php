@@ -15,11 +15,16 @@ class UserController extends Controller
     {
         $tenantId = app('current_tenant_id');
 
-        $users = UserModel::whereHas('tenants', function ($query) use ($tenantId) {
-            $query->where('tenants.id', $tenantId);
-        })->with(['tenants' => function ($query) use ($tenantId) {
-            $query->where('tenants.id', $tenantId);
-        }])->paginate($request->get('per_page', 15));
+        $query = UserModel::whereHas('tenants', function ($q) use ($tenantId, $request) {
+            $q->where('tenants.id', $tenantId);
+            if ($request->has('role')) {
+                $q->where('tenant_users.role', $request->role);
+            }
+        })->with(['tenants' => function ($q) use ($tenantId) {
+            $q->where('tenants.id', $tenantId);
+        }]);
+
+        $users = $query->paginate($request->get('per_page', 15));
 
         return UserResource::collection($users);
     }
@@ -36,7 +41,7 @@ class UserController extends Controller
             'name' => 'required|string|max:255',
             'email' => 'required|email|max:255',
             'password' => 'required|string|min:8',
-            'role' => 'required|in:tenant_admin,cashier,washer',
+            'role' => 'required|in:tenant_admin,cashier,washer,client',
             'phone' => 'nullable|string|max:20',
         ]);
 
@@ -84,7 +89,7 @@ class UserController extends Controller
     public function updateRole(Request $request, string $id): JsonResponse
     {
         $request->validate([
-            'role' => 'required|in:tenant_admin,cashier,washer',
+            'role' => 'required|in:tenant_admin,cashier,washer,client',
         ]);
 
         TenantUserModel::where('tenant_id', app('current_tenant_id'))
