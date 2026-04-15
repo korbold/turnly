@@ -11,12 +11,12 @@ import { format } from 'date-fns';
 import { es } from 'date-fns/locale';
 
 const statusColors: Record<string, string> = {
-  pending: 'bg-yellow-100 text-yellow-800',
-  confirmed: 'bg-blue-100 text-blue-800',
-  in_progress: 'bg-purple-100 text-purple-800',
-  completed: 'bg-green-100 text-green-800',
-  cancelled: 'bg-red-100 text-red-800',
-  no_show: 'bg-gray-100 text-gray-800',
+  pending: 'bg-amber-100 text-amber-700',
+  confirmed: 'bg-cyan-100 text-cyan-700',
+  in_progress: 'bg-violet-100 text-violet-700',
+  completed: 'bg-emerald-100 text-emerald-700',
+  cancelled: 'bg-red-100 text-red-700',
+  no_show: 'bg-slate-100 text-slate-700',
 };
 
 const statusLabels: Record<string, string> = {
@@ -46,8 +46,8 @@ export default function DashboardPage() {
       {/* Page header */}
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-2xl font-semibold text-gray-900">Dashboard</h1>
-          <p className="text-sm text-[#718EBF] mt-0.5">
+          <h1 className="text-2xl font-semibold text-slate-900">Dashboard</h1>
+          <p className="text-sm text-slate-500 mt-0.5">
             {format(new Date(), "EEEE, d 'de' MMMM yyyy", { locale: es })}
           </p>
         </div>
@@ -55,7 +55,7 @@ export default function DashboardPage() {
           <Link href="/reservations?new=true">
             <Button
               size="sm"
-              className="bg-[#396AFF] hover:bg-[#1814F3] text-white rounded-lg"
+              className="btn-gradient text-white rounded-lg"
             >
               <Plus className="h-4 w-4 mr-1" />
               Nueva reservación
@@ -64,7 +64,7 @@ export default function DashboardPage() {
           <Link href="/service-log/new">
             <Button
               size="sm"
-              className="bg-[#396AFF] hover:bg-[#1814F3] text-white rounded-lg"
+              className="btn-gradient text-white rounded-lg"
             >
               <Plus className="h-4 w-4 mr-1" />
               Registrar servicio
@@ -76,66 +76,66 @@ export default function DashboardPage() {
       {/* Stats cards */}
       <div className="stat-cards-scroll">
         {/* Reservaciones hoy */}
-        <div className="bg-white rounded-xl shadow-sm p-6">
-          <div className="flex items-center justify-center w-10 h-10 rounded-full bg-blue-100 mb-4">
-            <CalendarDays className="h-5 w-5 text-[#396AFF]" />
+        <div className="bg-white rounded-2xl shadow-card p-6 hover:-translate-y-0.5 hover:shadow-card-hover transition-all duration-300">
+          <div className="flex items-center justify-center w-10 h-10 rounded-full bg-gradient-to-br from-indigo-500 to-violet-500 mb-4">
+            <CalendarDays className="h-5 w-5 text-white" />
           </div>
-          <div className="text-3xl font-bold text-gray-900">
+          <div className="text-3xl font-bold text-slate-900">
             {report?.reservations.total ?? '—'}
           </div>
-          <p className="text-sm text-[#718EBF] mt-1">Reservaciones hoy</p>
-          <p className="text-xs text-[#718EBF] mt-0.5">
+          <p className="text-sm text-slate-500 mt-1">Reservaciones hoy</p>
+          <p className="text-xs text-slate-500 mt-0.5">
             {report?.reservations.pending ?? 0} pendientes · {report?.reservations.confirmed ?? 0} confirmadas
           </p>
         </div>
 
         {/* Servicios realizados */}
-        <div className="bg-white rounded-xl shadow-sm p-6">
-          <div className="flex items-center justify-center w-10 h-10 rounded-full bg-green-100 mb-4">
-            <Car className="h-5 w-5 text-green-600" />
+        <div className="bg-white rounded-2xl shadow-card p-6 hover:-translate-y-0.5 hover:shadow-card-hover transition-all duration-300">
+          <div className="flex items-center justify-center w-10 h-10 rounded-full bg-gradient-to-br from-cyan-500 to-emerald-500 mb-4">
+            <Car className="h-5 w-5 text-white" />
           </div>
-          <div className="text-3xl font-bold text-gray-900">
+          <div className="text-3xl font-bold text-slate-900">
             {report?.washes.completed ?? '—'}
           </div>
-          <p className="text-sm text-[#718EBF] mt-1">Servicios realizados</p>
-          <p className="text-xs text-[#718EBF] mt-0.5">
+          <p className="text-sm text-slate-500 mt-1">Servicios realizados</p>
+          <p className="text-xs text-slate-500 mt-0.5">
             {report?.washes.in_progress ?? 0} en progreso
           </p>
         </div>
 
         {/* Ingresos del día */}
-        <div className="bg-white rounded-xl shadow-sm p-6">
-          <div className="flex items-center justify-center w-10 h-10 rounded-full bg-amber-100 mb-4">
-            <DollarSign className="h-5 w-5 text-amber-600" />
+        <div className="bg-white rounded-2xl shadow-card p-6 hover:-translate-y-0.5 hover:shadow-card-hover transition-all duration-300">
+          <div className="flex items-center justify-center w-10 h-10 rounded-full bg-gradient-to-br from-amber-500 to-orange-500 mb-4">
+            <DollarSign className="h-5 w-5 text-white" />
           </div>
-          <div className="text-3xl font-bold text-gray-900">
+          <div className="text-3xl font-bold text-slate-900">
             ${report?.washes.revenue?.toFixed(2) ?? '—'}
           </div>
-          <p className="text-sm text-[#718EBF] mt-1">Ingresos del día</p>
-          <p className="text-xs text-[#718EBF] mt-0.5">
+          <p className="text-sm text-slate-500 mt-1">Ingresos del día</p>
+          <p className="text-xs text-slate-500 mt-0.5">
             Efectivo: ${report?.washes.by_payment_method?.cash?.toFixed(2) ?? '0'}
           </p>
         </div>
 
         {/* Total servicios */}
-        <div className="bg-white rounded-xl shadow-sm p-6">
-          <div className="flex items-center justify-center w-10 h-10 rounded-full bg-purple-100 mb-4">
-            <Clock className="h-5 w-5 text-purple-600" />
+        <div className="bg-white rounded-2xl shadow-card p-6 hover:-translate-y-0.5 hover:shadow-card-hover transition-all duration-300">
+          <div className="flex items-center justify-center w-10 h-10 rounded-full bg-gradient-to-br from-violet-500 to-purple-500 mb-4">
+            <Clock className="h-5 w-5 text-white" />
           </div>
-          <div className="text-3xl font-bold text-gray-900">
+          <div className="text-3xl font-bold text-slate-900">
             {report?.washes.total ?? '—'}
           </div>
-          <p className="text-sm text-[#718EBF] mt-1">Total servicios</p>
-          <p className="text-xs text-[#718EBF] mt-0.5">Hoy en total</p>
+          <p className="text-sm text-slate-500 mt-1">Total servicios</p>
+          <p className="text-xs text-slate-500 mt-0.5">Hoy en total</p>
         </div>
       </div>
 
       {/* Upcoming reservations */}
-      <div className="bg-white rounded-xl shadow-sm">
-        <div className="flex items-center justify-between px-6 py-4 border-b border-gray-100">
+      <div className="bg-white rounded-2xl shadow-card">
+        <div className="flex items-center justify-between px-6 py-4 border-b border-slate-100">
           <h2 className="text-base font-semibold text-gray-900">Próximas reservaciones</h2>
           <Link href="/reservations">
-            <Button variant="ghost" size="sm" className="text-[#396AFF] hover:text-[#1814F3] hover:bg-blue-50">
+            <Button variant="ghost" size="sm" className="text-indigo-500 hover:text-indigo-700 hover:bg-indigo-50">
               Ver todas
             </Button>
           </Link>
@@ -144,11 +144,11 @@ export default function DashboardPage() {
           {upcomingReservations?.data && upcomingReservations.data.length > 0 ? (
             <div className="space-y-3">
               {upcomingReservations.data.map((res) => (
-                <div key={res.id} className="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
+                <div key={res.id} className="flex items-center justify-between p-3 bg-slate-50/50 hover:bg-indigo-50/30 transition-colors rounded-lg">
                   <div className="flex items-center gap-3">
                     <div>
                       <p className="font-medium text-sm">{res.client?.name ?? 'Cliente'}</p>
-                      <p className="text-xs text-[#718EBF]">
+                      <p className="text-xs text-slate-500">
                         {res.client_resource?.plate} · {res.service?.name}
                       </p>
                     </div>
@@ -165,7 +165,7 @@ export default function DashboardPage() {
               ))}
             </div>
           ) : (
-            <p className="text-[#718EBF] text-sm text-center py-4">No hay reservaciones próximas</p>
+            <p className="text-slate-500 text-sm text-center py-4">No hay reservaciones próximas</p>
           )}
         </div>
       </div>
