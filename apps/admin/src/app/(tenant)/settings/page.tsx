@@ -625,7 +625,7 @@ export default function SettingsPage() {
                             },
                           }))
                         }
-                        className="rounded border-gray-300"
+                        className="rounded border-slate-300"
                       />
                       <span className="text-sm font-medium text-slate-900">{day.label}</span>
                     </label>
@@ -776,7 +776,7 @@ export default function SettingsPage() {
                       type="checkbox"
                       checked={blockAllDay}
                       onChange={(e) => setBlockAllDay(e.target.checked)}
-                      className="rounded border-gray-300"
+                      className="rounded border-slate-300"
                     />
                     Todo el día
                   </label>
@@ -940,7 +940,7 @@ export default function SettingsPage() {
                         type="checkbox"
                         checked={field.required}
                         onChange={(e) => updateCustomField(index, { required: e.target.checked })}
-                        className="rounded border-gray-300"
+                        className="rounded border-slate-300"
                       />
                       Requerido
                     </label>
@@ -949,7 +949,7 @@ export default function SettingsPage() {
                         type="checkbox"
                         checked={field.uppercase ?? false}
                         onChange={(e) => updateCustomField(index, { uppercase: e.target.checked })}
-                        className="rounded border-gray-300"
+                        className="rounded border-slate-300"
                       />
                       ABC
                     </label>

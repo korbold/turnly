@@ -359,7 +359,7 @@ export default function ClientsPage() {
           <form onSubmit={handleEditSubmit} className="space-y-4">
             {customFields.map((field) => (
               <div key={field.key}>
-                <label className="text-sm font-medium text-gray-700 block mb-1">
+                <label className="text-sm font-medium text-slate-700 block mb-1">
                   {field.label}
                   {field.required && <span className="text-red-500 ml-1">*</span>}
                 </label>

@@ -10,11 +10,11 @@ import type { Reservation, ReservationStatus } from '@/types/reservation';
 
 const STATUS_COLORS: Record<ReservationStatus, { bg: string; text: string; border: string }> = {
   pending:     { bg: '#FFF5D9', text: '#946B00', border: '#FFBB38' },
-  confirmed:   { bg: '#E7EDFF', text: '#1814F3', border: '#396AFF' },
+  confirmed:   { bg: '#EEF2FF', text: '#4338CA', border: '#6366F1' },
   in_progress: { bg: '#F3E8FF', text: '#6B21A8', border: '#7C3AED' },
   completed:   { bg: '#DCFAF8', text: '#0E8A7D', border: '#16DBCC' },
   cancelled:   { bg: '#FFE2E6', text: '#C41432', border: '#FF4B4A' },
-  no_show:     { bg: '#EDF1F7', text: '#5A6B85', border: '#718EBF' },
+  no_show:     { bg: '#F1F5F9', text: '#475569', border: '#64748B' },
 };
 
 function toEvents(reservations: Reservation[]): EventInput[] {

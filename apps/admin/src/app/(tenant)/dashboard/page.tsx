@@ -133,7 +133,7 @@ export default function DashboardPage() {
       {/* Upcoming reservations */}
       <div className="bg-white rounded-2xl shadow-card">
         <div className="flex items-center justify-between px-6 py-4 border-b border-slate-100">
-          <h2 className="text-base font-semibold text-gray-900">Próximas reservaciones</h2>
+          <h2 className="text-base font-semibold text-slate-900">Próximas reservaciones</h2>
           <Link href="/reservations">
             <Button variant="ghost" size="sm" className="text-indigo-500 hover:text-indigo-700 hover:bg-indigo-50">
               Ver todas
