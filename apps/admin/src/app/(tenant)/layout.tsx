@@ -79,7 +79,7 @@ export default function TenantLayout({ children }: { children: React.ReactNode }
   if (!ready || accessDenied) {
     return (
       <div className="min-h-screen flex items-center justify-center">
-        <div className="animate-spin h-8 w-8 border-4 border-blue-500 border-t-transparent rounded-full" />
+        <div className="animate-spin h-8 w-8 border-4 border-indigo-500 border-t-transparent rounded-full" />
       </div>
     );
   }
@@ -99,7 +99,7 @@ export default function TenantLayout({ children }: { children: React.ReactNode }
           </button>
         </div>
       )}
-      <div className={`flex min-h-screen bg-[#F5F7FA]${superAdminMode ? ' pt-10' : ''}`}>
+      <div className={`flex min-h-screen bg-[#F8FAFC]${superAdminMode ? ' pt-10' : ''}`}>
         <Sidebar />
         <div className="flex-1 flex flex-col">
           <TopBar />
