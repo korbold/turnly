@@ -50,27 +50,27 @@ export function Sidebar() {
   const visibleSettingsItems = settingsItems.filter(item => canAccess(role, item.key, perms));
 
   return (
-    <aside className="hidden lg:flex lg:flex-col w-64 h-screen sticky top-0 bg-white border-r border-[#DFE5EE]">
+    <aside className="hidden lg:flex lg:flex-col w-64 h-screen sticky top-0 bg-[#0F172A]">
       {/* Logo */}
       <div className="px-6 py-5">
-        <h2 className="text-xl font-bold text-[#343C6A] tracking-tight">Turnly</h2>
+        <h2 className="text-xl font-bold text-white tracking-tight">Turnly</h2>
       </div>
 
       {/* Search */}
       <div className="mx-4 my-3">
         <div className="relative">
-          <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-[#718EBF]" />
+          <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-500" />
           <input
             type="text"
             placeholder="Buscar..."
-            className="w-full h-9 bg-[#EDF1F7] border-none rounded-lg pl-9 pr-3 text-sm text-[#343C6A] placeholder:text-[#718EBF] focus:outline-none focus:ring-1 focus:ring-[#396AFF]"
+            className="w-full h-9 bg-white/5 border border-white/5 rounded-lg pl-9 pr-3 text-sm text-white placeholder:text-slate-500 focus:outline-none focus:ring-1 focus:ring-indigo-500"
           />
         </div>
       </div>
 
       {/* Menu section */}
       <div className="flex-1 overflow-y-auto">
-        <p className="px-6 mt-6 mb-2 text-[10px] uppercase tracking-widest text-[#718EBF] font-medium">
+        <p className="px-6 mt-6 mb-2 text-[10px] uppercase tracking-widest text-slate-500 font-medium">
           Menu
         </p>
         <nav className="space-y-0.5">
@@ -82,13 +82,13 @@ export function Sidebar() {
                 key={item.href}
                 href={item.href}
                 className={cn(
-                  'flex items-center mx-3 px-3 py-2.5 rounded-lg text-sm transition-colors',
+                  'flex items-center mx-3 px-3 py-2.5 rounded-lg text-sm transition-colors duration-200',
                   isActive
-                    ? 'bg-[#E7EDFF] text-[#1814F3] font-medium border-l-[3px] border-[#1814F3]'
-                    : 'text-[#B1B1B1] hover:bg-[#F5F7FA] hover:text-[#343C6A]'
+                    ? 'bg-white/10 text-white font-medium border-l-[3px] border-indigo-500'
+                    : 'text-slate-400 hover:bg-white/5 hover:text-slate-300'
                 )}
               >
-                <Icon className="h-5 w-5 mr-3 shrink-0" />
+                <Icon className={cn('h-5 w-5 mr-3 shrink-0', isActive ? 'text-white' : 'text-slate-500')} />
                 {item.label}
               </Link>
             );
@@ -98,9 +98,9 @@ export function Sidebar() {
 
       {/* Settings section */}
       {visibleSettingsItems.length > 0 && (
-        <div className="mt-auto border-t border-[#DFE5EE] pt-4 pb-6">
-          <p className="px-6 mb-2 text-[10px] uppercase tracking-widest text-[#718EBF] font-medium">
-            Configuración
+        <div className="mt-auto border-t border-white/5 pt-4 pb-6">
+          <p className="px-6 mb-2 text-[10px] uppercase tracking-widest text-slate-500 font-medium">
+            Configuracion
           </p>
           <nav className="space-y-0.5">
             {visibleSettingsItems.map((item) => {
@@ -111,13 +111,13 @@ export function Sidebar() {
                   key={item.href}
                   href={item.href}
                   className={cn(
-                    'flex items-center mx-3 px-3 py-2.5 rounded-lg text-sm transition-colors',
+                    'flex items-center mx-3 px-3 py-2.5 rounded-lg text-sm transition-colors duration-200',
                     isActive
-                      ? 'bg-[#E7EDFF] text-[#1814F3] font-medium border-l-[3px] border-[#1814F3]'
-                      : 'text-[#B1B1B1] hover:bg-[#F5F7FA] hover:text-[#343C6A]'
+                      ? 'bg-white/10 text-white font-medium border-l-[3px] border-indigo-500'
+                      : 'text-slate-400 hover:bg-white/5 hover:text-slate-300'
                   )}
                 >
-                  <Icon className="h-5 w-5 mr-3 shrink-0" />
+                  <Icon className={cn('h-5 w-5 mr-3 shrink-0', isActive ? 'text-white' : 'text-slate-500')} />
                   {item.label}
                 </Link>
               );
