@@ -3,7 +3,7 @@ import { CalendarCheck, Building2, LayoutDashboard, Sparkles, ArrowRight } from 
 
 export default function Home() {
   return (
-    <div>
+    <div className="bg-white">
       {/* Hero (nav integrated inside the gradient) */}
       <section className="relative bg-gradient-to-br from-indigo-600 via-violet-600 to-cyan-500 animate-mesh overflow-hidden">
         {/* Nav */}
