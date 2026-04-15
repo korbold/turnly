@@ -17,13 +17,7 @@ import {
   DialogTitle,
   DialogTrigger,
 } from '@/components/ui/dialog';
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from '@/components/ui/select';
+import { cn } from '@/lib/utils';
 import type { Reservation } from '@/types/reservation';
 
 const STATUS_OPTIONS = [
@@ -108,8 +102,8 @@ export default function ReservationsPage() {
       {/* Header */}
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-2xl font-semibold text-[#343C6A]">Reservaciones</h1>
-          <p className="text-[#718EBF]">Gestión de citas y reservaciones</p>
+          <h1 className="text-2xl font-semibold text-slate-900">Reservaciones</h1>
+          <p className="text-slate-500">Gestión de citas y reservaciones</p>
         </div>
         <Dialog open={createDialogOpen} onOpenChange={setCreateDialogOpen}>
           <DialogTrigger render={<Button />}>
@@ -130,47 +124,25 @@ export default function ReservationsPage() {
       </div>
 
       {/* Filters */}
-      <div className="flex flex-wrap items-center gap-3">
-        <div className="flex items-center gap-2">
-          <label className="text-sm font-medium text-[#343C6A]">Estado:</label>
-          <Select value={status} onValueChange={(v) => setStatus(v ?? 'all')}>
-            <SelectTrigger className="w-44">
-              <SelectValue placeholder="Todos los estados">
-                {STATUS_OPTIONS.find((o) => o.value === status)?.label}
-              </SelectValue>
-            </SelectTrigger>
-            <SelectContent>
-              {STATUS_OPTIONS.map((opt) => (
-                <SelectItem key={opt.value} value={opt.value}>
-                  {opt.label}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
-        </div>
-
-        <div className="flex items-center gap-2">
-          <label className="text-sm font-medium text-[#343C6A]">Servicio:</label>
-          <Select value={serviceId} onValueChange={(v) => setServiceId(v ?? 'all')}>
-            <SelectTrigger className="w-48">
-              <SelectValue placeholder="Todos los servicios">
-                {serviceId === 'all' ? 'Todos los servicios' : services.find((s) => s.id === serviceId)?.name}
-              </SelectValue>
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="all">Todos los servicios</SelectItem>
-              {services.map((s) => (
-                <SelectItem key={s.id} value={s.id}>
-                  {s.name}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
-        </div>
+      <div className="flex flex-wrap items-center gap-2">
+        {STATUS_OPTIONS.map((opt) => (
+          <button
+            key={opt.value}
+            onClick={() => setStatus(opt.value)}
+            className={cn(
+              'px-4 py-1.5 rounded-full text-sm font-medium transition-all duration-200',
+              status === opt.value
+                ? 'btn-gradient text-white shadow-sm'
+                : 'bg-slate-100 text-slate-600 hover:bg-slate-200'
+            )}
+          >
+            {opt.label}
+          </button>
+        ))}
       </div>
 
       {/* Calendar */}
-      <div className="bg-white rounded-[1.5625rem] p-4 shadow-sm">
+      <div className="bg-white rounded-2xl p-4 shadow-card">
         <ReservationCalendar
           reservations={reservations}
           onEventClick={handleEventClick}
