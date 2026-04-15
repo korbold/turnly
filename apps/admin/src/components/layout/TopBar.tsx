@@ -40,13 +40,13 @@ export function TopBar() {
   };
 
   return (
-    <header className="sticky top-0 z-30 border-b border-[#DFE5EE] bg-white">
+    <header className="sticky top-0 z-30 border-b border-slate-200/50 bg-white/80 backdrop-blur-xl">
       <div className="flex h-16 items-center gap-4 px-4 lg:px-8">
         <Sheet open={open} onOpenChange={setOpen}>
           <SheetTrigger
             render={<Button variant="ghost" size="icon" className="lg:hidden" />}
           >
-            <Menu className="h-5 w-5 text-[#343C6A]" />
+            <Menu className="h-5 w-5 text-slate-700" />
           </SheetTrigger>
           <SheetContent side="left" className="w-64 p-0">
             <MobileSidebar onNavigate={() => setOpen(false)} />
@@ -56,18 +56,22 @@ export function TopBar() {
         {/* Mobile: page title centered / Desktop: spacer */}
         <div className="flex-1 lg:hidden flex justify-center">
           {pageTitle && (
-            <span className="font-semibold text-[#343C6A]">{pageTitle}</span>
+            <span className="font-semibold text-slate-900">{pageTitle}</span>
           )}
         </div>
-        <div className="hidden lg:block flex-1" />
+        <div className="hidden lg:flex flex-1 items-center">
+          {pageTitle && (
+            <h1 className="text-lg font-semibold text-slate-900">{pageTitle}</h1>
+          )}
+        </div>
 
         {/* Notification bell */}
-        <Button variant="ghost" size="icon" className="text-[#718EBF] hover:text-[#343C6A]">
+        <Button variant="ghost" size="icon" className="text-slate-400 hover:text-slate-700">
           <Bell className="h-5 w-5" />
         </Button>
 
         {/* Settings icon */}
-        <Button variant="ghost" size="icon" className="text-[#718EBF] hover:text-[#343C6A]">
+        <Button variant="ghost" size="icon" className="text-slate-400 hover:text-slate-700">
           <Settings className="h-5 w-5" />
         </Button>
 
@@ -78,8 +82,8 @@ export function TopBar() {
               <Button variant="ghost" size="icon" className="rounded-full" />
             }
           >
-            <Avatar className="h-9 w-9 bg-[#396AFF]">
-              <AvatarFallback className="bg-[#396AFF] text-white text-sm font-medium">
+            <Avatar className="h-9 w-9 bg-gradient-to-br from-indigo-500 to-violet-500">
+              <AvatarFallback className="bg-gradient-to-br from-indigo-500 to-violet-500 text-white text-sm font-medium">
                 <User className="h-4 w-4" />
               </AvatarFallback>
             </Avatar>
