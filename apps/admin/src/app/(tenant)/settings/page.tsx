@@ -59,6 +59,8 @@ export default function SettingsPage() {
     whatsapp: '',
   });
   const [customFields, setCustomFields] = useState<CustomField[]>([]);
+  const [cancellationHours, setCancellationHours] = useState(1);
+  const [slotDuration, setSlotDuration] = useState(30);
   const [permissions, setPermissions] = useState<PermissionsConfig>({ ...DEFAULT_PERMISSIONS });
   const [savingPerms, setSavingPerms] = useState(false);
   const [permsSaved, setPermsSaved] = useState(false);
@@ -73,17 +75,18 @@ export default function SettingsPage() {
     { key: 'sunday', label: 'Domingo' },
   ] as const;
 
-  type DaySchedule = { open: string | null; close: string | null; active: boolean };
+  type TimeRange = { open: string; close: string };
+  type DaySchedule = { active: boolean; ranges: TimeRange[] };
   type WeekSchedule = Record<string, DaySchedule>;
 
   const DEFAULT_SCHEDULE: WeekSchedule = {
-    monday:    { open: '08:00', close: '18:00', active: true },
-    tuesday:   { open: '08:00', close: '18:00', active: true },
-    wednesday: { open: '08:00', close: '18:00', active: true },
-    thursday:  { open: '08:00', close: '18:00', active: true },
-    friday:    { open: '08:00', close: '18:00', active: true },
-    saturday:  { open: '09:00', close: '14:00', active: true },
-    sunday:    { open: null, close: null, active: false },
+    monday:    { active: true, ranges: [{ open: '08:00', close: '18:00' }] },
+    tuesday:   { active: true, ranges: [{ open: '08:00', close: '18:00' }] },
+    wednesday: { active: true, ranges: [{ open: '08:00', close: '18:00' }] },
+    thursday:  { active: true, ranges: [{ open: '08:00', close: '18:00' }] },
+    friday:    { active: true, ranges: [{ open: '08:00', close: '18:00' }] },
+    saturday:  { active: true, ranges: [{ open: '09:00', close: '14:00' }] },
+    sunday:    { active: false, ranges: [] },
   };
 
   const [schedule, setSchedule] = useState<WeekSchedule>(DEFAULT_SCHEDULE);
@@ -118,8 +121,14 @@ export default function SettingsPage() {
     if (Array.isArray(t.custom_fields)) {
       setCustomFields(t.custom_fields as CustomField[]);
     }
-    // Load custom permissions from settings.permissions
+    // Load settings
     const settings = t.settings as Record<string, unknown> | null;
+    if (settings?.cancellation_hours !== undefined) {
+      setCancellationHours(settings.cancellation_hours as number);
+    }
+    if (settings?.slot_duration_minutes !== undefined) {
+      setSlotDuration(settings.slot_duration_minutes as number);
+    }
     if (settings?.permissions) {
       setPermissions({
         tenant_admin: DEFAULT_PERMISSIONS.tenant_admin,
@@ -139,6 +148,7 @@ export default function SettingsPage() {
   });
 
   function handleSave() {
+    const currentSettings = (tenantSettings as Record<string, unknown>)?.settings as Record<string, unknown> ?? {};
     updateMutation.mutate({
       name,
       description,
@@ -150,6 +160,11 @@ export default function SettingsPage() {
       cover_url: coverUrl || undefined,
       social_links: socialLinks,
       custom_fields: customFields,
+      settings: {
+        ...currentSettings,
+        cancellation_hours: cancellationHours,
+        slot_duration_minutes: slotDuration,
+      },
     });
   }
 
@@ -190,33 +205,85 @@ export default function SettingsPage() {
   // Sync schedule state from API slots
   useEffect(() => {
     if (!slotsData) return;
-    const updated: WeekSchedule = { ...DEFAULT_SCHEDULE };
+    // Group slots by day
+    const byDay: Record<string, TimeRange[]> = {};
     for (const slot of slotsData) {
       const dayKey = DAYS.find((_, i) => i === slot.day_of_week)?.key;
-      if (dayKey) {
-        updated[dayKey] = {
+      if (dayKey && slot.is_active) {
+        if (!byDay[dayKey]) byDay[dayKey] = [];
+        byDay[dayKey].push({
           open: slot.start_time?.slice(0, 5) ?? '08:00',
           close: slot.end_time?.slice(0, 5) ?? '18:00',
-          active: slot.is_active,
-        };
+        });
       }
+    }
+    const updated: WeekSchedule = {};
+    for (const day of DAYS) {
+      const ranges = byDay[day.key];
+      updated[day.key] = ranges && ranges.length > 0
+        ? { active: true, ranges }
+        : { active: false, ranges: [] };
     }
     setSchedule(updated);
   }, [slotsData]);
 
   const [savingSchedule, setSavingSchedule] = useState(false);
   const [scheduleSaved, setScheduleSaved] = useState(false);
+  const [scheduleError, setScheduleError] = useState('');
+
+  function validateSchedule(): string | null {
+    for (const day of DAYS) {
+      const ds = schedule[day.key];
+      if (!ds.active) continue;
+      for (let i = 0; i < ds.ranges.length; i++) {
+        const r = ds.ranges[i];
+        if (r.open >= r.close) {
+          return `${day.label}: la hora de cierre debe ser mayor que la de apertura.`;
+        }
+        for (let j = i + 1; j < ds.ranges.length; j++) {
+          const r2 = ds.ranges[j];
+          if (r.open < r2.close && r.close > r2.open) {
+            return `${day.label}: los turnos se solapan (${r.open}-${r.close} y ${r2.open}-${r2.close}).`;
+          }
+        }
+      }
+    }
+    return null;
+  }
 
   async function handleSaveSchedule() {
+    const error = validateSchedule();
+    if (error) {
+      setScheduleError(error);
+      setTimeout(() => setScheduleError(''), 5000);
+      return;
+    }
+    setScheduleError('');
     setSavingSchedule(true);
     setScheduleSaved(false);
-    const slots = DAYS.map((day, index) => ({
-      day_of_week: index,
-      start_time: schedule[day.key].open,
-      end_time: schedule[day.key].close,
-      is_active: schedule[day.key].active,
-      max_concurrent: 2,
-    }));
+    const slots: { day_of_week: number; start_time: string | null; end_time: string | null; is_active: boolean; max_concurrent: number }[] = [];
+    DAYS.forEach((day, index) => {
+      const ds = schedule[day.key];
+      if (ds.active && ds.ranges.length > 0) {
+        for (const range of ds.ranges) {
+          slots.push({
+            day_of_week: index,
+            start_time: range.open,
+            end_time: range.close,
+            is_active: true,
+            max_concurrent: 2,
+          });
+        }
+      } else {
+        slots.push({
+          day_of_week: index,
+          start_time: null,
+          end_time: null,
+          is_active: false,
+          max_concurrent: 2,
+        });
+      }
+    });
     await updateAvailabilitySlots(slots);
     queryClient.invalidateQueries({ queryKey: ['availability-slots'] });
     setSavingSchedule(false);
@@ -319,8 +386,8 @@ export default function SettingsPage() {
   return (
     <div className="space-y-6">
       <div>
-        <h1 className="text-2xl font-bold text-gray-900">Configuración</h1>
-        <p className="text-gray-500">Ajustes del negocio</p>
+        <h1 className="text-2xl font-bold text-slate-900">Configuración</h1>
+        <p className="text-slate-500">Ajustes del negocio</p>
       </div>
 
       {isLoading ? (
@@ -335,7 +402,7 @@ export default function SettingsPage() {
             <CardContent className="space-y-4">
               <div className="flex flex-col sm:flex-row gap-6">
                 <div className="space-y-1.5">
-                  <label className="text-sm font-medium text-gray-700">Logo del negocio</label>
+                  <label className="text-sm font-medium text-slate-700">Logo del negocio</label>
                   <ImageUpload
                     currentUrl={logoUrl || null}
                     folder="logos"
@@ -346,7 +413,7 @@ export default function SettingsPage() {
                   />
                 </div>
                 <div className="flex-1 space-y-1.5">
-                  <label className="text-sm font-medium text-gray-700">Imagen de portada</label>
+                  <label className="text-sm font-medium text-slate-700">Imagen de portada</label>
                   <ImageUpload
                     currentUrl={coverUrl || null}
                     folder="covers"
@@ -358,7 +425,7 @@ export default function SettingsPage() {
               </div>
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div className="space-y-1.5">
-                  <label className="text-sm font-medium text-gray-700">Nombre</label>
+                  <label className="text-sm font-medium text-slate-700">Nombre</label>
                   <Input
                     value={name}
                     onChange={(e) => setName(e.target.value)}
@@ -366,7 +433,7 @@ export default function SettingsPage() {
                   />
                 </div>
                 <div className="space-y-1.5">
-                  <label className="text-sm font-medium text-gray-700">Tipo de negocio</label>
+                  <label className="text-sm font-medium text-slate-700">Tipo de negocio</label>
                   <Select value={businessType} onValueChange={(v) => v && setBusinessType(v)}>
                     <SelectTrigger>
                       <SelectValue placeholder="Seleccionar tipo">
@@ -384,9 +451,9 @@ export default function SettingsPage() {
                 </div>
               </div>
               <div className="space-y-1.5">
-                <label className="text-sm font-medium text-gray-700">Descripción</label>
+                <label className="text-sm font-medium text-slate-700">Descripción</label>
                 <textarea
-                  className="w-full text-sm border border-gray-200 rounded-lg p-3 resize-none focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                  className="w-full text-sm border border-slate-200 rounded-lg p-3 resize-none focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
                   rows={3}
                   value={description}
                   onChange={(e) => setDescription(e.target.value)}
@@ -395,7 +462,7 @@ export default function SettingsPage() {
               </div>
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div className="space-y-1.5">
-                  <label className="text-sm font-medium text-gray-700">Dirección</label>
+                  <label className="text-sm font-medium text-slate-700">Dirección</label>
                   <Input
                     value={address}
                     onChange={(e) => setAddress(e.target.value)}
@@ -403,13 +470,58 @@ export default function SettingsPage() {
                   />
                 </div>
                 <div className="space-y-1.5">
-                  <label className="text-sm font-medium text-gray-700">Teléfono</label>
+                  <label className="text-sm font-medium text-slate-700">Teléfono</label>
                   <Input
                     value={phone}
                     onChange={(e) => setPhone(e.target.value)}
                     placeholder="+1 234 567 890"
                   />
                 </div>
+              </div>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div className="space-y-1.5">
+                  <label className="text-sm font-medium text-slate-700">Duración de cada turno</label>
+                  <Select value={String(slotDuration)} onValueChange={(v) => setSlotDuration(Number(v))}>
+                    <SelectTrigger>
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="15">15 minutos</SelectItem>
+                      <SelectItem value="30">30 minutos</SelectItem>
+                      <SelectItem value="45">45 minutos</SelectItem>
+                      <SelectItem value="60">1 hora</SelectItem>
+                      <SelectItem value="90">1 hora 30 min</SelectItem>
+                      <SelectItem value="120">2 horas</SelectItem>
+                    </SelectContent>
+                  </Select>
+                  <p className="text-xs text-slate-500">
+                    Tiempo que dura cada cita. Define los intervalos de horarios disponibles.
+                  </p>
+                </div>
+                <div className="space-y-1.5">
+                  <label className="text-sm font-medium text-slate-700">Horas mínimas para cancelar</label>
+                  <Input
+                    type="number"
+                    min={0}
+                    max={72}
+                    value={cancellationHours}
+                    onChange={(e) => setCancellationHours(Number(e.target.value))}
+                  />
+                  <p className="text-xs text-slate-500">
+                    Los clientes solo podrán cancelar si faltan al menos esta cantidad de horas para la cita. 0 = sin restricción.
+                  </p>
+                </div>
+              </div>
+              <div className="flex items-center justify-end gap-3 pt-2">
+                {saved && (
+                  <p className="text-sm text-green-600">Cambios guardados correctamente.</p>
+                )}
+                {updateMutation.isError && (
+                  <p className="text-sm text-red-600">Error al guardar. Intenta de nuevo.</p>
+                )}
+                <Button onClick={handleSave} disabled={updateMutation.isPending} className="btn-gradient text-white">
+                  {updateMutation.isPending ? 'Guardando...' : 'Guardar cambios'}
+                </Button>
               </div>
             </CardContent>
           </Card>
@@ -436,7 +548,7 @@ export default function SettingsPage() {
                       }`}
                       style={{ backgroundColor: theme.primary }}
                     />
-                    <span className="text-xs text-gray-600">{theme.label}</span>
+                    <span className="text-xs text-slate-600">{theme.label}</span>
                   </button>
                 ))}
               </div>
@@ -450,9 +562,9 @@ export default function SettingsPage() {
             </CardHeader>
             <CardContent className="space-y-4">
               <div className="space-y-1.5">
-                <label className="text-sm font-medium text-gray-700">Instagram</label>
+                <label className="text-sm font-medium text-slate-700">Instagram</label>
                 <div className="flex items-center">
-                  <span className="inline-flex items-center px-3 h-9 border border-r-0 border-gray-200 rounded-l-md bg-gray-50 text-gray-500 text-sm">
+                  <span className="inline-flex items-center px-3 h-9 border border-r-0 border-slate-200 rounded-l-md bg-slate-50 text-slate-500 text-sm">
                     @
                   </span>
                   <Input
@@ -466,7 +578,7 @@ export default function SettingsPage() {
                 </div>
               </div>
               <div className="space-y-1.5">
-                <label className="text-sm font-medium text-gray-700">Facebook</label>
+                <label className="text-sm font-medium text-slate-700">Facebook</label>
                 <Input
                   value={socialLinks.facebook}
                   onChange={(e) =>
@@ -476,7 +588,7 @@ export default function SettingsPage() {
                 />
               </div>
               <div className="space-y-1.5">
-                <label className="text-sm font-medium text-gray-700">WhatsApp</label>
+                <label className="text-sm font-medium text-slate-700">WhatsApp</label>
                 <Input
                   value={socialLinks.whatsapp}
                   onChange={(e) =>
@@ -497,8 +609,8 @@ export default function SettingsPage() {
               {DAYS.map((day) => {
                 const daySchedule = schedule[day.key];
                 return (
-                  <div key={day.key} className="flex items-center gap-3">
-                    <label className="flex items-center gap-2 w-28">
+                  <div key={day.key} className="flex items-start gap-3">
+                    <label className="flex items-center gap-2 w-28 pt-2">
                       <input
                         type="checkbox"
                         checked={daySchedule.active}
@@ -506,54 +618,95 @@ export default function SettingsPage() {
                           setSchedule((prev) => ({
                             ...prev,
                             [day.key]: {
-                              ...prev[day.key],
                               active: e.target.checked,
-                              open: e.target.checked ? (prev[day.key].open ?? '08:00') : null,
-                              close: e.target.checked ? (prev[day.key].close ?? '18:00') : null,
+                              ranges: e.target.checked
+                                ? (prev[day.key].ranges.length > 0 ? prev[day.key].ranges : [{ open: '08:00', close: '18:00' }])
+                                : [],
                             },
                           }))
                         }
                         className="rounded border-gray-300"
                       />
-                      <span className="text-sm font-medium text-[#343C6A]">{day.label}</span>
+                      <span className="text-sm font-medium text-slate-900">{day.label}</span>
                     </label>
                     {daySchedule.active ? (
-                      <div className="flex items-center gap-2">
-                        <Input
-                          type="time"
-                          value={daySchedule.open ?? '08:00'}
-                          onChange={(e) =>
+                      <div className="flex flex-col gap-1.5">
+                        {daySchedule.ranges.map((range, ri) => (
+                          <div key={ri} className="flex items-center gap-2">
+                            <Input
+                              type="time"
+                              value={range.open}
+                              onChange={(e) =>
+                                setSchedule((prev) => {
+                                  const ranges = [...prev[day.key].ranges];
+                                  ranges[ri] = { ...ranges[ri], open: e.target.value };
+                                  return { ...prev, [day.key]: { ...prev[day.key], ranges } };
+                                })
+                              }
+                              className="w-32"
+                            />
+                            <span className="text-sm text-slate-500">a</span>
+                            <Input
+                              type="time"
+                              value={range.close}
+                              onChange={(e) =>
+                                setSchedule((prev) => {
+                                  const ranges = [...prev[day.key].ranges];
+                                  ranges[ri] = { ...ranges[ri], close: e.target.value };
+                                  return { ...prev, [day.key]: { ...prev[day.key], ranges } };
+                                })
+                              }
+                              className="w-32"
+                            />
+                            {daySchedule.ranges.length > 1 && (
+                              <button
+                                type="button"
+                                onClick={() =>
+                                  setSchedule((prev) => ({
+                                    ...prev,
+                                    [day.key]: {
+                                      ...prev[day.key],
+                                      ranges: prev[day.key].ranges.filter((_, i) => i !== ri),
+                                    },
+                                  }))
+                                }
+                                className="text-red-400 hover:text-red-600"
+                              >
+                                <X size={16} />
+                              </button>
+                            )}
+                          </div>
+                        ))}
+                        <button
+                          type="button"
+                          onClick={() =>
                             setSchedule((prev) => ({
                               ...prev,
-                              [day.key]: { ...prev[day.key], open: e.target.value },
+                              [day.key]: {
+                                ...prev[day.key],
+                                ranges: [...prev[day.key].ranges, { open: '14:00', close: '18:00' }],
+                              },
                             }))
                           }
-                          className="w-32"
-                        />
-                        <span className="text-sm text-[#718EBF]">a</span>
-                        <Input
-                          type="time"
-                          value={daySchedule.close ?? '18:00'}
-                          onChange={(e) =>
-                            setSchedule((prev) => ({
-                              ...prev,
-                              [day.key]: { ...prev[day.key], close: e.target.value },
-                            }))
-                          }
-                          className="w-32"
-                        />
+                          className="text-xs text-blue-600 hover:text-blue-800 self-start"
+                        >
+                          + Agregar turno
+                        </button>
                       </div>
                     ) : (
-                      <span className="text-sm text-[#718EBF]">Cerrado</span>
+                      <span className="text-sm text-slate-500 pt-2">Cerrado</span>
                     )}
                   </div>
                 );
               })}
               <div className="flex items-center justify-end gap-3 pt-2">
+                {scheduleError && (
+                  <p className="text-sm text-red-600">{scheduleError}</p>
+                )}
                 {scheduleSaved && (
                   <p className="text-sm text-green-600">Horarios guardados.</p>
                 )}
-                <Button size="sm" onClick={handleSaveSchedule} disabled={savingSchedule}>
+                <Button size="sm" onClick={handleSaveSchedule} disabled={savingSchedule} className="btn-gradient text-white">
                   {savingSchedule ? 'Guardando...' : 'Guardar horarios'}
                 </Button>
               </div>
@@ -571,19 +724,19 @@ export default function SettingsPage() {
                   {(blocks as AvailabilityBlock[]).map((block) => (
                     <div
                       key={block.id}
-                      className="flex items-center justify-between p-3 bg-[#F5F7FA] rounded-lg"
+                      className="flex items-center justify-between p-3 bg-slate-50 rounded-lg"
                     >
                       <div className="flex items-center gap-3">
-                        <span className="text-sm font-medium text-[#343C6A]">
+                        <span className="text-sm font-medium text-slate-900">
                           {new Date(block.date).toLocaleDateString('es', { day: '2-digit', month: '2-digit', year: 'numeric' })}
                         </span>
-                        <span className="text-sm text-[#718EBF]">
+                        <span className="text-sm text-slate-500">
                           {block.start_time && block.end_time
                             ? `${block.start_time.slice(0, 5)} - ${block.end_time.slice(0, 5)}`
                             : 'Todo el día'}
                         </span>
                         {block.reason && (
-                          <span className="text-sm text-[#718EBF]">&mdash; {block.reason}</span>
+                          <span className="text-sm text-slate-500">&mdash; {block.reason}</span>
                         )}
                       </div>
                       <Button
@@ -601,16 +754,16 @@ export default function SettingsPage() {
               )}
 
               {(blocks as AvailabilityBlock[]).length === 0 && (
-                <p className="text-sm text-[#718EBF] text-center py-2">
+                <p className="text-sm text-slate-500 text-center py-2">
                   No hay bloqueos configurados.
                 </p>
               )}
 
-              <div className="border border-[#DFE5EE] rounded-lg p-4 space-y-3">
-                <p className="text-sm font-medium text-[#343C6A]">Agregar bloqueo</p>
+              <div className="border border-slate-200 rounded-lg p-4 space-y-3">
+                <p className="text-sm font-medium text-slate-900">Agregar bloqueo</p>
                 <div className="flex flex-wrap items-end gap-3">
                   <div className="space-y-1">
-                    <label className="text-xs text-[#718EBF]">Fecha</label>
+                    <label className="text-xs text-slate-500">Fecha</label>
                     <Input
                       type="date"
                       value={blockDate}
@@ -618,7 +771,7 @@ export default function SettingsPage() {
                       className="w-40"
                     />
                   </div>
-                  <label className="flex items-center gap-2 text-sm text-[#343C6A] pb-2">
+                  <label className="flex items-center gap-2 text-sm text-slate-900 pb-2">
                     <input
                       type="checkbox"
                       checked={blockAllDay}
@@ -630,7 +783,7 @@ export default function SettingsPage() {
                   {!blockAllDay && (
                     <>
                       <div className="space-y-1">
-                        <label className="text-xs text-[#718EBF]">Desde</label>
+                        <label className="text-xs text-slate-500">Desde</label>
                         <Input
                           type="time"
                           value={blockStartTime}
@@ -639,7 +792,7 @@ export default function SettingsPage() {
                         />
                       </div>
                       <div className="space-y-1">
-                        <label className="text-xs text-[#718EBF]">Hasta</label>
+                        <label className="text-xs text-slate-500">Hasta</label>
                         <Input
                           type="time"
                           value={blockEndTime}
@@ -650,7 +803,7 @@ export default function SettingsPage() {
                     </>
                   )}
                   <div className="space-y-1 flex-1 min-w-[150px]">
-                    <label className="text-xs text-[#718EBF]">Motivo (opcional)</label>
+                    <label className="text-xs text-slate-500">Motivo (opcional)</label>
                     <Input
                       value={blockReason}
                       onChange={(e) => setBlockReason(e.target.value)}
@@ -661,6 +814,7 @@ export default function SettingsPage() {
                     size="sm"
                     onClick={handleAddBlock}
                     disabled={!blockDate}
+                    className="btn-gradient text-white"
                   >
                     <Plus className="w-4 h-4 mr-1" />
                     Agregar
@@ -748,14 +902,14 @@ export default function SettingsPage() {
             </CardHeader>
             <CardContent className="space-y-3">
               {customFields.length === 0 && (
-                <p className="text-sm text-gray-500 text-center py-4">
+                <p className="text-sm text-slate-500 text-center py-4">
                   No hay campos personalizados. Agrega uno para recopilar información adicional de tus clientes.
                 </p>
               )}
               {customFields.map((field, index) => (
                 <div
                   key={field.key}
-                  className="flex flex-col gap-2 p-3 border border-gray-200 rounded-lg"
+                  className="flex flex-col gap-2 p-3 border border-slate-200 rounded-lg"
                 >
                   <div className="flex items-center gap-2">
                     <Input
@@ -781,7 +935,7 @@ export default function SettingsPage() {
                         ))}
                       </SelectContent>
                     </Select>
-                    <label className="flex items-center gap-1.5 text-sm text-gray-600 whitespace-nowrap">
+                    <label className="flex items-center gap-1.5 text-sm text-slate-600 whitespace-nowrap">
                       <input
                         type="checkbox"
                         checked={field.required}
@@ -790,7 +944,7 @@ export default function SettingsPage() {
                       />
                       Requerido
                     </label>
-                    <label className="flex items-center gap-1.5 text-sm text-gray-600 whitespace-nowrap">
+                    <label className="flex items-center gap-1.5 text-sm text-slate-600 whitespace-nowrap">
                       <input
                         type="checkbox"
                         checked={field.uppercase ?? false}
@@ -810,7 +964,7 @@ export default function SettingsPage() {
                   </div>
                   {field.type === 'select' && (
                     <div className="space-y-1">
-                      <label className="text-xs text-gray-500">Opciones (separadas por coma)</label>
+                      <label className="text-xs text-slate-500">Opciones (separadas por coma)</label>
                       <Input
                         value={(field.options ?? []).join(', ')}
                         onChange={(e) =>
@@ -835,7 +989,7 @@ export default function SettingsPage() {
             {updateMutation.isError && (
               <p className="text-sm text-red-600">Error al guardar. Intenta de nuevo.</p>
             )}
-            <Button onClick={handleSave} disabled={updateMutation.isPending}>
+            <Button onClick={handleSave} disabled={updateMutation.isPending} className="btn-gradient text-white">
               {updateMutation.isPending ? 'Guardando...' : 'Guardar cambios'}
             </Button>
           </div>
@@ -853,7 +1007,7 @@ export default function SettingsPage() {
                 <table className="w-full text-sm">
                   <thead>
                     <tr className="border-b">
-                      <th className="text-left py-2 pr-4 font-medium text-gray-700">Sección</th>
+                      <th className="text-left py-2 pr-4 font-medium text-slate-700">Sección</th>
                       <th className="text-center py-2 px-3 font-medium text-purple-700">Admin</th>
                       {permEditable.map((r) => (
                         <th key={r.key} className={`text-center py-2 px-3 font-medium ${r.color}`}>{r.label}</th>
@@ -863,7 +1017,7 @@ export default function SettingsPage() {
                   <tbody>
                     {permSections.map((sec) => (
                       <tr key={sec.key} className="border-b last:border-0">
-                        <td className="py-2 pr-4 text-gray-700">{sec.label}</td>
+                        <td className="py-2 pr-4 text-slate-700">{sec.label}</td>
                         <td className="text-center py-2 px-3">
                           <span className="inline-flex items-center justify-center w-6 h-6 rounded-full bg-green-100 text-green-600 text-xs font-bold">✓</span>
                         </td>
@@ -879,7 +1033,7 @@ export default function SettingsPage() {
                               >
                                 {perm === 'full' && <span className="inline-flex items-center justify-center w-6 h-6 rounded-full bg-green-100 text-green-600 text-xs font-bold">✓</span>}
                                 {perm === 'view' && <span className="inline-flex items-center justify-center w-6 h-6 rounded-full bg-yellow-100 text-yellow-600 text-xs font-bold">◉</span>}
-                                {perm === 'none' && <span className="inline-flex items-center justify-center w-6 h-6 rounded-full bg-gray-100 text-gray-400 text-xs">✕</span>}
+                                {perm === 'none' && <span className="inline-flex items-center justify-center w-6 h-6 rounded-full bg-slate-100 text-slate-400 text-xs">✕</span>}
                               </button>
                             </td>
                           );
@@ -893,9 +1047,9 @@ export default function SettingsPage() {
                 <div className="flex gap-4 text-xs text-muted-foreground">
                   <span className="flex items-center gap-1"><span className="inline-block w-3 h-3 rounded-full bg-green-100 border border-green-300" /> Acceso completo</span>
                   <span className="flex items-center gap-1"><span className="inline-block w-3 h-3 rounded-full bg-yellow-100 border border-yellow-300" /> Solo ver</span>
-                  <span className="flex items-center gap-1"><span className="inline-block w-3 h-3 rounded-full bg-gray-100 border border-gray-300" /> Sin acceso</span>
+                  <span className="flex items-center gap-1"><span className="inline-block w-3 h-3 rounded-full bg-slate-100 border border-slate-300" /> Sin acceso</span>
                 </div>
-                <Button size="sm" onClick={handleSavePermissions} disabled={savingPerms}>
+                <Button size="sm" onClick={handleSavePermissions} disabled={savingPerms} className="btn-gradient text-white">
                   {savingPerms ? 'Guardando...' : 'Guardar permisos'}
                 </Button>
               </div>
