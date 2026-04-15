@@ -129,8 +129,8 @@ export default function ServicesPage() {
     <div className="space-y-6">
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-2xl font-bold text-gray-900">Servicios</h1>
-          <p className="text-gray-500">Gestión de servicios</p>
+          <h1 className="text-2xl font-bold text-slate-900">Servicios</h1>
+          <p className="text-slate-500">Gestión de servicios</p>
         </div>
         <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
           <DialogTrigger render={<Button onClick={openCreate} />}>
@@ -143,7 +143,7 @@ export default function ServicesPage() {
             </DialogHeader>
             <form onSubmit={handleSubmit} className="space-y-4">
               <div>
-                <label className="text-sm font-medium text-gray-700 block mb-1">Imagen del servicio</label>
+                <label className="text-sm font-medium text-slate-700 block mb-1">Imagen del servicio</label>
                 <ImageUpload
                   currentUrl={form.image_url || null}
                   folder="services"
@@ -153,7 +153,7 @@ export default function ServicesPage() {
                 />
               </div>
               <div>
-                <label className="text-sm font-medium text-gray-700 block mb-1">Nombre</label>
+                <label className="text-sm font-medium text-slate-700 block mb-1">Nombre</label>
                 <Input
                   required
                   value={form.name}
@@ -162,7 +162,7 @@ export default function ServicesPage() {
                 />
               </div>
               <div>
-                <label className="text-sm font-medium text-gray-700 block mb-1">Precio</label>
+                <label className="text-sm font-medium text-slate-700 block mb-1">Precio</label>
                 <Input
                   required
                   type="number"
@@ -174,7 +174,7 @@ export default function ServicesPage() {
                 />
               </div>
               <div>
-                <label className="text-sm font-medium text-gray-700 block mb-1">
+                <label className="text-sm font-medium text-slate-700 block mb-1">
                   Descripción (opcional)
                 </label>
                 <Input
@@ -206,7 +206,7 @@ export default function ServicesPage() {
           <DialogHeader>
             <DialogTitle>Confirmar eliminación</DialogTitle>
           </DialogHeader>
-          <p className="text-sm text-gray-600">
+          <p className="text-sm text-slate-600">
             ¿Estás seguro de que deseas eliminar este servicio? Esta acción no se puede deshacer.
           </p>
           <DialogFooter>
@@ -249,7 +249,7 @@ export default function ServicesPage() {
               </TableHeader>
               <TableBody>
                 {services.map((service) => (
-                  <TableRow key={service.id}>
+                  <TableRow key={service.id} className="hover:-translate-y-0.5 hover:shadow-card-hover transition-all duration-300">
                     <TableCell className="font-medium">
                       <div className="flex items-center gap-2">
                         {service.image_url && (
@@ -275,7 +275,7 @@ export default function ServicesPage() {
                           })
                         }
                         className={`relative inline-flex h-5 w-9 items-center rounded-full transition-colors focus:outline-none ${
-                          service.is_active ? 'bg-green-500' : 'bg-gray-300'
+                          service.is_active ? 'bg-green-500' : 'bg-slate-300'
                         }`}
                       >
                         <span
