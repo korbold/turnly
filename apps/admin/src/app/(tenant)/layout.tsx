@@ -23,12 +23,14 @@ export default function TenantLayout({ children }: { children: React.ReactNode }
   const router = useRouter();
   const pathname = usePathname();
   const [ready, setReady] = useState(false);
+  const [authenticated, setAuthenticated] = useState(() => isAuthenticated());
   const [superAdminMode, setSuperAdminMode] = useState(false);
   const [viewingSlug, setViewingSlug] = useState('');
   const [userRole, setUserRole] = useState<string | null>(null);
   const [customPerms, setCustomPerms] = useState<PermissionsConfig | null>(null);
+
   useEffect(() => {
-    if (!isAuthenticated()) {
+    if (!authenticated) {
       router.replace('/login');
       return;
     }
@@ -48,7 +50,9 @@ export default function TenantLayout({ children }: { children: React.ReactNode }
         setReady(true);
       })
       .catch(() => {
-        setReady(true);
+        // Auth failed — token might be invalid
+        setAuthenticated(false);
+        router.replace('/login');
       });
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
@@ -72,6 +76,10 @@ export default function TenantLayout({ children }: { children: React.ReactNode }
     localStorage.removeItem('tenant_slug');
     localStorage.removeItem('super_admin_mode');
     router.push('/super-admin');
+  }
+
+  if (!authenticated) {
+    return null; // Redirecting to login
   }
 
   if (!ready) {
