@@ -5,10 +5,6 @@ import { useRouter } from 'next/navigation';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
-import { Button } from '@/components/ui/button';
-import { Card, CardContent, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
-import { Input } from '@/components/ui/input';
-import { Label } from '@/components/ui/label';
 import { login } from '@/lib/api/auth';
 import Link from 'next/link';
 
@@ -47,54 +43,59 @@ export default function LoginPage() {
   };
 
   return (
-    <Card>
-      <CardHeader>
-        <CardTitle>Iniciar sesión</CardTitle>
-      </CardHeader>
-      <form onSubmit={handleSubmit(onSubmit)}>
-        <CardContent className="space-y-4">
-          {error && (
-            <div className="bg-red-50 text-red-600 text-sm p-3 rounded-md">
-              {error}
-            </div>
-          )}
-          <div className="space-y-2">
-            <Label htmlFor="email">Email</Label>
-            <Input
-              id="email"
-              type="email"
-              placeholder="tu@email.com"
-              {...register('email')}
-            />
-            {errors.email && (
-              <p className="text-sm text-red-500">{errors.email.message}</p>
-            )}
-          </div>
-          <div className="space-y-2">
-            <Label htmlFor="password">Contraseña</Label>
-            <Input
-              id="password"
-              type="password"
-              placeholder="••••••••"
-              {...register('password')}
-            />
-            {errors.password && (
-              <p className="text-sm text-red-500">{errors.password.message}</p>
-            )}
-          </div>
-        </CardContent>
-        <CardFooter className="flex flex-col gap-4">
-          <Button type="submit" className="w-full" disabled={loading}>
-            {loading ? 'Ingresando...' : 'Ingresar'}
-          </Button>
-          <p className="text-sm text-gray-500">
-            ¿No tienes cuenta?{' '}
-            <Link href="/register" className="text-blue-600 hover:underline">
-              Regístrate
-            </Link>
-          </p>
-        </CardFooter>
-      </form>
-    </Card>
+    <form onSubmit={handleSubmit(onSubmit)} className="space-y-5">
+      {error && (
+        <div className="bg-red-500/20 text-white text-sm p-3 rounded-lg border border-red-400/30">
+          {error}
+        </div>
+      )}
+
+      <div className="space-y-2">
+        <label htmlFor="email" className="text-sm font-medium text-white/80">
+          Email
+        </label>
+        <input
+          id="email"
+          type="email"
+          placeholder="tu@email.com"
+          className="w-full h-11 bg-white/5 border border-white/10 rounded-lg px-4 text-sm text-white placeholder:text-white/40 focus:outline-none focus:ring-2 focus:ring-white/30 transition-colors"
+          {...register('email')}
+        />
+        {errors.email && (
+          <p className="text-sm text-red-300">{errors.email.message}</p>
+        )}
+      </div>
+
+      <div className="space-y-2">
+        <label htmlFor="password" className="text-sm font-medium text-white/80">
+          Contrasena
+        </label>
+        <input
+          id="password"
+          type="password"
+          placeholder="••••••••"
+          className="w-full h-11 bg-white/5 border border-white/10 rounded-lg px-4 text-sm text-white placeholder:text-white/40 focus:outline-none focus:ring-2 focus:ring-white/30 transition-colors"
+          {...register('password')}
+        />
+        {errors.password && (
+          <p className="text-sm text-red-300">{errors.password.message}</p>
+        )}
+      </div>
+
+      <button
+        type="submit"
+        disabled={loading}
+        className="w-full h-11 bg-white text-indigo-600 font-semibold text-sm rounded-lg hover:bg-white/90 transition-colors disabled:opacity-50"
+      >
+        {loading ? 'Ingresando...' : 'Ingresar'}
+      </button>
+
+      <p className="text-sm text-white/60 text-center">
+        No tienes cuenta?{' '}
+        <Link href="/register" className="text-white hover:underline font-medium">
+          Registrate
+        </Link>
+      </p>
+    </form>
   );
 }
