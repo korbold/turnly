@@ -145,8 +145,8 @@ export default function ClientsPage() {
     <div className="space-y-6">
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-2xl font-bold text-gray-900">Clientes</h1>
-          <p className="text-gray-500">Registro de clientes</p>
+          <h1 className="text-2xl font-bold text-slate-900">Clientes</h1>
+          <p className="text-slate-500">Registro de clientes</p>
         </div>
         <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
           <DialogTrigger render={<Button onClick={handleOpenDialog} />}>
@@ -172,7 +172,7 @@ export default function ClientsPage() {
               ) : (
                 customFields.map((field) => (
                   <div key={field.key}>
-                    <label className="text-sm font-medium text-gray-700 block mb-1">
+                    <label className="text-sm font-medium text-slate-700 block mb-1">
                       {field.label}
                       {field.required && <span className="text-red-500 ml-1">*</span>}
                     </label>
@@ -261,7 +261,7 @@ export default function ClientsPage() {
                   {clientResources.map((cr) => (
                     <TableRow
                       key={cr.id}
-                      className="cursor-pointer"
+                      className="cursor-pointer hover:bg-indigo-50/30 transition-colors"
                       onClick={() => router.push(`/clients/${cr.id}`)}
                     >
                       <TableCell className="font-medium">{cr.id.slice(0, 8)}</TableCell>
@@ -295,10 +295,10 @@ export default function ClientsPage() {
                         <Pencil className="h-4 w-4" />
                       </Button>
                     </div>
-                    <div className="text-xs text-gray-500 space-y-0.5">
+                    <div className="text-xs text-slate-500 space-y-0.5">
                       {customFields.slice(1).map((field) => (
                         <p key={field.key}>
-                          <span className="font-medium text-gray-600">{field.label}:</span>{' '}
+                          <span className="font-medium text-slate-600">{field.label}:</span>{' '}
                           {getFieldValue(cr, field.key)}
                         </p>
                       ))}
@@ -322,7 +322,7 @@ export default function ClientsPage() {
                     {clientResources.map((cr) => (
                       <TableRow
                         key={cr.id}
-                        className="cursor-pointer"
+                        className="cursor-pointer hover:bg-indigo-50/30 transition-colors"
                         onClick={() => router.push(`/clients/${cr.id}`)}
                       >
                         {customFields.map((field) => (
