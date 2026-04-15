@@ -27,8 +27,6 @@ export default function TenantLayout({ children }: { children: React.ReactNode }
   const [viewingSlug, setViewingSlug] = useState('');
   const [userRole, setUserRole] = useState<string | null>(null);
   const [customPerms, setCustomPerms] = useState<PermissionsConfig | null>(null);
-  const [accessDenied, setAccessDenied] = useState(false);
-
   useEffect(() => {
     if (!isAuthenticated()) {
       router.replace('/login');
@@ -52,23 +50,23 @@ export default function TenantLayout({ children }: { children: React.ReactNode }
       .catch(() => {
         setReady(true);
       });
-  }, [router]);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
-  // Check access whenever pathname or role changes
+  // Check access whenever pathname or role changes — redirect only, no blocking state
   useEffect(() => {
     if (!ready || !userRole) return;
     if (superAdminMode) return;
 
     const basePath = '/' + (pathname.split('/')[1] ?? '');
     const section = PATH_TO_SECTION[basePath];
+    if (!section) return;
+
     const perms = mergePermissions(customPerms);
-    if (section && !canAccess(userRole, section, perms)) {
-      setAccessDenied(true);
+    if (!canAccess(userRole, section, perms) && basePath !== '/dashboard') {
       router.replace('/dashboard');
-    } else {
-      setAccessDenied(false);
     }
-  }, [pathname, userRole, ready, superAdminMode, router]);
+  }, [pathname, userRole, ready, superAdminMode, customPerms, router]);
 
   function handleBackToPanel() {
     localStorage.removeItem('tenant_slug');
@@ -76,7 +74,7 @@ export default function TenantLayout({ children }: { children: React.ReactNode }
     router.push('/super-admin');
   }
 
-  if (!ready || accessDenied) {
+  if (!ready) {
     return (
       <div className="min-h-screen flex items-center justify-center">
         <div className="animate-spin h-8 w-8 border-4 border-indigo-500 border-t-transparent rounded-full" />
