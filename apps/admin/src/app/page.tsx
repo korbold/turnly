@@ -4,27 +4,28 @@ import { CalendarCheck, Building2, LayoutDashboard, Sparkles, ArrowRight } from 
 export default function Home() {
   return (
     <div>
-      {/* Nav */}
-      <nav className="fixed top-0 left-0 right-0 z-50 backdrop-blur-xl bg-white/70 border-b border-slate-200/50">
-        <div className="max-w-6xl mx-auto flex items-center justify-between px-6 py-4">
-          <span className="text-xl font-bold text-slate-900 tracking-tight">Turnly</span>
-          <div className="flex items-center gap-6">
-            <Link href="/login" className="text-sm text-slate-600 hover:text-slate-900 transition-colors">
-              Iniciar sesion
-            </Link>
-            <Link
-              href="/register"
-              className="px-5 py-2 btn-gradient text-white text-sm font-medium rounded-full hover:opacity-90 transition-opacity"
-            >
-              Empezar gratis
-            </Link>
+      {/* Hero (nav integrated inside the gradient) */}
+      <section className="relative bg-gradient-to-br from-indigo-600 via-violet-600 to-cyan-500 animate-mesh overflow-hidden">
+        {/* Nav */}
+        <nav className="relative z-20">
+          <div className="max-w-6xl mx-auto flex items-center justify-between px-6 py-5">
+            <span className="text-xl font-bold text-white tracking-tight">Turnly</span>
+            <div className="flex items-center gap-6">
+              <Link href="/login" className="text-sm text-white/80 hover:text-white transition-colors">
+                Iniciar sesion
+              </Link>
+              <Link
+                href="/register"
+                className="px-5 py-2 bg-white/15 backdrop-blur border border-white/20 text-white text-sm font-medium rounded-full hover:bg-white/25 transition-colors"
+              >
+                Empezar gratis
+              </Link>
+            </div>
           </div>
-        </div>
-      </nav>
+        </nav>
 
-      {/* Hero */}
-      <section className="relative flex flex-col items-center justify-center text-center px-6 pt-28 pb-20 bg-gradient-to-br from-indigo-600 via-violet-600 to-cyan-500 animate-mesh overflow-hidden">
-        <div className="relative z-10 max-w-3xl mx-auto">
+        {/* Hero content */}
+        <div className="relative z-10 max-w-3xl mx-auto text-center px-6 pt-16 pb-20">
           <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full glass text-white/90 text-sm font-medium mb-8">
             <Sparkles className="h-4 w-4" />
             La plataforma #1 de reservas
@@ -105,7 +106,7 @@ export default function Home() {
       </section>
 
       {/* CTA */}
-      <section className="px-6 py-24 bg-white">
+      <section className="px-6 py-20 bg-white">
         <div className="max-w-3xl mx-auto">
           <div className="rounded-3xl bg-gradient-to-r from-indigo-600 to-violet-600 p-12 text-center">
             <h2 className="text-3xl font-bold text-white mb-4 tracking-tight">
