@@ -5,8 +5,6 @@ import { useRouter } from 'next/navigation';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
-import { Button } from '@/components/ui/button';
-import { Card, CardContent, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { SlugChecker } from '@/components/onboarding/SlugChecker';
@@ -70,105 +68,62 @@ export default function RegisterPage() {
   };
 
   return (
-    <Card>
-      <CardHeader>
-        <CardTitle>Paso 1: Registro</CardTitle>
-      </CardHeader>
-      <form onSubmit={handleSubmit(onSubmit)}>
-        <CardContent className="space-y-4">
-          {error && (
-            <div className="bg-red-50 text-red-600 text-sm p-3 rounded-md">{error}</div>
-          )}
+    <>
+      <h2 className="text-xl font-semibold text-slate-900 mb-6">Paso 1: Registro</h2>
+      <form onSubmit={handleSubmit(onSubmit)} className="space-y-5">
+        {error && (
+          <div className="bg-red-50 text-red-600 text-sm p-3 rounded-lg border border-red-200">{error}</div>
+        )}
 
-          <div className="space-y-2">
-            <Label htmlFor="name">Nombre del negocio</Label>
-            <Input
-              id="name"
-              placeholder="Mi negocio"
-              {...register('name')}
-            />
-            {errors.name && (
-              <p className="text-sm text-red-500">{errors.name.message}</p>
-            )}
-          </div>
+        <div className="space-y-2">
+          <Label htmlFor="name" className="text-slate-700">Nombre del negocio</Label>
+          <Input id="name" placeholder="Mi negocio" className="focus-visible:ring-indigo-500" {...register('name')} />
+          {errors.name && <p className="text-sm text-red-500">{errors.name.message}</p>}
+        </div>
 
-          <div className="space-y-2">
-            <Label htmlFor="slug">Slug (URL del negocio)</Label>
-            <Input
-              id="slug"
-              placeholder="mi-car-wash"
-              {...register('slug')}
-            />
-            <SlugChecker slug={slugValue} />
-            {errors.slug && (
-              <p className="text-sm text-red-500">{errors.slug.message}</p>
-            )}
-          </div>
+        <div className="space-y-2">
+          <Label htmlFor="slug" className="text-slate-700">Slug (URL del negocio)</Label>
+          <Input id="slug" placeholder="mi-car-wash" className="focus-visible:ring-indigo-500" {...register('slug')} />
+          <SlugChecker slug={slugValue} />
+          {errors.slug && <p className="text-sm text-red-500">{errors.slug.message}</p>}
+        </div>
 
-          <div className="space-y-2">
-            <Label htmlFor="owner_name">Nombre del dueño</Label>
-            <Input
-              id="owner_name"
-              placeholder="Juan Pérez"
-              {...register('owner_name')}
-            />
-            {errors.owner_name && (
-              <p className="text-sm text-red-500">{errors.owner_name.message}</p>
-            )}
-          </div>
+        <div className="space-y-2">
+          <Label htmlFor="owner_name" className="text-slate-700">Nombre del dueño</Label>
+          <Input id="owner_name" placeholder="Juan Pérez" className="focus-visible:ring-indigo-500" {...register('owner_name')} />
+          {errors.owner_name && <p className="text-sm text-red-500">{errors.owner_name.message}</p>}
+        </div>
 
-          <div className="space-y-2">
-            <Label htmlFor="email">Email</Label>
-            <Input
-              id="email"
-              type="email"
-              placeholder="juan@negocio.com"
-              {...register('email')}
-            />
-            {errors.email && (
-              <p className="text-sm text-red-500">{errors.email.message}</p>
-            )}
-          </div>
+        <div className="space-y-2">
+          <Label htmlFor="email" className="text-slate-700">Email</Label>
+          <Input id="email" type="email" placeholder="juan@negocio.com" className="focus-visible:ring-indigo-500" {...register('email')} />
+          {errors.email && <p className="text-sm text-red-500">{errors.email.message}</p>}
+        </div>
 
-          <div className="space-y-2">
-            <Label htmlFor="password">Contraseña</Label>
-            <Input
-              id="password"
-              type="password"
-              placeholder="••••••••"
-              {...register('password')}
-            />
-            {errors.password && (
-              <p className="text-sm text-red-500">{errors.password.message}</p>
-            )}
-          </div>
+        <div className="space-y-2">
+          <Label htmlFor="password" className="text-slate-700">Contraseña</Label>
+          <Input id="password" type="password" placeholder="••••••••" className="focus-visible:ring-indigo-500" {...register('password')} />
+          {errors.password && <p className="text-sm text-red-500">{errors.password.message}</p>}
+        </div>
 
-          <div className="space-y-2">
-            <Label htmlFor="phone">Teléfono (opcional)</Label>
-            <Input
-              id="phone"
-              type="tel"
-              placeholder="+1 234 567 8900"
-              {...register('phone')}
-            />
-          </div>
+        <div className="space-y-2">
+          <Label htmlFor="phone" className="text-slate-700">Teléfono (opcional)</Label>
+          <Input id="phone" type="tel" placeholder="+1 234 567 8900" className="focus-visible:ring-indigo-500" {...register('phone')} />
+        </div>
 
-          <div className="space-y-2">
-            <Label htmlFor="city">Ciudad (opcional)</Label>
-            <Input
-              id="city"
-              placeholder="Ciudad de México"
-              {...register('city')}
-            />
-          </div>
-        </CardContent>
+        <div className="space-y-2">
+          <Label htmlFor="city" className="text-slate-700">Ciudad (opcional)</Label>
+          <Input id="city" placeholder="Ciudad de México" className="focus-visible:ring-indigo-500" {...register('city')} />
+        </div>
 
-        <CardFooter>
-          <Button type="submit" className="w-full" disabled={loading}>
-            {loading ? 'Registrando...' : 'Crear cuenta'}
-          </Button>
-        </CardFooter>
+        <button
+          type="submit"
+          disabled={loading}
+          className="w-full h-11 btn-gradient text-white font-semibold text-sm rounded-lg hover:opacity-90 transition-opacity disabled:opacity-50"
+        >
+          {loading ? 'Registrando...' : 'Crear cuenta'}
+        </button>
       </form>
-    </Card>
+    </>
   );
 }
