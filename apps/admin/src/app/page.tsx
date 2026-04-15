@@ -3,7 +3,7 @@ import { CalendarCheck, Building2, LayoutDashboard, Sparkles, ArrowRight } from 
 
 export default function Home() {
   return (
-    <div className="min-h-screen flex flex-col">
+    <div>
       {/* Nav */}
       <nav className="fixed top-0 left-0 right-0 z-50 backdrop-blur-xl bg-white/70 border-b border-slate-200/50">
         <div className="max-w-6xl mx-auto flex items-center justify-between px-6 py-4">
@@ -23,7 +23,7 @@ export default function Home() {
       </nav>
 
       {/* Hero */}
-      <section className="relative flex flex-col items-center justify-center text-center px-6 pt-32 pb-24 min-h-[80vh] bg-gradient-to-br from-indigo-600 via-violet-600 to-cyan-500 animate-mesh overflow-hidden">
+      <section className="relative flex flex-col items-center justify-center text-center px-6 pt-28 pb-20 bg-gradient-to-br from-indigo-600 via-violet-600 to-cyan-500 animate-mesh overflow-hidden">
         <div className="relative z-10 max-w-3xl mx-auto">
           <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full glass text-white/90 text-sm font-medium mb-8">
             <Sparkles className="h-4 w-4" />
@@ -53,12 +53,12 @@ export default function Home() {
       </section>
 
       {/* Features */}
-      <section className="px-6 py-24 bg-white">
+      <section className="px-6 py-16 bg-white">
         <div className="max-w-5xl mx-auto">
           <h2 className="text-3xl font-bold text-slate-900 text-center mb-4 tracking-tight">
             Todo lo que necesitas
           </h2>
-          <p className="text-slate-500 text-center mb-16 max-w-xl mx-auto">
+          <p className="text-slate-500 text-center mb-12 max-w-xl mx-auto">
             Herramientas poderosas para gestionar tu negocio de forma eficiente
           </p>
           <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
