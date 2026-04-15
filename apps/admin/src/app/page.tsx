@@ -1,65 +1,131 @@
 import Link from 'next/link';
-import { CalendarCheck, Building2, LayoutDashboard } from 'lucide-react';
+import { CalendarCheck, Building2, LayoutDashboard, Sparkles, ArrowRight } from 'lucide-react';
 
 export default function Home() {
   return (
     <div className="min-h-screen flex flex-col">
       {/* Nav */}
-      <nav className="flex items-center justify-between px-8 py-4 border-b border-gray-200">
-        <span className="text-xl font-bold text-gray-900">Turnly</span>
-        <Link href="/login" className="text-sm text-gray-600 hover:text-gray-900">
-          Iniciar sesión
-        </Link>
+      <nav className="fixed top-0 left-0 right-0 z-50 backdrop-blur-xl bg-white/70 border-b border-slate-200/50">
+        <div className="max-w-6xl mx-auto flex items-center justify-between px-6 py-4">
+          <span className="text-xl font-bold text-slate-900 tracking-tight">Turnly</span>
+          <div className="flex items-center gap-6">
+            <Link href="/login" className="text-sm text-slate-600 hover:text-slate-900 transition-colors">
+              Iniciar sesion
+            </Link>
+            <Link
+              href="/register"
+              className="px-5 py-2 btn-gradient text-white text-sm font-medium rounded-full hover:opacity-90 transition-opacity"
+            >
+              Empezar gratis
+            </Link>
+          </div>
+        </div>
       </nav>
 
       {/* Hero */}
-      <section className="flex flex-col items-center justify-center text-center px-6 py-24 flex-1">
-        <h1 className="text-4xl font-bold text-gray-900 max-w-2xl leading-tight mb-4">
-          Gestiona tu negocio, acepta reservas online
-        </h1>
-        <p className="text-lg text-gray-500 max-w-xl mb-8">
-          Turnly es la plataforma de citas y servicios para cualquier negocio
-        </p>
-        <div className="flex gap-4 flex-wrap justify-center">
-          <Link
-            href="/register"
-            className="px-6 py-3 bg-gray-900 text-white text-sm font-medium rounded-lg hover:bg-gray-700 transition-colors"
-          >
-            Registra tu negocio gratis
-          </Link>
-          <Link
-            href="/login"
-            className="px-6 py-3 border border-gray-300 text-gray-800 text-sm font-medium rounded-lg hover:bg-gray-50 transition-colors"
-          >
-            Iniciar sesión
-          </Link>
+      <section className="relative flex flex-col items-center justify-center text-center px-6 pt-32 pb-24 min-h-[80vh] bg-gradient-to-br from-indigo-600 via-violet-600 to-cyan-500 animate-mesh overflow-hidden">
+        <div className="relative z-10 max-w-3xl mx-auto">
+          <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full glass text-white/90 text-sm font-medium mb-8">
+            <Sparkles className="h-4 w-4" />
+            La plataforma #1 de reservas
+          </div>
+          <h1 className="text-4xl md:text-6xl font-bold text-white tracking-tight leading-tight mb-6">
+            Gestiona tu negocio, acepta reservas online
+          </h1>
+          <p className="text-lg md:text-xl text-white/70 max-w-xl mx-auto mb-10">
+            Turnly es la plataforma de citas y servicios para cualquier negocio
+          </p>
+          <div className="flex gap-4 flex-wrap justify-center">
+            <Link
+              href="/register"
+              className="px-8 py-3.5 bg-white text-indigo-600 text-sm font-semibold rounded-full hover:bg-white/90 transition-colors shadow-elevated"
+            >
+              Registra tu negocio gratis
+            </Link>
+            <Link
+              href="/login"
+              className="px-8 py-3.5 glass text-white text-sm font-semibold rounded-full hover:bg-white/20 transition-colors"
+            >
+              Iniciar sesion
+            </Link>
+          </div>
         </div>
       </section>
 
       {/* Features */}
-      <section className="px-8 py-16 bg-gray-50">
-        <div className="max-w-4xl mx-auto grid grid-cols-1 md:grid-cols-3 gap-6">
-          <div className="bg-white rounded-xl p-6 border border-gray-200">
-            <CalendarCheck className="w-8 h-8 text-gray-700 mb-3" />
-            <h3 className="text-base font-semibold text-gray-900 mb-1">Reservas online</h3>
-            <p className="text-sm text-gray-500">Tus clientes reservan desde cualquier lugar, 24/7</p>
+      <section className="px-6 py-24 bg-white">
+        <div className="max-w-5xl mx-auto">
+          <h2 className="text-3xl font-bold text-slate-900 text-center mb-4 tracking-tight">
+            Todo lo que necesitas
+          </h2>
+          <p className="text-slate-500 text-center mb-16 max-w-xl mx-auto">
+            Herramientas poderosas para gestionar tu negocio de forma eficiente
+          </p>
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
+            {[
+              {
+                icon: CalendarCheck,
+                title: 'Reservas online',
+                desc: 'Tus clientes reservan desde cualquier lugar, 24/7',
+              },
+              {
+                icon: Building2,
+                title: 'Multi-negocio',
+                desc: 'Barberias, spas, consultorios, gimnasios y mas',
+              },
+              {
+                icon: LayoutDashboard,
+                title: 'Panel de administracion',
+                desc: 'Gestiona servicios, equipo y reportes en un solo lugar',
+              },
+            ].map((feature) => (
+              <div
+                key={feature.title}
+                className="group bg-white rounded-2xl p-8 border border-slate-200/50 shadow-card hover:shadow-card-hover hover:-translate-y-0.5 transition-all duration-300"
+              >
+                <div className="flex items-center justify-center w-12 h-12 rounded-xl btn-gradient mb-5">
+                  <feature.icon className="h-6 w-6 text-white" />
+                </div>
+                <h3 className="text-lg font-semibold text-slate-900 mb-2">{feature.title}</h3>
+                <p className="text-sm text-slate-500 leading-relaxed">{feature.desc}</p>
+              </div>
+            ))}
           </div>
-          <div className="bg-white rounded-xl p-6 border border-gray-200">
-            <Building2 className="w-8 h-8 text-gray-700 mb-3" />
-            <h3 className="text-base font-semibold text-gray-900 mb-1">Multi-negocio</h3>
-            <p className="text-sm text-gray-500">Barberías, spas, consultorios, gimnasios y más</p>
-          </div>
-          <div className="bg-white rounded-xl p-6 border border-gray-200">
-            <LayoutDashboard className="w-8 h-8 text-gray-700 mb-3" />
-            <h3 className="text-base font-semibold text-gray-900 mb-1">Panel de administración</h3>
-            <p className="text-sm text-gray-500">Gestiona servicios, equipo y reportes en un solo lugar</p>
+        </div>
+      </section>
+
+      {/* Social proof */}
+      <section className="px-6 py-16 bg-slate-50">
+        <div className="max-w-5xl mx-auto text-center">
+          <p className="text-sm text-slate-400 uppercase tracking-widest font-medium mb-3">
+            Negocios que confian en Turnly
+          </p>
+          <p className="text-4xl font-bold text-slate-900">+500 negocios activos</p>
+        </div>
+      </section>
+
+      {/* CTA */}
+      <section className="px-6 py-24 bg-white">
+        <div className="max-w-3xl mx-auto">
+          <div className="rounded-3xl bg-gradient-to-r from-indigo-600 to-violet-600 p-12 text-center">
+            <h2 className="text-3xl font-bold text-white mb-4 tracking-tight">
+              Empieza gratis hoy
+            </h2>
+            <p className="text-white/70 mb-8">Sin tarjeta de credito requerida</p>
+            <Link
+              href="/register"
+              className="inline-flex items-center gap-2 px-8 py-3.5 bg-white text-indigo-600 text-sm font-semibold rounded-full hover:bg-white/90 transition-colors"
+            >
+              Crear cuenta gratis
+              <ArrowRight className="h-4 w-4" />
+            </Link>
           </div>
         </div>
       </section>
 
       {/* Footer */}
-      <footer className="text-center py-6 text-sm text-gray-400 border-t border-gray-200">
-        © 2026 Turnly. Todos los derechos reservados.
+      <footer className="text-center py-8 text-sm text-slate-400 border-t border-slate-200/50">
+        &copy; 2026 Turnly. Todos los derechos reservados.
       </footer>
     </div>
   );
