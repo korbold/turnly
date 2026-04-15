@@ -127,8 +127,8 @@ export default function TeamPage() {
     <div className="space-y-6">
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-2xl font-bold text-gray-900">Equipo</h1>
-          <p className="text-gray-500">Gestión de miembros del equipo</p>
+          <h1 className="text-2xl font-bold text-slate-900">Equipo</h1>
+          <p className="text-slate-500">Gestión de miembros del equipo</p>
         </div>
         <Dialog open={inviteDialogOpen} onOpenChange={setInviteDialogOpen}>
           <DialogTrigger render={<Button onClick={openInvite} />}>
@@ -141,7 +141,7 @@ export default function TeamPage() {
             </DialogHeader>
             <form onSubmit={handleInviteSubmit} className="space-y-4">
               <div>
-                <label className="text-sm font-medium text-gray-700 block mb-1">Nombre</label>
+                <label className="text-sm font-medium text-slate-700 block mb-1">Nombre</label>
                 <Input
                   required
                   value={inviteForm.name}
@@ -150,7 +150,7 @@ export default function TeamPage() {
                 />
               </div>
               <div>
-                <label className="text-sm font-medium text-gray-700 block mb-1">Email</label>
+                <label className="text-sm font-medium text-slate-700 block mb-1">Email</label>
                 <Input
                   required
                   type="email"
@@ -160,7 +160,7 @@ export default function TeamPage() {
                 />
               </div>
               <div>
-                <label className="text-sm font-medium text-gray-700 block mb-1">Contraseña</label>
+                <label className="text-sm font-medium text-slate-700 block mb-1">Contraseña</label>
                 <Input
                   required
                   type="password"
@@ -171,7 +171,7 @@ export default function TeamPage() {
                 />
               </div>
               <div>
-                <label className="text-sm font-medium text-gray-700 block mb-1">Rol</label>
+                <label className="text-sm font-medium text-slate-700 block mb-1">Rol</label>
                 <Select
                   value={inviteForm.role}
                   onValueChange={(value) => value && setInviteForm({ ...inviteForm, role: value })}
@@ -191,7 +191,7 @@ export default function TeamPage() {
                 </Select>
               </div>
               <div>
-                <label className="text-sm font-medium text-gray-700 block mb-1">
+                <label className="text-sm font-medium text-slate-700 block mb-1">
                   Teléfono (opcional)
                 </label>
                 <Input
@@ -247,11 +247,11 @@ export default function TeamPage() {
                 {users.map((user) => (
                   <TableRow key={user.id}>
                     <TableCell className="font-medium">{user.name}</TableCell>
-                    <TableCell className="text-gray-500">{user.email}</TableCell>
+                    <TableCell className="text-slate-500">{user.email}</TableCell>
                     <TableCell>
                       {user.role ? (
                         <span
-                          className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${roleBadgeColors[user.role] ?? 'bg-gray-100 text-gray-800'}`}
+                          className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${roleBadgeColors[user.role] ?? 'bg-slate-100 text-slate-800'}`}
                         >
                           {roleLabels[user.role] ?? user.role}
                         </span>
