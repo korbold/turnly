@@ -47,8 +47,8 @@ function StatCard({ title, value, subtitle, icon: Icon }: { title: string; value
   return (
     <Card>
       <CardHeader className="flex flex-row items-center justify-between pb-2">
-        <CardTitle className="text-sm font-medium text-gray-500">{title}</CardTitle>
-        <Icon className="h-4 w-4 text-gray-400" />
+        <CardTitle className="text-sm font-medium text-slate-500">{title}</CardTitle>
+        <Icon className="h-4 w-4 text-slate-400" />
       </CardHeader>
       <CardContent>
         <div className="text-2xl font-bold">{value}</div>
@@ -115,8 +115,8 @@ export default function ReportsPage() {
     <div className="space-y-6">
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-2xl font-bold text-gray-900">Reportes</h1>
-          <p className="text-gray-500">Estadísticas y resumen de operaciones</p>
+          <h1 className="text-2xl font-bold text-slate-900">Reportes</h1>
+          <p className="text-slate-500">Estadísticas y resumen de operaciones</p>
         </div>
         {report && (
           <Button variant="outline" onClick={() => generateRangePDF(report)}>
@@ -244,10 +244,10 @@ export default function ReportsPage() {
                   <table className="w-full text-sm">
                     <thead>
                       <tr className="border-b text-left">
-                        <th className="pb-2 font-medium text-gray-500">Fecha</th>
-                        <th className="pb-2 font-medium text-gray-500 text-right">Servicios</th>
-                        <th className="pb-2 font-medium text-gray-500 text-right">Reservaciones</th>
-                        <th className="pb-2 font-medium text-gray-500 text-right">Ingresos</th>
+                        <th className="pb-2 font-medium text-slate-500">Fecha</th>
+                        <th className="pb-2 font-medium text-slate-500 text-right">Servicios</th>
+                        <th className="pb-2 font-medium text-slate-500 text-right">Reservaciones</th>
+                        <th className="pb-2 font-medium text-slate-500 text-right">Ingresos</th>
                       </tr>
                     </thead>
                     <tbody>
@@ -283,15 +283,15 @@ export default function ReportsPage() {
             <CardContent>
               <div className="grid grid-cols-3 gap-4 text-center">
                 <div>
-                  <p className="text-xs text-gray-500 uppercase tracking-wide">Efectivo</p>
+                  <p className="text-xs text-slate-500 uppercase tracking-wide">Efectivo</p>
                   <p className="text-xl font-bold">${report.by_payment_method.cash.toFixed(2)}</p>
                 </div>
                 <div>
-                  <p className="text-xs text-gray-500 uppercase tracking-wide">Tarjeta</p>
+                  <p className="text-xs text-slate-500 uppercase tracking-wide">Tarjeta</p>
                   <p className="text-xl font-bold">${report.by_payment_method.card.toFixed(2)}</p>
                 </div>
                 <div>
-                  <p className="text-xs text-gray-500 uppercase tracking-wide">Transferencia</p>
+                  <p className="text-xs text-slate-500 uppercase tracking-wide">Transferencia</p>
                   <p className="text-xl font-bold">${report.by_payment_method.transfer.toFixed(2)}</p>
                 </div>
               </div>
