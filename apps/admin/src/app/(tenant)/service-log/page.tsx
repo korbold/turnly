@@ -124,8 +124,8 @@ export default function ServiceLogPage() {
       {/* Header */}
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-2xl font-bold text-gray-900">Registro del día</h1>
-          <p className="text-gray-500">Registro de servicios del día</p>
+          <h1 className="text-2xl font-bold text-slate-900">Registro del día</h1>
+          <p className="text-slate-500">Registro de servicios del día</p>
         </div>
         <Link href="/service-log/new">
           <Button>
@@ -137,7 +137,7 @@ export default function ServiceLogPage() {
 
       {/* Date filter */}
       <div className="flex items-center gap-3">
-        <label className="text-sm font-medium text-gray-700">Fecha:</label>
+        <label className="text-sm font-medium text-slate-700">Fecha:</label>
         <Input
           type="date"
           value={date}
