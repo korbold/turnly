@@ -10,7 +10,6 @@ import '../pages/clients/clients_page.dart';
 import '../pages/clients/client_detail_page.dart';
 import '../pages/clients/create_client_page.dart';
 import '../pages/dashboard/dashboard_page.dart';
-import '../pages/placeholder_page.dart';
 import '../pages/reports/reports_page.dart';
 import '../pages/reservations/reservations_page.dart';
 import '../pages/reservations/reservation_detail_page.dart';
@@ -19,6 +18,16 @@ import '../pages/service_logs/service_log_page.dart';
 import '../pages/service_logs/new_service_log_page.dart';
 import '../pages/services/services_page.dart';
 import '../pages/services/create_service_page.dart';
+import '../pages/settings/settings_page.dart';
+import '../pages/settings/tabs/general_tab.dart';
+import '../pages/settings/tabs/schedule_tab.dart';
+import '../pages/settings/tabs/gallery_tab.dart';
+import '../pages/settings/tabs/custom_fields_tab.dart';
+import '../pages/settings/tabs/permissions_tab.dart';
+import '../pages/settings/tabs/brand_tab.dart';
+import '../pages/super_admin/super_admin_dashboard.dart';
+import '../pages/super_admin/tenants_page.dart';
+import '../pages/super_admin/users_page.dart';
 import '../pages/team/team_page.dart';
 
 final appRouter = GoRouter(
@@ -117,23 +126,43 @@ final appRouter = GoRouter(
         ),
         GoRoute(
           path: '/settings',
-          builder: (context, state) =>
-              const PlaceholderPage(title: 'Configuracion'),
+          builder: (context, state) => const SettingsPage(),
+          routes: [
+            GoRoute(
+              path: ':tab',
+              builder: (context, state) {
+                final tab = state.pathParameters['tab']!;
+                switch (tab) {
+                  case 'general':
+                    return const GeneralTab();
+                  case 'schedule':
+                    return const ScheduleTab();
+                  case 'gallery':
+                    return const GalleryTab();
+                  case 'custom-fields':
+                    return const CustomFieldsTab();
+                  case 'permissions':
+                    return const PermissionsTab();
+                  case 'brand':
+                    return const BrandTab();
+                  default:
+                    return const SettingsPage();
+                }
+              },
+            ),
+          ],
         ),
         GoRoute(
           path: '/super-admin',
-          builder: (context, state) =>
-              const PlaceholderPage(title: 'Super Admin'),
+          builder: (context, state) => const SuperAdminDashboard(),
           routes: [
             GoRoute(
               path: 'tenants',
-              builder: (context, state) =>
-                  const PlaceholderPage(title: 'Tenants'),
+              builder: (context, state) => const TenantsPage(),
             ),
             GoRoute(
               path: 'users',
-              builder: (context, state) =>
-                  const PlaceholderPage(title: 'Usuarios'),
+              builder: (context, state) => const SuperAdminUsersPage(),
             ),
           ],
         ),

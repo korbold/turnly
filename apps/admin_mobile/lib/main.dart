@@ -5,6 +5,8 @@ import 'injection.dart';
 import 'presentation/app/router.dart';
 import 'presentation/app/theme.dart';
 import 'application/blocs/auth/auth_bloc.dart';
+import 'application/blocs/settings/settings_bloc.dart';
+import 'application/blocs/super_admin/super_admin_bloc.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -21,6 +23,12 @@ class TurnlyApp extends StatelessWidget {
       providers: [
         BlocProvider<AuthBloc>(
           create: (_) => getIt<AuthBloc>()..add(const CheckAuthRequested()),
+        ),
+        BlocProvider<SettingsBloc>(
+          create: (_) => getIt<SettingsBloc>(),
+        ),
+        BlocProvider<SuperAdminBloc>(
+          create: (_) => getIt<SuperAdminBloc>(),
         ),
       ],
       child: MaterialApp.router(
