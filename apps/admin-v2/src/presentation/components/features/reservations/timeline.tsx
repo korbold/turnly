@@ -23,29 +23,22 @@ export function Timeline({ reservations, onSelect }: TimelineProps) {
     return result;
   }, []);
 
-  const CARD_MIN_HEIGHT = 90; // approx height of a full card
+  const CARD_ROW_HEIGHT = 44; // single-row card height
 
   const positioned = useMemo(() => {
-    const raw = reservations.map((r) => {
+    return reservations.map((r) => {
       const d = new Date(r.scheduledAt);
+      const endD = new Date(r.estimatedEnd);
       const startFrac = d.getHours() + d.getMinutes() / 60;
+      const endFrac = endD.getHours() + endD.getMinutes() / 60;
+      const durationH = Math.max(0.25, endFrac - startFrac);
+
       return {
         reservation: r,
         top: (startFrac - START_HOUR) * HOUR_HEIGHT,
+        height: Math.max(durationH * HOUR_HEIGHT, CARD_ROW_HEIGHT),
       };
     });
-
-    // Adjust positions so cards don't overlap
-    const adjusted: typeof raw = [];
-    for (const item of raw) {
-      const prev = adjusted[adjusted.length - 1];
-      const minTop = prev ? prev.top + CARD_MIN_HEIGHT + 4 : 0;
-      adjusted.push({
-        ...item,
-        top: Math.max(item.top, minTop),
-      });
-    }
-    return adjusted;
   }, [reservations]);
 
   return (
@@ -78,11 +71,11 @@ export function Timeline({ reservations, onSelect }: TimelineProps) {
 
         {/* Reservation cards */}
         <div className="absolute left-16 right-2">
-          {positioned.map(({ reservation, top }) => (
+          {positioned.map(({ reservation, top, height }) => (
             <div
               key={reservation.id}
               className="absolute left-0 right-0 z-10"
-              style={{ top: `${top}px` }}
+              style={{ top: `${top}px`, height: `${height}px` }}
             >
               <ReservationCard
                 reservation={reservation}

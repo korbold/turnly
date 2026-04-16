@@ -44,7 +44,7 @@ export function ReservationCard({
     <motion.button
       whileHover={{ boxShadow: '0 4px 12px rgba(0,0,0,0.08)' }}
       className={cn(
-        'w-full rounded-lg border border-l-4 bg-white p-3 text-left transition-shadow',
+        'flex h-full w-full items-center rounded-lg border border-l-4 bg-white px-3 text-left transition-shadow',
         BORDER_COLORS[reservation.status]
       )}
       onClick={onClick}
