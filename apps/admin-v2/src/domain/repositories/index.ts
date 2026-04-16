@@ -1,0 +1,13 @@
+export type { AuthRepository, LoginResult } from './auth.repository';
+export type { OnboardingRepository, RegisterTenantData } from './onboarding.repository';
+export type { ReservationRepository, CreateReservationData } from './reservation.repository';
+export type { ServiceRepository, CreateServiceData } from './service.repository';
+export type { ServiceLogRepository, CreateServiceLogData, UpdateServiceLogData } from './service-log.repository';
+export type { ClientResourceRepository, CreateClientResourceData } from './client-resource.repository';
+export type { UserRepository } from './user.repository';
+export type { TenantRepository } from './tenant.repository';
+export type { ReportRepository, RangeReport, ReportStats, DailyBreakdown } from './report.repository';
+export type { AvailabilityRepository, CreateBlockData } from './availability.repository';
+export type { UploadRepository, UploadResult } from './upload.repository';
+export type { SuperAdminRepository, SuperAdminStats } from './super-admin.repository';
+export type { PublicRepository, PublicTenant, BookingData } from './public.repository';
