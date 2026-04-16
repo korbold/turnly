@@ -15,13 +15,13 @@ export class ApiServiceLogRepository implements ServiceLogRepository {
     if (filters.date) params.date = filters.date;
     if (filters.page) params.page = filters.page;
 
-    const { data } = await api.get('/service-logs', { params });
-    return mapPaginatedResponse(data, mapServiceLog);
+    const { data: res } = await api.get('/service-logs', { params });
+    return mapPaginatedResponse(res, mapServiceLog);
   }
 
   async getById(id: string): Promise<ServiceLog> {
-    const { data } = await api.get(`/service-logs/${id}`);
-    return mapServiceLog(data.data ?? data);
+    const { data: res } = await api.get(`/service-logs/${id}`);
+    return mapServiceLog(res.data);
   }
 
   async create(data: CreateServiceLogData): Promise<ServiceLog> {
@@ -33,7 +33,7 @@ export class ApiServiceLogRepository implements ServiceLogRepository {
       payment_method: data.paymentMethod,
       notes: data.notes,
     });
-    return mapServiceLog(res.data ?? res);
+    return mapServiceLog(res.data);
   }
 
   async update(id: string, data: UpdateServiceLogData): Promise<ServiceLog> {
@@ -45,7 +45,7 @@ export class ApiServiceLogRepository implements ServiceLogRepository {
     if (data.notes !== undefined) body.notes = data.notes;
 
     const { data: res } = await api.patch(`/service-logs/${id}`, body);
-    return mapServiceLog(res.data ?? res);
+    return mapServiceLog(res.data);
   }
 
   async delete(id: string): Promise<void> {
@@ -53,12 +53,12 @@ export class ApiServiceLogRepository implements ServiceLogRepository {
   }
 
   async complete(id: string): Promise<ServiceLog> {
-    const { data } = await api.patch(`/service-logs/${id}/complete`);
-    return mapServiceLog(data.data ?? data);
+    const { data: res } = await api.patch(`/service-logs/${id}/complete`);
+    return mapServiceLog(res.data);
   }
 
   async getSummary(date: string): Promise<DailySummary> {
-    const { data } = await api.get('/service-logs/summary', { params: { date } });
-    return mapDailySummary(data.data ?? data);
+    const { data: res } = await api.get('/service-logs/summary', { params: { date } });
+    return mapDailySummary(res.data);
   }
 }

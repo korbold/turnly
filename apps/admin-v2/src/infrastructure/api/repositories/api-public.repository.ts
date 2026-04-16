@@ -37,26 +37,26 @@ function mapPublicTenant(raw: Record<string, unknown>): PublicTenant {
 
 export class ApiPublicRepository implements PublicRepository {
   async getTenantBySlug(slug: string): Promise<PublicTenant> {
-    const { data } = await api.get(`/public/tenants/${slug}`);
-    return mapPublicTenant(data.data ?? data);
+    const { data: res } = await api.get(`/public/tenants/${slug}`);
+    return mapPublicTenant(res.data);
   }
 
   async getAvailableSlots(slug: string, serviceId: string, date: string): Promise<AvailableSlot[]> {
-    const { data } = await api.get(`/public/tenants/${slug}/available-slots`, {
+    const { data: res } = await api.get(`/public/tenants/${slug}/available-slots`, {
       params: { service_id: serviceId, date },
     });
-    const slots = data.data ?? data;
-    return (slots as Record<string, unknown>[]).map(mapAvailableSlot);
+    return (res.data as Record<string, unknown>[]).map(mapAvailableSlot);
   }
 
   async book(slug: string, bookingData: BookingData): Promise<{ reservationId: string }> {
-    const { data } = await api.post(`/public/tenants/${slug}/book`, {
+    const { data: res } = await api.post(`/public/tenants/${slug}/book`, {
       service_id: bookingData.serviceId,
       scheduled_at: bookingData.scheduledAt,
       name: bookingData.name,
       phone: bookingData.phone,
       resource_data: bookingData.resourceData,
     });
-    return { reservationId: (data.data?.reservation_id ?? data.reservation_id ?? data.data?.id ?? data.id) as string };
+    const d = res.data;
+    return { reservationId: (d.reservation_id ?? d.id) as string };
   }
 }

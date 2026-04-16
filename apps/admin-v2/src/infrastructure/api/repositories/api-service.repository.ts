@@ -7,8 +7,8 @@ import { mapPaginatedResponse } from '../mappers/pagination';
 
 export class ApiServiceRepository implements ServiceRepository {
   async getAll(page?: number): Promise<PaginatedResult<Service>> {
-    const { data } = await api.get('/services', { params: { page } });
-    return mapPaginatedResponse(data, mapService);
+    const { data: res } = await api.get('/services', { params: { page } });
+    return mapPaginatedResponse(res, mapService);
   }
 
   async create(data: CreateServiceData): Promise<Service> {
@@ -20,7 +20,7 @@ export class ApiServiceRepository implements ServiceRepository {
       is_active: data.isActive,
       sort_order: data.sortOrder,
     });
-    return mapService(res.data ?? res);
+    return mapService(res.data);
   }
 
   async update(id: string, data: Partial<CreateServiceData>): Promise<Service> {
@@ -33,7 +33,7 @@ export class ApiServiceRepository implements ServiceRepository {
     if (data.sortOrder !== undefined) body.sort_order = data.sortOrder;
 
     const { data: res } = await api.put(`/services/${id}`, body);
-    return mapService(res.data ?? res);
+    return mapService(res.data);
   }
 
   async delete(id: string): Promise<void> {

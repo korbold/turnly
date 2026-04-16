@@ -11,7 +11,8 @@ export class ApiOnboardingRepository implements OnboardingRepository {
       email: data.email,
       password: data.password,
     });
-    return { token: res.token, tenant: mapTenant(res.tenant) };
+    const d = res.data;
+    return { token: d.token, tenant: mapTenant(d.tenant) };
   }
 
   async verify(code: string): Promise<void> {
@@ -19,8 +20,8 @@ export class ApiOnboardingRepository implements OnboardingRepository {
   }
 
   async checkSlug(slug: string): Promise<{ available: boolean }> {
-    const { data } = await api.get('/onboarding/check-slug', { params: { slug } });
-    return { available: data.available };
+    const { data: res } = await api.get('/onboarding/check-slug', { params: { slug } });
+    return { available: res.data.available };
   }
 
   async setBusinessType(type: BusinessType, createServices: boolean): Promise<void> {

@@ -19,27 +19,27 @@ function mapStats(raw: Record<string, unknown>): SuperAdminStats {
 
 export class ApiSuperAdminRepository implements SuperAdminRepository {
   async getStats(): Promise<SuperAdminStats> {
-    const { data } = await api.get('/superadmin/stats');
-    return mapStats(data.data ?? data);
+    const { data: res } = await api.get('/superadmin/stats');
+    return mapStats(res.data);
   }
 
   async getTenants(page?: number): Promise<PaginatedResult<Tenant>> {
-    const { data } = await api.get('/superadmin/tenants', { params: { page } });
-    return mapPaginatedResponse(data, mapTenant);
+    const { data: res } = await api.get('/superadmin/tenants', { params: { page } });
+    return mapPaginatedResponse(res, mapTenant);
   }
 
   async suspendTenant(id: string): Promise<Tenant> {
-    const { data } = await api.patch(`/superadmin/tenants/${id}/suspend`);
-    return mapTenant(data.data ?? data);
+    const { data: res } = await api.patch(`/superadmin/tenants/${id}/suspend`);
+    return mapTenant(res.data);
   }
 
   async activateTenant(id: string): Promise<Tenant> {
-    const { data } = await api.patch(`/superadmin/tenants/${id}/activate`);
-    return mapTenant(data.data ?? data);
+    const { data: res } = await api.patch(`/superadmin/tenants/${id}/activate`);
+    return mapTenant(res.data);
   }
 
   async getUsers(page?: number): Promise<PaginatedResult<User>> {
-    const { data } = await api.get('/superadmin/users', { params: { page } });
-    return mapPaginatedResponse(data, mapUser);
+    const { data: res } = await api.get('/superadmin/users', { params: { page } });
+    return mapPaginatedResponse(res, mapUser);
   }
 }

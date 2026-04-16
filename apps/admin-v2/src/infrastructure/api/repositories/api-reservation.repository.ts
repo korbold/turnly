@@ -14,13 +14,13 @@ export class ApiReservationRepository implements ReservationRepository {
     if (filters.serviceId) params.service_id = filters.serviceId;
     if (filters.page) params.page = filters.page;
 
-    const { data } = await api.get('/reservations', { params });
-    return mapPaginatedResponse(data, mapReservation);
+    const { data: res } = await api.get('/reservations', { params });
+    return mapPaginatedResponse(res, mapReservation);
   }
 
   async getById(id: string): Promise<Reservation> {
-    const { data } = await api.get(`/reservations/${id}`);
-    return mapReservation(data.data ?? data);
+    const { data: res } = await api.get(`/reservations/${id}`);
+    return mapReservation(res.data);
   }
 
   async create(data: CreateReservationData): Promise<Reservation> {
@@ -31,24 +31,23 @@ export class ApiReservationRepository implements ReservationRepository {
       assigned_to: data.assignedTo,
       notes: data.notes,
     });
-    return mapReservation(res.data ?? res);
+    return mapReservation(res.data);
   }
 
   async cancel(id: string, reason: string): Promise<Reservation> {
-    const { data } = await api.patch(`/reservations/${id}/cancel`, { cancel_reason: reason });
-    return mapReservation(data.data ?? data);
+    const { data: res } = await api.patch(`/reservations/${id}/cancel`, { cancel_reason: reason });
+    return mapReservation(res.data);
   }
 
   async transition(id: string, action: ReservationAction): Promise<Reservation> {
-    const { data } = await api.patch(`/reservations/${id}/${action}`);
-    return mapReservation(data.data ?? data);
+    const { data: res } = await api.patch(`/reservations/${id}/${action}`);
+    return mapReservation(res.data);
   }
 
   async getAvailableSlots(date: string, serviceId: string): Promise<AvailableSlot[]> {
-    const { data } = await api.get('/reservations/available-slots', {
+    const { data: res } = await api.get('/reservations/available-slots', {
       params: { date, service_id: serviceId },
     });
-    const slots = data.data ?? data;
-    return (slots as Record<string, unknown>[]).map(mapAvailableSlot);
+    return (res.data as Record<string, unknown>[]).map(mapAvailableSlot);
   }
 }

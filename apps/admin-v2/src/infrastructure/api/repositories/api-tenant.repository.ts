@@ -5,8 +5,8 @@ import { mapTenantSettings, mapTenantImage } from '../mappers/tenant.mapper';
 
 export class ApiTenantRepository implements TenantRepository {
   async getSettings(): Promise<TenantSettings> {
-    const { data } = await api.get('/tenant/settings');
-    return mapTenantSettings(data.data ?? data);
+    const { data: res } = await api.get('/tenant/settings');
+    return mapTenantSettings(res.data);
   }
 
   async updateSettings(settings: Partial<TenantSettings>): Promise<TenantSettings> {
@@ -25,24 +25,23 @@ export class ApiTenantRepository implements TenantRepository {
     if (settings.businessType !== undefined) body.business_type = settings.businessType;
     if (settings.permissions !== undefined) body.permissions = settings.permissions;
 
-    const { data } = await api.patch('/tenant/settings', body);
-    return mapTenantSettings(data.data ?? data);
+    const { data: res } = await api.patch('/tenant/settings', body);
+    return mapTenantSettings(res.data);
   }
 
   async getImages(): Promise<TenantImage[]> {
-    const { data } = await api.get('/tenant/images');
-    const images = data.data ?? data;
-    return (images as Record<string, unknown>[]).map(mapTenantImage);
+    const { data: res } = await api.get('/tenant/images');
+    return (res.data as Record<string, unknown>[]).map(mapTenantImage);
   }
 
   async addImage(file: File): Promise<TenantImage> {
     const formData = new FormData();
     formData.append('image', file);
 
-    const { data } = await api.post('/tenant/images', formData, {
+    const { data: res } = await api.post('/tenant/images', formData, {
       headers: { 'Content-Type': 'multipart/form-data' },
     });
-    return mapTenantImage(data.data ?? data);
+    return mapTenantImage(res.data);
   }
 
   async deleteImage(id: string): Promise<void> {

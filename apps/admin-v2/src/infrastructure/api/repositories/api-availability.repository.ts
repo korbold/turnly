@@ -26,9 +26,8 @@ function mapBlock(raw: Record<string, unknown>): AvailabilityBlock {
 
 export class ApiAvailabilityRepository implements AvailabilityRepository {
   async getSlots(): Promise<AvailabilitySlot[]> {
-    const { data } = await api.get('/availability-slots');
-    const slots = data.data ?? data;
-    return (slots as Record<string, unknown>[]).map(mapSlot);
+    const { data: res } = await api.get('/availability-slots');
+    return (res.data as Record<string, unknown>[]).map(mapSlot);
   }
 
   async updateSlots(slots: AvailabilitySlot[]): Promise<AvailabilitySlot[]> {
@@ -40,25 +39,23 @@ export class ApiAvailabilityRepository implements AvailabilityRepository {
       max_concurrent: s.maxConcurrent,
       is_active: s.isActive,
     }));
-    const { data } = await api.put('/availability-slots', { slots: body });
-    const result = data.data ?? data;
-    return (result as Record<string, unknown>[]).map(mapSlot);
+    const { data: res } = await api.put('/availability-slots', { slots: body });
+    return (res.data as Record<string, unknown>[]).map(mapSlot);
   }
 
   async getBlocks(): Promise<AvailabilityBlock[]> {
-    const { data } = await api.get('/availability-blocks');
-    const blocks = data.data ?? data;
-    return (blocks as Record<string, unknown>[]).map(mapBlock);
+    const { data: res } = await api.get('/availability-blocks');
+    return (res.data as Record<string, unknown>[]).map(mapBlock);
   }
 
   async createBlock(blockData: CreateBlockData): Promise<AvailabilityBlock> {
-    const { data } = await api.post('/availability-blocks', {
+    const { data: res } = await api.post('/availability-blocks', {
       date: blockData.date,
       start_time: blockData.startTime,
       end_time: blockData.endTime,
       reason: blockData.reason,
     });
-    return mapBlock(data.data ?? data);
+    return mapBlock(res.data);
   }
 
   async deleteBlock(id: string): Promise<void> {

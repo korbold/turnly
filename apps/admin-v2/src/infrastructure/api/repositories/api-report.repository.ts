@@ -37,22 +37,22 @@ function mapRangeReport(raw: Record<string, unknown>): RangeReport {
 
 export class ApiReportRepository implements ReportRepository {
   async getDaily(date: string): Promise<RangeReport> {
-    const { data } = await api.get('/reports/daily', { params: { date } });
-    return mapRangeReport(data.data ?? data);
+    const { data: res } = await api.get('/reports/daily', { params: { date } });
+    return mapRangeReport(res.data);
   }
 
   async getRange(from: string, to: string): Promise<RangeReport> {
-    const { data } = await api.get('/reports/range', { params: { date_from: from, date_to: to } });
-    return mapRangeReport(data.data ?? data);
+    const { data: res } = await api.get('/reports/range', { params: { date_from: from, date_to: to } });
+    return mapRangeReport(res.data);
   }
 
   async getWeekly(week: string): Promise<RangeReport> {
-    const { data } = await api.get('/reports/weekly', { params: { week } });
-    return mapRangeReport(data.data ?? data);
+    const { data: res } = await api.get('/reports/weekly', { params: { week } });
+    return mapRangeReport(res.data);
   }
 
   async getMonthly(month: string): Promise<RangeReport> {
-    const { data } = await api.get('/reports/monthly', { params: { month } });
-    return mapRangeReport(data.data ?? data);
+    const { data: res } = await api.get('/reports/monthly', { params: { month } });
+    return mapRangeReport(res.data);
   }
 }

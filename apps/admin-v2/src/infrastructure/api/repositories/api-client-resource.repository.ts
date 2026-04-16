@@ -14,13 +14,13 @@ export class ApiClientResourceRepository implements ClientResourceRepository {
     if (page) params.page = page;
     if (search) params.search = search;
 
-    const { data } = await api.get('/client-resources', { params });
-    return mapPaginatedResponse(data, mapClientResource);
+    const { data: res } = await api.get('/client-resources', { params });
+    return mapPaginatedResponse(res, mapClientResource);
   }
 
   async getById(id: string): Promise<ClientResource> {
-    const { data } = await api.get(`/client-resources/${id}`);
-    return mapClientResource(data.data ?? data);
+    const { data: res } = await api.get(`/client-resources/${id}`);
+    return mapClientResource(res.data);
   }
 
   async create(data: CreateClientResourceData): Promise<ClientResource> {
@@ -34,7 +34,7 @@ export class ApiClientResourceRepository implements ClientResourceRepository {
     if (data.type) body.type = data.type;
 
     const { data: res } = await api.post('/client-resources', body);
-    return mapClientResource(res.data ?? res);
+    return mapClientResource(res.data);
   }
 
   async update(id: string, data: Partial<CreateClientResourceData>): Promise<ClientResource> {
@@ -48,11 +48,11 @@ export class ApiClientResourceRepository implements ClientResourceRepository {
     if (data.type !== undefined) body.type = data.type;
 
     const { data: res } = await api.patch(`/client-resources/${id}`, body);
-    return mapClientResource(res.data ?? res);
+    return mapClientResource(res.data);
   }
 
   async getHistory(id: string): Promise<unknown[]> {
-    const { data } = await api.get(`/client-resources/${id}/history`);
-    return data.data ?? data;
+    const { data: res } = await api.get(`/client-resources/${id}/history`);
+    return res.data;
   }
 }

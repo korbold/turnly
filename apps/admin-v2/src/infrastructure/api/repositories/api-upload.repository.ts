@@ -7,9 +7,9 @@ export class ApiUploadRepository implements UploadRepository {
     formData.append('file', file);
     formData.append('folder', folder);
 
-    const { data } = await api.post('/uploads', formData, {
+    const { data: res } = await api.post('/uploads', formData, {
       headers: { 'Content-Type': 'multipart/form-data' },
     });
-    return { url: data.url ?? data.data?.url };
+    return { url: res.data.url };
   }
 }
