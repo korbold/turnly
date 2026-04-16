@@ -1,0 +1,171 @@
+'use client';
+
+import { useState, useEffect } from 'react';
+import { Plus, Trash2, Save, GripVertical } from 'lucide-react';
+import { toast } from 'sonner';
+import { Button } from '@/presentation/components/ui/button';
+import { Input } from '@/presentation/components/ui/input';
+import { Label } from '@/presentation/components/ui/label';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/presentation/components/ui/select';
+import { Card, CardContent } from '@/presentation/components/ui/card';
+import { Skeleton } from '@/presentation/components/ui/skeleton';
+import { useSettings, useUpdateSettings } from '@/presentation/hooks/use-settings';
+import type { CustomField } from '@/domain/entities/tenant';
+
+const FIELD_TYPES: { value: CustomField['type']; label: string }[] = [
+  { value: 'text', label: 'Texto' },
+  { value: 'number', label: 'Numero' },
+  { value: 'select', label: 'Seleccion' },
+  { value: 'textarea', label: 'Area de texto' },
+];
+
+function newField(): CustomField {
+  return {
+    key: `field_${Date.now()}`,
+    label: '',
+    type: 'text',
+    required: false,
+    options: [],
+  };
+}
+
+export function CustomFieldsTab() {
+  const { data: settings, isLoading } = useSettings();
+  const update = useUpdateSettings();
+  const [fields, setFields] = useState<CustomField[]>([]);
+
+  useEffect(() => {
+    if (settings?.customFields) {
+      setFields(settings.customFields);
+    }
+  }, [settings]);
+
+  function addField() {
+    setFields((prev) => [...prev, newField()]);
+  }
+
+  function removeField(idx: number) {
+    setFields((prev) => prev.filter((_, i) => i !== idx));
+  }
+
+  function updateField(idx: number, partial: Partial<CustomField>) {
+    setFields((prev) =>
+      prev.map((f, i) => (i === idx ? { ...f, ...partial } : f))
+    );
+  }
+
+  function updateOptions(idx: number, optionsStr: string) {
+    const options = optionsStr.split(',').map((s) => s.trim()).filter(Boolean);
+    updateField(idx, { options });
+  }
+
+  async function handleSave() {
+    try {
+      await update.mutateAsync({ customFields: fields });
+      toast.success('Campos guardados');
+    } catch {
+      toast.error('Error al guardar campos');
+    }
+  }
+
+  if (isLoading) {
+    return (
+      <div className="space-y-4">
+        {Array.from({ length: 3 }).map((_, i) => (
+          <Skeleton key={i} className="h-24 w-full rounded-lg" />
+        ))}
+      </div>
+    );
+  }
+
+  return (
+    <div className="max-w-2xl space-y-4">
+      <div className="flex items-center justify-between">
+        <p className="text-sm text-muted-foreground">
+          Campos adicionales que se muestran en el formulario de reserva
+        </p>
+        <Button size="sm" onClick={addField}>
+          <Plus className="mr-1 h-3.5 w-3.5" />
+          Agregar
+        </Button>
+      </div>
+
+      {fields.length === 0 && (
+        <div className="flex flex-col items-center justify-center rounded-lg border-2 border-dashed py-12">
+          <p className="text-sm text-muted-foreground">No hay campos personalizados</p>
+          <Button variant="link" size="sm" onClick={addField}>
+            Agregar primer campo
+          </Button>
+        </div>
+      )}
+
+      {fields.map((field, idx) => (
+        <Card key={field.key}>
+          <CardContent className="p-4">
+            <div className="flex items-start gap-3">
+              <GripVertical className="mt-2 h-4 w-4 shrink-0 text-zinc-400" />
+              <div className="flex-1 space-y-3">
+                <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
+                  <div className="space-y-1">
+                    <Label className="text-xs">Nombre</Label>
+                    <Input
+                      value={field.label}
+                      onChange={(e) => updateField(idx, { label: e.target.value })}
+                      placeholder="Ej: Placa"
+                    />
+                  </div>
+                  <div className="space-y-1">
+                    <Label className="text-xs">Tipo</Label>
+                    <Select
+                      value={field.type}
+                      onValueChange={(v) => updateField(idx, { type: v as CustomField['type'] })}
+                    >
+                      <SelectTrigger><SelectValue /></SelectTrigger>
+                      <SelectContent>
+                        {FIELD_TYPES.map((ft) => (
+                          <SelectItem key={ft.value} value={ft.value}>{ft.label}</SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+                  <div className="flex items-end gap-2">
+                    <label className="flex items-center gap-2 text-sm">
+                      <input
+                        type="checkbox"
+                        checked={field.required}
+                        onChange={(e) => updateField(idx, { required: e.target.checked })}
+                        className="h-4 w-4 rounded border-zinc-300"
+                      />
+                      Requerido
+                    </label>
+                  </div>
+                </div>
+
+                {field.type === 'select' && (
+                  <div className="space-y-1">
+                    <Label className="text-xs">Opciones (separadas por coma)</Label>
+                    <Input
+                      value={field.options?.join(', ') ?? ''}
+                      onChange={(e) => updateOptions(idx, e.target.value)}
+                      placeholder="Opcion 1, Opcion 2, Opcion 3"
+                    />
+                  </div>
+                )}
+              </div>
+              <Button variant="ghost" size="sm" onClick={() => removeField(idx)}>
+                <Trash2 className="h-4 w-4 text-rose-500" />
+              </Button>
+            </div>
+          </CardContent>
+        </Card>
+      ))}
+
+      {fields.length > 0 && (
+        <Button onClick={handleSave} disabled={update.isPending}>
+          <Save className="mr-1.5 h-4 w-4" />
+          {update.isPending ? 'Guardando...' : 'Guardar Campos'}
+        </Button>
+      )}
+    </div>
+  );
+}
