@@ -101,13 +101,13 @@ function ClientDetailContent() {
             </div>
             <div className="min-w-0 flex-1">
               <h2 className="text-lg font-semibold">
-                {hasPlate ? client.plate : client.client?.name ?? 'Sin identificar'}
+                {client.client?.name ?? 'Sin nombre'}
               </h2>
-              {hasPlate && client.client?.name && (
-                <p className="text-sm text-muted-foreground">{client.client.name}</p>
-              )}
               {client.client?.email && (
                 <p className="text-sm text-muted-foreground">{client.client.email}</p>
+              )}
+              {hasPlate && (
+                <p className="mt-1 text-sm font-medium text-indigo-600">{client.plate}</p>
               )}
               <div className="mt-2 flex flex-wrap gap-2 text-xs text-muted-foreground">
                 {client.brand && <Badge variant="secondary">{client.brand}</Badge>}
