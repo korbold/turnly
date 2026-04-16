@@ -10,7 +10,14 @@ const inter = Inter({
 
 export const metadata: Metadata = {
   title: "Turnly Admin",
-  description: "Turnly administration panel",
+  description: "Panel de administración Turnly",
+  manifest: "/manifest.json",
+  themeColor: "#4F46E5",
+  appleWebApp: {
+    capable: true,
+    statusBarStyle: "default",
+    title: "Turnly",
+  },
 };
 
 export default function RootLayout({
@@ -25,6 +32,17 @@ export default function RootLayout({
     >
       <body className="min-h-full flex flex-col">
         <Providers>{children}</Providers>
+        <script
+          dangerouslySetInnerHTML={{
+            __html: `
+              if ('serviceWorker' in navigator) {
+                window.addEventListener('load', () => {
+                  navigator.serviceWorker.register('/sw.js');
+                });
+              }
+            `,
+          }}
+        />
       </body>
     </html>
   );
