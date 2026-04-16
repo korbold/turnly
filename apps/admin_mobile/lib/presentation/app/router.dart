@@ -3,6 +3,9 @@ import 'package:go_router/go_router.dart';
 import '../../injection.dart';
 import '../../infrastructure/storage/secure_storage.dart';
 import '../layout/app_shell.dart';
+import '../pages/auth/login_page.dart';
+import '../pages/auth/register_page.dart';
+import '../pages/dashboard/dashboard_page.dart';
 import '../pages/placeholder_page.dart';
 
 final appRouter = GoRouter(
@@ -21,13 +24,11 @@ final appRouter = GoRouter(
     // Auth routes (no shell)
     GoRoute(
       path: '/login',
-      builder: (context, state) =>
-          const PlaceholderPage(title: 'Iniciar Sesion'),
+      builder: (context, state) => const LoginPage(),
     ),
     GoRoute(
       path: '/register',
-      builder: (context, state) =>
-          const PlaceholderPage(title: 'Registrarse'),
+      builder: (context, state) => const RegisterPage(),
     ),
 
     // Authenticated routes with shell
@@ -36,8 +37,7 @@ final appRouter = GoRouter(
       routes: [
         GoRoute(
           path: '/dashboard',
-          builder: (context, state) =>
-              const PlaceholderPage(title: 'Dashboard'),
+          builder: (context, state) => const DashboardPage(),
         ),
         GoRoute(
           path: '/reservations',
