@@ -292,6 +292,11 @@ export function CreateModal({ open, onClose }: CreateModalProps) {
                       <p className="truncate text-sm font-medium">
                         {cr.plate ?? cr.client?.name ?? 'Sin identificar'}
                       </p>
+                      {cr.client?.name && cr.plate && (
+                        <p className="truncate text-xs font-medium text-indigo-600">
+                          {cr.client.name}
+                        </p>
+                      )}
                       <p className="truncate text-xs text-muted-foreground">
                         {[cr.brand, cr.model, cr.color]
                           .filter(Boolean)
