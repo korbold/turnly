@@ -15,13 +15,11 @@ interface ClientCardProps {
 export function ClientCard({ client }: ClientCardProps) {
   const router = useRouter();
   const hasPlate = !!client.plate;
-  const displayName = hasPlate
-    ? client.plate!
-    : client.client?.name ?? 'Sin identificar';
+  const clientName = client.client?.name ?? null;
+  const displayName = hasPlate ? client.plate! : clientName ?? 'Sin identificar';
+  const vehicleInfo = [client.brand, client.model, client.color].filter(Boolean).join(' - ');
   const subtitle = hasPlate
-    ? [client.brand, client.model, client.color].filter(Boolean).join(' - ') ||
-      client.client?.name ||
-      ''
+    ? clientName ?? vehicleInfo
     : client.client?.email ?? '';
 
   // Derive visits from data if available
@@ -49,7 +47,13 @@ export function ClientCard({ client }: ClientCardProps) {
                 <p className="truncate text-sm font-semibold">{displayName}</p>
                 {isFrequent && <Star className="h-3.5 w-3.5 shrink-0 fill-amber-400 text-amber-400" />}
               </div>
-              {subtitle && (
+              {clientName && hasPlate && (
+                <p className="truncate text-xs font-medium text-indigo-600">{clientName}</p>
+              )}
+              {vehicleInfo && hasPlate && (
+                <p className="truncate text-xs text-muted-foreground">{vehicleInfo}</p>
+              )}
+              {!hasPlate && subtitle && (
                 <p className="truncate text-xs text-muted-foreground">{subtitle}</p>
               )}
             </div>
