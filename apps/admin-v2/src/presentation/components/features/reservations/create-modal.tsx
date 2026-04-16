@@ -221,15 +221,15 @@ export function CreateModal({ open, onClose }: CreateModalProps) {
               ) : (
                 <div className="flex flex-wrap gap-2">
                   {slots.map((slot) => {
-                    const isoStr = new Date(slot.start).toISOString();
-                    const isSelected = selectedSlot === isoStr;
+                    const slotStr = typeof slot.start === 'string' ? slot.start : format(new Date(slot.start), "yyyy-MM-dd HH:mm:ss");
+                    const isSelected = selectedSlot === slotStr;
                     return (
                       <Button
-                        key={isoStr}
+                        key={slotStr}
                         variant={isSelected ? 'default' : 'outline'}
                         size="sm"
                         className="h-8"
-                        onClick={() => setSelectedSlot(isoStr)}
+                        onClick={() => setSelectedSlot(slotStr)}
                       >
                         {format(new Date(slot.start), 'HH:mm')}
                         {slot.available > 0 && (
