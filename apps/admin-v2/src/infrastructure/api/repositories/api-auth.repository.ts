@@ -5,20 +5,22 @@ import { mapTenant } from '../mappers/tenant.mapper';
 
 export class ApiAuthRepository implements AuthRepository {
   async login(email: string, password: string): Promise<LoginResult> {
-    const { data } = await api.post('/auth/login', { email, password });
+    const { data: res } = await api.post('/auth/login', { email, password });
+    const d = res.data;
     return {
-      user: mapUser(data.user),
-      token: data.token,
-      tenant: data.tenant ? mapTenant(data.tenant) : null,
+      user: mapUser(d.user),
+      token: d.token,
+      tenant: d.tenant ? mapTenant(d.tenant) : null,
     };
   }
 
   async register(params: { name: string; email: string; password: string }): Promise<LoginResult> {
-    const { data } = await api.post('/auth/register', params);
+    const { data: res } = await api.post('/auth/register', params);
+    const d = res.data;
     return {
-      user: mapUser(data.user),
-      token: data.token,
-      tenant: data.tenant ? mapTenant(data.tenant) : null,
+      user: mapUser(d.user),
+      token: d.token,
+      tenant: d.tenant ? mapTenant(d.tenant) : null,
     };
   }
 
@@ -27,10 +29,11 @@ export class ApiAuthRepository implements AuthRepository {
   }
 
   async me(): Promise<{ user: import('@/domain/entities/user').User; tenant: import('@/domain/entities/tenant').Tenant | null }> {
-    const { data } = await api.get('/auth/me');
+    const { data: res } = await api.get('/auth/me');
+    const d = res.data;
     return {
-      user: mapUser(data.user ?? data),
-      tenant: data.tenant ? mapTenant(data.tenant) : null,
+      user: mapUser(d.user ?? d),
+      tenant: d.tenant ? mapTenant(d.tenant) : null,
     };
   }
 }
