@@ -1,0 +1,164 @@
+'use client';
+
+import { useMemo } from 'react';
+import { format, addDays, subDays } from 'date-fns';
+import { es } from 'date-fns/locale';
+import { ChevronLeft, ChevronRight, CalendarDays } from 'lucide-react';
+import { useQueryState, parseAsString } from 'nuqs';
+import { Button } from '@/presentation/components/ui/button';
+import {
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from '@/presentation/components/ui/popover';
+import { Calendar } from '@/presentation/components/ui/calendar';
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/presentation/components/ui/select';
+import {
+  RESERVATION_STATUS_CONFIG,
+  type ReservationStatus,
+} from '@/shared/constants/status';
+import type { Reservation } from '@/domain/entities/reservation';
+import { cn } from '@/shared/utils/cn';
+
+interface FiltersProps {
+  reservations: Reservation[];
+  onServiceChange?: (serviceId: string | null) => void;
+  onEmployeeChange?: (employeeId: string | null) => void;
+}
+
+const STATUS_TABS: Array<{ value: string; label: string }> = [
+  { value: 'all', label: 'Todas' },
+  { value: 'pending', label: 'Pendientes' },
+  { value: 'confirmed', label: 'Confirmadas' },
+  { value: 'in_progress', label: 'En Progreso' },
+  { value: 'completed', label: 'Completadas' },
+];
+
+export function ReservationFilters({
+  reservations,
+  onServiceChange,
+  onEmployeeChange,
+}: FiltersProps) {
+  const [dateStr, setDateStr] = useQueryState(
+    'date',
+    parseAsString.withDefault(format(new Date(), 'yyyy-MM-dd'))
+  );
+  const [statusFilter, setStatusFilter] = useQueryState(
+    'status',
+    parseAsString.withDefault('all')
+  );
+
+  const selectedDate = useMemo(() => new Date(dateStr + 'T00:00:00'), [dateStr]);
+
+  const counts = useMemo(() => {
+    const map: Record<string, number> = { all: reservations.length };
+    for (const r of reservations) {
+      map[r.status] = (map[r.status] ?? 0) + 1;
+    }
+    return map;
+  }, [reservations]);
+
+  return (
+    <div className="space-y-3">
+      {/* Date selector */}
+      <div className="flex items-center gap-2">
+        <Button
+          variant="outline"
+          size="icon"
+          className="h-8 w-8"
+          onClick={() => setDateStr(format(subDays(selectedDate, 1), 'yyyy-MM-dd'))}
+        >
+          <ChevronLeft className="h-4 w-4" />
+        </Button>
+
+        <Popover>
+          <PopoverTrigger asChild>
+            <Button
+              variant="outline"
+              className="h-8 min-w-[160px] justify-start text-sm font-normal"
+            >
+              <CalendarDays className="mr-2 h-3.5 w-3.5" />
+              {format(selectedDate, "d 'de' MMM yyyy", { locale: es })}
+            </Button>
+          </PopoverTrigger>
+          <PopoverContent className="w-auto p-0" align="start">
+            <Calendar
+              mode="single"
+              selected={selectedDate}
+              onSelect={(d) => {
+                if (d) setDateStr(format(d, 'yyyy-MM-dd'));
+              }}
+            />
+          </PopoverContent>
+        </Popover>
+
+        <Button
+          variant="outline"
+          size="icon"
+          className="h-8 w-8"
+          onClick={() => setDateStr(format(addDays(selectedDate, 1), 'yyyy-MM-dd'))}
+        >
+          <ChevronRight className="h-4 w-4" />
+        </Button>
+
+        <Button
+          variant="ghost"
+          size="sm"
+          className="h-8 text-xs"
+          onClick={() => setDateStr(format(new Date(), 'yyyy-MM-dd'))}
+        >
+          Hoy
+        </Button>
+      </div>
+
+      {/* Status tabs */}
+      <div className="flex flex-wrap gap-1.5">
+        {STATUS_TABS.map((tab) => {
+          const active = statusFilter === tab.value;
+          const count = counts[tab.value] ?? 0;
+          const cfg =
+            tab.value !== 'all'
+              ? RESERVATION_STATUS_CONFIG[tab.value as ReservationStatus]
+              : null;
+
+          return (
+            <Button
+              key={tab.value}
+              variant={active ? 'default' : 'outline'}
+              size="sm"
+              className={cn(
+                'h-8 text-xs',
+                active && cfg && `${cfg.bgColor} ${cfg.color} hover:${cfg.bgColor}`,
+                active && !cfg && ''
+              )}
+              onClick={() => setStatusFilter(tab.value)}
+            >
+              {tab.label}
+              <span className="ml-1.5 rounded-full bg-white/20 px-1.5 text-[10px]">
+                {count}
+              </span>
+            </Button>
+          );
+        })}
+      </div>
+    </div>
+  );
+}
+
+export function useFilterParams() {
+  const [dateStr] = useQueryState(
+    'date',
+    parseAsString.withDefault(format(new Date(), 'yyyy-MM-dd'))
+  );
+  const [statusFilter] = useQueryState(
+    'status',
+    parseAsString.withDefault('all')
+  );
+  return { dateStr, statusFilter: statusFilter === 'all' ? undefined : (statusFilter as ReservationStatus) };
+}
