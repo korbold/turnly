@@ -7,7 +7,7 @@ import type { Reservation } from '@/domain/entities/reservation';
 
 const START_HOUR = 6;
 const END_HOUR = 22;
-const HOUR_HEIGHT = 80; // px per hour
+const HOUR_HEIGHT = 120; // px per hour
 
 interface TimelineProps {
   reservations: Reservation[];
@@ -78,7 +78,7 @@ export function Timeline({ reservations, onSelect }: TimelineProps) {
               <ReservationCard
                 reservation={reservation}
                 onClick={() => onSelect(reservation)}
-                compact={height < 50}
+                compact={height < 25}
               />
             </div>
           ))}
