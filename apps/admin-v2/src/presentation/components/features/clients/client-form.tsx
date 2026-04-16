@@ -2,8 +2,6 @@
 
 import { useEffect } from 'react';
 import { useForm } from 'react-hook-form';
-import { zodResolver } from '@hookform/resolvers/zod';
-import { z } from 'zod';
 import { toast } from 'sonner';
 import {
   Dialog,
@@ -29,17 +27,6 @@ import { useCreateClient, useUpdateClient } from '@/presentation/hooks/use-clien
 import type { ClientResource } from '@/domain/entities/client-resource';
 import type { CustomField } from '@/domain/entities/tenant';
 
-// Base schema - custom fields added dynamically
-const baseSchema = z.object({
-  plate: z.string().optional(),
-  brand: z.string().optional(),
-  model: z.string().optional(),
-  color: z.string().optional(),
-  type: z.string().optional(),
-});
-
-type FormValues = z.infer<typeof baseSchema> & Record<string, unknown>;
-
 interface ClientFormProps {
   open: boolean;
   onClose: () => void;
@@ -53,51 +40,43 @@ export function ClientForm({ open, onClose, client }: ClientFormProps) {
   const customFields = settings?.customFields ?? [];
   const isEditing = !!client;
 
-  const form = useForm<FormValues>({
-    defaultValues: {
-      plate: '',
-      brand: '',
-      model: '',
-      color: '',
-      type: '',
-    },
+  const form = useForm<Record<string, unknown>>({
+    defaultValues: {},
   });
 
   useEffect(() => {
     if (client) {
-      form.reset({
-        plate: client.plate ?? '',
-        brand: client.brand ?? '',
-        model: client.model ?? '',
-        color: client.color ?? '',
-        type: client.type ?? '',
+      // Merge all data sources: top-level fields + data bag
+      const values: Record<string, unknown> = {
         ...(client.data as Record<string, unknown> ?? {}),
-      });
+      };
+      // Map known top-level fields into the custom field keys if they match
+      if (client.plate) values['plate'] = client.plate;
+      if (client.brand) values['brand'] = client.brand;
+      if (client.model) values['model'] = client.model;
+      if (client.color) values['color'] = client.color;
+      if (client.type) values['type'] = client.type;
+      form.reset(values);
     } else {
-      form.reset({
-        plate: '',
-        brand: '',
-        model: '',
-        color: '',
-        type: '',
-      });
+      form.reset({});
     }
   }, [client, form]);
 
   function handleClose() {
-    form.reset();
+    form.reset({});
     onClose();
   }
 
-  function onSubmit(values: FormValues) {
-    const { plate, brand, model, color, type, ...customData } = values;
+  function onSubmit(values: Record<string, unknown>) {
+    // Separate known DB columns from custom data
+    const { plate, brand, model, color, type, ...rest } = values;
     const payload = {
-      plate: plate || undefined,
-      brand: brand || undefined,
-      model: model || undefined,
-      color: color || undefined,
-      type: type || undefined,
-      data: Object.keys(customData).length > 0 ? customData : undefined,
+      plate: (plate as string) || undefined,
+      brand: (brand as string) || undefined,
+      model: (model as string) || undefined,
+      color: (color as string) || undefined,
+      type: (type as string) || undefined,
+      data: Object.keys(rest).length > 0 ? rest : undefined,
     };
 
     if (isEditing && client) {
@@ -124,12 +103,12 @@ export function ClientForm({ open, onClose, client }: ClientFormProps) {
 
   const isPending = createMutation.isPending || updateMutation.isPending;
 
-  function renderCustomField(field: CustomField) {
+  function renderField(field: CustomField) {
     const fieldName = field.key;
     switch (field.type) {
       case 'textarea':
         return (
-          <div key={fieldName}>
+          <div key={fieldName} className="col-span-2">
             <Label className="mb-1.5">{field.label}</Label>
             <Textarea
               {...form.register(fieldName)}
@@ -189,51 +168,26 @@ export function ClientForm({ open, onClose, client }: ClientFormProps) {
         <DialogHeader>
           <DialogTitle>{isEditing ? 'Editar Cliente' : 'Nuevo Cliente'}</DialogTitle>
           <DialogDescription>
-            {isEditing ? 'Actualiza la informacion del cliente' : 'Agrega un nuevo recurso/cliente'}
+            {isEditing ? 'Actualiza la información del cliente' : 'Agrega un nuevo recurso/cliente'}
           </DialogDescription>
         </DialogHeader>
 
         <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
-          {/* Base fields */}
-          <div className="grid grid-cols-2 gap-3">
-            <div>
-              <Label className="mb-1.5">Placa</Label>
-              <Input {...form.register('plate')} placeholder="ABC-123" />
+          {customFields.length > 0 ? (
+            <div className="grid grid-cols-2 gap-3">
+              {customFields.map(renderField)}
             </div>
-            <div>
-              <Label className="mb-1.5">Marca</Label>
-              <Input {...form.register('brand')} placeholder="Toyota" />
-            </div>
-            <div>
-              <Label className="mb-1.5">Modelo</Label>
-              <Input {...form.register('model')} placeholder="Corolla" />
-            </div>
-            <div>
-              <Label className="mb-1.5">Color</Label>
-              <Input {...form.register('color')} placeholder="Blanco" />
-            </div>
-          </div>
-
-          <div>
-            <Label className="mb-1.5">Tipo</Label>
-            <Input {...form.register('type')} placeholder="Sedan, SUV, etc." />
-          </div>
-
-          {/* Custom fields */}
-          {customFields.length > 0 && (
-            <div className="space-y-3 border-t pt-4">
-              <p className="text-sm font-medium text-muted-foreground">
-                Campos personalizados
-              </p>
-              {customFields.map(renderCustomField)}
-            </div>
+          ) : (
+            <p className="text-sm text-muted-foreground py-4 text-center">
+              No hay campos configurados. Ve a Configuración → Campos para definir los datos del cliente.
+            </p>
           )}
 
           <DialogFooter>
             <Button type="button" variant="outline" onClick={handleClose}>
               Cancelar
             </Button>
-            <Button type="submit" disabled={isPending}>
+            <Button type="submit" disabled={isPending || customFields.length === 0}>
               {isEditing ? 'Guardar' : 'Crear'}
             </Button>
           </DialogFooter>
