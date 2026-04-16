@@ -44,15 +44,24 @@ export function ReservationCard({
       <div className="flex items-start justify-between gap-2">
         <div className="min-w-0 flex-1">
           <p className="truncate text-sm font-medium">
-            {reservation.client?.name ?? 'Cliente'}
+            {reservation.clientResource?.plate ?? reservation.client?.name ?? 'Cliente'}
           </p>
           {!compact && (
-            <p className="truncate text-xs text-muted-foreground">
-              {reservation.service?.name ?? 'Servicio'}
-              {reservation.clientResource?.plate
-                ? ` - ${reservation.clientResource.plate}`
-                : ''}
-            </p>
+            <>
+              {/* Client name from resource custom data */}
+              {reservation.clientResource?.data && (() => {
+                const data = reservation.clientResource!.data as Record<string, unknown>;
+                const nameField = Object.entries(data).find(
+                  ([k, v]) => k.startsWith('field_') && typeof v === 'string' && v.trim()
+                );
+                return nameField ? (
+                  <p className="truncate text-xs font-medium text-indigo-600">{String(nameField[1])}</p>
+                ) : null;
+              })()}
+              <p className="truncate text-xs text-muted-foreground">
+                {reservation.service?.name ?? 'Servicio'}
+              </p>
+            </>
           )}
         </div>
         <Badge
