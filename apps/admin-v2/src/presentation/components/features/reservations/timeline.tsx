@@ -69,16 +69,15 @@ export function Timeline({ reservations, onSelect }: TimelineProps) {
 
         {/* Reservation cards */}
         <div className="absolute left-16 right-2">
-          {positioned.map(({ reservation, top, height }) => (
+          {positioned.map(({ reservation, top }) => (
             <div
               key={reservation.id}
-              className="absolute left-0 right-0"
-              style={{ top: `${top}px`, minHeight: `${Math.max(height, 40)}px` }}
+              className="absolute left-0 right-0 z-10"
+              style={{ top: `${top}px` }}
             >
               <ReservationCard
                 reservation={reservation}
                 onClick={() => onSelect(reservation)}
-                compact={height < 25}
               />
             </div>
           ))}
