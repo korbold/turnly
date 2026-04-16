@@ -7,6 +7,11 @@ import '../pages/auth/login_page.dart';
 import '../pages/auth/register_page.dart';
 import '../pages/dashboard/dashboard_page.dart';
 import '../pages/placeholder_page.dart';
+import '../pages/reservations/reservations_page.dart';
+import '../pages/reservations/reservation_detail_page.dart';
+import '../pages/reservations/create_reservation_page.dart';
+import '../pages/service_logs/service_log_page.dart';
+import '../pages/service_logs/new_service_log_page.dart';
 
 final appRouter = GoRouter(
   initialLocation: '/login',
@@ -41,31 +46,27 @@ final appRouter = GoRouter(
         ),
         GoRoute(
           path: '/reservations',
-          builder: (context, state) =>
-              const PlaceholderPage(title: 'Reservas'),
+          builder: (context, state) => const ReservationsPage(),
           routes: [
             GoRoute(
               path: 'create',
-              builder: (context, state) =>
-                  const PlaceholderPage(title: 'Nueva Reserva'),
+              builder: (context, state) => const CreateReservationPage(),
             ),
             GoRoute(
               path: ':id',
-              builder: (context, state) => PlaceholderPage(
-                title: 'Reserva #${state.pathParameters['id']}',
+              builder: (context, state) => ReservationDetailPage(
+                reservationId: state.pathParameters['id']!,
               ),
             ),
           ],
         ),
         GoRoute(
           path: '/service-logs',
-          builder: (context, state) =>
-              const PlaceholderPage(title: 'Registro de Servicios'),
+          builder: (context, state) => const ServiceLogPage(),
           routes: [
             GoRoute(
               path: 'new',
-              builder: (context, state) =>
-                  const PlaceholderPage(title: 'Nuevo Registro'),
+              builder: (context, state) => const NewServiceLogPage(),
             ),
           ],
         ),
