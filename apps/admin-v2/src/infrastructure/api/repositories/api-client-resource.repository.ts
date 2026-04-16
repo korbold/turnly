@@ -20,7 +20,8 @@ export class ApiClientResourceRepository implements ClientResourceRepository {
 
   async getById(id: string): Promise<ClientResource> {
     const { data: res } = await api.get(`/client-resources/${id}`);
-    return mapClientResource(res.data);
+    // Response is the resource directly (no data wrapper for single resource)
+    return mapClientResource(res.id ? res : res.data);
   }
 
   async create(data: CreateClientResourceData): Promise<ClientResource> {
@@ -34,7 +35,7 @@ export class ApiClientResourceRepository implements ClientResourceRepository {
     if (data.type) body.type = data.type;
 
     const { data: res } = await api.post('/client-resources', body);
-    return mapClientResource(res.data);
+    return mapClientResource(res.id ? res : res.data);
   }
 
   async update(id: string, data: Partial<CreateClientResourceData>): Promise<ClientResource> {
@@ -48,11 +49,11 @@ export class ApiClientResourceRepository implements ClientResourceRepository {
     if (data.type !== undefined) body.type = data.type;
 
     const { data: res } = await api.patch(`/client-resources/${id}`, body);
-    return mapClientResource(res.data);
+    return mapClientResource(res.id ? res : res.data);
   }
 
   async getHistory(id: string): Promise<unknown[]> {
     const { data: res } = await api.get(`/client-resources/${id}/history`);
-    return res.data;
+    return Array.isArray(res) ? res : (res.data ?? []);
   }
 }
