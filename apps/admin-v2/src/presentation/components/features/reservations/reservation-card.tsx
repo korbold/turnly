@@ -32,6 +32,14 @@ export function ReservationCard({
 }: ReservationCardProps) {
   const statusCfg = RESERVATION_STATUS_CONFIG[reservation.status];
 
+  // Extract client name from resource custom data (dynamic field)
+  const resourceData = reservation.clientResource?.data as Record<string, unknown> | null | undefined;
+  const clientNameFromResource = resourceData
+    ? Object.entries(resourceData).find(
+        ([k, v]) => k.startsWith('field_') && typeof v === 'string' && v.trim()
+      )?.[1] as string | undefined
+    : undefined;
+
   return (
     <motion.button
       whileHover={{ boxShadow: '0 4px 12px rgba(0,0,0,0.08)' }}
@@ -48,16 +56,9 @@ export function ReservationCard({
           </p>
           {!compact && (
             <>
-              {/* Client name from resource custom data */}
-              {reservation.clientResource?.data && (() => {
-                const data = reservation.clientResource!.data as Record<string, unknown>;
-                const nameField = Object.entries(data).find(
-                  ([k, v]) => k.startsWith('field_') && typeof v === 'string' && v.trim()
-                );
-                return nameField ? (
-                  <p className="truncate text-xs font-medium text-indigo-600">{String(nameField[1])}</p>
-                ) : null;
-              })()}
+              {clientNameFromResource && (
+                <p className="truncate text-xs font-medium text-indigo-600">{clientNameFromResource}</p>
+              )}
               <p className="truncate text-xs text-muted-foreground">
                 {reservation.service?.name ?? 'Servicio'}
               </p>
