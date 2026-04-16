@@ -20,6 +20,7 @@ Route::prefix('v1/public')->group(function () {
     Route::get('tenants', [PublicController::class, 'listTenants']);
     Route::get('tenants/{slug}', [PublicController::class, 'getTenant']);
     Route::get('tenants/{slug}/available-slots', [PublicController::class, 'getAvailableSlots']);
+    Route::get('tenants/{slug}/my-resources', [PublicController::class, 'myResources'])->middleware('auth:sanctum');
     Route::post('tenants/{slug}/book', [PublicController::class, 'book']);
 });
 
@@ -42,6 +43,11 @@ Route::prefix('v1')->group(function () {
 
         // Authenticated onboarding (no tenant middleware — tenant resolved from user)
         Route::post('onboarding/business-type', [OnboardingController::class, 'setBusinessType']);
+
+        // Client-facing routes (no tenant middleware — returns data across all tenants for the authenticated user)
+        Route::get('client/reservations', [ReservationController::class, 'myReservations']);
+        Route::get('client/reservations/{id}', [ReservationController::class, 'myReservationShow']);
+        Route::patch('client/reservations/{id}/cancel', [ReservationController::class, 'myReservationCancel']);
 
         // Tenant-scoped routes
         Route::middleware('tenant')->group(function () {

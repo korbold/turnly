@@ -9,6 +9,7 @@ use App\Domain\Reservation\Enums\ReservationStatus;
 use App\Domain\Reservation\Exceptions\OutsideBusinessHoursException;
 use App\Domain\Reservation\Exceptions\ReservationConflictException;
 use App\Infrastructure\Persistence\Models\AvailabilitySlotModel;
+use App\Infrastructure\Persistence\Models\TenantModel;
 
 use Illuminate\Support\Str;
 
@@ -22,8 +23,9 @@ class CreateReservationUseCase
     {
         $scheduledAt = new \DateTimeImmutable($dto->scheduledAt);
 
-        // Calculate estimated_end using a fixed 30-minute slot
-        $estimatedEnd = $scheduledAt->modify('+30 minutes');
+        $tenant = TenantModel::find($dto->tenantId);
+        $slotDuration = $tenant?->settings['slot_duration_minutes'] ?? 30;
+        $estimatedEnd = $scheduledAt->modify("+{$slotDuration} minutes");
 
         // Convert to app timezone for business hours comparison
         $appTz = new \DateTimeZone(config('app.timezone', 'UTC'));

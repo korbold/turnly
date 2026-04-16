@@ -1,12 +1,12 @@
 ---
-name: WashFlow MVP
-description: Multi-tenant SaaS for car wash businesses - Laravel 13 + Next.js 15 + Flutter monorepo
+name: TurnLy MVP
+description: Multi-tenant SaaS for appointment/booking management across business types - Laravel 13 + Next.js 16 + Flutter monorepo
 type: project
 ---
 
-WashFlow is a multi-tenant SaaS for car wash management. Tenants manage reservations, wash logs, employees, and reports.
+TurnLy (formerly WashFlow) is a multi-tenant SaaS for appointment/booking management. Not limited to car washes — supports multiple business types. Tenants manage reservations, service logs, employees, and reports.
 
-**Stack:** Laravel 13 (PHP 8.3, MySQL 8, Redis), Next.js 15 (App Router, shadcn/ui), Flutter 3.x (Riverpod, go_router, Dio)
+**Stack:** Laravel 13 (PHP 8.3, MySQL 8, Redis), Next.js 16 (App Router, shadcn/ui), Flutter 3.x (Riverpod, go_router, Dio)
 **Auth:** Laravel Sanctum with tenant-scoped tokens, Spatie Permission
 **Multi-tenancy:** Subdomain-based with TenantScope global scope and ResolveTenantMiddleware
 **Architecture:** Domain-driven (Domain/Application/Infrastructure layers in Laravel), feature-based in Flutter

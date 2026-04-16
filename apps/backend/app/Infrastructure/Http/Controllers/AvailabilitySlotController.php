@@ -28,23 +28,26 @@ class AvailabilitySlotController extends Controller
 
         $tenantId = app('current_tenant_id');
 
+        // Delete all existing slots for this tenant and recreate
+        AvailabilitySlotModel::withoutGlobalScopes()
+            ->where('tenant_id', $tenantId)
+            ->delete();
+
         foreach ($validated['slots'] as $slotData) {
-            AvailabilitySlotModel::withoutGlobalScopes()
-                ->updateOrCreate(
-                    [
-                        'tenant_id' => $tenantId,
-                        'day_of_week' => $slotData['day_of_week'],
-                    ],
-                    [
-                        'start_time' => $slotData['is_active'] ? ($slotData['start_time'] ?? '08:00') . ':00' : '08:00:00',
-                        'end_time' => $slotData['is_active'] ? ($slotData['end_time'] ?? '18:00') . ':00' : '18:00:00',
-                        'is_active' => $slotData['is_active'],
-                        'max_concurrent' => $slotData['max_concurrent'] ?? 2,
-                    ],
-                );
+            if (!$slotData['is_active']) {
+                continue;
+            }
+            AvailabilitySlotModel::withoutGlobalScopes()->create([
+                'tenant_id' => $tenantId,
+                'day_of_week' => $slotData['day_of_week'],
+                'start_time' => ($slotData['start_time'] ?? '08:00') . ':00',
+                'end_time' => ($slotData['end_time'] ?? '18:00') . ':00',
+                'is_active' => true,
+                'max_concurrent' => $slotData['max_concurrent'] ?? 2,
+            ]);
         }
 
-        $slots = AvailabilitySlotModel::orderBy('day_of_week')->get();
+        $slots = AvailabilitySlotModel::orderBy('day_of_week')->orderBy('start_time')->get();
 
         return response()->json(['data' => $slots]);
     }

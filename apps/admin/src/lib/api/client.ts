@@ -19,10 +19,17 @@ api.interceptors.request.use((config) => {
   return config;
 });
 
+let redirecting = false;
+
 api.interceptors.response.use(
   (res) => res,
   (error) => {
-    if (error.response?.status === 401 && typeof window !== 'undefined') {
+    // Don't transform cancellation/abort errors — React Query needs the original to detect aborts
+    if (axios.isCancel(error) || error.code === 'ERR_CANCELED' || error.code === 'ECONNABORTED') {
+      return Promise.reject(error);
+    }
+    if (error.response?.status === 401 && typeof window !== 'undefined' && !redirecting) {
+      redirecting = true;
       localStorage.removeItem('auth_token');
       localStorage.removeItem('tenant_slug');
       window.location.href = '/login';

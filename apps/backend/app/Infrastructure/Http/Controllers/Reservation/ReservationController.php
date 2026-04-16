@@ -29,6 +29,48 @@ class ReservationController extends Controller
         private GetAvailableSlotsUseCase $getAvailableSlots,
     ) {}
 
+    /**
+     * Client-facing: returns all reservations for the authenticated user across all tenants.
+     */
+    public function myReservations(Request $request)
+    {
+        $query = ReservationModel::withoutGlobalScope(\App\Infrastructure\Persistence\Scopes\TenantScope::class)
+            ->with(['clientResource', 'service', 'tenant'])
+            ->where('client_id', $request->user()->id);
+
+        if ($request->has('status')) {
+            $query->where('status', $request->status);
+        }
+
+        $reservations = $query->orderBy('scheduled_at', 'desc')->paginate(30);
+
+        return ReservationResource::collection($reservations);
+    }
+
+    public function myReservationShow(Request $request, string $id)
+    {
+        $reservation = ReservationModel::withoutGlobalScope(\App\Infrastructure\Persistence\Scopes\TenantScope::class)
+            ->with(['clientResource', 'service', 'client', 'assignedEmployee', 'tenant'])
+            ->where('client_id', $request->user()->id)
+            ->findOrFail($id);
+
+        return new ReservationResource($reservation);
+    }
+
+    public function myReservationCancel(Request $request, string $id): JsonResponse
+    {
+        $reservation = ReservationModel::withoutGlobalScope(\App\Infrastructure\Persistence\Scopes\TenantScope::class)
+            ->where('client_id', $request->user()->id)
+            ->findOrFail($id);
+
+        $this->cancelReservation->execute($reservation->id, $request->reason);
+
+        return response()->json([
+            'data' => ['message' => 'Reservation cancelled'],
+            'meta' => ['timestamp' => now()->toIso8601String()],
+        ]);
+    }
+
     public function index(Request $request)
     {
         $query = ReservationModel::with(['clientResource', 'service', 'client']);

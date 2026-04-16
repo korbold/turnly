@@ -92,11 +92,13 @@ class AuthController extends Controller
     public function me(Request $request): JsonResponse
     {
         $user = $request->user();
-        $tenantId = app('current_tenant_id');
+        $tenantId = app()->has('current_tenant_id') ? app('current_tenant_id') : null;
 
-        $tenantUser = TenantUserModel::where('user_id', $user->id)
-            ->where('tenant_id', $tenantId)
-            ->first();
+        $tenantUser = $tenantId
+            ? TenantUserModel::where('user_id', $user->id)
+                ->where('tenant_id', $tenantId)
+                ->first()
+            : null;
 
         return response()->json([
             'data' => [

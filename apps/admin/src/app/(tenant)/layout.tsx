@@ -23,23 +23,25 @@ export default function TenantLayout({ children }: { children: React.ReactNode }
   const router = useRouter();
   const pathname = usePathname();
   const [ready, setReady] = useState(false);
-  const [authenticated, setAuthenticated] = useState(() => isAuthenticated());
+  const [authenticated, setAuthenticated] = useState(false);
   const [superAdminMode, setSuperAdminMode] = useState(false);
   const [viewingSlug, setViewingSlug] = useState('');
   const [userRole, setUserRole] = useState<string | null>(null);
   const [customPerms, setCustomPerms] = useState<PermissionsConfig | null>(null);
 
+  // One-time auth check + data fetch on mount
   useEffect(() => {
-    if (!authenticated) {
+    if (!isAuthenticated()) {
       router.replace('/login');
       return;
     }
+    setAuthenticated(true);
+
     if (localStorage.getItem('super_admin_mode') === 'true') {
       setSuperAdminMode(true);
       setViewingSlug(localStorage.getItem('tenant_slug') ?? '');
     }
 
-    // Fetch user role and tenant permissions for access control
     Promise.all([getMe(), getTenantSettings()])
       .then(([me, tenant]) => {
         setUserRole(me.role ?? null);
@@ -50,14 +52,14 @@ export default function TenantLayout({ children }: { children: React.ReactNode }
         setReady(true);
       })
       .catch(() => {
-        // Auth failed — token might be invalid
-        setAuthenticated(false);
+        localStorage.removeItem('auth_token');
+        localStorage.removeItem('tenant_slug');
         router.replace('/login');
       });
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  // Check access whenever pathname or role changes — redirect only, no blocking state
+  // Check access whenever pathname or role changes
   useEffect(() => {
     if (!ready || !userRole) return;
     if (superAdminMode) return;
@@ -79,7 +81,7 @@ export default function TenantLayout({ children }: { children: React.ReactNode }
   }
 
   if (!authenticated) {
-    return null; // Redirecting to login
+    return null;
   }
 
   if (!ready) {

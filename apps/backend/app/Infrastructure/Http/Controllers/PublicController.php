@@ -97,6 +97,7 @@ class PublicController extends Controller
                     'address' => $tenant->address,
                     'phone' => $tenant->phone,
                     'custom_fields' => $tenant->custom_fields,
+                    'cancellation_hours' => $tenant->settings['cancellation_hours'] ?? 1,
                 ],
                 'services' => $services,
                 'availability' => $availability,
@@ -116,7 +117,7 @@ class PublicController extends Controller
 
         $date = new \DateTimeImmutable($request->date);
         $dayOfWeek = (int) $date->format('N') - 1;
-        $durationMinutes = 30;
+        $durationMinutes = $tenant->settings['slot_duration_minutes'] ?? 30;
 
         $availabilitySlots = AvailabilitySlotModel::withoutGlobalScopes()
             ->where('tenant_id', $tenant->id)
@@ -154,19 +155,46 @@ class PublicController extends Controller
                     }
                 }
 
-                if ($overlapping < $maxConcurrent) {
-                    $slots[] = [
-                        'start' => $current->format('Y-m-d H:i:s'),
-                        'end' => $slotEnd->format('Y-m-d H:i:s'),
-                        'available' => $maxConcurrent - $overlapping,
-                    ];
-                }
+                $slots[] = [
+                    'start' => $current->format('Y-m-d H:i:s'),
+                    'end' => $slotEnd->format('Y-m-d H:i:s'),
+                    'available' => max(0, $maxConcurrent - $overlapping),
+                ];
 
-                $current = $current->modify('+30 minutes');
+                $current = $current->modify("+{$durationMinutes} minutes");
             }
         }
 
         return response()->json(['data' => $slots]);
+    }
+
+    public function myResources(string $slug, Request $request): JsonResponse
+    {
+        $user = $request->user();
+        if (!$user) {
+            return response()->json(['data' => []]);
+        }
+
+        $tenant = TenantModel::where('slug', $slug)->where('status', 'active')->firstOrFail();
+
+        $resources = ClientResourceModel::withoutGlobalScopes()
+            ->where('tenant_id', $tenant->id)
+            ->where('client_id', $user->id)
+            ->orderBy('created_at', 'desc')
+            ->get();
+
+        $data = $resources->map(fn ($r) => [
+            'id' => $r->id,
+            'data' => $r->data,
+            'plate' => $r->plate,
+            'brand' => $r->brand,
+            'model' => $r->model,
+            'color' => $r->color,
+            'type' => $r->type,
+            'created_at' => $r->created_at?->toIso8601String(),
+        ]);
+
+        return response()->json(['data' => $data]);
     }
 
     public function book(string $slug, Request $request): JsonResponse
@@ -179,6 +207,7 @@ class PublicController extends Controller
                 'service_id' => 'required|uuid',
                 'scheduled_at' => 'required|date|after:now',
                 'notes' => 'nullable|string|max:500',
+                'client_resource_id' => 'nullable|uuid',
                 'client_resource_data' => 'nullable|array',
             ]);
         } else {
@@ -215,18 +244,25 @@ class PublicController extends Controller
             ['role' => 'client', 'is_active' => true]
         );
 
-        $clientResourceId = null;
-        if ($request->client_resource_data) {
+        $clientResourceId = $request->client_resource_id;
+        if (!$clientResourceId && $request->client_resource_data) {
+            $resourceData = $request->client_resource_data;
             $resource = ClientResourceModel::withoutGlobalScopes()->create([
                 'tenant_id' => $tenant->id,
                 'client_id' => $client->id,
-                'data' => $request->client_resource_data,
+                'plate' => strtoupper($resourceData['plate'] ?? ''),
+                'brand' => $resourceData['brand'] ?? null,
+                'model' => $resourceData['model'] ?? null,
+                'color' => $resourceData['color'] ?? null,
+                'type' => $resourceData['type'] ?? 'sedan',
+                'data' => $resourceData,
             ]);
             $clientResourceId = $resource->id;
         }
 
         $scheduledAt = new \DateTimeImmutable($request->scheduled_at);
-        $estimatedEnd = $scheduledAt->modify('+30 minutes');
+        $slotDuration = $tenant->settings['slot_duration_minutes'] ?? 30;
+        $estimatedEnd = $scheduledAt->modify("+{$slotDuration} minutes");
 
         $reservation = ReservationModel::withoutGlobalScopes()->create([
             'id' => (string) Str::uuid(),

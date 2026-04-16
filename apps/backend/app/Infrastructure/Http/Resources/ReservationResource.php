@@ -25,12 +25,12 @@ class ReservationResource extends JsonResource
             'created_at'    => $this->created_at?->toIso8601String(),
 
             'client_resource' => $this->whenLoaded('clientResource', fn () => [
-                'label' => $this->clientResource->label,
                 'data'  => $this->clientResource->data,
                 'plate' => $this->clientResource->plate,
                 'brand' => $this->clientResource->brand,
                 'model' => $this->clientResource->model,
                 'color' => $this->clientResource->color,
+                'type'  => $this->clientResource->type,
             ]),
 
             'service' => $this->whenLoaded('service', fn () => [
@@ -41,6 +41,12 @@ class ReservationResource extends JsonResource
             'client' => $this->whenLoaded('client', fn () => [
                 'name'  => $this->client->name,
                 'email' => $this->client->email,
+            ]),
+
+            'tenant' => $this->whenLoaded('tenant', fn () => [
+                'name' => $this->tenant->name,
+                'slug' => $this->tenant->slug,
+                'cancellation_hours' => $this->tenant->settings['cancellation_hours'] ?? 1,
             ]),
         ];
     }
