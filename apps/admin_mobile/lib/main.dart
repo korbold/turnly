@@ -1,6 +1,14 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_bloc/flutter_bloc.dart';
 
-void main() {
+import 'injection.dart';
+import 'presentation/app/router.dart';
+import 'presentation/app/theme.dart';
+import 'application/blocs/auth/auth_bloc.dart';
+
+void main() async {
+  WidgetsFlutterBinding.ensureInitialized();
+  await configureDependencies();
   runApp(const TurnlyApp());
 }
 
@@ -9,9 +17,18 @@ class TurnlyApp extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return const MaterialApp(
-      title: 'Turnly Admin',
-      home: Scaffold(body: Center(child: Text('Turnly Admin'))),
+    return MultiBlocProvider(
+      providers: [
+        BlocProvider<AuthBloc>(
+          create: (_) => getIt<AuthBloc>()..add(const CheckAuthRequested()),
+        ),
+      ],
+      child: MaterialApp.router(
+        title: 'Turnly Admin',
+        theme: AppTheme.light,
+        routerConfig: appRouter,
+        debugShowCheckedModeBanner: false,
+      ),
     );
   }
 }
