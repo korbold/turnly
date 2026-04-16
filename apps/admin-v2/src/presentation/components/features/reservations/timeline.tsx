@@ -23,20 +23,29 @@ export function Timeline({ reservations, onSelect }: TimelineProps) {
     return result;
   }, []);
 
+  const CARD_MIN_HEIGHT = 90; // approx height of a full card
+
   const positioned = useMemo(() => {
-    return reservations.map((r) => {
+    const raw = reservations.map((r) => {
       const d = new Date(r.scheduledAt);
       const startFrac = d.getHours() + d.getMinutes() / 60;
-      const endD = new Date(r.estimatedEnd);
-      const endFrac = endD.getHours() + endD.getMinutes() / 60;
-      const durationH = Math.max(0.25, endFrac - startFrac);
-
       return {
         reservation: r,
         top: (startFrac - START_HOUR) * HOUR_HEIGHT,
-        height: durationH * HOUR_HEIGHT,
       };
     });
+
+    // Adjust positions so cards don't overlap
+    const adjusted: typeof raw = [];
+    for (const item of raw) {
+      const prev = adjusted[adjusted.length - 1];
+      const minTop = prev ? prev.top + CARD_MIN_HEIGHT + 4 : 0;
+      adjusted.push({
+        ...item,
+        top: Math.max(item.top, minTop),
+      });
+    }
+    return adjusted;
   }, [reservations]);
 
   return (
