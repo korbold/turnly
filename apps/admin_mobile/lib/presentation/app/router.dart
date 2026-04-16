@@ -1,17 +1,25 @@
 import 'package:go_router/go_router.dart';
 
+import '../../domain/entities/service.dart';
 import '../../injection.dart';
 import '../../infrastructure/storage/secure_storage.dart';
 import '../layout/app_shell.dart';
 import '../pages/auth/login_page.dart';
 import '../pages/auth/register_page.dart';
+import '../pages/clients/clients_page.dart';
+import '../pages/clients/client_detail_page.dart';
+import '../pages/clients/create_client_page.dart';
 import '../pages/dashboard/dashboard_page.dart';
 import '../pages/placeholder_page.dart';
+import '../pages/reports/reports_page.dart';
 import '../pages/reservations/reservations_page.dart';
 import '../pages/reservations/reservation_detail_page.dart';
 import '../pages/reservations/create_reservation_page.dart';
 import '../pages/service_logs/service_log_page.dart';
 import '../pages/service_logs/new_service_log_page.dart';
+import '../pages/services/services_page.dart';
+import '../pages/services/create_service_page.dart';
+import '../pages/team/team_page.dart';
 
 final appRouter = GoRouter(
   initialLocation: '/login',
@@ -72,31 +80,40 @@ final appRouter = GoRouter(
         ),
         GoRoute(
           path: '/clients',
-          builder: (context, state) =>
-              const PlaceholderPage(title: 'Clientes'),
+          builder: (context, state) => const ClientsPage(),
           routes: [
             GoRoute(
+              path: 'create',
+              builder: (context, state) => const CreateClientPage(),
+            ),
+            GoRoute(
               path: ':id',
-              builder: (context, state) => PlaceholderPage(
-                title: 'Cliente #${state.pathParameters['id']}',
+              builder: (context, state) => ClientDetailPage(
+                clientId: state.pathParameters['id']!,
               ),
             ),
           ],
         ),
         GoRoute(
           path: '/services',
-          builder: (context, state) =>
-              const PlaceholderPage(title: 'Servicios'),
+          builder: (context, state) => const ServicesPage(),
+          routes: [
+            GoRoute(
+              path: 'create',
+              builder: (context, state) {
+                final editService = state.extra as Service?;
+                return CreateServicePage(editService: editService);
+              },
+            ),
+          ],
         ),
         GoRoute(
           path: '/team',
-          builder: (context, state) =>
-              const PlaceholderPage(title: 'Equipo'),
+          builder: (context, state) => const TeamPage(),
         ),
         GoRoute(
           path: '/reports',
-          builder: (context, state) =>
-              const PlaceholderPage(title: 'Reportes'),
+          builder: (context, state) => const ReportsPage(),
         ),
         GoRoute(
           path: '/settings',
