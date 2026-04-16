@@ -77,7 +77,18 @@ export function CreateModal({ open, onClose }: CreateModalProps) {
 
   const services = servicesData?.data ?? [];
   const slots = slotsData ?? [];
-  const clients = clientsData?.data ?? [];
+  const allClients = clientsData?.data ?? [];
+  const clients = clientSearch
+    ? allClients.filter((cr) => {
+        const q = clientSearch.toLowerCase();
+        return (
+          cr.plate?.toLowerCase().includes(q) ||
+          cr.client?.name?.toLowerCase().includes(q) ||
+          cr.brand?.toLowerCase().includes(q) ||
+          cr.model?.toLowerCase().includes(q)
+        );
+      })
+    : allClients;
   const team = teamData?.data ?? [];
 
   function handleClose() {
