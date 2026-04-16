@@ -49,21 +49,14 @@ export function ReservationCard({
       )}
       onClick={onClick}
     >
-      <div className="flex items-start justify-between gap-2">
-        <div className="min-w-0 flex-1">
+      <div className="flex items-center justify-between gap-2">
+        <div className="flex min-w-0 flex-1 items-center gap-3">
           <p className="truncate text-sm font-medium">
-            {reservation.clientResource?.plate ?? reservation.client?.name ?? 'Cliente'}
+            {clientNameFromResource ?? reservation.clientResource?.plate ?? reservation.client?.name ?? 'Cliente'}
           </p>
-          {!compact && (
-            <>
-              {clientNameFromResource && (
-                <p className="truncate text-xs font-medium text-indigo-600">{clientNameFromResource}</p>
-              )}
-              <p className="truncate text-xs text-muted-foreground">
-                {reservation.service?.name ?? 'Servicio'}
-              </p>
-            </>
-          )}
+          <span className="shrink-0 text-xs text-muted-foreground">
+            {format(new Date(reservation.scheduledAt), 'HH:mm')} - {format(new Date(reservation.estimatedEnd), 'HH:mm')}
+          </span>
         </div>
         <Badge
           className={cn(
@@ -74,17 +67,6 @@ export function ReservationCard({
         >
           {statusCfg.label}
         </Badge>
-      </div>
-      <div className="mt-1.5 flex items-center gap-2 text-xs text-muted-foreground">
-        <span>
-          {format(new Date(reservation.scheduledAt), 'HH:mm')} -{' '}
-          {format(new Date(reservation.estimatedEnd), 'HH:mm')}
-        </span>
-        {reservation.assignedTo && !compact && (
-          <span className="truncate">
-            {/* Employee name would come from join, show ID for now */}
-          </span>
-        )}
       </div>
     </motion.button>
   );
