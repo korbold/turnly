@@ -195,25 +195,38 @@ export function DetailPanel({ reservation, open, onClose }: DetailPanelProps) {
 
             <Separator />
 
-            {/* Client */}
+            {/* Resource + Client */}
             <div>
               <h4 className="mb-1 text-xs font-semibold uppercase tracking-wider text-muted-foreground">
-                Cliente
+                Cliente / Recurso
               </h4>
-              <InfoRow label="Nombre" value={reservation.client?.name} />
-              <InfoRow label="Email" value={reservation.client?.email} />
-            </div>
-
-            <Separator />
-
-            {/* Resource */}
-            <div>
-              <h4 className="mb-1 text-xs font-semibold uppercase tracking-wider text-muted-foreground">
-                Recurso
-              </h4>
-              <InfoRow label="Placa" value={reservation.clientResource?.plate} />
-              <InfoRow label="Marca" value={reservation.clientResource?.brand} />
-              <InfoRow label="Modelo" value={reservation.clientResource?.model} />
+              {reservation.clientResource?.plate && (
+                <InfoRow label="Placa" value={reservation.clientResource.plate} />
+              )}
+              {reservation.clientResource?.brand && (
+                <InfoRow label="Marca" value={reservation.clientResource.brand} />
+              )}
+              {reservation.clientResource?.model && (
+                <InfoRow label="Modelo" value={reservation.clientResource.model} />
+              )}
+              {reservation.clientResource?.color && (
+                <InfoRow label="Color" value={reservation.clientResource.color} />
+              )}
+              {/* Show custom fields from resource data */}
+              {reservation.clientResource?.data &&
+                Object.entries(reservation.clientResource.data as Record<string, unknown>).map(
+                  ([key, val]) => {
+                    if (!val || ['plate', 'brand', 'model', 'color'].includes(key)) return null;
+                    const label = key.startsWith('field_') ? 'Cliente' : key.charAt(0).toUpperCase() + key.slice(1);
+                    return <InfoRow key={key} label={label} value={String(val)} />;
+                  }
+                )}
+              {reservation.client?.name && (
+                <InfoRow label="Creado por" value={reservation.client.name} />
+              )}
+              {reservation.client?.email && (
+                <InfoRow label="Email" value={reservation.client.email} />
+              )}
             </div>
 
             <Separator />
