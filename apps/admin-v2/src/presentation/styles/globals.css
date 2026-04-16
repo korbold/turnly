@@ -1,26 +1,64 @@
 @import "tailwindcss";
 
+/* ─── Design Tokens ─── */
 :root {
-  --background: #ffffff;
-  --foreground: #171717;
+  /* Primary */
+  --color-primary: #4F46E5;
+  --color-primary-hover: #4338CA;
+  --color-primary-muted: #EEF2FF;
+
+  /* Background */
+  --color-bg: #F8FAFC;
+  --color-card-bg: #FFFFFF;
+  --color-card-border: #E2E8F0;
+
+  /* Text */
+  --color-text-primary: #0F172A;
+  --color-text-secondary: #475569;
+  --color-text-muted: #94A3B8;
+
+  /* Semantic */
+  --color-success: #10B981;
+  --color-success-muted: #D1FAE5;
+  --color-error: #F43F5E;
+  --color-error-muted: #FFE4E6;
+  --color-warning: #F59E0B;
+  --color-warning-muted: #FEF3C7;
+  --color-info: #0EA5E9;
+  --color-info-muted: #E0F2FE;
+
+  /* Reservation Status */
+  --status-pending: #F59E0B;
+  --status-pending-bg: #FFFBEB;
+  --status-confirmed: #0EA5E9;
+  --status-confirmed-bg: #E0F2FE;
+  --status-in-progress: #4F46E5;
+  --status-in-progress-bg: #EEF2FF;
+  --status-completed: #10B981;
+  --status-completed-bg: #D1FAE5;
+  --status-cancelled: #F43F5E;
+  --status-cancelled-bg: #FFE4E6;
+  --status-no-show: #64748B;
+  --status-no-show-bg: #F1F5F9;
+
+  /* Spacing / Radius */
+  --radius-card: 12px;
+  --radius-input: 8px;
+  --radius-button-lg: 20px;
+
+  /* Shadows */
+  --shadow-card: 0 1px 3px 0 rgb(0 0 0 / 0.1), 0 1px 2px -1px rgb(0 0 0 / 0.1);
+  --shadow-card-hover: 0 4px 6px -1px rgb(0 0 0 / 0.1), 0 2px 4px -2px rgb(0 0 0 / 0.1);
 }
 
 @theme inline {
-  --color-background: var(--background);
-  --color-foreground: var(--foreground);
-  --font-sans: var(--font-geist-sans);
-  --font-mono: var(--font-geist-mono);
-}
-
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
-  }
+  --color-background: var(--color-bg);
+  --color-foreground: var(--color-text-primary);
+  --font-sans: "Inter", ui-sans-serif, system-ui, sans-serif;
 }
 
 body {
-  background: var(--background);
-  color: var(--foreground);
-  font-family: Arial, Helvetica, sans-serif;
+  background: var(--color-bg);
+  color: var(--color-text-primary);
+  font-family: "Inter", ui-sans-serif, system-ui, sans-serif;
 }
