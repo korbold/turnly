@@ -10,13 +10,13 @@ import {
 import type { Reservation } from '@/domain/entities/reservation';
 import { cn } from '@/shared/utils/cn';
 
-const BORDER_COLORS: Record<ReservationStatus, string> = {
-  pending: 'border-l-amber-500',
-  confirmed: 'border-l-sky-500',
-  in_progress: 'border-l-indigo-500',
-  completed: 'border-l-emerald-500',
-  cancelled: 'border-l-rose-500',
-  no_show: 'border-l-slate-500',
+const CARD_STYLES: Record<ReservationStatus, string> = {
+  pending: 'border-l-amber-500 bg-amber-50',
+  confirmed: 'border-l-sky-500 bg-sky-50',
+  in_progress: 'border-l-indigo-500 bg-indigo-50',
+  completed: 'border-l-emerald-500 bg-emerald-50',
+  cancelled: 'border-l-rose-500 bg-rose-50',
+  no_show: 'border-l-slate-500 bg-slate-50',
 };
 
 interface ReservationCardProps {
@@ -44,8 +44,8 @@ export function ReservationCard({
     <motion.button
       whileHover={{ boxShadow: '0 4px 12px rgba(0,0,0,0.08)' }}
       className={cn(
-        'flex h-full w-full items-center rounded-lg border border-l-4 bg-white px-3 text-left transition-shadow',
-        BORDER_COLORS[reservation.status]
+        'flex h-full w-full items-center rounded-lg border border-l-4 px-3 text-left transition-shadow',
+        CARD_STYLES[reservation.status]
       )}
       onClick={onClick}
     >
