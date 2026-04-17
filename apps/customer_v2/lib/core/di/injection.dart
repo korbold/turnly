@@ -4,6 +4,8 @@ import 'package:dio/dio.dart';
 import '../network/api_client.dart';
 import '../../features/auth/domain/repositories/auth_repository.dart';
 import '../../features/auth/data/repositories/auth_repository_impl.dart';
+import '../../features/explore/domain/repositories/explore_repository.dart';
+import '../../features/explore/data/repositories/explore_repository_impl.dart';
 
 final getIt = GetIt.instance;
 
@@ -13,4 +15,7 @@ void configureDependencies() {
 
   // Auth
   getIt.registerLazySingleton<AuthRepository>(() => AuthRepositoryImpl());
+
+  // Explore
+  getIt.registerLazySingleton<ExploreRepository>(() => ExploreRepositoryImpl());
 }
