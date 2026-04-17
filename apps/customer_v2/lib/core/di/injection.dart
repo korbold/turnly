@@ -2,6 +2,8 @@
 import 'package:get_it/get_it.dart';
 import 'package:dio/dio.dart';
 import '../network/api_client.dart';
+import '../../features/auth/domain/repositories/auth_repository.dart';
+import '../../features/auth/data/repositories/auth_repository_impl.dart';
 
 final getIt = GetIt.instance;
 
@@ -9,5 +11,6 @@ void configureDependencies() {
   // Network
   getIt.registerLazySingleton<Dio>(() => ApiClient.instance);
 
-  // Repositories will be registered as features are added
+  // Auth
+  getIt.registerLazySingleton<AuthRepository>(() => AuthRepositoryImpl());
 }
