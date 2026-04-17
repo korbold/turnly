@@ -6,6 +6,8 @@ import '../../features/auth/domain/repositories/auth_repository.dart';
 import '../../features/auth/data/repositories/auth_repository_impl.dart';
 import '../../features/explore/domain/repositories/explore_repository.dart';
 import '../../features/explore/data/repositories/explore_repository_impl.dart';
+import '../../features/reservations/domain/repositories/reservation_repository.dart';
+import '../../features/reservations/data/repositories/reservation_repository_impl.dart';
 
 final getIt = GetIt.instance;
 
@@ -18,4 +20,7 @@ void configureDependencies() {
 
   // Explore
   getIt.registerLazySingleton<ExploreRepository>(() => ExploreRepositoryImpl());
+
+  // Reservations
+  getIt.registerLazySingleton<ReservationRepository>(() => ReservationRepositoryImpl());
 }
