@@ -2,7 +2,6 @@
 import 'package:equatable/equatable.dart';
 import '../../domain/entities/available_slot.dart';
 import '../../domain/entities/reservation.dart';
-import '../../../resources/domain/entities/client_resource.dart';
 
 sealed class CreateReservationState extends Equatable {
   const CreateReservationState();
