@@ -1,12 +1,17 @@
 // lib/main.dart
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:hive_flutter/hive_flutter.dart';
 import 'package:intl/date_symbol_data_local.dart';
 
 import 'app/router.dart';
 import 'app/theme/app_theme.dart';
 import 'core/di/injection.dart';
+import 'features/auth/domain/repositories/auth_repository.dart';
+import 'features/auth/presentation/cubit/auth_cubit.dart';
+import 'features/favorites/data/favorites_storage.dart';
+import 'features/favorites/presentation/cubit/favorites_cubit.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -19,25 +24,45 @@ void main() async {
   // Init Hive for local storage (favorites, etc.)
   await Hive.initFlutter();
 
+  // Init favorites storage
+  final favoritesStorage = FavoritesStorage();
+  await favoritesStorage.init();
+
   // Init Spanish date formatting
   await initializeDateFormatting('es');
 
   // Configure DI
   configureDependencies();
 
-  runApp(const TurnlyApp());
+  // Register FavoritesStorage singleton in DI
+  getIt.registerSingleton<FavoritesStorage>(favoritesStorage);
+
+  runApp(TurnlyApp(favoritesStorage: favoritesStorage));
 }
 
 class TurnlyApp extends StatelessWidget {
-  const TurnlyApp({super.key});
+  final FavoritesStorage favoritesStorage;
+
+  const TurnlyApp({super.key, required this.favoritesStorage});
 
   @override
   Widget build(BuildContext context) {
-    return MaterialApp.router(
-      title: 'Turnly',
-      debugShowCheckedModeBanner: false,
-      theme: AppTheme.light,
-      routerConfig: appRouter,
+    return MultiBlocProvider(
+      providers: [
+        BlocProvider<AuthCubit>(
+          create: (_) =>
+              AuthCubit(getIt<AuthRepository>())..checkAuth(),
+        ),
+        BlocProvider<FavoritesCubit>(
+          create: (_) => FavoritesCubit(favoritesStorage)..loadAll(),
+        ),
+      ],
+      child: MaterialApp.router(
+        title: 'Turnly',
+        debugShowCheckedModeBanner: false,
+        theme: AppTheme.light,
+        routerConfig: appRouter,
+      ),
     );
   }
 }
