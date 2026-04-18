@@ -179,6 +179,7 @@ class _BusinessContent extends StatelessWidget {
             if (context.mounted) {
               context.push('/reservations/create', extra: {
                 'tenantSlug': business.slug,
+                'customFields': business.customFields,
               });
             }
           },
@@ -240,6 +241,7 @@ class _ServicesTab extends StatelessWidget {
               context.push('/reservations/create', extra: {
                 'tenantSlug': business.slug,
                 'serviceId': service.id,
+                'customFields': business.customFields,
               });
             }
           },

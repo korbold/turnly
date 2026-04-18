@@ -25,11 +25,13 @@ import '../widgets/step_indicator.dart';
 class CreateReservationScreen extends StatelessWidget {
   final String tenantSlug;
   final String? serviceId;
+  final List<Map<String, dynamic>> customFields;
 
   const CreateReservationScreen({
     super.key,
     required this.tenantSlug,
     this.serviceId,
+    this.customFields = const [],
   });
 
   @override
@@ -48,6 +50,7 @@ class CreateReservationScreen extends StatelessWidget {
       child: _CreateReservationView(
         tenantSlug: tenantSlug,
         serviceId: serviceId,
+        customFields: customFields,
       ),
     );
   }
@@ -56,10 +59,12 @@ class CreateReservationScreen extends StatelessWidget {
 class _CreateReservationView extends StatefulWidget {
   final String tenantSlug;
   final String? serviceId;
+  final List<Map<String, dynamic>> customFields;
 
   const _CreateReservationView({
     required this.tenantSlug,
     this.serviceId,
+    this.customFields = const [],
   });
 
   @override
@@ -74,6 +79,7 @@ class _CreateReservationViewState extends State<_CreateReservationView> {
   ClientResource? _selectedResource;
   final _newResourceController = TextEditingController();
   bool _creatingNewResource = false;
+  final Map<String, TextEditingController> _customFieldControllers = {};
 
   // Step 2: Date & Slot
   DateTime? _selectedDate;
@@ -83,10 +89,24 @@ class _CreateReservationViewState extends State<_CreateReservationView> {
   final _notesController = TextEditingController();
 
   @override
+  void initState() {
+    super.initState();
+    for (final field in widget.customFields) {
+      final key = field['key'] as String? ?? '';
+      if (key.isNotEmpty) {
+        _customFieldControllers[key] = TextEditingController();
+      }
+    }
+  }
+
+  @override
   void dispose() {
     _pageController.dispose();
     _newResourceController.dispose();
     _notesController.dispose();
+    for (final c in _customFieldControllers.values) {
+      c.dispose();
+    }
     super.dispose();
   }
 
@@ -114,17 +134,64 @@ class _CreateReservationViewState extends State<_CreateReservationView> {
   }
 
   Future<void> _createInlineResource() async {
-    final label = _newResourceController.text.trim();
+    String label;
+    Map<String, dynamic>? data;
+
+    if (widget.customFields.isNotEmpty) {
+      // Validate required fields
+      for (final field in widget.customFields) {
+        final key = field['key'] as String? ?? '';
+        final required = field['required'] as bool? ?? false;
+        final fieldLabel = field['label'] as String? ?? key;
+        final value = _customFieldControllers[key]?.text.trim() ?? '';
+        if (required && value.isEmpty) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(content: Text('El campo "$fieldLabel" es requerido')),
+          );
+          return;
+        }
+      }
+
+      // Build data map from custom fields
+      data = {};
+      for (final field in widget.customFields) {
+        final key = field['key'] as String? ?? '';
+        if (key.isNotEmpty) {
+          data[key] = _customFieldControllers[key]?.text.trim() ?? '';
+        }
+      }
+
+      // Build label from key field values (plate + brand + model if present)
+      final parts = <String>[];
+      for (final key in ['plate', 'brand', 'model']) {
+        final val = _customFieldControllers[key]?.text.trim() ?? '';
+        if (val.isNotEmpty) parts.add(val);
+      }
+      if (parts.isEmpty) {
+        // Fallback: use the first field value
+        final firstKey = widget.customFields.first['key'] as String? ?? '';
+        label = _customFieldControllers[firstKey]?.text.trim() ?? '';
+      } else {
+        label = parts.join(' ');
+      }
+    } else {
+      label = _newResourceController.text.trim();
+    }
+
     if (label.isEmpty) return;
 
     setState(() => _creatingNewResource = true);
     final success = await context.read<ResourcesCubit>().createResource(
           label: label,
+          data: data,
         );
     setState(() => _creatingNewResource = false);
 
     if (success && mounted) {
       _newResourceController.clear();
+      for (final c in _customFieldControllers.values) {
+        c.clear();
+      }
       final state = context.read<ResourcesCubit>().state;
       if (state is ResourcesLoaded && state.resources.isNotEmpty) {
         setState(() {
@@ -231,6 +298,8 @@ class _CreateReservationViewState extends State<_CreateReservationView> {
                     selectedResource: _selectedResource,
                     newResourceController: _newResourceController,
                     creatingNewResource: _creatingNewResource,
+                    customFields: widget.customFields,
+                    customFieldControllers: _customFieldControllers,
                     onResourceSelected: (r) {
                       setState(() => _selectedResource = r);
                     },
@@ -352,6 +421,8 @@ class _Step1ResourceSelection extends StatelessWidget {
   final ClientResource? selectedResource;
   final TextEditingController newResourceController;
   final bool creatingNewResource;
+  final List<Map<String, dynamic>> customFields;
+  final Map<String, TextEditingController> customFieldControllers;
   final ValueChanged<ClientResource> onResourceSelected;
   final VoidCallback onCreateResource;
   final VoidCallback onNext;
@@ -360,6 +431,8 @@ class _Step1ResourceSelection extends StatelessWidget {
     required this.selectedResource,
     required this.newResourceController,
     required this.creatingNewResource,
+    required this.customFields,
+    required this.customFieldControllers,
     required this.onResourceSelected,
     required this.onCreateResource,
     required this.onNext,
@@ -459,23 +532,45 @@ class _Step1ResourceSelection extends StatelessWidget {
                   ),
                 ),
                 const SizedBox(height: 12),
-                Row(
-                  children: [
-                    Expanded(
+                if (customFields.isNotEmpty) ...[
+                  ...customFields.map((field) {
+                    final key = field['key'] as String? ?? '';
+                    final label = field['label'] as String? ?? key;
+                    final isRequired = field['required'] as bool? ?? false;
+                    return Padding(
+                      padding: const EdgeInsets.only(bottom: 12),
                       child: AppTextField(
-                        hint: 'Ej: Mi vehiculo, Placa ABC-123',
-                        controller: newResourceController,
+                        label: '$label${isRequired ? ' *' : ''}',
+                        hint: label,
+                        controller: customFieldControllers[key],
                       ),
-                    ),
-                    const SizedBox(width: 12),
-                    AppButton(
-                      label: 'Crear',
-                      onPressed: onCreateResource,
-                      isLoading: creatingNewResource,
-                      fullWidth: false,
-                    ),
-                  ],
-                ),
+                    );
+                  }),
+                  const SizedBox(height: 4),
+                  AppButton(
+                    label: 'Crear',
+                    onPressed: onCreateResource,
+                    isLoading: creatingNewResource,
+                  ),
+                ] else ...[
+                  Row(
+                    children: [
+                      Expanded(
+                        child: AppTextField(
+                          hint: 'Ej: Mi vehiculo, Placa ABC-123',
+                          controller: newResourceController,
+                        ),
+                      ),
+                      const SizedBox(width: 12),
+                      AppButton(
+                        label: 'Crear',
+                        onPressed: onCreateResource,
+                        isLoading: creatingNewResource,
+                        fullWidth: false,
+                      ),
+                    ],
+                  ),
+                ],
               ],
             ),
           ).animate().fadeIn(duration: 400.ms, delay: 200.ms),

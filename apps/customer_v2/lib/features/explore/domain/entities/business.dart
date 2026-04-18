@@ -17,6 +17,7 @@ class Business extends Equatable {
   final int cancellationHours;
   final List<Service> services;
   final List<BusinessHours> hours;
+  final List<Map<String, dynamic>> customFields;
 
   const Business({
     required this.id,
@@ -32,6 +33,7 @@ class Business extends Equatable {
     this.cancellationHours = 1,
     this.services = const [],
     this.hours = const [],
+    this.customFields = const [],
   });
 
   @override

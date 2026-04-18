@@ -86,9 +86,12 @@ final appRouter = GoRouter(
       path: '/reservations/create',
       builder: (context, state) {
         final extra = state.extra as Map<String, dynamic>?;
+        final customFields =
+            (extra?['customFields'] as List<Map<String, dynamic>>?) ?? [];
         return CreateReservationScreen(
           tenantSlug: extra?['tenantSlug'] as String? ?? '',
           serviceId: extra?['serviceId'] as String?,
+          customFields: customFields,
         );
       },
     ),
