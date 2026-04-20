@@ -29,6 +29,7 @@ dependencies:
 
   # Storage
   flutter_secure_storage: ^9.2.0
+  google_sign_in: ^6.2.1
   hive_flutter: ^1.1.0
   shared_preferences: ^2.3.0
 
