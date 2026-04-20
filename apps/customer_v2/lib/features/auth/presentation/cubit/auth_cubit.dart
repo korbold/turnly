@@ -36,6 +36,21 @@ class AuthCubit extends Cubit<AuthState> {
     );
   }
 
+  Future<void> loginWithGoogle() async {
+    emit(const AuthLoading());
+    final result = await _repository.loginWithGoogle();
+    result.fold(
+      (failure) {
+        if (failure.message == 'Inicio de sesión cancelado') {
+          emit(const AuthInitial());
+        } else {
+          emit(AuthError(failure.message));
+        }
+      },
+      (data) => emit(AuthAuthenticated(data.user)),
+    );
+  }
+
   Future<void> getMe() async {
     emit(const AuthLoading());
     final result = await _repository.getMe();
