@@ -10,6 +10,7 @@ import '../../../../shared/widgets/app_text_field.dart';
 import '../../domain/repositories/auth_repository.dart';
 import '../cubit/auth_cubit.dart';
 import '../cubit/auth_state.dart';
+import '../widgets/google_sign_in_button.dart';
 
 class LoginScreen extends StatelessWidget {
   const LoginScreen({super.key});
@@ -292,6 +293,36 @@ class _LoginViewState extends State<_LoginView> {
                               duration: 500.ms,
                               delay: 450.ms,
                             ),
+
+                        const SizedBox(height: 20),
+
+                        // Divider
+                        Row(
+                          children: [
+                            Expanded(child: Divider(color: Colors.grey.shade300)),
+                            Padding(
+                              padding: const EdgeInsets.symmetric(horizontal: 16),
+                              child: Text(
+                                'o',
+                                style: TextStyle(
+                                  color: Colors.grey.shade500,
+                                  fontSize: 13,
+                                ),
+                              ),
+                            ),
+                            Expanded(child: Divider(color: Colors.grey.shade300)),
+                          ],
+                        ),
+
+                        const SizedBox(height: 20),
+
+                        // Google Sign-In button
+                        GoogleSignInButton(
+                          isLoading: state is AuthLoading,
+                          onPressed: () {
+                            context.read<AuthCubit>().loginWithGoogle();
+                          },
+                        ),
 
                         const SizedBox(height: 24),
 
