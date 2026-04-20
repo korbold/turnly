@@ -1,6 +1,7 @@
 // lib/features/auth/data/repositories/auth_repository_impl.dart
 import 'package:dio/dio.dart';
 import 'package:fpdart/fpdart.dart';
+import 'package:google_sign_in/google_sign_in.dart';
 import '../../../../core/error/failures.dart';
 import '../../../../core/network/api_client.dart';
 import '../../../../core/storage/secure_storage.dart';
@@ -96,6 +97,45 @@ class AuthRepositoryImpl implements AuthRepository {
   Future<bool> isAuthenticated() async {
     final token = await SecureStorage.getToken();
     return token != null;
+  }
+
+  @override
+  Future<Either<Failure, ({User user, String token})>> loginWithGoogle() async {
+    try {
+      final googleSignIn = GoogleSignIn(scopes: ['email', 'profile']);
+      final account = await googleSignIn.signIn();
+
+      if (account == null) {
+        return const Left(ServerFailure('Inicio de sesión cancelado'));
+      }
+
+      final auth = await account.authentication;
+      final idToken = auth.idToken;
+
+      if (idToken == null) {
+        return const Left(ServerFailure('Error al obtener token de Google'));
+      }
+
+      final response = await _dio.post(
+        '/auth/google',
+        data: {'id_token': idToken},
+      );
+
+      final dto = AuthResponseDto.fromJson(
+        response.data['data'] as Map<String, dynamic>,
+      );
+      await SecureStorage.saveToken(dto.token);
+
+      return Right((user: dto.user.toEntity(), token: dto.token));
+    } on DioException catch (e) {
+      if (e.response?.statusCode == 401) {
+        final msg = e.response?.data['error']?['message'] ?? 'Token de Google inválido';
+        return Left(ServerFailure(msg.toString()));
+      }
+      return Left(_extractError(e, 'Error al iniciar con Google'));
+    } catch (e) {
+      return Left(ServerFailure('Error al iniciar con Google'));
+    }
   }
 
   ServerFailure _extractError(DioException e, String fallback) {

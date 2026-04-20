@@ -14,4 +14,5 @@ abstract class AuthRepository {
   Future<Either<Failure, User>> getMe();
   Future<Either<Failure, Unit>> logout();
   Future<bool> isAuthenticated();
+  Future<Either<Failure, ({User user, String token})>> loginWithGoogle();
 }
