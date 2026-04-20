@@ -1,6 +1,7 @@
 <?php
 
 use App\Infrastructure\Http\Controllers\Auth\AuthController;
+use App\Infrastructure\Http\Controllers\Auth\GoogleAuthController;
 use App\Infrastructure\Http\Controllers\Auth\OnboardingController;
 use App\Infrastructure\Http\Controllers\Tenant\TenantSettingsController;
 use App\Infrastructure\Http\Controllers\Tenant\TenantImageController;
@@ -29,6 +30,7 @@ Route::prefix('v1')->group(function () {
     // Public auth
     Route::post('auth/register', [AuthController::class, 'register']);
     Route::post('auth/login', [AuthController::class, 'login']);
+    Route::post('auth/google', [GoogleAuthController::class, 'login']);
 
     // Public onboarding
     Route::prefix('onboarding')->group(function () {
