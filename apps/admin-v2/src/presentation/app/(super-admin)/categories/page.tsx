@@ -3,10 +3,16 @@
 import { useState } from 'react';
 import { Plus, Pencil, Trash2, Check, X } from 'lucide-react';
 import { toast } from 'sonner';
+import EmojiPicker, { type EmojiClickData } from 'emoji-picker-react';
 import { Button } from '@/presentation/components/ui/button';
 import { Input } from '@/presentation/components/ui/input';
 import { Badge } from '@/presentation/components/ui/badge';
 import { Skeleton } from '@/presentation/components/ui/skeleton';
+import {
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from '@/presentation/components/ui/popover';
 import {
   Table,
   TableBody,
@@ -113,12 +119,20 @@ export default function CategoriesPage() {
             onChange={(e) => setNewForm({ ...newForm, name: e.target.value })}
             onKeyDown={(e) => e.key === 'Enter' && handleCreate()}
           />
-          <Input
-            placeholder="Emoji (ej: 🚗)"
-            value={newForm.emoji}
-            onChange={(e) => setNewForm({ ...newForm, emoji: e.target.value })}
-            className="w-full"
-          />
+          <Popover>
+            <PopoverTrigger asChild>
+              <Button variant="outline" className="w-full justify-start text-xl">
+                {newForm.emoji || 'Emoji...'}
+              </Button>
+            </PopoverTrigger>
+            <PopoverContent className="w-auto p-0" align="start">
+              <EmojiPicker
+                onEmojiClick={(e: EmojiClickData) => setNewForm({ ...newForm, emoji: e.emoji })}
+                width={300}
+                height={350}
+              />
+            </PopoverContent>
+          </Popover>
           <div className="flex items-center gap-2">
             <input
               type="color"
@@ -173,11 +187,20 @@ export default function CategoriesPage() {
                   </TableCell>
                   <TableCell>
                     {editingId === cat.id ? (
-                      <Input
-                        value={editForm.emoji}
-                        onChange={(e) => setEditForm({ ...editForm, emoji: e.target.value })}
-                        className="h-8 w-16"
-                      />
+                      <Popover>
+                        <PopoverTrigger asChild>
+                          <button className="text-xl hover:scale-110 transition-transform">
+                            {editForm.emoji || '🏪'}
+                          </button>
+                        </PopoverTrigger>
+                        <PopoverContent className="w-auto p-0" align="start">
+                          <EmojiPicker
+                            onEmojiClick={(e: EmojiClickData) => setEditForm({ ...editForm, emoji: e.emoji })}
+                            width={300}
+                            height={350}
+                          />
+                        </PopoverContent>
+                      </Popover>
                     ) : (
                       <span className="text-xl">{cat.emoji ?? '🏪'}</span>
                     )}
