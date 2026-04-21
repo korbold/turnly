@@ -8,7 +8,6 @@ use App\Application\UseCases\ClientResource\GetClientResourceHistoryUseCase;
 use App\Infrastructure\Http\Controllers\Controller;
 use App\Infrastructure\Http\Requests\ClientResource\CreateClientResourceRequest;
 use App\Infrastructure\Http\Resources\ClientResourceResource;
-use App\Infrastructure\Http\Resources\ServiceLogResource;
 use App\Infrastructure\Persistence\Models\ClientResourceModel;
 use App\Infrastructure\Persistence\Models\TenantUserModel;
 use App\Infrastructure\Persistence\Models\UserModel;
@@ -25,9 +24,14 @@ class ClientResourceController extends Controller
 
     public function index(Request $request)
     {
-        $clientResources = ClientResourceModel::with('client')
-            ->orderBy('created_at', 'desc')
-            ->paginate($request->get('per_page', 15));
+        $query = ClientResourceModel::with('client')
+            ->orderBy('created_at', 'desc');
+
+        if (!$request->boolean('all')) {
+            $query->where('client_id', $request->user()->id);
+        }
+
+        $clientResources = $query->paginate($request->get('per_page', 15));
 
         return ClientResourceResource::collection($clientResources);
     }
@@ -37,16 +41,25 @@ class ClientResourceController extends Controller
         $data = $request->data ?? [];
         $tenantId = app('current_tenant_id');
 
-        // Resolve client: explicit client_id, or auto-create from client name in data
         $clientId = $request->client_id;
 
         if (!$clientId) {
-            $clientName = $this->extractClientName($data);
-            if ($clientName) {
-                $client = $this->findOrCreateClient($clientName, $tenantId);
-                $clientId = $client->id;
+            $user = $request->user();
+            $tenantUser = TenantUserModel::where('user_id', $user->id)
+                ->where('tenant_id', $tenantId)
+                ->first();
+            $isAdmin = $tenantUser && in_array($tenantUser->role, ['owner', 'tenant_admin']);
+
+            if ($isAdmin) {
+                $clientName = $this->extractClientName($data);
+                if ($clientName) {
+                    $client = $this->findOrCreateClient($clientName, $tenantId);
+                    $clientId = $client->id;
+                } else {
+                    $clientId = $user->id;
+                }
             } else {
-                $clientId = $request->user()->id;
+                $clientId = $user->id;
             }
         }
 
@@ -54,11 +67,6 @@ class ClientResourceController extends Controller
             tenantId: $tenantId,
             clientId: $clientId,
             data: $data,
-            plate: $request->plate ?? $data['plate'] ?? '',
-            brand: $request->brand ?? $data['brand'] ?? null,
-            model: $request->model ?? $data['model'] ?? null,
-            color: $request->color ?? $data['color'] ?? null,
-            type: $request->type ?? $data['type'] ?? 'sedan',
         );
 
         $clientResource = $this->createClientResource->execute($dto);
@@ -79,13 +87,42 @@ class ClientResourceController extends Controller
     {
         $clientResource = ClientResourceModel::findOrFail($id);
 
+        if ($this->hasReservations($clientResource)) {
+            abort(422, 'No se puede editar un registro que tiene reservas');
+        }
+
         $request->validate([
             'data' => 'nullable|array',
         ]);
 
-        $clientResource->update($request->only(['data']));
+        $clientResource->update([
+            'data' => $request->data ?? [],
+        ]);
 
         return new ClientResourceResource($clientResource->load('client'));
+    }
+
+    public function destroy(string $id): JsonResponse
+    {
+        $clientResource = ClientResourceModel::findOrFail($id);
+
+        if ($this->hasReservations($clientResource)) {
+            return response()->json([
+                'error' => [
+                    'code' => 'HAS_RESERVATIONS',
+                    'message' => 'No se puede eliminar un registro que tiene reservas',
+                ],
+            ], 422);
+        }
+
+        $clientResource->delete();
+
+        return response()->json(['message' => 'Registro eliminado'], 200);
+    }
+
+    private function hasReservations(ClientResourceModel $resource): bool
+    {
+        return \App\Infrastructure\Persistence\Models\ReservationModel::where('client_resource_id', $resource->id)->exists();
     }
 
     public function history(string $id): JsonResponse
@@ -102,14 +139,15 @@ class ClientResourceController extends Controller
     }
 
     /**
-     * Extract client name from data fields.
-     * Looks for known keys that represent a client name.
+     * Extract client name from data fields using tenant's custom_fields config.
      */
     private function extractClientName(array $data): ?string
     {
-        // Check for common client name field patterns in custom fields
         $tenant = app('current_tenant');
         $customFields = $tenant->custom_fields ?? [];
+        if (is_string($customFields)) {
+            $customFields = json_decode($customFields, true) ?? [];
+        }
 
         foreach ($customFields as $field) {
             $label = strtolower($field['label'] ?? '');
@@ -124,12 +162,8 @@ class ClientResourceController extends Controller
         return null;
     }
 
-    /**
-     * Find existing client by name or create a new one.
-     */
     private function findOrCreateClient(string $name, string $tenantId): UserModel
     {
-        // Look for existing client with this name in the tenant
         $existing = UserModel::whereHas('tenants', function ($q) use ($tenantId) {
             $q->where('tenants.id', $tenantId)->where('tenant_users.role', 'client');
         })->where('name', $name)->first();
@@ -138,7 +172,6 @@ class ClientResourceController extends Controller
             return $existing;
         }
 
-        // Create new user with client role
         $user = UserModel::create([
             'name' => $name,
             'email' => Str::slug($name) . '-' . Str::random(4) . '@client.local',

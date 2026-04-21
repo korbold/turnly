@@ -84,6 +84,7 @@ Route::prefix('v1')->group(function () {
             Route::post('client-resources', [ClientResourceController::class, 'store']);
             Route::get('client-resources/{id}', [ClientResourceController::class, 'show']);
             Route::patch('client-resources/{id}', [ClientResourceController::class, 'update']);
+            Route::delete('client-resources/{id}', [ClientResourceController::class, 'destroy']);
             Route::get('client-resources/{id}/history', [ClientResourceController::class, 'history']);
 
             // Services

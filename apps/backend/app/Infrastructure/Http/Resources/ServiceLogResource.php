@@ -26,9 +26,9 @@ class ServiceLogResource extends JsonResource
             'created_at'     => $this->created_at?->toIso8601String(),
 
             'client_resource' => $this->whenLoaded('clientResource', fn () => [
-                'label' => $this->clientResource->label,
-                'plate' => $this->clientResource->plate,
-                'brand' => $this->clientResource->brand,
+                'id'    => $this->clientResource->id,
+                'label' => ClientResourceResource::labelFrom($this->clientResource->data),
+                'data'  => $this->clientResource->data,
             ]),
 
             'service' => $this->whenLoaded('service', fn () => [

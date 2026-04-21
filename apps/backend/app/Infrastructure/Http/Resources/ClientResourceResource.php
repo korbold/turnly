@@ -12,12 +12,8 @@ class ClientResourceResource extends JsonResource
         return [
             'id'         => $this->id,
             'client_id'  => $this->client_id,
+            'label'      => $this->buildLabel(),
             'data'       => $this->data,
-            'plate'      => $this->plate,
-            'brand'      => $this->brand,
-            'model'      => $this->model,
-            'color'      => $this->color,
-            'type'       => $this->type,
             'created_at' => $this->created_at?->toIso8601String(),
 
             'client' => $this->whenLoaded('client', fn () => [
@@ -25,6 +21,27 @@ class ClientResourceResource extends JsonResource
                 'email' => $this->client->email,
             ]),
         ];
+    }
+
+    private function buildLabel(): string
+    {
+        return self::labelFrom($this->data);
+    }
+
+    public static function labelFrom(mixed $data): string
+    {
+        if (is_string($data)) {
+            $data = json_decode($data, true);
+        }
+
+        if (is_array($data) && !empty($data)) {
+            $values = array_filter(array_values($data), fn ($v) => is_string($v) && $v !== '');
+            if (!empty($values)) {
+                return implode(' - ', $values);
+            }
+        }
+
+        return 'Sin nombre';
     }
 
     public function with(Request $request): array

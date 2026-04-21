@@ -7,7 +7,6 @@ use App\Domain\ClientResource\Entities\ClientResource;
 interface ClientResourceRepositoryInterface
 {
     public function findById(string $id): ?ClientResource;
-    public function findByPlate(string $tenantId, string $plate): ?ClientResource;
     public function findByClient(string $clientId): array;
     public function save(ClientResource $clientResource): ClientResource;
     public function getHistory(string $clientResourceId): array;

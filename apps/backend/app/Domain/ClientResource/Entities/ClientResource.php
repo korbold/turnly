@@ -9,10 +9,5 @@ final readonly class ClientResource
         public string $tenantId,
         public string $clientId,
         public ?array $data,
-        public string $plate,
-        public ?string $brand,
-        public ?string $model,
-        public ?string $color,
-        public string $type,
     ) {}
 }

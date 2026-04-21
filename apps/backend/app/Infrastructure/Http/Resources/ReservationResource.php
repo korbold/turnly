@@ -25,12 +25,9 @@ class ReservationResource extends JsonResource
             'created_at'    => $this->created_at?->toIso8601String(),
 
             'client_resource' => $this->whenLoaded('clientResource', fn () => [
+                'id'    => $this->clientResource->id,
+                'label' => ClientResourceResource::labelFrom($this->clientResource->data),
                 'data'  => $this->clientResource->data,
-                'plate' => $this->clientResource->plate,
-                'brand' => $this->clientResource->brand,
-                'model' => $this->clientResource->model,
-                'color' => $this->clientResource->color,
-                'type'  => $this->clientResource->type,
             ]),
 
             'service' => $this->whenLoaded('service', fn () => [

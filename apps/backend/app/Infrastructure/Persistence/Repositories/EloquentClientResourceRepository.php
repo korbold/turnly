@@ -18,13 +18,6 @@ class EloquentClientResourceRepository implements ClientResourceRepositoryInterf
         return $model ? $this->mapToEntity($model) : null;
     }
 
-    public function findByPlate(string $tenantId, string $plate): ?ClientResource
-    {
-        $model = ClientResourceModel::where('plate', $plate)->first();
-
-        return $model ? $this->mapToEntity($model) : null;
-    }
-
     public function findByClient(string $clientId): array
     {
         return ClientResourceModel::where('client_id', $clientId)
@@ -41,11 +34,6 @@ class EloquentClientResourceRepository implements ClientResourceRepositoryInterf
             'tenant_id'  => $clientResource->tenantId,
             'client_id'  => $clientResource->clientId,
             'data'       => $clientResource->data,
-            'plate'      => $clientResource->plate,
-            'brand'      => $clientResource->brand,
-            'model'      => $clientResource->model,
-            'color'      => $clientResource->color,
-            'type'       => $clientResource->type,
         ];
 
         if ($model) {
@@ -76,10 +64,6 @@ class EloquentClientResourceRepository implements ClientResourceRepositoryInterf
             $query->where('client_id', $filters['client_id']);
         }
 
-        if (!empty($filters['plate'])) {
-            $query->where('plate', 'like', '%' . $filters['plate'] . '%');
-        }
-
         $paginator = $query->paginate($perPage);
 
         return [
@@ -98,11 +82,6 @@ class EloquentClientResourceRepository implements ClientResourceRepositoryInterf
             tenantId: $model->tenant_id,
             clientId: $model->client_id,
             data: $model->data,
-            plate: $model->plate,
-            brand: $model->brand,
-            model: $model->model,
-            color: $model->color,
-            type: $model->type,
         );
     }
 
