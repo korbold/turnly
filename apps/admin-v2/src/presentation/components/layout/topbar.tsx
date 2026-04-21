@@ -1,7 +1,8 @@
 'use client';
 
 import { usePathname, useRouter } from 'next/navigation';
-import { Bell, LogOut, User } from 'lucide-react';
+import { LogOut, User } from 'lucide-react';
+import { NotificationBell } from '@/presentation/components/features/notifications/notification-bell';
 import { Button } from '@/presentation/components/ui/button';
 import { Avatar, AvatarFallback } from '@/presentation/components/ui/avatar';
 import {
@@ -64,14 +65,7 @@ export function Topbar() {
 
       {/* Right: Notifications + Avatar */}
       <div className="flex items-center gap-2">
-        <Button
-          variant="ghost"
-          size="icon"
-          className="relative text-zinc-500 hover:text-zinc-700"
-        >
-          <Bell className="h-5 w-5" />
-          <span className="sr-only">Notificaciones</span>
-        </Button>
+        <NotificationBell />
 
         <DropdownMenu>
           <DropdownMenuTrigger asChild>
