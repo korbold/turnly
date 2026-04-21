@@ -396,9 +396,38 @@ class _ReservationDetailContent extends StatelessWidget {
             const SizedBox(height: 24),
           ],
 
-          // Cancel button
-          if (reservation.canCancel) ...[
+          // Cancellation policy + cancel button
+          if (reservation.status.isUpcoming) ...[
             const SizedBox(height: 8),
+            Container(
+              padding: const EdgeInsets.all(12),
+              decoration: BoxDecoration(
+                color: AppColors.warning.withValues(alpha: 0.08),
+                borderRadius: BorderRadius.circular(12),
+                border: Border.all(color: AppColors.warning.withValues(alpha: 0.3)),
+              ),
+              child: Row(
+                children: [
+                  Icon(Icons.info_outline_rounded, size: 18, color: AppColors.warning),
+                  const SizedBox(width: 10),
+                  Expanded(
+                    child: Text(
+                      reservation.cancellationHours > 0
+                          ? 'Puedes cancelar hasta ${reservation.cancellationHours == 1 ? "1 hora" : "${reservation.cancellationHours} horas"} antes de tu cita'
+                          : 'Puedes cancelar en cualquier momento antes de tu cita',
+                      style: TextStyle(
+                        fontSize: 12,
+                        color: AppColors.warning.withValues(alpha: 0.9),
+                        fontWeight: FontWeight.w500,
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ).animate().fadeIn(duration: 400.ms, delay: 280.ms),
+          ],
+          if (reservation.canCancel) ...[
+            const SizedBox(height: 12),
             AppButton(
               label: 'Cancelar Reserva',
               variant: AppButtonVariant.primary,
