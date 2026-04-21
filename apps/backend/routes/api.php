@@ -141,6 +141,11 @@ Route::prefix('v1')->group(function () {
             Route::patch('tenants/{id}/activate', [SuperAdminController::class, 'activate']);
             Route::get('users', [SuperAdminController::class, 'users']);
             Route::get('stats', [SuperAdminController::class, 'stats']);
+
+            Route::get('categories', [\App\Infrastructure\Http\Controllers\SuperAdmin\BusinessCategoryController::class, 'index']);
+            Route::post('categories', [\App\Infrastructure\Http\Controllers\SuperAdmin\BusinessCategoryController::class, 'store']);
+            Route::patch('categories/{id}', [\App\Infrastructure\Http\Controllers\SuperAdmin\BusinessCategoryController::class, 'update']);
+            Route::delete('categories/{id}', [\App\Infrastructure\Http\Controllers\SuperAdmin\BusinessCategoryController::class, 'destroy']);
         });
     });
 });

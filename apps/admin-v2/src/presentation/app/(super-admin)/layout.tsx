@@ -3,7 +3,7 @@
 import { type ReactNode } from 'react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
-import { LayoutDashboard, Building2, Users, LogOut } from 'lucide-react';
+import { LayoutDashboard, Building2, Users, LogOut, Tags } from 'lucide-react';
 import { cn } from '@/shared/utils/cn';
 import { useLogout } from '@/presentation/hooks/use-auth';
 import { Button } from '@/presentation/components/ui/button';
@@ -11,6 +11,7 @@ import { Button } from '@/presentation/components/ui/button';
 const NAV_ITEMS = [
   { label: 'Dashboard', href: '/super-admin', icon: LayoutDashboard },
   { label: 'Tenants', href: '/super-admin/tenants', icon: Building2 },
+  { label: 'Categorias', href: '/super-admin/categories', icon: Tags },
   { label: 'Users', href: '/super-admin/users', icon: Users },
 ];
 
