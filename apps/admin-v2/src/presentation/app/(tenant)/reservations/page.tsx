@@ -69,20 +69,18 @@ function ReservationsContent() {
 
   // Data for calendar view (full month range)
   const { data: calendarData, isLoading: calendarLoading } = useReservations(
+    {
+      dateFrom: calendarRange.from,
+      dateTo: calendarRange.to,
+      status: statusFilter as ReservationStatus | undefined,
+    },
     view === 'calendar'
-      ? {
-          dateFrom: calendarRange.from,
-          dateTo: calendarRange.to,
-          status: statusFilter as ReservationStatus | undefined,
-        }
-      : { dateFrom: '', dateTo: '' }
   );
 
   // Unfiltered for status counts (calendar)
   const { data: allCalendarData } = useReservations(
+    { dateFrom: calendarRange.from, dateTo: calendarRange.to },
     view === 'calendar'
-      ? { dateFrom: calendarRange.from, dateTo: calendarRange.to }
-      : { dateFrom: '', dateTo: '' }
   );
 
   const isLoading = view === 'timeline' ? timelineLoading : calendarLoading;

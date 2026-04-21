@@ -10,11 +10,12 @@ import { CancelReservationUseCase } from '@/application/use-cases/reservations/c
 import type { ReservationFilters, ReservationAction } from '@/domain/entities/reservation';
 import type { CreateReservationData } from '@/domain/repositories/reservation.repository';
 
-export function useReservations(filters: ReservationFilters) {
+export function useReservations(filters: ReservationFilters, enabled = true) {
   const repo = useRepository('reservation');
   return useQuery({
     queryKey: ['reservations', filters],
     queryFn: () => new GetReservationsUseCase(repo).execute(filters),
+    enabled,
   });
 }
 
