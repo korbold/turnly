@@ -1,6 +1,8 @@
 // lib/features/auth/presentation/cubit/auth_cubit.dart
 import 'dart:convert';
 import 'package:flutter_bloc/flutter_bloc.dart';
+import '../../../../core/di/injection.dart';
+import '../../../../core/push/push_notification_service.dart';
 import '../../../../core/storage/secure_storage.dart';
 import '../../data/dtos/auth_dto.dart';
 import '../../domain/repositories/auth_repository.dart';
@@ -16,7 +18,10 @@ class AuthCubit extends Cubit<AuthState> {
     final result = await _repository.login(email, password);
     result.fold(
       (failure) => emit(AuthError(failure.message)),
-      (data) => emit(AuthAuthenticated(data.user)),
+      (data) {
+        emit(AuthAuthenticated(data.user));
+        getIt<PushNotificationService>().init();
+      },
     );
   }
 
@@ -35,7 +40,10 @@ class AuthCubit extends Cubit<AuthState> {
     );
     result.fold(
       (failure) => emit(AuthError(failure.message)),
-      (data) => emit(AuthAuthenticated(data.user)),
+      (data) {
+        emit(AuthAuthenticated(data.user));
+        getIt<PushNotificationService>().init();
+      },
     );
   }
 
@@ -50,7 +58,10 @@ class AuthCubit extends Cubit<AuthState> {
           emit(AuthError(failure.message));
         }
       },
-      (data) => emit(AuthAuthenticated(data.user)),
+      (data) {
+        emit(AuthAuthenticated(data.user));
+        getIt<PushNotificationService>().init();
+      },
     );
   }
 
@@ -75,6 +86,7 @@ class AuthCubit extends Cubit<AuthState> {
       if (userData != null) {
         final user = UserDto.fromJson(jsonDecode(userData) as Map<String, dynamic>).toEntity();
         emit(AuthAuthenticated(user));
+        getIt<PushNotificationService>().init();
       } else {
         await getMe();
       }

@@ -10,6 +10,7 @@ import '../../features/reservations/domain/repositories/reservation_repository.d
 import '../../features/reservations/data/repositories/reservation_repository_impl.dart';
 import '../../features/resources/domain/repositories/resource_repository.dart';
 import '../../features/resources/data/repositories/resource_repository_impl.dart';
+import '../push/push_notification_service.dart';
 final getIt = GetIt.instance;
 
 void configureDependencies() {
@@ -27,4 +28,7 @@ void configureDependencies() {
 
   // Resources
   getIt.registerLazySingleton<ResourceRepository>(() => ResourceRepositoryImpl());
+
+  // Push
+  getIt.registerLazySingleton<PushNotificationService>(() => PushNotificationService());
 }
