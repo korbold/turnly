@@ -89,9 +89,10 @@ class AuthRepositoryImpl implements AuthRepository {
   Future<Either<Failure, Unit>> logout() async {
     try {
       await _dio.post('/auth/logout');
-    } catch (_) {
-      // Logout even if API call fails
-    }
+    } catch (_) {}
+    try {
+      await GoogleSignIn().signOut();
+    } catch (_) {}
     await SecureStorage.clear();
     ApiClient.reset();
     return const Right(unit);

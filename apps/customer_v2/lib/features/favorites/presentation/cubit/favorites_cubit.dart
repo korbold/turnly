@@ -21,4 +21,10 @@ class FavoritesCubit extends Cubit<FavoritesState> {
 
   /// Check if a slug is in favorites.
   bool isFavorite(String slug) => _storage.isFavorite(slug);
+
+  /// Clear all favorites (used on logout).
+  void clear() {
+    _storage.clearAll();
+    emit(const FavoritesLoaded({}));
+  }
 }

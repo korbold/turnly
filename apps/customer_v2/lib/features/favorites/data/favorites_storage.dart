@@ -29,4 +29,7 @@ class FavoritesStorage {
 
   /// Return all favorited slugs.
   Set<String> getAll() => _box.values.toSet();
+
+  /// Clear all favorites.
+  void clearAll() => _box.clear();
 }

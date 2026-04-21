@@ -8,6 +8,7 @@ import '../../../../app/theme/app_colors.dart';
 import '../../../../shared/widgets/avatar_circle.dart';
 import '../../../auth/presentation/cubit/auth_cubit.dart';
 import '../../../auth/presentation/cubit/auth_state.dart';
+import '../../../favorites/presentation/cubit/favorites_cubit.dart';
 
 class ProfileScreen extends StatelessWidget {
   const ProfileScreen({super.key});
@@ -276,6 +277,7 @@ class ProfileScreen extends StatelessWidget {
                         );
 
                         if (confirmed == true && context.mounted) {
+                          context.read<FavoritesCubit>().clear();
                           await context.read<AuthCubit>().logout();
                           if (context.mounted) {
                             context.go('/login');
