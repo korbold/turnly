@@ -11,6 +11,9 @@ class BusinessDto {
   Business toEntity() {
     final servicesJson = json['services'] as List<dynamic>? ?? [];
     final availabilityJson = json['availability'] as List<dynamic>? ?? [];
+    final tenantSlotDuration = (json['slot_duration'] as int?) ??
+        (json['tenant'] as Map<String, dynamic>?)?['slot_duration'] as int? ??
+        30;
 
     return Business(
       id: json['id'] as String? ?? json['slug'] as String? ?? '',
@@ -26,7 +29,7 @@ class BusinessDto {
       slotDuration: json['slot_duration'] as int? ?? 30,
       cancellationHours: json['cancellation_hours'] as int? ?? 1,
       services: servicesJson
-          .map((s) => _serviceFromJson(s as Map<String, dynamic>))
+          .map((s) => _serviceFromJson(s as Map<String, dynamic>, tenantSlotDuration))
           .toList(),
       hours: _parseAvailability(availabilityJson),
       customFields: (json['custom_fields'] as List<dynamic>?)
@@ -36,7 +39,7 @@ class BusinessDto {
     );
   }
 
-  static Service _serviceFromJson(Map<String, dynamic> json) {
+  static Service _serviceFromJson(Map<String, dynamic> json, int tenantSlotDuration) {
     // price can be String ("5.00") or num
     final rawPrice = json['price'];
     final price = rawPrice is num
@@ -48,7 +51,7 @@ class BusinessDto {
       name: json['name'] as String? ?? '',
       description: json['description'] as String?,
       price: price,
-      durationMinutes: json['duration_minutes'] as int? ?? 30,
+      durationMinutes: json['duration_minutes'] as int? ?? tenantSlotDuration,
     );
   }
 
