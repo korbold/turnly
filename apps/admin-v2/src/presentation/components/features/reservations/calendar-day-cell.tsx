@@ -7,13 +7,13 @@ import { cn } from '@/shared/utils/cn';
 
 const MAX_VISIBLE = 3;
 
-const BORDER_COLORS: Record<string, string> = {
-  pending: 'border-l-amber-500',
-  confirmed: 'border-l-sky-500',
-  in_progress: 'border-l-indigo-500',
-  completed: 'border-l-emerald-500',
-  cancelled: 'border-l-rose-500',
-  no_show: 'border-l-slate-500',
+const MINI_CARD_STYLES: Record<string, string> = {
+  pending: 'border-l-amber-500 bg-amber-50',
+  confirmed: 'border-l-sky-500 bg-sky-50',
+  in_progress: 'border-l-indigo-500 bg-indigo-50',
+  completed: 'border-l-emerald-500 bg-emerald-50',
+  cancelled: 'border-l-rose-500 bg-rose-50',
+  no_show: 'border-l-slate-500 bg-slate-50',
 };
 
 interface CalendarDayCellProps {
@@ -70,7 +70,7 @@ export function CalendarDayCell({
             onClick={() => onSelectReservation(r)}
             className={cn(
               'flex w-full items-center gap-1 truncate rounded border-l-2 px-1 py-0.5 text-left text-[11px] leading-tight hover:opacity-80',
-              BORDER_COLORS[r.status] ?? 'border-l-zinc-400'
+              MINI_CARD_STYLES[r.status] ?? 'border-l-zinc-400'
             )}
           >
             <span className="shrink-0 font-medium text-zinc-600">
