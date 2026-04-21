@@ -31,7 +31,7 @@ function SettingsContent() {
       <Tabs value={tab} onValueChange={setTab}>
         {/* Desktop: vertical side tabs */}
         <div className="flex flex-col gap-6 lg:flex-row">
-          <TabsList className="hidden h-auto flex-col items-stretch gap-1 bg-transparent p-0 lg:flex lg:w-48">
+          <TabsList className="hidden h-auto flex-col items-stretch gap-1 bg-transparent p-0 lg:flex lg:w-48 lg:sticky lg:top-4 lg:self-start">
             {TABS.map(({ value, label, icon: Icon }) => (
               <TabsTrigger
                 key={value}

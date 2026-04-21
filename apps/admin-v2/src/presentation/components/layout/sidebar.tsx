@@ -128,10 +128,9 @@ export function Sidebar({ collapsed = false, onToggle }: SidebarProps) {
           ))}
 
           {/* Profile */}
-          <button
-            onClick={() => logout.mutate()}
+          <div
             className={cn(
-              'flex w-full items-center gap-3 rounded-lg px-3 py-2 text-sm text-zinc-600 hover:bg-zinc-100 transition-colors',
+              'flex w-full items-center gap-3 rounded-lg px-3 py-2 text-sm text-zinc-600',
               collapsed && 'justify-center px-0'
             )}
           >
@@ -141,9 +140,22 @@ export function Sidebar({ collapsed = false, onToggle }: SidebarProps) {
               </AvatarFallback>
             </Avatar>
             {!collapsed && (
-              <span className="truncate">{me?.user?.name ?? 'Usuario'}</span>
+              <>
+                <span className="truncate flex-1">{me?.user?.name ?? 'Usuario'}</span>
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <button
+                      onClick={() => logout.mutate()}
+                      className="shrink-0 rounded-md p-1 text-zinc-400 hover:bg-zinc-200 hover:text-zinc-600 transition-colors"
+                    >
+                      <LogOut className="h-4 w-4" />
+                    </button>
+                  </TooltipTrigger>
+                  <TooltipContent side="top">Cerrar sesión</TooltipContent>
+                </Tooltip>
+              </>
             )}
-          </button>
+          </div>
         </div>
 
         {/* Toggle button */}

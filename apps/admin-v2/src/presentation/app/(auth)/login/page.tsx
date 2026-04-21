@@ -49,11 +49,7 @@ export default function LoginPage() {
     login.mutate(data, {
       onSuccess: () => {
         const isSuperAdmin = authStorage.getIsSuperAdmin();
-        if (isSuperAdmin) {
-          router.push('/super-admin');
-        } else {
-          router.push('/dashboard');
-        }
+        router.push(isSuperAdmin ? '/super-admin' : '/dashboard');
       },
       onError: (error: Error) => {
         setApiError(
@@ -131,6 +127,7 @@ export default function LoginPage() {
               Registrarte
             </Link>
           </p>
+
         </form>
       </CardContent>
     </Card>

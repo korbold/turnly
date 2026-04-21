@@ -29,7 +29,7 @@ export function useLogin() {
         authStorage.setTenantSlug(result.tenant.slug);
       }
       authStorage.setIsSuperAdmin(result.user.isSuperAdmin);
-      queryClient.invalidateQueries({ queryKey: ['me'] });
+      queryClient.removeQueries({ queryKey: ['me'] });
     },
   });
 }

@@ -14,7 +14,7 @@ export class ApiClientResourceRepository implements ClientResourceRepository {
     if (page) params.page = page;
     if (search) params.search = search;
 
-    const { data: res } = await api.get('/client-resources', { params });
+    const { data: res } = await api.get('/client-resources', { params: { ...params, all: 1 } });
     return mapPaginatedResponse(res, mapClientResource);
   }
 

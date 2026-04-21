@@ -39,9 +39,9 @@ const tabs: (TabItem | 'fab')[] = [
 ];
 
 const quickActions = [
-  { label: 'Nueva Reserva', icon: Calendar, href: '/reservations/new' },
-  { label: 'Registrar Servicio', icon: ClipboardList, href: '/service-logs/new' },
-  { label: 'Bloquear Horario', icon: Clock, href: '/availability/block' },
+  { label: 'Nueva Reserva', icon: Calendar, href: '/reservations?create=true' },
+  { label: 'Registrar Servicio', icon: ClipboardList, href: '/service-logs?create=true' },
+  { label: 'Bloquear Horario', icon: Clock, href: '/settings' },
 ];
 
 const moreItems = [

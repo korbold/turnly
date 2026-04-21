@@ -27,6 +27,7 @@ import {
   useTransitionReservation,
   useCancelReservation,
 } from '@/presentation/hooks/use-reservations';
+import { useSettings } from '@/presentation/hooks/use-settings';
 import {
   RESERVATION_STATUS_CONFIG,
 } from '@/shared/constants/status';
@@ -52,6 +53,7 @@ function InfoRow({ label, value }: { label: string; value: React.ReactNode }) {
 export function DetailPanel({ reservation, open, onClose }: DetailPanelProps) {
   const transition = useTransitionReservation();
   const cancel = useCancelReservation();
+  const { data: settings } = useSettings();
   const [cancelOpen, setCancelOpen] = useState(false);
   const [cancelReason, setCancelReason] = useState('');
 
@@ -200,24 +202,12 @@ export function DetailPanel({ reservation, open, onClose }: DetailPanelProps) {
               <h4 className="mb-1 text-xs font-semibold uppercase tracking-wider text-muted-foreground">
                 Cliente / Recurso
               </h4>
-              {reservation.clientResource?.plate && (
-                <InfoRow label="Placa" value={reservation.clientResource.plate} />
-              )}
-              {reservation.clientResource?.brand && (
-                <InfoRow label="Marca" value={reservation.clientResource.brand} />
-              )}
-              {reservation.clientResource?.model && (
-                <InfoRow label="Modelo" value={reservation.clientResource.model} />
-              )}
-              {reservation.clientResource?.color && (
-                <InfoRow label="Color" value={reservation.clientResource.color} />
-              )}
-              {/* Show custom fields from resource data */}
               {reservation.clientResource?.data &&
                 Object.entries(reservation.clientResource.data as Record<string, unknown>).map(
                   ([key, val]) => {
-                    if (!val || ['plate', 'brand', 'model', 'color'].includes(key)) return null;
-                    const label = key.startsWith('field_') ? 'Cliente' : key.charAt(0).toUpperCase() + key.slice(1);
+                    if (!val) return null;
+                    const customField = settings?.customFields?.find((f) => f.key === key);
+                    const label = customField?.label ?? key;
                     return <InfoRow key={key} label={label} value={String(val)} />;
                   }
                 )}

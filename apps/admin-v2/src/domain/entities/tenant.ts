@@ -46,6 +46,7 @@ export interface CustomField {
   type: 'text' | 'number' | 'select' | 'textarea';
   required: boolean;
   options?: string[];
+  capitalize?: 'none' | 'uppercase' | 'capitalize' | 'lowercase';
 }
 
 export interface TenantImage {

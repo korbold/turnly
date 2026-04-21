@@ -1,7 +1,7 @@
 'use client';
 
 import { usePathname, useRouter } from 'next/navigation';
-import { Bell, Search, LogOut, User } from 'lucide-react';
+import { Bell, LogOut, User } from 'lucide-react';
 import { Button } from '@/presentation/components/ui/button';
 import { Avatar, AvatarFallback } from '@/presentation/components/ui/avatar';
 import {
@@ -61,20 +61,6 @@ export function Topbar() {
       <div className="flex items-center">
         <h1 className="text-lg font-semibold text-zinc-900">{title}</h1>
       </div>
-
-      {/* Center: Search button */}
-      <button
-        className="hidden md:flex items-center gap-2 rounded-lg border border-zinc-200 bg-zinc-50 px-3 py-1.5 text-sm text-zinc-400 hover:bg-zinc-100 transition-colors"
-        onClick={() => {
-          /* Command palette placeholder */
-        }}
-      >
-        <Search className="h-4 w-4" />
-        <span className="hidden lg:inline">Buscar...</span>
-        <kbd className="hidden lg:inline-flex h-5 items-center gap-1 rounded border border-zinc-200 bg-white px-1.5 text-[10px] font-medium text-zinc-400">
-          <span className="text-xs">&#8984;</span>K
-        </kbd>
-      </button>
 
       {/* Right: Notifications + Avatar */}
       <div className="flex items-center gap-2">

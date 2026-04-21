@@ -19,6 +19,13 @@ const FIELD_TYPES: { value: CustomField['type']; label: string }[] = [
   { value: 'textarea', label: 'Area de texto' },
 ];
 
+const CAPITALIZE_OPTIONS: { value: NonNullable<CustomField['capitalize']>; label: string }[] = [
+  { value: 'none', label: 'Normal' },
+  { value: 'uppercase', label: 'MAYÚSCULAS' },
+  { value: 'lowercase', label: 'minúsculas' },
+  { value: 'capitalize', label: 'Primera Mayúscula' },
+];
+
 function newField(): CustomField {
   return {
     key: `field_${Date.now()}`,
@@ -105,7 +112,7 @@ export function CustomFieldsTab() {
             <div className="flex items-start gap-3">
               <GripVertical className="mt-2 h-4 w-4 shrink-0 text-zinc-400" />
               <div className="flex-1 space-y-3">
-                <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
+                <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-4">
                   <div className="space-y-1">
                     <Label className="text-xs">Nombre</Label>
                     <Input
@@ -124,6 +131,20 @@ export function CustomFieldsTab() {
                       <SelectContent>
                         {FIELD_TYPES.map((ft) => (
                           <SelectItem key={ft.value} value={ft.value}>{ft.label}</SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+                  <div className="space-y-1">
+                    <Label className="text-xs">Formato</Label>
+                    <Select
+                      value={field.capitalize ?? 'none'}
+                      onValueChange={(v) => updateField(idx, { capitalize: v as CustomField['capitalize'] })}
+                    >
+                      <SelectTrigger><SelectValue /></SelectTrigger>
+                      <SelectContent>
+                        {CAPITALIZE_OPTIONS.map((opt) => (
+                          <SelectItem key={opt.value} value={opt.value}>{opt.label}</SelectItem>
                         ))}
                       </SelectContent>
                     </Select>

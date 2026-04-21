@@ -18,13 +18,14 @@ import { useChangeRole } from '@/presentation/hooks/use-team';
 import type { User, UserRole } from '@/domain/entities/user';
 
 const ROLE_CONFIG: Record<UserRole, { label: string; color: string; bg: string }> = {
+  owner: { label: 'Propietario', color: 'text-purple-600', bg: 'bg-purple-50' },
   tenant_admin: { label: 'Admin', color: 'text-indigo-600', bg: 'bg-indigo-50' },
   cashier: { label: 'Cajero', color: 'text-amber-600', bg: 'bg-amber-50' },
   washer: { label: 'Lavador', color: 'text-sky-600', bg: 'bg-sky-50' },
   client: { label: 'Cliente', color: 'text-zinc-600', bg: 'bg-zinc-100' },
 };
 
-const ROLES: UserRole[] = ['tenant_admin', 'cashier', 'washer', 'client'];
+const ROLES: UserRole[] = ['owner', 'tenant_admin', 'cashier', 'washer', 'client'];
 
 interface StaffCardProps {
   user: User;
@@ -33,7 +34,7 @@ interface StaffCardProps {
 export function StaffCard({ user }: StaffCardProps) {
   const changeRoleMutation = useChangeRole();
   const role = user.role ?? 'client';
-  const roleCfg = ROLE_CONFIG[role];
+  const roleCfg = ROLE_CONFIG[role] ?? ROLE_CONFIG.client;
   const initials = user.name
     .split(' ')
     .map((w) => w[0])
