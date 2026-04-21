@@ -74,6 +74,7 @@ class _ReservationsView extends StatelessWidget {
           children: [
             _ReservationTabContent(
               filter: (r) => r.status.isUpcoming,
+              ascending: true,
               emptyIcon: Icons.calendar_today_rounded,
               emptyTitle: 'Sin reservas proximas',
               emptySubtitle: 'Tus proximas reservas apareceran aqui',
@@ -102,12 +103,14 @@ class _ReservationTabContent extends StatelessWidget {
   final IconData emptyIcon;
   final String emptyTitle;
   final String emptySubtitle;
+  final bool ascending;
 
   const _ReservationTabContent({
     required this.filter,
     required this.emptyIcon,
     required this.emptyTitle,
     required this.emptySubtitle,
+    this.ascending = false,
   });
 
   @override
@@ -134,7 +137,9 @@ class _ReservationTabContent extends StatelessWidget {
 
         if (state is ReservationsLoaded) {
           final filtered = state.reservations.where(filter).toList()
-            ..sort((a, b) => b.scheduledAt.compareTo(a.scheduledAt));
+            ..sort((a, b) => ascending
+                ? a.scheduledAt.compareTo(b.scheduledAt)
+                : b.scheduledAt.compareTo(a.scheduledAt));
 
           if (filtered.isEmpty) {
             return EmptyState(
