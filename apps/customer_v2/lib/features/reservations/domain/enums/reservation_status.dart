@@ -39,5 +39,5 @@ enum ReservationStatus {
     ReservationStatus.noShow => const Color(0xFF6B7280),
   };
 
-  bool get isUpcoming => this == pending || this == confirmed;
+  bool get isUpcoming => this == pending || this == confirmed || this == inProgress;
 }
