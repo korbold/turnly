@@ -21,12 +21,14 @@ class BusinessCategoryController extends Controller
     {
         $request->validate([
             'name' => 'required|string|max:100',
+            'emoji' => 'nullable|string|max:10',
+            'color' => 'nullable|string|max:20',
+            'description' => 'nullable|string|max:200',
             'icon' => 'nullable|string|max:50',
         ]);
 
         $slug = Str::slug($request->name, '_');
 
-        // Ensure unique slug
         if (BusinessCategoryModel::where('slug', $slug)->exists()) {
             $slug .= '_' . Str::random(4);
         }
@@ -36,6 +38,9 @@ class BusinessCategoryController extends Controller
         $category = BusinessCategoryModel::create([
             'slug' => $slug,
             'name' => $request->name,
+            'emoji' => $request->emoji ?? '🏪',
+            'color' => $request->color ?? '#6B7280',
+            'description' => $request->description,
             'icon' => $request->icon ?? 'store',
             'sort_order' => $maxOrder + 1,
             'is_active' => true,
@@ -50,12 +55,15 @@ class BusinessCategoryController extends Controller
 
         $request->validate([
             'name' => 'sometimes|string|max:100',
+            'emoji' => 'sometimes|nullable|string|max:10',
+            'color' => 'sometimes|nullable|string|max:20',
+            'description' => 'sometimes|nullable|string|max:200',
             'icon' => 'sometimes|nullable|string|max:50',
             'is_active' => 'sometimes|boolean',
             'sort_order' => 'sometimes|integer|min:0',
         ]);
 
-        $category->update($request->only(['name', 'icon', 'is_active', 'sort_order']));
+        $category->update($request->only(['name', 'emoji', 'color', 'description', 'icon', 'is_active', 'sort_order']));
 
         return response()->json(['data' => $category]);
     }

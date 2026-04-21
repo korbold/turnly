@@ -15,6 +15,15 @@ use Illuminate\Support\Str;
 
 class PublicController extends Controller
 {
+    public function listCategories(): JsonResponse
+    {
+        $categories = \App\Infrastructure\Persistence\Models\BusinessCategoryModel::where('is_active', true)
+            ->orderBy('sort_order')
+            ->get(['id', 'slug', 'name', 'emoji', 'color', 'description']);
+
+        return response()->json(['data' => $categories]);
+    }
+
     public function listTenants(Request $request): JsonResponse
     {
         $query = TenantModel::where('status', 'active')

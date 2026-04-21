@@ -29,15 +29,20 @@ export default function CategoriesPage() {
   const updateCategory = useUpdateCategory();
   const deleteCategory = useDeleteCategory();
 
-  const [newName, setNewName] = useState('');
+  const [newForm, setNewForm] = useState({ name: '', emoji: '', color: '#6B7280', description: '' });
   const [editingId, setEditingId] = useState<string | null>(null);
-  const [editName, setEditName] = useState('');
+  const [editForm, setEditForm] = useState({ name: '', emoji: '', color: '', description: '' });
 
   async function handleCreate() {
-    if (!newName.trim()) return;
+    if (!newForm.name.trim()) return;
     try {
-      await createCategory.mutateAsync({ name: newName.trim() });
-      setNewName('');
+      await createCategory.mutateAsync({
+        name: newForm.name.trim(),
+        emoji: newForm.emoji || undefined,
+        color: newForm.color || undefined,
+        description: newForm.description || undefined,
+      });
+      setNewForm({ name: '', emoji: '', color: '#6B7280', description: '' });
       toast.success('Categoria creada');
     } catch {
       toast.error('Error al crear categoria');
@@ -46,13 +51,24 @@ export default function CategoriesPage() {
 
   function startEdit(cat: BusinessCategory) {
     setEditingId(cat.id);
-    setEditName(cat.name);
+    setEditForm({
+      name: cat.name,
+      emoji: cat.emoji ?? '',
+      color: cat.color ?? '#6B7280',
+      description: cat.description ?? '',
+    });
   }
 
   async function handleUpdate(id: string) {
-    if (!editName.trim()) return;
+    if (!editForm.name.trim()) return;
     try {
-      await updateCategory.mutateAsync({ id, name: editName.trim() });
+      await updateCategory.mutateAsync({
+        id,
+        name: editForm.name.trim(),
+        emoji: editForm.emoji || undefined,
+        color: editForm.color || undefined,
+        description: editForm.description || undefined,
+      });
       setEditingId(null);
       toast.success('Categoria actualizada');
     } catch {
@@ -88,18 +104,39 @@ export default function CategoriesPage() {
       </div>
 
       {/* Create new */}
-      <div className="flex gap-2">
-        <Input
-          placeholder="Nombre de nueva categoria..."
-          value={newName}
-          onChange={(e) => setNewName(e.target.value)}
-          onKeyDown={(e) => e.key === 'Enter' && handleCreate()}
-          className="max-w-sm"
-        />
-        <Button onClick={handleCreate} disabled={!newName.trim() || createCategory.isPending}>
-          <Plus className="mr-1.5 h-4 w-4" />
-          Crear
-        </Button>
+      <div className="rounded-lg border bg-white p-4 space-y-3">
+        <p className="text-sm font-medium">Nueva categoria</p>
+        <div className="grid grid-cols-1 gap-3 sm:grid-cols-4">
+          <Input
+            placeholder="Nombre"
+            value={newForm.name}
+            onChange={(e) => setNewForm({ ...newForm, name: e.target.value })}
+            onKeyDown={(e) => e.key === 'Enter' && handleCreate()}
+          />
+          <Input
+            placeholder="Emoji (ej: 🚗)"
+            value={newForm.emoji}
+            onChange={(e) => setNewForm({ ...newForm, emoji: e.target.value })}
+            className="w-full"
+          />
+          <div className="flex items-center gap-2">
+            <input
+              type="color"
+              value={newForm.color}
+              onChange={(e) => setNewForm({ ...newForm, color: e.target.value })}
+              className="h-9 w-12 cursor-pointer rounded border"
+            />
+            <Input
+              placeholder="Descripcion corta"
+              value={newForm.description}
+              onChange={(e) => setNewForm({ ...newForm, description: e.target.value })}
+            />
+          </div>
+          <Button onClick={handleCreate} disabled={!newForm.name.trim() || createCategory.isPending}>
+            <Plus className="mr-1.5 h-4 w-4" />
+            Crear
+          </Button>
+        </div>
       </div>
 
       {/* Table */}
@@ -118,8 +155,11 @@ export default function CategoriesPage() {
           <Table>
             <TableHeader>
               <TableRow>
-                <TableHead className="w-16">Orden</TableHead>
+                <TableHead className="w-12">#</TableHead>
+                <TableHead className="w-16">Emoji</TableHead>
                 <TableHead>Nombre</TableHead>
+                <TableHead>Descripcion</TableHead>
+                <TableHead className="w-16">Color</TableHead>
                 <TableHead>Slug</TableHead>
                 <TableHead>Estado</TableHead>
                 <TableHead className="w-32">Acciones</TableHead>
@@ -133,26 +173,55 @@ export default function CategoriesPage() {
                   </TableCell>
                   <TableCell>
                     {editingId === cat.id ? (
-                      <div className="flex items-center gap-2">
-                        <Input
-                          value={editName}
-                          onChange={(e) => setEditName(e.target.value)}
-                          onKeyDown={(e) => {
-                            if (e.key === 'Enter') handleUpdate(cat.id);
-                            if (e.key === 'Escape') setEditingId(null);
-                          }}
-                          className="h-8 w-48"
-                          autoFocus
-                        />
-                        <Button size="sm" variant="ghost" onClick={() => handleUpdate(cat.id)}>
-                          <Check className="h-4 w-4 text-emerald-600" />
-                        </Button>
-                        <Button size="sm" variant="ghost" onClick={() => setEditingId(null)}>
-                          <X className="h-4 w-4 text-zinc-400" />
-                        </Button>
-                      </div>
+                      <Input
+                        value={editForm.emoji}
+                        onChange={(e) => setEditForm({ ...editForm, emoji: e.target.value })}
+                        className="h-8 w-16"
+                      />
+                    ) : (
+                      <span className="text-xl">{cat.emoji ?? '🏪'}</span>
+                    )}
+                  </TableCell>
+                  <TableCell>
+                    {editingId === cat.id ? (
+                      <Input
+                        value={editForm.name}
+                        onChange={(e) => setEditForm({ ...editForm, name: e.target.value })}
+                        onKeyDown={(e) => {
+                          if (e.key === 'Enter') handleUpdate(cat.id);
+                          if (e.key === 'Escape') setEditingId(null);
+                        }}
+                        className="h-8 w-40"
+                        autoFocus
+                      />
                     ) : (
                       <span className="font-medium">{cat.name}</span>
+                    )}
+                  </TableCell>
+                  <TableCell>
+                    {editingId === cat.id ? (
+                      <Input
+                        value={editForm.description}
+                        onChange={(e) => setEditForm({ ...editForm, description: e.target.value })}
+                        className="h-8 w-48"
+                      />
+                    ) : (
+                      <span className="text-sm text-muted-foreground">{cat.description ?? '—'}</span>
+                    )}
+                  </TableCell>
+                  <TableCell>
+                    {editingId === cat.id ? (
+                      <input
+                        type="color"
+                        value={editForm.color}
+                        onChange={(e) => setEditForm({ ...editForm, color: e.target.value })}
+                        className="h-8 w-10 cursor-pointer rounded border"
+                      />
+                    ) : (
+                      <div
+                        className="h-6 w-6 rounded-full border"
+                        style={{ backgroundColor: cat.color ?? '#6B7280' }}
+                      />
                     )}
                   </TableCell>
                   <TableCell>
@@ -174,22 +243,25 @@ export default function CategoriesPage() {
                   </TableCell>
                   <TableCell>
                     <div className="flex gap-1">
-                      <Button
-                        size="sm"
-                        variant="ghost"
-                        onClick={() => startEdit(cat)}
-                        disabled={editingId !== null}
-                      >
-                        <Pencil className="h-3.5 w-3.5" />
-                      </Button>
-                      <Button
-                        size="sm"
-                        variant="ghost"
-                        onClick={() => handleDelete(cat.id)}
-                        disabled={deleteCategory.isPending}
-                      >
-                        <Trash2 className="h-3.5 w-3.5 text-rose-500" />
-                      </Button>
+                      {editingId === cat.id ? (
+                        <>
+                          <Button size="sm" variant="ghost" onClick={() => handleUpdate(cat.id)}>
+                            <Check className="h-4 w-4 text-emerald-600" />
+                          </Button>
+                          <Button size="sm" variant="ghost" onClick={() => setEditingId(null)}>
+                            <X className="h-4 w-4 text-zinc-400" />
+                          </Button>
+                        </>
+                      ) : (
+                        <>
+                          <Button size="sm" variant="ghost" onClick={() => startEdit(cat)} disabled={editingId !== null}>
+                            <Pencil className="h-3.5 w-3.5" />
+                          </Button>
+                          <Button size="sm" variant="ghost" onClick={() => handleDelete(cat.id)} disabled={deleteCategory.isPending}>
+                            <Trash2 className="h-3.5 w-3.5 text-rose-500" />
+                          </Button>
+                        </>
+                      )}
                     </div>
                   </TableCell>
                 </TableRow>

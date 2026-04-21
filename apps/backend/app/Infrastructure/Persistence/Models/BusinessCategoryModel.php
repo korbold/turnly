@@ -14,6 +14,9 @@ class BusinessCategoryModel extends Model
     protected $fillable = [
         'slug',
         'name',
+        'emoji',
+        'color',
+        'description',
         'icon',
         'sort_order',
         'is_active',
