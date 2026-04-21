@@ -13,6 +13,7 @@ import {
 } from 'date-fns';
 import { es } from 'date-fns/locale';
 import { Plus, LayoutList, CalendarDays } from 'lucide-react';
+import { useRepository } from '@/infrastructure/providers/repository.provider';
 import { Button } from '@/presentation/components/ui/button';
 import { Skeleton } from '@/presentation/components/ui/skeleton';
 import { useReservations } from '@/presentation/hooks/use-reservations';
@@ -33,12 +34,17 @@ function ReservationsContent() {
   const [selectedReservation, setSelectedReservation] =
     useState<Reservation | null>(null);
   const [createOpen, setCreateOpen] = useState(false);
+  const reservationRepo = useRepository('reservation');
 
-  // Check URL for create=true
+  // Check URL for create=true or reservation={id}
   const searchParams = useSearchParams();
   useEffect(() => {
     if (searchParams.get('create') === 'true') {
       setCreateOpen(true);
+    }
+    const reservationId = searchParams.get('reservation');
+    if (reservationId) {
+      reservationRepo.getById(reservationId).then(setSelectedReservation).catch(() => {});
     }
   }, [searchParams]);
 

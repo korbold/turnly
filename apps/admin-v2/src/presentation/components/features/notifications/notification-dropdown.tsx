@@ -19,8 +19,8 @@ export function NotificationDropdown() {
     if (!notification.readAt) {
       markRead.mutate(notification.id);
     }
-    if (notification.actionType === 'reservation_detail') {
-      router.push('/reservations');
+    if (notification.actionType === 'reservation_detail' && notification.actionId) {
+      router.push(`/reservations?reservation=${notification.actionId}`);
     }
   };
 
