@@ -142,10 +142,10 @@ final appRouter = GoRouter(
         label: state.extra as String? ?? '',
       ),
     ),
-    GoRoute(
-      path: '/favorites',
-      builder: (context, state) => const FavoritesScreen(),
-    ),
+    // GoRoute(
+    //   path: '/favorites',
+    //   builder: (context, state) => const FavoritesScreen(),
+    // ),
     GoRoute(
       path: '/notifications',
       builder: (context, state) => const NotificationsScreen(),

@@ -190,12 +190,6 @@ class ProfileScreen extends StatelessWidget {
                         ),
                         const Divider(height: 1, indent: 60, endIndent: 16),
                         _ProfileMenuItem(
-                          icon: Icons.favorite_outline_rounded,
-                          label: 'Favoritos',
-                          onTap: () => context.push('/favorites'),
-                        ),
-                        const Divider(height: 1, indent: 60, endIndent: 16),
-                        _ProfileMenuItem(
                           icon: Icons.help_outline_rounded,
                           label: 'Ayuda',
                           onTap: () {
