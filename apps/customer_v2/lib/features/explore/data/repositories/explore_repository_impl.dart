@@ -3,7 +3,9 @@ import 'package:dio/dio.dart';
 import 'package:fpdart/fpdart.dart';
 import '../../../../core/error/failures.dart';
 import '../../../../core/network/api_client.dart';
+import 'dart:ui';
 import '../../domain/entities/business.dart';
+import '../../domain/entities/business_category.dart';
 import '../../domain/repositories/explore_repository.dart';
 import '../dtos/business_dto.dart';
 
@@ -64,6 +66,27 @@ class ExploreRepositoryImpl implements ExploreRepository {
       return Left(ServerFailure(
         e.response?.data?['error']?['message'] ?? 'Error al cargar negocio',
       ));
+    } catch (e) {
+      return Left(ServerFailure(e.toString()));
+    }
+  }
+
+  @override
+  Future<Either<Failure, List<BusinessCategory>>> getCategories() async {
+    try {
+      final response = await _dio.get('/public/categories');
+      final data = response.data['data'] as List<dynamic>;
+      return Right(data.map((e) {
+        final m = e as Map<String, dynamic>;
+        final hex = (m['color'] as String? ?? '#6B7280').replaceFirst('#', '');
+        return BusinessCategory(
+          slug: m['slug'] as String,
+          name: m['name'] as String,
+          emoji: m['emoji'] as String? ?? '🏪',
+          color: Color(int.parse('FF$hex', radix: 16)),
+          description: m['description'] as String? ?? '',
+        );
+      }).toList());
     } catch (e) {
       return Left(ServerFailure(e.toString()));
     }

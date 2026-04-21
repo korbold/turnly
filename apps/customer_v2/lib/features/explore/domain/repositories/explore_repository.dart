@@ -2,6 +2,7 @@
 import 'package:fpdart/fpdart.dart';
 import '../../../../core/error/failures.dart';
 import '../entities/business.dart';
+import '../entities/business_category.dart';
 
 class PaginatedResult<T> {
   final List<T> items;
@@ -23,4 +24,5 @@ abstract class ExploreRepository {
     int page = 1,
   });
   Future<Either<Failure, Business>> getBusinessBySlug(String slug);
+  Future<Either<Failure, List<BusinessCategory>>> getCategories();
 }

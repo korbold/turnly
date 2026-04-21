@@ -2,8 +2,10 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_animate/flutter_animate.dart';
 import '../../../../app/theme/app_colors.dart';
+import '../../data/repositories/explore_repository_impl.dart';
+import '../../domain/entities/business_category.dart';
 
-class CategoryChips extends StatelessWidget {
+class CategoryChips extends StatefulWidget {
   final String? activeFilter;
   final ValueChanged<String?> onSelected;
 
@@ -13,30 +15,46 @@ class CategoryChips extends StatelessWidget {
     required this.onSelected,
   });
 
-  static const _categories = <String?, String>{
-    null: '🏪 Todos',
-    'car_wash': '🚗 Car Wash',
-    'barbershop': '💈 Barberia',
-    'spa': '🧖 Spa',
-    'gym': '💪 Gym',
-    'medical': '🏥 Medico',
-  };
+  @override
+  State<CategoryChips> createState() => _CategoryChipsState();
+}
+
+class _CategoryChipsState extends State<CategoryChips> {
+  List<BusinessCategory>? _categories;
+
+  @override
+  void initState() {
+    super.initState();
+    _loadCategories();
+  }
+
+  Future<void> _loadCategories() async {
+    final result = await ExploreRepositoryImpl().getCategories();
+    if (mounted) {
+      result.fold((_) {}, (cats) => setState(() => _categories = cats));
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
+    final items = <MapEntry<String?, String>>[
+      const MapEntry(null, '🏪 Todos'),
+      ...(_categories ?? []).map((c) => MapEntry(c.slug, '${c.emoji} ${c.name}')),
+    ];
+
     return SizedBox(
       height: 44,
       child: ListView.separated(
         scrollDirection: Axis.horizontal,
         padding: const EdgeInsets.symmetric(horizontal: 20),
-        itemCount: _categories.length,
+        itemCount: items.length,
         separatorBuilder: (_, __) => const SizedBox(width: 10),
         itemBuilder: (context, index) {
-          final entry = _categories.entries.elementAt(index);
-          final isActive = activeFilter == entry.key;
+          final entry = items[index];
+          final isActive = widget.activeFilter == entry.key;
 
           return GestureDetector(
-            onTap: () => onSelected(entry.key),
+            onTap: () => widget.onSelected(entry.key),
             child: AnimatedContainer(
               duration: const Duration(milliseconds: 200),
               padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),

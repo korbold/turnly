@@ -5,7 +5,6 @@ import 'package:flutter_animate/flutter_animate.dart';
 import 'package:go_router/go_router.dart';
 
 import '../../../../app/theme/app_colors.dart';
-import '../../../../app/theme/tenant_theme.dart';
 import '../../../../core/di/injection.dart';
 import '../../../../shared/widgets/avatar_circle.dart';
 import '../../../../shared/widgets/section_header.dart';
@@ -14,6 +13,8 @@ import '../../../auth/presentation/cubit/auth_state.dart';
 import '../../../reservations/domain/repositories/reservation_repository.dart';
 import '../../../reservations/presentation/cubit/reservations_cubit.dart';
 import '../../../reservations/presentation/cubit/reservations_state.dart';
+import '../../data/repositories/explore_repository_impl.dart';
+import '../../domain/entities/business_category.dart';
 import '../../domain/repositories/explore_repository.dart';
 import '../cubit/explore_cubit.dart';
 import '../widgets/next_reservation_card.dart';
@@ -217,44 +218,41 @@ class _NextReservationSection extends StatelessWidget {
   }
 }
 
-class _CategoryGrid extends StatelessWidget {
+class _CategoryGrid extends StatefulWidget {
   const _CategoryGrid();
 
-  static const _categories = [
-    _CategoryItem(
-      type: 'car_wash',
-      label: 'Car Wash',
-      emoji: '🚗',
-      subtitle: 'Lavado de vehiculos',
-    ),
-    _CategoryItem(
-      type: 'barbershop',
-      label: 'Barberia',
-      emoji: '💈',
-      subtitle: 'Cortes y estilos',
-    ),
-    _CategoryItem(
-      type: 'spa',
-      label: 'Spa',
-      emoji: '🧖',
-      subtitle: 'Bienestar y relax',
-    ),
-    _CategoryItem(
-      type: 'gym',
-      label: 'Gym',
-      emoji: '💪',
-      subtitle: 'Entrenamiento',
-    ),
-    _CategoryItem(
-      type: 'medical',
-      label: 'Medico',
-      emoji: '🏥',
-      subtitle: 'Consultas medicas',
-    ),
-  ];
+  @override
+  State<_CategoryGrid> createState() => _CategoryGridState();
+}
+
+class _CategoryGridState extends State<_CategoryGrid> {
+  List<BusinessCategory>? _categories;
+
+  @override
+  void initState() {
+    super.initState();
+    _loadCategories();
+  }
+
+  Future<void> _loadCategories() async {
+    final result = await ExploreRepositoryImpl().getCategories();
+    if (mounted) {
+      result.fold(
+        (_) {},
+        (cats) => setState(() => _categories = cats),
+      );
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
+    if (_categories == null) {
+      return const Padding(
+        padding: EdgeInsets.symmetric(horizontal: 20),
+        child: SizedBox(height: 100, child: Center(child: CircularProgressIndicator())),
+      );
+    }
+
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 20),
       child: GridView.builder(
@@ -266,20 +264,21 @@ class _CategoryGrid extends StatelessWidget {
           crossAxisSpacing: 14,
           childAspectRatio: 1.4,
         ),
-        itemCount: _categories.length,
+        itemCount: _categories!.length,
         itemBuilder: (context, index) {
-          final cat = _categories[index];
-          final theme = TenantTheme.fromBusinessType(cat.type);
+          final cat = _categories![index];
+          final bgColor = cat.color.withValues(alpha: 0.1);
+          final fgColor = cat.color;
 
           return GestureDetector(
-            onTap: () => context.push('/category/${cat.type}'),
+            onTap: () => context.push('/category/${cat.slug}'),
             child: Container(
               decoration: BoxDecoration(
-                color: theme.secondary,
+                color: bgColor,
                 borderRadius: BorderRadius.circular(20),
                 boxShadow: [
                   BoxShadow(
-                    color: theme.primary.withValues(alpha: 0.1),
+                    color: fgColor.withValues(alpha: 0.1),
                     blurRadius: 12,
                     offset: const Offset(0, 4),
                   ),
@@ -287,7 +286,6 @@ class _CategoryGrid extends StatelessWidget {
               ),
               child: Stack(
                 children: [
-                  // Decorative blob
                   Positioned(
                     right: -10,
                     top: -10,
@@ -296,11 +294,10 @@ class _CategoryGrid extends StatelessWidget {
                       height: 50,
                       decoration: BoxDecoration(
                         shape: BoxShape.circle,
-                        color: theme.primary.withValues(alpha: 0.08),
+                        color: fgColor.withValues(alpha: 0.08),
                       ),
                     ),
                   ),
-                  // Emoji
                   Positioned(
                     right: 12,
                     bottom: 12,
@@ -309,26 +306,25 @@ class _CategoryGrid extends StatelessWidget {
                       style: const TextStyle(fontSize: 36),
                     ),
                   ),
-                  // Text
                   Padding(
                     padding: const EdgeInsets.all(16),
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
                         Text(
-                          cat.label,
+                          cat.name,
                           style: TextStyle(
                             fontSize: 16,
                             fontWeight: FontWeight.w700,
-                            color: theme.primary,
+                            color: fgColor,
                           ),
                         ),
                         const SizedBox(height: 4),
                         Text(
-                          cat.subtitle,
+                          cat.description,
                           style: TextStyle(
                             fontSize: 12,
-                            color: theme.primary.withValues(alpha: 0.6),
+                            color: fgColor.withValues(alpha: 0.6),
                           ),
                         ),
                       ],
@@ -350,18 +346,4 @@ class _CategoryGrid extends StatelessWidget {
       ),
     );
   }
-}
-
-class _CategoryItem {
-  final String type;
-  final String label;
-  final String emoji;
-  final String subtitle;
-
-  const _CategoryItem({
-    required this.type,
-    required this.label,
-    required this.emoji,
-    required this.subtitle,
-  });
 }
