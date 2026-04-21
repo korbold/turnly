@@ -1,5 +1,5 @@
 export type ReservationStatus = 'pending' | 'confirmed' | 'in_progress' | 'completed' | 'cancelled' | 'no_show';
-export type ReservationAction = 'confirm' | 'start' | 'complete' | 'cancel';
+export type ReservationAction = 'confirm' | 'start' | 'complete' | 'cancel' | 'no_show';
 
 export interface ReservationClientResource {
   label: string | null;

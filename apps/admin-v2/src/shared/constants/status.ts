@@ -45,7 +45,7 @@ export const RESERVATION_STATUS_CONFIG: Record<ReservationStatus, StatusConfig> 
     dotColor: 'bg-rose-500',
   },
   no_show: {
-    label: 'No Show',
+    label: 'Ausente',
     color: 'text-slate-600',
     bgColor: 'bg-slate-100',
     dotColor: 'bg-slate-500',

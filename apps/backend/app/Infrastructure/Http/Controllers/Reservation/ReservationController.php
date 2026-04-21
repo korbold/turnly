@@ -9,6 +9,7 @@ use App\Application\UseCases\Reservation\CompleteWashUseCase;
 use App\Application\UseCases\Reservation\ConfirmReservationUseCase;
 use App\Application\UseCases\Reservation\CreateReservationUseCase;
 use App\Application\UseCases\Reservation\GetAvailableSlotsUseCase;
+use App\Application\UseCases\Reservation\NoShowReservationUseCase;
 use App\Application\UseCases\Reservation\StartWashUseCase;
 use App\Infrastructure\Http\Controllers\Controller;
 use App\Infrastructure\Http\Requests\Reservation\CancelReservationRequest;
@@ -27,6 +28,7 @@ class ReservationController extends Controller
         private StartWashUseCase $startWash,
         private CompleteWashUseCase $completeWash,
         private GetAvailableSlotsUseCase $getAvailableSlots,
+        private NoShowReservationUseCase $noShowReservation,
     ) {}
 
     /**
@@ -155,6 +157,15 @@ class ReservationController extends Controller
         $this->cancelReservation->execute($id, $request->reason);
         return response()->json([
             'data' => ['message' => 'Reservation cancelled'],
+            'meta' => ['timestamp' => now()->toIso8601String()],
+        ]);
+    }
+
+    public function noShow(string $id): JsonResponse
+    {
+        $this->noShowReservation->execute($id);
+        return response()->json([
+            'data' => ['message' => 'Reservation marked as no-show'],
             'meta' => ['timestamp' => now()->toIso8601String()],
         ]);
     }

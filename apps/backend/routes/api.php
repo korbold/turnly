@@ -78,6 +78,7 @@ Route::prefix('v1')->group(function () {
             Route::patch('reservations/{id}/start', [ReservationController::class, 'start']);
             Route::patch('reservations/{id}/complete', [ReservationController::class, 'complete']);
             Route::patch('reservations/{id}/cancel', [ReservationController::class, 'cancel']);
+            Route::patch('reservations/{id}/no_show', [ReservationController::class, 'noShow']);
 
             // Service logs
             Route::get('service-logs/summary', [ServiceLogController::class, 'summary']);

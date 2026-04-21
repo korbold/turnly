@@ -98,13 +98,13 @@ export function DetailPanel({ reservation, open, onClose }: DetailPanelProps) {
 
   function handleNoShow() {
     transition.mutate(
-      { id: reservation!.id, action: 'cancel' },
+      { id: reservation!.id, action: 'no_show' },
       {
         onSuccess: () => {
-          toast.success('Marcada como No Show');
+          toast.success('Marcada como ausente');
           onClose();
         },
-        onError: () => toast.error('Error al marcar no show'),
+        onError: () => toast.error('Error al marcar ausente'),
       }
     );
   }
@@ -179,7 +179,7 @@ export function DetailPanel({ reservation, open, onClose }: DetailPanelProps) {
                     onClick={handleNoShow}
                     disabled={transition.isPending}
                   >
-                    No-show
+                    Ausente
                   </Button>
                 </>
               )}
