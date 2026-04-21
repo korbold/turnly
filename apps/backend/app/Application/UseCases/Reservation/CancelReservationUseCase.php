@@ -6,7 +6,11 @@ use App\Domain\Reservation\Contracts\ReservationRepositoryInterface;
 use App\Domain\Reservation\Enums\ReservationStatus;
 use App\Domain\Reservation\Exceptions\InvalidStatusTransitionException;
 use App\Domain\Reservation\Exceptions\ReservationNotFoundException;
+use App\Infrastructure\Notifications\Notifications\ReservationCancelled;
+use App\Infrastructure\Persistence\Models\ReservationModel;
 use App\Infrastructure\Persistence\Models\TenantModel;
+use App\Infrastructure\Persistence\Models\UserModel;
+use Illuminate\Support\Facades\Notification;
 
 class CancelReservationUseCase
 {
@@ -41,5 +45,29 @@ class CancelReservationUseCase
         }
 
         $this->reservationRepository->updateStatus($reservationId, ReservationStatus::Cancelled, $reason);
+
+        // Notify both client and tenant admins
+        $model = ReservationModel::with(['service', 'client', 'tenant'])->find($reservationId);
+        if ($model) {
+            $notification = new ReservationCancelled($model);
+
+            // Notify client
+            $client = UserModel::find($model->client_id);
+            if ($client) {
+                $client->notify($notification);
+            }
+
+            // Notify tenant admins
+            $admins = TenantModel::find($model->tenant_id)
+                ?->users()
+                ->wherePivotIn('role', ['owner', 'tenant_admin'])
+                ->wherePivot('is_active', true)
+                ->where('users.id', '!=', $model->client_id)
+                ->get();
+
+            if ($admins && $admins->isNotEmpty()) {
+                Notification::send($admins, $notification);
+            }
+        }
     }
 }

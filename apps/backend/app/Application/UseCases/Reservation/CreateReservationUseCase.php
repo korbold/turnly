@@ -9,8 +9,10 @@ use App\Domain\Reservation\Enums\ReservationStatus;
 use App\Domain\Reservation\Exceptions\OutsideBusinessHoursException;
 use App\Domain\Reservation\Exceptions\ReservationConflictException;
 use App\Infrastructure\Persistence\Models\AvailabilitySlotModel;
+use App\Infrastructure\Notifications\Notifications\NewReservationForAdmin;
+use App\Infrastructure\Persistence\Models\ReservationModel;
 use App\Infrastructure\Persistence\Models\TenantModel;
-
+use Illuminate\Support\Facades\Notification;
 use Illuminate\Support\Str;
 
 class CreateReservationUseCase
@@ -73,6 +75,22 @@ class CreateReservationUseCase
             createdBy: $dto->createdBy,
         );
 
-        return $this->reservationRepository->save($reservation);
+        $saved = $this->reservationRepository->save($reservation);
+
+        // Notify tenant admins about new reservation
+        $model = ReservationModel::with(['service', 'client', 'tenant'])->find($saved->id);
+        if ($model) {
+            $admins = TenantModel::find($saved->tenantId)
+                ?->users()
+                ->wherePivotIn('role', ['owner', 'tenant_admin'])
+                ->wherePivot('is_active', true)
+                ->get();
+
+            if ($admins && $admins->isNotEmpty()) {
+                Notification::send($admins, new NewReservationForAdmin($model));
+            }
+        }
+
+        return $saved;
     }
 }
