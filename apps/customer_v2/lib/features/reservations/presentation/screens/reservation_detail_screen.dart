@@ -58,46 +58,94 @@ class _ReservationDetailScreenState extends State<ReservationDetailScreen> {
     );
   }
 
+  static const _cancelReasons = [
+    'Tengo un imprevisto',
+    'Ya no necesito el servicio',
+    'Cambio de horario',
+    'Problemas de transporte',
+    'Error al reservar',
+    'Otro motivo',
+  ];
+
   Future<void> _cancelReservation() async {
-    final confirmed = await showDialog<bool>(
+    final reason = await showDialog<String>(
       context: context,
-      builder: (ctx) => AlertDialog(
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
-        title: const Text(
-          'Cancelar reserva',
-          style: TextStyle(
-            fontSize: 18,
-            fontWeight: FontWeight.w700,
-            color: AppColors.textPrimary,
+      builder: (ctx) {
+        String? selected;
+        return StatefulBuilder(
+          builder: (ctx, setDialogState) => AlertDialog(
+            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+            title: const Text(
+              'Cancelar reserva',
+              style: TextStyle(
+                fontSize: 18,
+                fontWeight: FontWeight.w700,
+                color: AppColors.textPrimary,
+              ),
+            ),
+            content: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                const Text(
+                  'Selecciona el motivo de cancelacion:',
+                  style: TextStyle(fontSize: 14, color: AppColors.textSecondary),
+                ),
+                const SizedBox(height: 12),
+                ..._cancelReasons.map((r) => Padding(
+                  padding: const EdgeInsets.only(bottom: 6),
+                  child: InkWell(
+                    onTap: () => setDialogState(() => selected = r),
+                    borderRadius: BorderRadius.circular(10),
+                    child: Container(
+                      width: double.infinity,
+                      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+                      decoration: BoxDecoration(
+                        color: selected == r
+                            ? AppColors.error.withValues(alpha: 0.08)
+                            : AppColors.background,
+                        borderRadius: BorderRadius.circular(10),
+                        border: Border.all(
+                          color: selected == r
+                              ? AppColors.error.withValues(alpha: 0.4)
+                              : AppColors.border,
+                        ),
+                      ),
+                      child: Text(
+                        r,
+                        style: TextStyle(
+                          fontSize: 14,
+                          fontWeight: selected == r ? FontWeight.w600 : FontWeight.w400,
+                          color: selected == r ? AppColors.error : AppColors.textPrimary,
+                        ),
+                      ),
+                    ),
+                  ),
+                )),
+              ],
+            ),
+            actions: [
+              TextButton(
+                onPressed: () => Navigator.pop(ctx),
+                child: const Text('No, mantener'),
+              ),
+              TextButton(
+                onPressed: selected != null ? () => Navigator.pop(ctx, selected) : null,
+                style: TextButton.styleFrom(foregroundColor: AppColors.error),
+                child: const Text('Si, cancelar'),
+              ),
+            ],
           ),
-        ),
-        content: const Text(
-          'Estas seguro de que deseas cancelar esta reserva? Esta accion no se puede deshacer.',
-          style: TextStyle(
-            fontSize: 14,
-            color: AppColors.textSecondary,
-          ),
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(ctx, false),
-            child: const Text('No, mantener'),
-          ),
-          TextButton(
-            onPressed: () => Navigator.pop(ctx, true),
-            style: TextButton.styleFrom(foregroundColor: AppColors.error),
-            child: const Text('Si, cancelar'),
-          ),
-        ],
-      ),
+        );
+      },
     );
 
-    if (confirmed != true || !mounted) return;
+    if (reason == null || !mounted) return;
 
     setState(() => _cancelling = true);
 
     final repo = getIt<ReservationRepository>();
-    final result = await repo.cancel(widget.reservationId);
+    final result = await repo.cancel(widget.reservationId, reason: reason);
 
     if (!mounted) return;
 
