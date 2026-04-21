@@ -267,8 +267,11 @@ class _CategoryGridState extends State<_CategoryGrid> {
         itemCount: _categories!.length,
         itemBuilder: (context, index) {
           final cat = _categories![index];
-          final bgColor = cat.color.withValues(alpha: 0.1);
-          final fgColor = cat.color;
+          final isDark = cat.color.computeLuminance() < 0.15;
+          final bgColor = isDark
+              ? Color.lerp(cat.color, const Color(0xFFE5E7EB), 0.85)!
+              : cat.color.withValues(alpha: 0.1);
+          final fgColor = isDark ? const Color(0xFF374151) : cat.color;
 
           return GestureDetector(
             onTap: () => context.push('/category/${cat.slug}'),
