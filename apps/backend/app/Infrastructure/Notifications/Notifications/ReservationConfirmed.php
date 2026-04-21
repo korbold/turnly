@@ -22,7 +22,7 @@ class ReservationConfirmed extends Notification implements ShouldQueue
     public function toArray(object $notifiable): array
     {
         return [
-            'title' => 'Reserva confirmada',
+            'title' => '✅ Reserva confirmada',
             'body' => "Tu reserva para {$this->reservation->service->name} el {$this->reservation->scheduled_at->translatedFormat('d M')} a las {$this->reservation->scheduled_at->format('H:i')} ha sido confirmada.",
             'action_type' => 'reservation_detail',
             'action_id' => $this->reservation->id,

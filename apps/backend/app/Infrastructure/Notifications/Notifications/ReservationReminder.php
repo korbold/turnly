@@ -52,10 +52,10 @@ class ReservationReminder extends Notification implements ShouldQueue
     private function title(): string
     {
         if ($this->reminderType === 'day_before') {
-            return $this->recipientRole === 'client' ? 'Recordatorio de cita' : 'Cita mañana';
+            return $this->recipientRole === 'client' ? '🔔 Recordatorio de cita' : '🔔 Cita mañana';
         }
 
-        return $this->recipientRole === 'client' ? 'Tu cita es pronto' : 'Cita próxima';
+        return $this->recipientRole === 'client' ? '⏰ Tu cita es pronto' : '⏰ Cita próxima';
     }
 
     private function body(): string

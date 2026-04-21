@@ -22,7 +22,7 @@ class ReservationStarted extends Notification implements ShouldQueue
     public function toArray(object $notifiable): array
     {
         return [
-            'title' => 'Tu cita ha iniciado',
+            'title' => '🚀 Tu cita ha iniciado',
             'body' => "Tu {$this->reservation->service->name} en {$this->reservation->tenant->name} ha comenzado.",
             'action_type' => 'reservation_detail',
             'action_id' => $this->reservation->id,

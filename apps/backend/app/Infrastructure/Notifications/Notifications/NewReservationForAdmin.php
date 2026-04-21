@@ -22,7 +22,7 @@ class NewReservationForAdmin extends Notification implements ShouldQueue
     public function toArray(object $notifiable): array
     {
         return [
-            'title' => 'Nueva reserva',
+            'title' => '📅 Nueva reserva',
             'body' => "{$this->reservation->client->name} agendó {$this->reservation->service->name} para el {$this->reservation->scheduled_at->translatedFormat('d M')} a las {$this->reservation->scheduled_at->format('H:i')}.",
             'action_type' => 'reservation_detail',
             'action_id' => $this->reservation->id,

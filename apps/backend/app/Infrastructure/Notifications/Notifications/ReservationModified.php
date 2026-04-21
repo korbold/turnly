@@ -22,7 +22,7 @@ class ReservationModified extends Notification implements ShouldQueue
     public function toArray(object $notifiable): array
     {
         return [
-            'title' => 'Reserva actualizada',
+            'title' => '📝 Reserva actualizada',
             'body' => "Tu reserva para {$this->reservation->service->name} ha sido reprogramada al {$this->reservation->scheduled_at->translatedFormat('d M')} a las {$this->reservation->scheduled_at->format('H:i')}.",
             'action_type' => 'reservation_detail',
             'action_id' => $this->reservation->id,

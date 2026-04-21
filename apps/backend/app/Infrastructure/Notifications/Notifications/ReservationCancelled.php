@@ -36,7 +36,7 @@ class ReservationCancelled extends Notification implements ShouldQueue
         }
 
         return [
-            'title' => 'Reserva cancelada',
+            'title' => '❌ Reserva cancelada',
             'body' => $body,
             'action_type' => 'reservation_detail',
             'action_id' => $this->reservation->id,
