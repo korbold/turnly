@@ -9,7 +9,6 @@ import '../../../../core/di/injection.dart';
 import '../../../../shared/widgets/app_button.dart';
 import '../../../../shared/widgets/empty_state.dart';
 import '../../../../shared/widgets/shimmer_loader.dart';
-import '../../../../shared/widgets/status_badge.dart';
 import '../../domain/entities/reservation.dart';
 import '../../domain/repositories/reservation_repository.dart';
 
@@ -129,17 +128,17 @@ class _ReservationDetailScreenState extends State<ReservationDetailScreen> {
     return Scaffold(
       backgroundColor: AppColors.background,
       appBar: AppBar(
-        backgroundColor: AppColors.surface,
+        backgroundColor: Colors.transparent,
         elevation: 0,
         leading: IconButton(
           icon: const Icon(Icons.arrow_back_rounded),
           onPressed: () => context.pop(),
         ),
         title: const Text(
-          'Detalle de reserva',
+          'Detalle',
           style: TextStyle(
             fontSize: 18,
-            fontWeight: FontWeight.w700,
+            fontWeight: FontWeight.w600,
             color: AppColors.textPrimary,
           ),
         ),
@@ -156,11 +155,9 @@ class _ReservationDetailScreenState extends State<ReservationDetailScreen> {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            const ShimmerLoader(height: 48),
+            const ShimmerLoader(height: 180),
             const SizedBox(height: 20),
-            const ShimmerLoader(height: 28, width: 200),
-            const SizedBox(height: 24),
-            ShimmerLoader.list(count: 4, itemHeight: 56),
+            ShimmerLoader.list(count: 4, itemHeight: 48),
           ],
         ),
       );
@@ -199,134 +196,203 @@ class _ReservationDetailContent extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final dateFormat = DateFormat("EEEE d 'de' MMMM, yyyy", 'es');
+    final dateFormat = DateFormat("EEEE,\nd 'de' MMMM yyyy", 'es');
     final timeFormat = DateFormat('HH:mm');
+    final statusColor = reservation.status.color;
 
     return SingleChildScrollView(
       physics: const BouncingScrollPhysics(),
-      padding: const EdgeInsets.all(20),
+      padding: const EdgeInsets.fromLTRB(20, 0, 20, 20),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          // Status badge (prominent)
-          Center(
-            child: StatusBadge(
-              label: reservation.status.label,
-              color: reservation.status.color,
-            ),
-          ).animate().fadeIn(duration: 400.ms).scale(
-                begin: const Offset(0.9, 0.9),
-                end: const Offset(1, 1),
-                duration: 400.ms,
-              ),
-
-          const SizedBox(height: 20),
-
-          // Service name as title
-          Center(
-            child: Text(
-              reservation.serviceName ?? 'Servicio',
-              style: const TextStyle(
-                fontSize: 24,
-                fontWeight: FontWeight.w700,
-                color: AppColors.textPrimary,
-              ),
-              textAlign: TextAlign.center,
-            ),
-          ).animate().fadeIn(duration: 400.ms, delay: 50.ms),
-
-          if (reservation.tenantName != null) ...[
-            const SizedBox(height: 4),
-            Center(
-              child: Text(
-                reservation.tenantName!,
-                style: const TextStyle(
-                  fontSize: 15,
-                  color: AppColors.textSecondary,
-                  fontWeight: FontWeight.w500,
-                ),
-              ),
-            ).animate().fadeIn(duration: 400.ms, delay: 100.ms),
-          ],
-
-          const SizedBox(height: 28),
-
-          // Detail card
+          // Hero card — date + duration
           Container(
             width: double.infinity,
-            padding: const EdgeInsets.all(20),
+            padding: const EdgeInsets.all(24),
             decoration: BoxDecoration(
-              color: AppColors.surface,
-              borderRadius: BorderRadius.circular(16),
-              boxShadow: [
-                BoxShadow(
-                  color: Colors.black.withValues(alpha: 0.06),
-                  blurRadius: 16,
-                  offset: const Offset(0, 4),
-                ),
-              ],
+              gradient: LinearGradient(
+                begin: Alignment.topLeft,
+                end: Alignment.bottomRight,
+                colors: [
+                  statusColor.withValues(alpha: 0.08),
+                  statusColor.withValues(alpha: 0.03),
+                ],
+              ),
+              borderRadius: BorderRadius.circular(24),
+              border: Border.all(color: statusColor.withValues(alpha: 0.15)),
             ),
             child: Column(
               children: [
-                _DetailRow(
-                  icon: Icons.calendar_today_rounded,
-                  label: 'Fecha',
-                  value: dateFormat.format(reservation.scheduledAt),
+                // Status chip
+                Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 6),
+                  decoration: BoxDecoration(
+                    color: statusColor.withValues(alpha: 0.12),
+                    borderRadius: BorderRadius.circular(20),
+                  ),
+                  child: Text(
+                    reservation.status.label,
+                    style: TextStyle(
+                      fontSize: 12,
+                      fontWeight: FontWeight.w700,
+                      color: statusColor,
+                      letterSpacing: 0.5,
+                    ),
+                  ),
                 ),
-                const Divider(height: 24),
-                _DetailRow(
-                  icon: Icons.access_time_rounded,
-                  label: 'Hora',
-                  value: reservation.estimatedEnd != null
-                      ? '${timeFormat.format(reservation.scheduledAt)} - ${timeFormat.format(reservation.estimatedEnd!)}'
-                      : timeFormat.format(reservation.scheduledAt),
+                const SizedBox(height: 20),
+                Row(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    // Date
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            dateFormat.format(reservation.scheduledAt),
+                            style: const TextStyle(
+                              fontSize: 22,
+                              fontWeight: FontWeight.w700,
+                              color: AppColors.textPrimary,
+                              height: 1.3,
+                            ),
+                          ),
+                          const SizedBox(height: 8),
+                          Row(
+                            children: [
+                              Icon(Icons.access_time_rounded, size: 16, color: statusColor),
+                              const SizedBox(width: 6),
+                              Text(
+                                reservation.estimatedEnd != null
+                                    ? '${timeFormat.format(reservation.scheduledAt)} - ${timeFormat.format(reservation.estimatedEnd!)}'
+                                    : timeFormat.format(reservation.scheduledAt),
+                                style: TextStyle(
+                                  fontSize: 15,
+                                  fontWeight: FontWeight.w600,
+                                  color: statusColor,
+                                ),
+                              ),
+                            ],
+                          ),
+                        ],
+                      ),
+                    ),
+                    // Duration badge
+                    if (reservation.estimatedEnd != null)
+                      Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+                        decoration: BoxDecoration(
+                          color: AppColors.surface,
+                          borderRadius: BorderRadius.circular(14),
+                          boxShadow: [
+                            BoxShadow(
+                              color: Colors.black.withValues(alpha: 0.06),
+                              blurRadius: 8,
+                              offset: const Offset(0, 2),
+                            ),
+                          ],
+                        ),
+                        child: Column(
+                          children: [
+                            Text(
+                              '${reservation.estimatedEnd!.difference(reservation.scheduledAt).inMinutes}',
+                              style: const TextStyle(
+                                fontSize: 22,
+                                fontWeight: FontWeight.w800,
+                                color: AppColors.textPrimary,
+                              ),
+                            ),
+                            const Text(
+                              'min',
+                              style: TextStyle(
+                                fontSize: 12,
+                                fontWeight: FontWeight.w500,
+                                color: AppColors.textSecondary,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                  ],
                 ),
-                if (reservation.tenantName != null) ...[
-                  const Divider(height: 24),
-                  _DetailRow(
-                    icon: Icons.store_outlined,
-                    label: 'Negocio',
-                    value: reservation.tenantName!,
-                  ),
-                ],
-                if (reservation.clientResourceLabel != null) ...[
-                  const Divider(height: 24),
-                  _DetailRow(
-                    icon: Icons.badge_outlined,
-                    label: 'Registro',
-                    value: reservation.clientResourceLabel!,
-                  ),
-                ],
-                if (reservation.servicePrice != null) ...[
-                  const Divider(height: 24),
-                  _DetailRow(
-                    icon: Icons.attach_money_rounded,
-                    label: 'Precio',
-                    value: reservation.servicePrice!,
-                  ),
-                ],
-                if (reservation.notes != null &&
-                    reservation.notes!.isNotEmpty) ...[
-                  const Divider(height: 24),
-                  _DetailRow(
-                    icon: Icons.notes_rounded,
-                    label: 'Notas',
-                    value: reservation.notes!,
-                  ),
-                ],
               ],
             ),
-          ).animate().fadeIn(duration: 400.ms, delay: 150.ms).slideY(
-                begin: 0.03,
+          ).animate().fadeIn(duration: 400.ms).slideY(
+                begin: 0.05,
                 end: 0,
                 duration: 400.ms,
-                delay: 150.ms,
               ),
 
-          const SizedBox(height: 32),
+          const SizedBox(height: 24),
+
+          // Service name
+          Text(
+            reservation.serviceName ?? 'Servicio',
+            style: const TextStyle(
+              fontSize: 20,
+              fontWeight: FontWeight.w700,
+              color: AppColors.textPrimary,
+            ),
+          ).animate().fadeIn(duration: 400.ms, delay: 50.ms),
+
+          const SizedBox(height: 20),
+
+          // Details list
+          _InfoTile(
+            icon: Icons.store_outlined,
+            label: 'Negocio',
+            value: reservation.tenantName ?? '-',
+          ).animate().fadeIn(duration: 400.ms, delay: 100.ms),
+
+          if (reservation.clientResourceLabel != null)
+            _InfoTile(
+              icon: Icons.badge_outlined,
+              label: 'Registro',
+              value: reservation.clientResourceLabel!,
+            ).animate().fadeIn(duration: 400.ms, delay: 150.ms),
+
+          if (reservation.notes != null && reservation.notes!.isNotEmpty)
+            _InfoTile(
+              icon: Icons.notes_rounded,
+              label: 'Notas',
+              value: reservation.notes!,
+            ).animate().fadeIn(duration: 400.ms, delay: 200.ms),
+
+          const SizedBox(height: 16),
+
+          // Price summary
+          if (reservation.servicePrice != null) ...[
+            const Divider(),
+            const SizedBox(height: 12),
+            Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                const Text(
+                  'Total',
+                  style: TextStyle(
+                    fontSize: 16,
+                    fontWeight: FontWeight.w500,
+                    color: AppColors.textSecondary,
+                  ),
+                ),
+                Text(
+                  '\$${reservation.servicePrice}',
+                  style: const TextStyle(
+                    fontSize: 24,
+                    fontWeight: FontWeight.w800,
+                    color: AppColors.textPrimary,
+                  ),
+                ),
+              ],
+            ).animate().fadeIn(duration: 400.ms, delay: 250.ms),
+            const SizedBox(height: 24),
+          ],
 
           // Cancel button
-          if (reservation.canCancel)
+          if (reservation.canCancel) ...[
+            const SizedBox(height: 8),
             AppButton(
               label: 'Cancelar Reserva',
               variant: AppButtonVariant.outline,
@@ -334,7 +400,8 @@ class _ReservationDetailContent extends StatelessWidget {
               onPressed: onCancel,
               isLoading: cancelling,
               icon: Icons.cancel_outlined,
-            ).animate().fadeIn(duration: 400.ms, delay: 250.ms),
+            ).animate().fadeIn(duration: 400.ms, delay: 300.ms),
+          ],
 
           const SizedBox(height: 20),
         ],
@@ -343,12 +410,12 @@ class _ReservationDetailContent extends StatelessWidget {
   }
 }
 
-class _DetailRow extends StatelessWidget {
+class _InfoTile extends StatelessWidget {
   final IconData icon;
   final String label;
   final String value;
 
-  const _DetailRow({
+  const _InfoTile({
     required this.icon,
     required this.label,
     required this.value,
@@ -356,44 +423,39 @@ class _DetailRow extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Row(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Container(
-          width: 38,
-          height: 38,
-          decoration: BoxDecoration(
-            color: AppColors.accentLight,
-            borderRadius: BorderRadius.circular(10),
-          ),
-          child: Icon(icon, color: AppColors.accent, size: 18),
-        ),
-        const SizedBox(width: 14),
-        Expanded(
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Text(
-                label,
-                style: const TextStyle(
-                  fontSize: 12,
-                  color: AppColors.textTertiary,
-                  fontWeight: FontWeight.w500,
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 16),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Icon(icon, size: 20, color: AppColors.textTertiary),
+          const SizedBox(width: 14),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  label,
+                  style: const TextStyle(
+                    fontSize: 12,
+                    color: AppColors.textTertiary,
+                    fontWeight: FontWeight.w500,
+                  ),
                 ),
-              ),
-              const SizedBox(height: 2),
-              Text(
-                value,
-                style: const TextStyle(
-                  fontSize: 15,
-                  fontWeight: FontWeight.w600,
-                  color: AppColors.textPrimary,
+                const SizedBox(height: 2),
+                Text(
+                  value,
+                  style: const TextStyle(
+                    fontSize: 15,
+                    fontWeight: FontWeight.w600,
+                    color: AppColors.textPrimary,
+                  ),
                 ),
-              ),
-            ],
+              ],
+            ),
           ),
-        ),
-      ],
+        ],
+      ),
     );
   }
 }

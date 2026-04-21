@@ -6,8 +6,10 @@ import 'package:go_router/go_router.dart';
 import 'package:intl/intl.dart';
 
 import '../../../../app/theme/app_colors.dart';
+import '../../../../app/theme/tenant_theme.dart';
 import '../../../../core/di/injection.dart';
 import '../../../../shared/widgets/app_button.dart';
+import '../../../explore/domain/entities/service.dart' as explore;
 import '../../../../shared/widgets/app_text_field.dart';
 import '../../../../shared/widgets/empty_state.dart';
 import '../../../../shared/widgets/shimmer_loader.dart';
@@ -25,13 +27,17 @@ import '../widgets/step_indicator.dart';
 class CreateReservationScreen extends StatelessWidget {
   final String tenantSlug;
   final String? serviceId;
+  final List<explore.Service> services;
   final List<Map<String, dynamic>> customFields;
+  final String? businessType;
 
   const CreateReservationScreen({
     super.key,
     required this.tenantSlug,
     this.serviceId,
+    this.services = const [],
     this.customFields = const [],
+    this.businessType,
   });
 
   @override
@@ -47,10 +53,25 @@ class CreateReservationScreen extends StatelessWidget {
               CreateReservationCubit(getIt<ReservationRepository>()),
         ),
       ],
-      child: _CreateReservationView(
-        tenantSlug: tenantSlug,
-        serviceId: serviceId,
-        customFields: customFields,
+      child: Builder(
+        builder: (context) {
+          final tenantTheme = TenantTheme.fromBusinessType(businessType);
+          return Theme(
+            data: Theme.of(context).copyWith(
+              colorScheme: Theme.of(context).colorScheme.copyWith(
+                primary: tenantTheme.primary,
+                secondary: tenantTheme.secondary,
+              ),
+            ),
+            child: _CreateReservationView(
+              tenantSlug: tenantSlug,
+              serviceId: serviceId,
+              services: services,
+              customFields: customFields,
+              businessType: businessType,
+            ),
+          );
+        },
       ),
     );
   }
@@ -59,12 +80,16 @@ class CreateReservationScreen extends StatelessWidget {
 class _CreateReservationView extends StatefulWidget {
   final String tenantSlug;
   final String? serviceId;
+  final List<explore.Service> services;
   final List<Map<String, dynamic>> customFields;
+  final String? businessType;
 
   const _CreateReservationView({
     required this.tenantSlug,
     this.serviceId,
+    this.services = const [],
     this.customFields = const [],
+    this.businessType,
   });
 
   @override
@@ -77,36 +102,34 @@ class _CreateReservationViewState extends State<_CreateReservationView> {
 
   // Step 1: Resource
   ClientResource? _selectedResource;
-  final _newResourceController = TextEditingController();
-  bool _creatingNewResource = false;
-  final Map<String, TextEditingController> _customFieldControllers = {};
 
-  // Step 2: Date & Slot
+  // Step 2: Service, Date & Slot
+  explore.Service? _selectedService;
   DateTime? _selectedDate;
   AvailableSlot? _selectedSlot;
 
   // Step 3: Notes
   final _notesController = TextEditingController();
 
+  // Scroll controller for step 1
+  final _step1ScrollController = ScrollController();
+
   @override
   void initState() {
     super.initState();
-    for (final field in widget.customFields) {
-      final key = field['key'] as String? ?? '';
-      if (key.isNotEmpty) {
-        _customFieldControllers[key] = TextEditingController();
-      }
+    if (widget.serviceId != null && widget.services.isNotEmpty) {
+      _selectedService = widget.services.where((s) => s.id == widget.serviceId).firstOrNull;
+    }
+    if (_selectedService == null && widget.services.length == 1) {
+      _selectedService = widget.services.first;
     }
   }
 
   @override
   void dispose() {
     _pageController.dispose();
-    _newResourceController.dispose();
     _notesController.dispose();
-    for (final c in _customFieldControllers.values) {
-      c.dispose();
-    }
+    _step1ScrollController.dispose();
     super.dispose();
   }
 
@@ -133,97 +156,26 @@ class _CreateReservationViewState extends State<_CreateReservationView> {
     }
   }
 
-  Future<void> _createInlineResource() async {
-    String label;
-    Map<String, dynamic>? data;
-
-    if (widget.customFields.isNotEmpty) {
-      // Validate required fields
-      for (final field in widget.customFields) {
-        final key = field['key'] as String? ?? '';
-        final required = field['required'] as bool? ?? false;
-        final fieldLabel = field['label'] as String? ?? key;
-        final value = _customFieldControllers[key]?.text.trim() ?? '';
-        if (required && value.isEmpty) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(content: Text('El campo "$fieldLabel" es requerido')),
-          );
-          return;
-        }
-      }
-
-      // Build data map from custom fields
-      data = {};
-      for (final field in widget.customFields) {
-        final key = field['key'] as String? ?? '';
-        if (key.isNotEmpty) {
-          data[key] = _customFieldControllers[key]?.text.trim() ?? '';
-        }
-      }
-
-      // Build label from key field values (plate + brand + model if present)
-      final parts = <String>[];
-      for (final key in ['plate', 'brand', 'model']) {
-        final val = _customFieldControllers[key]?.text.trim() ?? '';
-        if (val.isNotEmpty) parts.add(val);
-      }
-      if (parts.isEmpty) {
-        // Fallback: use the first field value
-        final firstKey = widget.customFields.first['key'] as String? ?? '';
-        label = _customFieldControllers[firstKey]?.text.trim() ?? '';
-      } else {
-        label = parts.join(' ');
-      }
-    } else {
-      label = _newResourceController.text.trim();
-    }
-
-    if (label.isEmpty) return;
-
-    setState(() => _creatingNewResource = true);
-    final success = await context.read<ResourcesCubit>().createResource(
-          label: label,
-          data: data,
-        );
-    setState(() => _creatingNewResource = false);
-
-    if (success && mounted) {
-      _newResourceController.clear();
-      for (final c in _customFieldControllers.values) {
-        c.clear();
-      }
-      final state = context.read<ResourcesCubit>().state;
-      if (state is ResourcesLoaded && state.resources.isNotEmpty) {
-        setState(() {
-          _selectedResource = state.resources.last;
-        });
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Registro creado')),
-        );
-      }
-    }
-  }
-
   void _loadSlots() {
-    if (_selectedDate == null || widget.serviceId == null) return;
+    if (_selectedDate == null || _selectedService == null) return;
     final dateStr = DateFormat('yyyy-MM-dd').format(_selectedDate!);
     context.read<CreateReservationCubit>().loadSlots(
           dateStr,
-          widget.serviceId!,
+          _selectedService!.id,
         );
   }
 
   Future<void> _submitReservation() async {
     if (_selectedResource == null ||
         _selectedSlot == null ||
-        widget.serviceId == null) {
+        _selectedService == null) {
       return;
     }
 
     context.read<CreateReservationCubit>().createReservation(
           clientResourceId: _selectedResource!.id,
-          serviceId: widget.serviceId!,
-          scheduledAt: _selectedSlot!.start.toIso8601String(),
+          serviceId: _selectedService!.id,
+          scheduledAt: DateFormat('yyyy-MM-dd HH:mm:ss').format(_selectedSlot!.start),
           notes: _notesController.text.trim().isNotEmpty
               ? _notesController.text.trim()
               : null,
@@ -232,19 +184,34 @@ class _CreateReservationViewState extends State<_CreateReservationView> {
 
   @override
   Widget build(BuildContext context) {
-    return BlocListener<CreateReservationCubit, CreateReservationState>(
-      listener: (context, state) {
-        if (state is CreateReservationSuccess) {
-          _showSuccessDialog(state.reservation.id);
-        } else if (state is CreateReservationError) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(
-              content: Text(state.message),
-              backgroundColor: AppColors.error,
-            ),
-          );
-        }
-      },
+    return MultiBlocListener(
+      listeners: [
+        BlocListener<CreateReservationCubit, CreateReservationState>(
+          listener: (context, state) {
+            if (state is CreateReservationSuccess) {
+              _showSuccessDialog(state.reservation.id);
+            } else if (state is CreateReservationError) {
+              ScaffoldMessenger.of(context).showSnackBar(
+                SnackBar(
+                  content: Text(state.message),
+                  backgroundColor: AppColors.error,
+                ),
+              );
+            }
+          },
+        ),
+        BlocListener<ResourcesCubit, ResourcesState>(
+          listener: (context, state) {
+            if (state is ResourcesLoaded &&
+                state.resources.isNotEmpty &&
+                _selectedResource == null) {
+              setState(() {
+                _selectedResource = state.resources.first;
+              });
+            }
+          },
+        ),
+      ],
       child: Scaffold(
         backgroundColor: AppColors.background,
         appBar: AppBar(
@@ -296,22 +263,86 @@ class _CreateReservationViewState extends State<_CreateReservationView> {
                 children: [
                   _Step1ResourceSelection(
                     selectedResource: _selectedResource,
-                    newResourceController: _newResourceController,
-                    creatingNewResource: _creatingNewResource,
-                    customFields: widget.customFields,
-                    customFieldControllers: _customFieldControllers,
+                    scrollController: _step1ScrollController,
                     onResourceSelected: (r) {
                       setState(() => _selectedResource = r);
                     },
-                    onCreateResource: _createInlineResource,
+                    onCreateResource: () async {
+                      final result = await context.push(
+                        '/resources/add',
+                        extra: {
+                          'customFields': widget.customFields,
+                          'businessType': widget.businessType,
+                        },
+                      );
+                      if (result == true && mounted) {
+                        context.read<ResourcesCubit>().loadResources();
+                        // Wait for resources to reload, then select the last one
+                        await Future.delayed(const Duration(milliseconds: 500));
+                        if (mounted) {
+                          final state = context.read<ResourcesCubit>().state;
+                          if (state is ResourcesLoaded && state.resources.isNotEmpty) {
+                            setState(() {
+                              _selectedResource = state.resources.last;
+                            });
+                          }
+                        }
+                      }
+                    },
+                    onEditResource: (resource) async {
+                      final result = await context.push(
+                        '/resources/add',
+                        extra: {
+                          'customFields': widget.customFields,
+                          'resource': resource,
+                          'businessType': widget.businessType,
+                        },
+                      );
+                      if (result == true && mounted) {
+                        context.read<ResourcesCubit>().loadResources();
+                      }
+                    },
+                    onDeleteResource: (resource) async {
+                      final confirmed = await showDialog<bool>(
+                        context: context,
+                        builder: (ctx) => AlertDialog(
+                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+                          title: const Text('Eliminar registro'),
+                          content: Text('Eliminar "${resource.label}"?'),
+                          actions: [
+                            TextButton(onPressed: () => Navigator.pop(ctx, false), child: const Text('Cancelar')),
+                            TextButton(
+                              onPressed: () => Navigator.pop(ctx, true),
+                              style: TextButton.styleFrom(foregroundColor: AppColors.error),
+                              child: const Text('Eliminar'),
+                            ),
+                          ],
+                        ),
+                      );
+                      if (confirmed == true && mounted) {
+                        await context.read<ResourcesCubit>().deleteResource(resource.id);
+                        if (mounted && _selectedResource?.id == resource.id) {
+                          setState(() => _selectedResource = null);
+                        }
+                      }
+                    },
                     onNext: () {
                       if (_selectedResource != null) _nextStep();
                     },
                   ),
                   _Step2DateSlot(
+                    services: widget.services,
+                    selectedService: _selectedService,
+                    hasPreselectedService: widget.serviceId != null,
                     selectedDate: _selectedDate,
                     selectedSlot: _selectedSlot,
-                    serviceId: widget.serviceId,
+                    onServiceSelected: (service) {
+                      setState(() {
+                        _selectedService = service;
+                        _selectedSlot = null;
+                      });
+                      _loadSlots();
+                    },
                     onDateSelected: (date) {
                       setState(() {
                         _selectedDate = date;
@@ -328,6 +359,7 @@ class _CreateReservationViewState extends State<_CreateReservationView> {
                   ),
                   _Step3Confirm(
                     selectedResource: _selectedResource,
+                    selectedService: _selectedService,
                     selectedDate: _selectedDate,
                     selectedSlot: _selectedSlot,
                     notesController: _notesController,
@@ -419,28 +451,27 @@ class _StepLabel extends StatelessWidget {
 // -- Step 1: Resource Selection --
 class _Step1ResourceSelection extends StatelessWidget {
   final ClientResource? selectedResource;
-  final TextEditingController newResourceController;
-  final bool creatingNewResource;
-  final List<Map<String, dynamic>> customFields;
-  final Map<String, TextEditingController> customFieldControllers;
+  final ScrollController scrollController;
   final ValueChanged<ClientResource> onResourceSelected;
   final VoidCallback onCreateResource;
+  final ValueChanged<ClientResource> onEditResource;
+  final ValueChanged<ClientResource> onDeleteResource;
   final VoidCallback onNext;
 
   const _Step1ResourceSelection({
     required this.selectedResource,
-    required this.newResourceController,
-    required this.creatingNewResource,
-    required this.customFields,
-    required this.customFieldControllers,
+    required this.scrollController,
     required this.onResourceSelected,
     required this.onCreateResource,
+    required this.onEditResource,
+    required this.onDeleteResource,
     required this.onNext,
   });
 
   @override
   Widget build(BuildContext context) {
     return SingleChildScrollView(
+      controller: scrollController,
       padding: const EdgeInsets.all(20),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -502,6 +533,8 @@ class _Step1ResourceSelection extends StatelessWidget {
                       resource: resource,
                       isSelected: isSelected,
                       onTap: () => onResourceSelected(resource),
+                      onEdit: () => onEditResource(resource),
+                      onDelete: () => onDeleteResource(resource),
                     );
                   }).toList(),
                 );
@@ -512,66 +545,22 @@ class _Step1ResourceSelection extends StatelessWidget {
           ),
 
           const SizedBox(height: 24),
-          // Create new resource inline
-          Container(
-            padding: const EdgeInsets.all(16),
-            decoration: BoxDecoration(
-              color: AppColors.surface,
-              borderRadius: BorderRadius.circular(16),
-              border: Border.all(color: AppColors.border),
-            ),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                const Text(
-                  'O crea uno nuevo',
-                  style: TextStyle(
-                    fontSize: 14,
-                    fontWeight: FontWeight.w600,
-                    color: AppColors.textPrimary,
-                  ),
-                ),
-                const SizedBox(height: 12),
-                if (customFields.isNotEmpty) ...[
-                  ...customFields.map((field) {
-                    final key = field['key'] as String? ?? '';
-                    final label = field['label'] as String? ?? key;
-                    final isRequired = field['required'] as bool? ?? false;
-                    return Padding(
-                      padding: const EdgeInsets.only(bottom: 12),
-                      child: AppTextField(
-                        label: '$label${isRequired ? ' *' : ''}',
-                        hint: label,
-                        controller: customFieldControllers[key],
-                      ),
-                    );
-                  }),
-                  const SizedBox(height: 4),
-                  AppButton(
-                    label: 'Crear',
-                    onPressed: onCreateResource,
-                    isLoading: creatingNewResource,
-                  ),
-                ] else ...[
-                  Row(
-                    children: [
-                      Expanded(
-                        child: AppTextField(
-                          hint: 'Ej: Mi vehiculo, Placa ABC-123',
-                          controller: newResourceController,
-                        ),
-                      ),
-                      const SizedBox(width: 12),
-                      AppButton(
-                        label: 'Crear',
-                        onPressed: onCreateResource,
-                        isLoading: creatingNewResource,
-                        fullWidth: false,
-                      ),
-                    ],
-                  ),
-                ],
-              ],
+          // Create new resource button
+          OutlinedButton.icon(
+            onPressed: onCreateResource,
+            icon: const Icon(Icons.add_rounded),
+            label: const Text('Crear nuevo registro'),
+            style: OutlinedButton.styleFrom(
+              minimumSize: const Size(double.infinity, 52),
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(16),
+              ),
+              side: BorderSide(color: Theme.of(context).colorScheme.primary),
+              foregroundColor: Theme.of(context).colorScheme.primary,
+              textStyle: const TextStyle(
+                fontSize: 15,
+                fontWeight: FontWeight.w600,
+              ),
             ),
           ).animate().fadeIn(duration: 400.ms, delay: 200.ms),
 
@@ -591,11 +580,15 @@ class _ResourceCard extends StatelessWidget {
   final ClientResource resource;
   final bool isSelected;
   final VoidCallback onTap;
+  final VoidCallback onEdit;
+  final VoidCallback onDelete;
 
   const _ResourceCard({
     required this.resource,
     required this.isSelected,
     required this.onTap,
+    required this.onEdit,
+    required this.onDelete,
   });
 
   @override
@@ -655,6 +648,24 @@ class _ResourceCard extends StatelessWidget {
             ),
             if (isSelected)
               Icon(Icons.check_circle_rounded, color: primary, size: 22),
+            const SizedBox(width: 4),
+            GestureDetector(
+              onTap: onEdit,
+              child: const Icon(
+                Icons.edit_outlined,
+                color: AppColors.textTertiary,
+                size: 18,
+              ),
+            ),
+            const SizedBox(width: 4),
+            GestureDetector(
+              onTap: onDelete,
+              child: const Icon(
+                Icons.delete_outline_rounded,
+                color: AppColors.textTertiary,
+                size: 18,
+              ),
+            ),
           ],
         ),
       ),
@@ -664,17 +675,23 @@ class _ResourceCard extends StatelessWidget {
 
 // -- Step 2: Date & Slot Selection --
 class _Step2DateSlot extends StatelessWidget {
+  final List<explore.Service> services;
+  final explore.Service? selectedService;
+  final bool hasPreselectedService;
   final DateTime? selectedDate;
   final AvailableSlot? selectedSlot;
-  final String? serviceId;
+  final ValueChanged<explore.Service> onServiceSelected;
   final ValueChanged<DateTime> onDateSelected;
   final ValueChanged<AvailableSlot> onSlotSelected;
   final VoidCallback onNext;
 
   const _Step2DateSlot({
+    required this.services,
+    required this.selectedService,
+    this.hasPreselectedService = false,
     required this.selectedDate,
     required this.selectedSlot,
-    required this.serviceId,
+    required this.onServiceSelected,
     required this.onDateSelected,
     required this.onSlotSelected,
     required this.onNext,
@@ -699,6 +716,64 @@ class _Step2DateSlot extends StatelessWidget {
           ).animate().fadeIn(duration: 400.ms),
           const SizedBox(height: 20),
 
+          // Service selection (only if not pre-selected)
+          if (services.length > 1 && !hasPreselectedService) ...[
+            const Text(
+              'Servicio',
+              style: TextStyle(
+                fontSize: 16,
+                fontWeight: FontWeight.w600,
+                color: AppColors.textPrimary,
+              ),
+            ),
+            const SizedBox(height: 12),
+            Wrap(
+              spacing: 10,
+              runSpacing: 10,
+              children: services.map((service) {
+                final isSelected = selectedService?.id == service.id;
+                final primary = Theme.of(context).colorScheme.primary;
+                return GestureDetector(
+                  onTap: () => onServiceSelected(service),
+                  child: AnimatedContainer(
+                    duration: const Duration(milliseconds: 200),
+                    padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                    decoration: BoxDecoration(
+                      color: isSelected ? primary.withValues(alpha: 0.1) : AppColors.surface,
+                      borderRadius: BorderRadius.circular(12),
+                      border: Border.all(
+                        color: isSelected ? primary : AppColors.border,
+                        width: isSelected ? 2 : 1,
+                      ),
+                    ),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          service.name,
+                          style: TextStyle(
+                            fontSize: 14,
+                            fontWeight: FontWeight.w600,
+                            color: isSelected ? primary : AppColors.textPrimary,
+                          ),
+                        ),
+                        const SizedBox(height: 2),
+                        Text(
+                          '\$${service.price.toStringAsFixed(2)}',
+                          style: TextStyle(
+                            fontSize: 12,
+                            color: isSelected ? primary : AppColors.textSecondary,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                );
+              }).toList(),
+            ).animate().fadeIn(duration: 400.ms, delay: 50.ms),
+            const SizedBox(height: 24),
+          ],
+
           // Date picker button
           GestureDetector(
             onTap: () async {
@@ -707,17 +782,6 @@ class _Step2DateSlot extends StatelessWidget {
                 initialDate: selectedDate ?? DateTime.now(),
                 firstDate: DateTime.now(),
                 lastDate: DateTime.now().add(const Duration(days: 90)),
-                locale: const Locale('es'),
-                builder: (context, child) {
-                  return Theme(
-                    data: Theme.of(context).copyWith(
-                      colorScheme: Theme.of(context).colorScheme.copyWith(
-                            primary: Theme.of(context).colorScheme.primary,
-                          ),
-                    ),
-                    child: child!,
-                  );
-                },
               );
               if (picked != null) onDateSelected(picked);
             },
@@ -779,7 +843,7 @@ class _Step2DateSlot extends StatelessWidget {
           const SizedBox(height: 24),
 
           // Slots section
-          if (selectedDate != null) ...[
+          if (selectedDate != null && selectedService != null) ...[
             const Text(
               'Horarios disponibles',
               style: TextStyle(
@@ -845,6 +909,7 @@ class _Step2DateSlot extends StatelessWidget {
 // -- Step 3: Confirm --
 class _Step3Confirm extends StatelessWidget {
   final ClientResource? selectedResource;
+  final explore.Service? selectedService;
   final DateTime? selectedDate;
   final AvailableSlot? selectedSlot;
   final TextEditingController notesController;
@@ -852,6 +917,7 @@ class _Step3Confirm extends StatelessWidget {
 
   const _Step3Confirm({
     required this.selectedResource,
+    this.selectedService,
     required this.selectedDate,
     required this.selectedSlot,
     required this.notesController,
@@ -903,6 +969,14 @@ class _Step3Confirm extends StatelessWidget {
             ),
             child: Column(
               children: [
+                if (selectedService != null) ...[
+                  _SummaryRow(
+                    icon: Icons.miscellaneous_services_rounded,
+                    label: 'Servicio',
+                    value: '${selectedService!.name} - \$${selectedService!.price.toStringAsFixed(2)}',
+                  ),
+                  const Divider(height: 24),
+                ],
                 _SummaryRow(
                   icon: Icons.badge_outlined,
                   label: 'Registro',
@@ -969,16 +1043,17 @@ class _SummaryRow extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final primary = Theme.of(context).colorScheme.primary;
     return Row(
       children: [
         Container(
           width: 38,
           height: 38,
           decoration: BoxDecoration(
-            color: AppColors.accentLight,
+            color: primary.withValues(alpha: 0.1),
             borderRadius: BorderRadius.circular(10),
           ),
-          child: Icon(icon, color: AppColors.accent, size: 18),
+          child: Icon(icon, color: primary, size: 18),
         ),
         const SizedBox(width: 14),
         Expanded(
@@ -1009,3 +1084,4 @@ class _SummaryRow extends StatelessWidget {
     );
   }
 }
+

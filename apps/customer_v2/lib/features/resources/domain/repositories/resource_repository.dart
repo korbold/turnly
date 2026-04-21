@@ -10,5 +10,7 @@ abstract class ResourceRepository {
     required String label,
     Map<String, dynamic>? data,
   });
+  Future<Either<Failure, Unit>> update({required String id, Map<String, dynamic>? data});
+  Future<Either<Failure, Unit>> delete(String id);
   Future<Either<Failure, List<ServiceHistoryEntry>>> getHistory(String resourceId);
 }

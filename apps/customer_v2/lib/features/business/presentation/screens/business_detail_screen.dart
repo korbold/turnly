@@ -173,34 +173,6 @@ class _BusinessContent extends StatelessWidget {
             ),
           ),
         ),
-        floatingActionButton: FloatingActionButton.extended(
-          onPressed: () async {
-            await SecureStorage.saveTenantSlug(business.slug);
-            if (context.mounted) {
-              context.push('/reservations/create', extra: {
-                'tenantSlug': business.slug,
-                'customFields': business.customFields,
-              });
-            }
-          },
-          backgroundColor: tenantTheme.primary,
-          foregroundColor: Colors.white,
-          elevation: 4,
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(24),
-          ),
-          icon: const Icon(Icons.calendar_today_rounded, size: 20),
-          label: const Text(
-            'Reservar',
-            style: TextStyle(fontWeight: FontWeight.w600, fontSize: 15),
-          ),
-        ).animate().fadeIn(duration: 500.ms, delay: 300.ms).slideY(
-              begin: 0.3,
-              end: 0,
-              duration: 500.ms,
-              delay: 300.ms,
-              curve: Curves.easeOut,
-            ),
       ),
     );
   }
@@ -241,7 +213,9 @@ class _ServicesTab extends StatelessWidget {
               context.push('/reservations/create', extra: {
                 'tenantSlug': business.slug,
                 'serviceId': service.id,
+                'services': business.services,
                 'customFields': business.customFields,
+                'businessType': business.businessType,
               });
             }
           },

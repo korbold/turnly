@@ -40,6 +40,14 @@ class UserDto {
     );
   }
 
+  Map<String, dynamic> toJson() => {
+    'id': id,
+    'name': name,
+    'email': email,
+    'phone': phone,
+    'is_super_admin': isSuperAdmin,
+  };
+
   User toEntity() => User(
     id: id,
     name: name,

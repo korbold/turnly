@@ -10,12 +10,36 @@ class ExploreCubit extends Cubit<ExploreState> {
 
   Future<void> loadBusinesses({String? type}) async {
     emit(const ExploreLoading());
-    final result = await _repository.getBusinesses(type: type);
+    final result = await _repository.getBusinesses(type: type, page: 1);
     result.fold(
       (failure) => emit(ExploreError(failure.message)),
-      (businesses) => emit(ExploreLoaded(
-        businesses: businesses,
+      (paginated) => emit(ExploreLoaded(
+        businesses: paginated.items,
         activeFilter: type,
+        currentPage: paginated.currentPage,
+        lastPage: paginated.lastPage,
+      )),
+    );
+  }
+
+  Future<void> loadMore() async {
+    final current = state;
+    if (current is! ExploreLoaded || !current.hasMore || current.loadingMore) return;
+
+    emit(current.copyWith(loadingMore: true));
+
+    final result = await _repository.getBusinesses(
+      type: current.activeFilter,
+      page: current.currentPage + 1,
+    );
+
+    result.fold(
+      (_) => emit(current.copyWith(loadingMore: false)),
+      (paginated) => emit(current.copyWith(
+        businesses: [...current.businesses, ...paginated.items],
+        currentPage: paginated.currentPage,
+        lastPage: paginated.lastPage,
+        loadingMore: false,
       )),
     );
   }
@@ -23,11 +47,7 @@ class ExploreCubit extends Cubit<ExploreState> {
   void search(String query) {
     final current = state;
     if (current is ExploreLoaded) {
-      emit(ExploreLoaded(
-        businesses: current.businesses,
-        activeFilter: current.activeFilter,
-        searchQuery: query,
-      ));
+      emit(current.copyWith(searchQuery: query));
     }
   }
 

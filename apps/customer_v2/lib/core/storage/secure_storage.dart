@@ -6,6 +6,7 @@ class SecureStorage {
 
   static const _tokenKey = 'auth_token';
   static const _tenantSlugKey = 'tenant_slug';
+  static const _userKey = 'user_data';
 
   // Token
   static Future<void> saveToken(String token) =>
@@ -23,6 +24,13 @@ class SecureStorage {
 
   static Future<String?> getTenantSlug() =>
       _storage.read(key: _tenantSlugKey);
+
+  // User data
+  static Future<void> saveUserData(String json) =>
+      _storage.write(key: _userKey, value: json);
+
+  static Future<String?> getUserData() =>
+      _storage.read(key: _userKey);
 
   // Clear all
   static Future<void> clear() => _storage.deleteAll();

@@ -1,5 +1,8 @@
 // lib/features/auth/presentation/cubit/auth_cubit.dart
+import 'dart:convert';
 import 'package:flutter_bloc/flutter_bloc.dart';
+import '../../../../core/storage/secure_storage.dart';
+import '../../data/dtos/auth_dto.dart';
 import '../../domain/repositories/auth_repository.dart';
 import 'auth_state.dart';
 
@@ -68,7 +71,13 @@ class AuthCubit extends Cubit<AuthState> {
   Future<void> checkAuth() async {
     final isAuth = await _repository.isAuthenticated();
     if (isAuth) {
-      await getMe();
+      final userData = await SecureStorage.getUserData();
+      if (userData != null) {
+        final user = UserDto.fromJson(jsonDecode(userData) as Map<String, dynamic>).toEntity();
+        emit(AuthAuthenticated(user));
+      } else {
+        await getMe();
+      }
     } else {
       emit(const AuthUnauthenticated());
     }

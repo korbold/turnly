@@ -14,21 +14,12 @@ class CategoryChips extends StatelessWidget {
   });
 
   static const _categories = <String?, String>{
-    null: 'Todos',
-    'car_wash': 'Car Wash',
-    'barbershop': 'Barberia',
-    'spa': 'Spa',
-    'gym': 'Gym',
-    'medical': 'Medico',
-  };
-
-  static const _icons = <String?, IconData>{
-    null: Icons.apps_rounded,
-    'car_wash': Icons.local_car_wash_rounded,
-    'barbershop': Icons.content_cut_rounded,
-    'spa': Icons.spa_rounded,
-    'gym': Icons.fitness_center_rounded,
-    'medical': Icons.medical_services_rounded,
+    null: '🏪 Todos',
+    'car_wash': '🚗 Car Wash',
+    'barbershop': '💈 Barberia',
+    'spa': '🧖 Spa',
+    'gym': '💪 Gym',
+    'medical': '🏥 Medico',
   };
 
   @override
@@ -66,24 +57,13 @@ class CategoryChips extends StatelessWidget {
                       ]
                     : [],
               ),
-              child: Row(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  Icon(
-                    _icons[entry.key] ?? Icons.category_rounded,
-                    size: 16,
-                    color: isActive ? Colors.white : AppColors.textSecondary,
-                  ),
-                  const SizedBox(width: 6),
-                  Text(
-                    entry.value,
-                    style: TextStyle(
-                      fontSize: 13,
-                      fontWeight: FontWeight.w600,
-                      color: isActive ? Colors.white : AppColors.textPrimary,
-                    ),
-                  ),
-                ],
+              child: Text(
+                entry.value,
+                style: TextStyle(
+                  fontSize: 13,
+                  fontWeight: FontWeight.w600,
+                  color: isActive ? Colors.white : AppColors.textPrimary,
+                ),
               ),
             ),
           ).animate().fadeIn(

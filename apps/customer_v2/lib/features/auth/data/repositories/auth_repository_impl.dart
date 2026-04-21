@@ -1,4 +1,5 @@
 // lib/features/auth/data/repositories/auth_repository_impl.dart
+import 'dart:convert';
 import 'package:dio/dio.dart';
 import 'package:fpdart/fpdart.dart';
 import 'package:google_sign_in/google_sign_in.dart';
@@ -26,6 +27,7 @@ class AuthRepositoryImpl implements AuthRepository {
         response.data['data'] as Map<String, dynamic>,
       );
       await SecureStorage.saveToken(dto.token);
+      await SecureStorage.saveUserData(jsonEncode(dto.user.toJson()));
       return Right((user: dto.user.toEntity(), token: dto.token));
     } on DioException catch (e) {
       if (e.response?.statusCode == 401) {
@@ -56,6 +58,7 @@ class AuthRepositoryImpl implements AuthRepository {
         response.data['data'] as Map<String, dynamic>,
       );
       await SecureStorage.saveToken(dto.token);
+      await SecureStorage.saveUserData(jsonEncode(dto.user.toJson()));
       return Right((user: dto.user.toEntity(), token: dto.token));
     } on DioException catch (e) {
       return Left(_extractError(e, 'Error al registrarse'));
@@ -102,7 +105,10 @@ class AuthRepositoryImpl implements AuthRepository {
   @override
   Future<Either<Failure, ({User user, String token})>> loginWithGoogle() async {
     try {
-      final googleSignIn = GoogleSignIn(scopes: ['email', 'profile']);
+      final googleSignIn = GoogleSignIn(
+        scopes: ['email', 'profile'],
+        serverClientId: '177358786679-hb3nt7ekc905br0vs98sobt4brqgsdka.apps.googleusercontent.com',
+      );
       final account = await googleSignIn.signIn();
 
       if (account == null) {
@@ -125,6 +131,7 @@ class AuthRepositoryImpl implements AuthRepository {
         response.data['data'] as Map<String, dynamic>,
       );
       await SecureStorage.saveToken(dto.token);
+      await SecureStorage.saveUserData(jsonEncode(dto.user.toJson()));
 
       return Right((user: dto.user.toEntity(), token: dto.token));
     } on DioException catch (e) {

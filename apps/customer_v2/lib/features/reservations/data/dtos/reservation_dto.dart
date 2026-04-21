@@ -18,9 +18,9 @@ class ReservationDto {
       clientResourceId: json['client_resource_id'] as String?,
       serviceId: json['service_id'] as String,
       assignedTo: json['assigned_to'] as String?,
-      scheduledAt: DateTime.parse(json['scheduled_at'] as String),
+      scheduledAt: DateTime.parse(json['scheduled_at'] as String).toLocal(),
       estimatedEnd: json['estimated_end'] != null
-          ? DateTime.parse(json['estimated_end'] as String)
+          ? DateTime.parse(json['estimated_end'] as String).toLocal()
           : null,
       status: ReservationStatus.fromString(json['status'] as String),
       notes: json['notes'] as String?,

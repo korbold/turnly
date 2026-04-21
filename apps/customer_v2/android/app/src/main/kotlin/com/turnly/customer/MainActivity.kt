@@ -1,4 +1,4 @@
-package com.turnly.customer_v2
+package com.turnly.customer
 
 import io.flutter.embedding.android.FlutterActivity
 

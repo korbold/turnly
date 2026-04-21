@@ -132,7 +132,7 @@ class BusinessCard extends StatelessWidget {
                         child: Text(
                           business.name,
                           style: const TextStyle(
-                            fontSize: 17,
+                            fontSize: 15,
                             fontWeight: FontWeight.w700,
                             color: AppColors.textPrimary,
                           ),

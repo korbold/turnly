@@ -13,8 +13,11 @@ import '../features/reservations/presentation/screens/create_reservation_screen.
 import '../features/reservations/presentation/screens/reservation_detail_screen.dart';
 import '../features/profile/presentation/screens/profile_screen.dart';
 import '../features/resources/presentation/screens/resources_screen.dart';
+import '../features/explore/domain/entities/service.dart';
+import '../features/resources/domain/entities/client_resource.dart';
 import '../features/resources/presentation/screens/add_resource_screen.dart';
 import '../features/resources/presentation/screens/resource_history_screen.dart';
+import '../features/explore/presentation/screens/category_screen.dart';
 import '../features/favorites/presentation/screens/favorites_screen.dart';
 import '../features/notifications/presentation/screens/notifications_screen.dart';
 
@@ -77,6 +80,12 @@ final appRouter = GoRouter(
 
     // Full-screen routes (outside shell)
     GoRoute(
+      path: '/category/:type',
+      builder: (context, state) => CategoryScreen(
+        businessType: state.pathParameters['type']!,
+      ),
+    ),
+    GoRoute(
       path: '/business/:slug',
       builder: (context, state) => BusinessDetailScreen(
         slug: state.pathParameters['slug']!,
@@ -88,10 +97,14 @@ final appRouter = GoRouter(
         final extra = state.extra as Map<String, dynamic>?;
         final customFields =
             (extra?['customFields'] as List<Map<String, dynamic>>?) ?? [];
+        final services =
+            (extra?['services'] as List<Service>?) ?? [];
         return CreateReservationScreen(
           tenantSlug: extra?['tenantSlug'] as String? ?? '',
           serviceId: extra?['serviceId'] as String?,
+          services: services,
           customFields: customFields,
+          businessType: extra?['businessType'] as String?,
         );
       },
     ),
@@ -107,7 +120,20 @@ final appRouter = GoRouter(
     ),
     GoRoute(
       path: '/resources/add',
-      builder: (context, state) => const AddResourceScreen(),
+      builder: (context, state) {
+        final extra = state.extra;
+        if (extra is Map<String, dynamic>) {
+          return AddResourceScreen(
+            customFields: (extra['customFields'] as List<Map<String, dynamic>>?) ?? const [],
+            existingResource: extra['resource'] as ClientResource?,
+            businessType: extra['businessType'] as String?,
+          );
+        }
+        if (extra is List<Map<String, dynamic>>) {
+          return AddResourceScreen(customFields: extra);
+        }
+        return const AddResourceScreen();
+      },
     ),
     GoRoute(
       path: '/resources/:id/history',

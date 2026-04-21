@@ -5,11 +5,10 @@ import 'package:flutter_animate/flutter_animate.dart';
 import 'package:go_router/go_router.dart';
 
 import '../../../../app/theme/app_colors.dart';
+import '../../../../app/theme/tenant_theme.dart';
 import '../../../../core/di/injection.dart';
 import '../../../../shared/widgets/avatar_circle.dart';
-import '../../../../shared/widgets/empty_state.dart';
 import '../../../../shared/widgets/section_header.dart';
-import '../../../../shared/widgets/shimmer_loader.dart';
 import '../../../auth/presentation/cubit/auth_cubit.dart';
 import '../../../auth/presentation/cubit/auth_state.dart';
 import '../../../reservations/domain/repositories/reservation_repository.dart';
@@ -17,9 +16,6 @@ import '../../../reservations/presentation/cubit/reservations_cubit.dart';
 import '../../../reservations/presentation/cubit/reservations_state.dart';
 import '../../domain/repositories/explore_repository.dart';
 import '../cubit/explore_cubit.dart';
-import '../cubit/explore_state.dart';
-import '../widgets/business_card.dart';
-import '../widgets/category_chips.dart';
 import '../widgets/next_reservation_card.dart';
 
 class ExploreScreen extends StatelessWidget {
@@ -56,7 +52,6 @@ class _ExploreView extends StatelessWidget {
         child: RefreshIndicator(
           color: AppColors.accent,
           onRefresh: () async {
-            context.read<ExploreCubit>().loadBusinesses();
             context.read<ReservationsCubit>().loadReservations();
           },
           child: CustomScrollView(
@@ -66,41 +61,19 @@ class _ExploreView extends StatelessWidget {
             slivers: [
               // Header
               SliverToBoxAdapter(child: _buildHeader(context)),
-              // Search bar
-              const SliverToBoxAdapter(child: _SearchBar()),
               // Next reservation
               const SliverToBoxAdapter(child: _NextReservationSection()),
-              // Category chips
+              // Categories title
               SliverToBoxAdapter(
                 child: Padding(
-                  padding: const EdgeInsets.only(top: 20, bottom: 16),
-                  child: BlocBuilder<ExploreCubit, ExploreState>(
-                    builder: (context, state) {
-                      final activeFilter =
-                          state is ExploreLoaded ? state.activeFilter : null;
-                      return CategoryChips(
-                        activeFilter: activeFilter,
-                        onSelected: (type) {
-                          context.read<ExploreCubit>().filterByType(type);
-                        },
-                      );
-                    },
-                  ),
+                  padding: const EdgeInsets.fromLTRB(20, 24, 20, 14),
+                  child: const SectionHeader(title: 'Categorias'),
                 ),
               ),
-              // Section header
-              SliverToBoxAdapter(
-                child: Padding(
-                  padding:
-                      const EdgeInsets.symmetric(horizontal: 20, vertical: 4),
-                  child: const SectionHeader(title: 'Negocios'),
-                ),
-              ),
-              const SliverToBoxAdapter(child: SizedBox(height: 12)),
-              // Business list
-              const _BusinessList(),
+              // Category grid
+              const SliverToBoxAdapter(child: _CategoryGrid()),
               // Bottom spacing
-              const SliverToBoxAdapter(child: SizedBox(height: 24)),
+              const SliverToBoxAdapter(child: SizedBox(height: 100)),
             ],
           ),
         ),
@@ -109,55 +82,53 @@ class _ExploreView extends StatelessWidget {
   }
 
   Widget _buildHeader(BuildContext context) {
-    String greeting = 'Hola!';
-    String userName = '';
+    return BlocBuilder<AuthCubit, AuthState>(
+      builder: (context, authState) {
+        String greeting = 'Hola!';
+        String userName = '';
 
-    // Try reading auth state if available
-    try {
-      final authState = context.read<AuthCubit>().state;
-      if (authState is AuthAuthenticated) {
-        final firstName = authState.user.name.split(' ').first;
-        greeting = 'Hola, $firstName';
-        userName = authState.user.name;
-      }
-    } catch (_) {
-      // AuthCubit not in tree -- fallback
-    }
+        if (authState is AuthAuthenticated) {
+          final firstName = authState.user.name.split(' ').first;
+          greeting = 'Hola, $firstName';
+          userName = authState.user.name;
+        }
 
-    return Padding(
-      padding: const EdgeInsets.fromLTRB(20, 20, 20, 4),
-      child: Row(
-        children: [
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  greeting,
-                  style: const TextStyle(
-                    fontSize: 28,
-                    fontWeight: FontWeight.w700,
-                    color: AppColors.textPrimary,
-                    height: 1.2,
-                  ),
+        return Padding(
+          padding: const EdgeInsets.fromLTRB(20, 20, 20, 4),
+          child: Row(
+            children: [
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      greeting,
+                      style: const TextStyle(
+                        fontSize: 28,
+                        fontWeight: FontWeight.w700,
+                        color: AppColors.textPrimary,
+                        height: 1.2,
+                      ),
+                    ),
+                    const SizedBox(height: 4),
+                    Text(
+                      'Encuentra tu proximo turno',
+                      style: TextStyle(
+                        fontSize: 15,
+                        color: AppColors.textSecondary,
+                      ),
+                    ),
+                  ],
                 ),
-                const SizedBox(height: 4),
-                Text(
-                  'Encuentra tu proximo turno',
-                  style: TextStyle(
-                    fontSize: 15,
-                    color: AppColors.textSecondary,
-                  ),
-                ),
-              ],
-            ),
+              ),
+              AvatarCircle(
+                name: userName.isNotEmpty ? userName : 'U',
+                size: 44,
+              ),
+            ],
           ),
-          AvatarCircle(
-            name: userName.isNotEmpty ? userName : 'U',
-            size: 44,
-          ),
-        ],
-      ),
+        );
+      },
     )
         .animate()
         .fadeIn(duration: 400.ms)
@@ -172,50 +143,33 @@ class _SearchBar extends StatelessWidget {
   Widget build(BuildContext context) {
     return Padding(
       padding: const EdgeInsets.fromLTRB(20, 16, 20, 0),
-      child: Container(
-        decoration: BoxDecoration(
-          color: AppColors.surface,
-          borderRadius: BorderRadius.circular(16),
-          boxShadow: [
-            BoxShadow(
-              color: Colors.black.withValues(alpha: 0.06),
-              blurRadius: 16,
-              offset: const Offset(0, 2),
-            ),
-          ],
-        ),
-        child: TextField(
-          onChanged: (query) {
-            context.read<ExploreCubit>().search(query);
-          },
-          decoration: InputDecoration(
-            hintText: 'Buscar negocios...',
-            hintStyle: const TextStyle(
-              color: AppColors.textTertiary,
-              fontSize: 15,
-            ),
-            prefixIcon: const Icon(
-              Icons.search_rounded,
-              color: AppColors.textTertiary,
-              size: 22,
-            ),
-            border: OutlineInputBorder(
-              borderRadius: BorderRadius.circular(16),
-              borderSide: BorderSide.none,
-            ),
-            enabledBorder: OutlineInputBorder(
-              borderRadius: BorderRadius.circular(16),
-              borderSide: BorderSide.none,
-            ),
-            focusedBorder: OutlineInputBorder(
-              borderRadius: BorderRadius.circular(16),
-              borderSide:
-                  const BorderSide(color: AppColors.accent, width: 1.5),
-            ),
-            filled: true,
-            fillColor: AppColors.surface,
-            contentPadding:
-                const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+      child: GestureDetector(
+        onTap: () => context.push('/category/all'),
+        child: Container(
+          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+          decoration: BoxDecoration(
+            color: AppColors.surface,
+            borderRadius: BorderRadius.circular(16),
+            boxShadow: [
+              BoxShadow(
+                color: Colors.black.withValues(alpha: 0.06),
+                blurRadius: 16,
+                offset: const Offset(0, 2),
+              ),
+            ],
+          ),
+          child: Row(
+            children: [
+              const Icon(Icons.search_rounded, color: AppColors.textTertiary, size: 22),
+              const SizedBox(width: 12),
+              Text(
+                'Buscar negocios...',
+                style: TextStyle(
+                  color: AppColors.textTertiary,
+                  fontSize: 15,
+                ),
+              ),
+            ],
           ),
         ),
       ),
@@ -263,71 +217,151 @@ class _NextReservationSection extends StatelessWidget {
   }
 }
 
-class _BusinessList extends StatelessWidget {
-  const _BusinessList();
+class _CategoryGrid extends StatelessWidget {
+  const _CategoryGrid();
+
+  static const _categories = [
+    _CategoryItem(
+      type: 'car_wash',
+      label: 'Car Wash',
+      emoji: '🚗',
+      subtitle: 'Lavado de vehiculos',
+    ),
+    _CategoryItem(
+      type: 'barbershop',
+      label: 'Barberia',
+      emoji: '💈',
+      subtitle: 'Cortes y estilos',
+    ),
+    _CategoryItem(
+      type: 'spa',
+      label: 'Spa',
+      emoji: '🧖',
+      subtitle: 'Bienestar y relax',
+    ),
+    _CategoryItem(
+      type: 'gym',
+      label: 'Gym',
+      emoji: '💪',
+      subtitle: 'Entrenamiento',
+    ),
+    _CategoryItem(
+      type: 'medical',
+      label: 'Medico',
+      emoji: '🏥',
+      subtitle: 'Consultas medicas',
+    ),
+  ];
 
   @override
   Widget build(BuildContext context) {
-    return BlocBuilder<ExploreCubit, ExploreState>(
-      builder: (context, state) {
-        if (state is ExploreLoading || state is ExploreInitial) {
-          return SliverPadding(
-            padding: const EdgeInsets.symmetric(horizontal: 20),
-            sliver: SliverToBoxAdapter(
-              child: ShimmerLoader.list(count: 3, itemHeight: 200),
-            ),
-          );
-        }
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 20),
+      child: GridView.builder(
+        shrinkWrap: true,
+        physics: const NeverScrollableScrollPhysics(),
+        gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+          crossAxisCount: 2,
+          mainAxisSpacing: 14,
+          crossAxisSpacing: 14,
+          childAspectRatio: 1.4,
+        ),
+        itemCount: _categories.length,
+        itemBuilder: (context, index) {
+          final cat = _categories[index];
+          final theme = TenantTheme.fromBusinessType(cat.type);
 
-        if (state is ExploreError) {
-          return SliverFillRemaining(
-            hasScrollBody: false,
-            child: EmptyState(
-              icon: Icons.error_outline_rounded,
-              title: 'Error al cargar negocios',
-              subtitle: state.message,
-              actionLabel: 'Reintentar',
-              onAction: () => context.read<ExploreCubit>().loadBusinesses(),
-            ),
-          );
-        }
-
-        if (state is ExploreLoaded) {
-          final businesses = state.filtered;
-
-          if (businesses.isEmpty) {
-            return SliverFillRemaining(
-              hasScrollBody: false,
-              child: EmptyState(
-                icon: Icons.store_outlined,
-                title: 'No se encontraron negocios',
-                subtitle: state.searchQuery.isNotEmpty
-                    ? 'Intenta con otra busqueda'
-                    : 'No hay negocios disponibles en esta categoria',
+          return GestureDetector(
+            onTap: () => context.push('/category/${cat.type}'),
+            child: Container(
+              decoration: BoxDecoration(
+                color: theme.secondary,
+                borderRadius: BorderRadius.circular(20),
+                boxShadow: [
+                  BoxShadow(
+                    color: theme.primary.withValues(alpha: 0.1),
+                    blurRadius: 12,
+                    offset: const Offset(0, 4),
+                  ),
+                ],
               ),
-            );
-          }
-
-          return SliverPadding(
-            padding: const EdgeInsets.symmetric(horizontal: 20),
-            sliver: SliverList(
-              delegate: SliverChildBuilderDelegate(
-                (context, index) {
-                  final business = businesses[index];
-                  return BusinessCard(
-                    business: business,
-                    index: index,
-                    onTap: () => context.push('/business/${business.slug}'),
-                  );
-                },
-                childCount: businesses.length,
+              child: Stack(
+                children: [
+                  // Decorative blob
+                  Positioned(
+                    right: -10,
+                    top: -10,
+                    child: Container(
+                      width: 50,
+                      height: 50,
+                      decoration: BoxDecoration(
+                        shape: BoxShape.circle,
+                        color: theme.primary.withValues(alpha: 0.08),
+                      ),
+                    ),
+                  ),
+                  // Emoji
+                  Positioned(
+                    right: 12,
+                    bottom: 12,
+                    child: Text(
+                      cat.emoji,
+                      style: const TextStyle(fontSize: 36),
+                    ),
+                  ),
+                  // Text
+                  Padding(
+                    padding: const EdgeInsets.all(16),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          cat.label,
+                          style: TextStyle(
+                            fontSize: 16,
+                            fontWeight: FontWeight.w700,
+                            color: theme.primary,
+                          ),
+                        ),
+                        const SizedBox(height: 4),
+                        Text(
+                          cat.subtitle,
+                          style: TextStyle(
+                            fontSize: 12,
+                            color: theme.primary.withValues(alpha: 0.6),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ],
               ),
             ),
-          );
-        }
-
-        return const SliverToBoxAdapter(child: SizedBox.shrink());
-      },
+          )
+              .animate()
+              .fadeIn(duration: Duration(milliseconds: 400 + index * 80))
+              .scale(
+                begin: const Offset(0.9, 0.9),
+                end: const Offset(1, 1),
+                duration: Duration(milliseconds: 400 + index * 80),
+                curve: Curves.easeOut,
+              );
+        },
+      ),
     );
   }
+}
+
+class _CategoryItem {
+  final String type;
+  final String label;
+  final String emoji;
+  final String subtitle;
+
+  const _CategoryItem({
+    required this.type,
+    required this.label,
+    required this.emoji,
+    required this.subtitle,
+  });
 }
