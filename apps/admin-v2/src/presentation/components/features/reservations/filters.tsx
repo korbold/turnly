@@ -1,7 +1,7 @@
 'use client';
 
 import { useMemo } from 'react';
-import { format, addDays, subDays } from 'date-fns';
+import { format, addDays, subDays, addMonths, subMonths } from 'date-fns';
 import { es } from 'date-fns/locale';
 import { ChevronLeft, ChevronRight, CalendarDays } from 'lucide-react';
 import { useQueryState, parseAsString } from 'nuqs';
@@ -30,6 +30,8 @@ interface FiltersProps {
   reservations: Reservation[];
   onServiceChange?: (serviceId: string | null) => void;
   onEmployeeChange?: (employeeId: string | null) => void;
+  calendarMonth?: Date;
+  onMonthChange?: (month: Date) => void;
 }
 
 const STATUS_TABS: Array<{ value: string; label: string }> = [
@@ -44,6 +46,8 @@ export function ReservationFilters({
   reservations,
   onServiceChange,
   onEmployeeChange,
+  calendarMonth,
+  onMonthChange,
 }: FiltersProps) {
   const [dateStr, setDateStr] = useQueryState(
     'date',
@@ -67,55 +71,90 @@ export function ReservationFilters({
   return (
     <div className="space-y-3">
       {/* Date selector */}
-      <div className="flex items-center gap-2">
-        <Button
-          variant="outline"
-          size="icon"
-          className="h-8 w-8"
-          onClick={() => setDateStr(format(subDays(selectedDate, 1), 'yyyy-MM-dd'))}
-        >
-          <ChevronLeft className="h-4 w-4" />
-        </Button>
+      {calendarMonth && onMonthChange ? (
+        <div className="flex items-center gap-2">
+          <Button
+            variant="outline"
+            size="icon"
+            className="h-8 w-8"
+            onClick={() => onMonthChange(subMonths(calendarMonth, 1))}
+          >
+            <ChevronLeft className="h-4 w-4" />
+          </Button>
 
-        <Popover>
-          <PopoverTrigger asChild>
-            <Button
-              variant="outline"
-              className="h-8 min-w-[160px] justify-start text-sm font-normal"
-            >
-              <CalendarDays className="mr-2 h-3.5 w-3.5" />
-              {format(selectedDate, "d 'de' MMM yyyy", { locale: es })}
-            </Button>
-          </PopoverTrigger>
-          <PopoverContent className="w-auto p-0" align="start">
-            <Calendar
-              mode="single"
-              selected={selectedDate}
-              onSelect={(d) => {
-                if (d) setDateStr(format(d, 'yyyy-MM-dd'));
-              }}
-            />
-          </PopoverContent>
-        </Popover>
+          <div className="h-8 min-w-[160px] flex items-center justify-center text-sm font-medium capitalize">
+            {format(calendarMonth, "MMMM 'de' yyyy", { locale: es })}
+          </div>
 
-        <Button
-          variant="outline"
-          size="icon"
-          className="h-8 w-8"
-          onClick={() => setDateStr(format(addDays(selectedDate, 1), 'yyyy-MM-dd'))}
-        >
-          <ChevronRight className="h-4 w-4" />
-        </Button>
+          <Button
+            variant="outline"
+            size="icon"
+            className="h-8 w-8"
+            onClick={() => onMonthChange(addMonths(calendarMonth, 1))}
+          >
+            <ChevronRight className="h-4 w-4" />
+          </Button>
 
-        <Button
-          variant="ghost"
-          size="sm"
-          className="h-8 text-xs"
-          onClick={() => setDateStr(format(new Date(), 'yyyy-MM-dd'))}
-        >
-          Hoy
-        </Button>
-      </div>
+          <Button
+            variant="ghost"
+            size="sm"
+            className="h-8 text-xs"
+            onClick={() => onMonthChange(new Date())}
+          >
+            Hoy
+          </Button>
+        </div>
+      ) : (
+        <div className="flex items-center gap-2">
+          <Button
+            variant="outline"
+            size="icon"
+            className="h-8 w-8"
+            onClick={() => setDateStr(format(subDays(selectedDate, 1), 'yyyy-MM-dd'))}
+          >
+            <ChevronLeft className="h-4 w-4" />
+          </Button>
+
+          <Popover>
+            <PopoverTrigger asChild>
+              <Button
+                variant="outline"
+                className="h-8 min-w-[160px] justify-start text-sm font-normal"
+              >
+                <CalendarDays className="mr-2 h-3.5 w-3.5" />
+                {format(selectedDate, "d 'de' MMM yyyy", { locale: es })}
+              </Button>
+            </PopoverTrigger>
+            <PopoverContent className="w-auto p-0" align="start">
+              <Calendar
+                mode="single"
+                selected={selectedDate}
+                onSelect={(d) => {
+                  if (d) setDateStr(format(d, 'yyyy-MM-dd'));
+                }}
+              />
+            </PopoverContent>
+          </Popover>
+
+          <Button
+            variant="outline"
+            size="icon"
+            className="h-8 w-8"
+            onClick={() => setDateStr(format(addDays(selectedDate, 1), 'yyyy-MM-dd'))}
+          >
+            <ChevronRight className="h-4 w-4" />
+          </Button>
+
+          <Button
+            variant="ghost"
+            size="sm"
+            className="h-8 text-xs"
+            onClick={() => setDateStr(format(new Date(), 'yyyy-MM-dd'))}
+          >
+            Hoy
+          </Button>
+        </div>
+      )}
 
       {/* Status tabs */}
       <div className="flex flex-wrap gap-1.5">
@@ -152,7 +191,7 @@ export function ReservationFilters({
 }
 
 export function useFilterParams() {
-  const [dateStr] = useQueryState(
+  const [dateStr, setDateStr] = useQueryState(
     'date',
     parseAsString.withDefault(format(new Date(), 'yyyy-MM-dd'))
   );
@@ -160,5 +199,9 @@ export function useFilterParams() {
     'status',
     parseAsString.withDefault('all')
   );
-  return { dateStr, statusFilter: statusFilter === 'all' ? undefined : (statusFilter as ReservationStatus) };
+  return {
+    dateStr,
+    setDateStr,
+    statusFilter: statusFilter === 'all' ? undefined : (statusFilter as ReservationStatus),
+  };
 }

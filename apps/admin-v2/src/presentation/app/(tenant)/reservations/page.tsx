@@ -2,21 +2,34 @@
 
 import { useState, useMemo, useEffect, Suspense } from 'react';
 import { useSearchParams } from 'next/navigation';
-import { format } from 'date-fns';
+import {
+  format,
+  startOfMonth,
+  endOfMonth,
+  startOfWeek,
+  endOfWeek,
+  addMonths,
+  subMonths,
+} from 'date-fns';
+import { es } from 'date-fns/locale';
 import { Plus, LayoutList, CalendarDays } from 'lucide-react';
-import { useQueryState, parseAsString } from 'nuqs';
 import { Button } from '@/presentation/components/ui/button';
 import { Skeleton } from '@/presentation/components/ui/skeleton';
 import { useReservations } from '@/presentation/hooks/use-reservations';
-import { ReservationFilters, useFilterParams } from '@/presentation/components/features/reservations/filters';
+import {
+  ReservationFilters,
+  useFilterParams,
+} from '@/presentation/components/features/reservations/filters';
 import { Timeline } from '@/presentation/components/features/reservations/timeline';
+import { CalendarView } from '@/presentation/components/features/reservations/calendar-view';
 import { DetailPanel } from '@/presentation/components/features/reservations/detail-panel';
 import { CreateModal } from '@/presentation/components/features/reservations/create-modal';
 import type { Reservation, ReservationStatus } from '@/domain/entities/reservation';
 
 function ReservationsContent() {
-  const { dateStr, statusFilter } = useFilterParams();
+  const { dateStr, setDateStr, statusFilter } = useFilterParams();
   const [view, setView] = useState<'timeline' | 'calendar'>('timeline');
+  const [calendarMonth, setCalendarMonth] = useState(() => new Date());
   const [selectedReservation, setSelectedReservation] =
     useState<Reservation | null>(null);
   const [createOpen, setCreateOpen] = useState(false);
@@ -29,25 +42,63 @@ function ReservationsContent() {
     }
   }, [searchParams]);
 
-  const { data, isLoading } = useReservations({
+  // Calendar month date range (full visible grid)
+  const calendarRange = useMemo(() => {
+    const monthStart = startOfMonth(calendarMonth);
+    const monthEnd = endOfMonth(calendarMonth);
+    const gridStart = startOfWeek(monthStart, { weekStartsOn: 1 });
+    const gridEnd = endOfWeek(monthEnd, { weekStartsOn: 1 });
+    return {
+      from: format(gridStart, 'yyyy-MM-dd'),
+      to: format(gridEnd, 'yyyy-MM-dd'),
+    };
+  }, [calendarMonth]);
+
+  // Data for timeline view (single day)
+  const { data: timelineData, isLoading: timelineLoading } = useReservations({
     dateFrom: dateStr,
     dateTo: dateStr,
     status: statusFilter as ReservationStatus | undefined,
   });
 
-  const reservations = data?.data ?? [];
-
-  // For filter counts we need all reservations (unfiltered for that date)
-  const { data: allData } = useReservations({
+  // Unfiltered for status counts (timeline)
+  const { data: allTimelineData } = useReservations({
     dateFrom: dateStr,
     dateTo: dateStr,
   });
-  const allReservations = allData?.data ?? [];
 
-  // If status filter is set, display filtered, otherwise all
-  const displayReservations = statusFilter
-    ? reservations
-    : allReservations;
+  // Data for calendar view (full month range)
+  const { data: calendarData, isLoading: calendarLoading } = useReservations(
+    view === 'calendar'
+      ? {
+          dateFrom: calendarRange.from,
+          dateTo: calendarRange.to,
+          status: statusFilter as ReservationStatus | undefined,
+        }
+      : { dateFrom: '', dateTo: '' }
+  );
+
+  // Unfiltered for status counts (calendar)
+  const { data: allCalendarData } = useReservations(
+    view === 'calendar'
+      ? { dateFrom: calendarRange.from, dateTo: calendarRange.to }
+      : { dateFrom: '', dateTo: '' }
+  );
+
+  const isLoading = view === 'timeline' ? timelineLoading : calendarLoading;
+
+  const allReservations = view === 'timeline'
+    ? (allTimelineData?.data ?? [])
+    : (allCalendarData?.data ?? []);
+
+  const displayReservations = view === 'timeline'
+    ? (statusFilter ? (timelineData?.data ?? []) : allReservations)
+    : (statusFilter ? (calendarData?.data ?? []) : allReservations);
+
+  function handleCalendarSelectDay(date: Date) {
+    setDateStr(format(date, 'yyyy-MM-dd'));
+    setView('timeline');
+  }
 
   return (
     <div className="space-y-4">
@@ -89,7 +140,15 @@ function ReservationsContent() {
       </div>
 
       {/* Filters */}
-      <ReservationFilters reservations={allReservations} />
+      {view === 'timeline' ? (
+        <ReservationFilters reservations={allReservations} />
+      ) : (
+        <ReservationFilters
+          reservations={allReservations}
+          calendarMonth={calendarMonth}
+          onMonthChange={setCalendarMonth}
+        />
+      )}
 
       {/* Content */}
       {isLoading ? (
@@ -104,12 +163,12 @@ function ReservationsContent() {
           onSelect={setSelectedReservation}
         />
       ) : (
-        <div className="flex flex-col items-center justify-center rounded-lg border bg-white py-16 text-center">
-          <CalendarDays className="mb-3 h-12 w-12 text-zinc-300" />
-          <p className="text-sm text-muted-foreground">
-            Vista de calendario proximamente
-          </p>
-        </div>
+        <CalendarView
+          month={calendarMonth}
+          reservations={displayReservations}
+          onSelectDay={handleCalendarSelectDay}
+          onSelectReservation={setSelectedReservation}
+        />
       )}
 
       {/* Detail panel */}
