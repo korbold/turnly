@@ -132,7 +132,13 @@ class _ReservationDetailScreenState extends State<ReservationDetailScreen> {
         elevation: 0,
         leading: IconButton(
           icon: const Icon(Icons.arrow_back_rounded),
-          onPressed: () => context.pop(),
+          onPressed: () {
+            if (Navigator.of(context).canPop()) {
+              context.pop();
+            } else {
+              context.go('/reservations');
+            }
+          },
         ),
         title: const Text(
           'Detalle',
