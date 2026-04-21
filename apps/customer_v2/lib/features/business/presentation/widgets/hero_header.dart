@@ -168,7 +168,9 @@ class HeroHeader extends StatelessWidget {
                   const SizedBox(height: 16),
 
                   // Stats row
-                  Row(
+                  Wrap(
+                    spacing: 8,
+                    runSpacing: 8,
                     children: [
                       _StatChip(
                         icon: Icons.miscellaneous_services_rounded,
@@ -176,15 +178,13 @@ class HeroHeader extends StatelessWidget {
                         label: 'Servicios',
                         color: tenantTheme.primary,
                       ),
-                      const SizedBox(width: 12),
                       _StatChip(
                         icon: Icons.timer_outlined,
                         value: '${business.slotDuration}',
                         label: 'min',
                         color: tenantTheme.primary,
                       ),
-                      if (business.address != null && business.address!.isNotEmpty) ...[
-                        const SizedBox(width: 12),
+                      if (business.address != null && business.address!.isNotEmpty)
                         _StatChip(
                           icon: Icons.location_on_outlined,
                           value: '',
@@ -193,7 +193,6 @@ class HeroHeader extends StatelessWidget {
                               : business.address!,
                           color: tenantTheme.primary,
                         ),
-                      ],
                     ],
                   ).animate().fadeIn(duration: 400.ms, delay: 300.ms),
                 ],
