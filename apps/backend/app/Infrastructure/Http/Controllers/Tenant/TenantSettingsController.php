@@ -34,6 +34,8 @@ class TenantSettingsController extends Controller
             'onboarding_step' => 'sometimes|nullable|integer|min:0',
             'logo_url' => 'nullable|string|max:500',
             'cover_url' => 'nullable|string|max:500',
+            'slot_duration' => 'sometimes|integer|min:5|max:480',
+            'cancellation_hours' => 'sometimes|integer|min:0|max:72',
         ]);
 
         $tenant = TenantModel::findOrFail(app('current_tenant_id'));
@@ -47,12 +49,24 @@ class TenantSettingsController extends Controller
             'custom_fields',
             'social_links',
             'brand_theme',
-            'settings',
             'onboarding_step',
             'logo_url',
             'cover_url',
         ]));
 
-        return new TenantResource($tenant);
+        // Merge slot_duration and cancellation_hours into settings JSON
+        $settings = $tenant->settings ?? [];
+        if ($request->has('slot_duration')) {
+            $settings['slot_duration_minutes'] = (int) $request->slot_duration;
+        }
+        if ($request->has('cancellation_hours')) {
+            $settings['cancellation_hours'] = (int) $request->cancellation_hours;
+        }
+        if ($request->has('settings')) {
+            $settings = array_merge($settings, $request->settings);
+        }
+        $tenant->update(['settings' => $settings]);
+
+        return new TenantResource($tenant->fresh());
     }
 }
