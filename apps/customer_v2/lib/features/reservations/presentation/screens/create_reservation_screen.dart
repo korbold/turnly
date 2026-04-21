@@ -100,6 +100,10 @@ class _CreateReservationViewState extends State<_CreateReservationView> {
   final _pageController = PageController();
   int _currentStep = 0;
 
+  // Whether to skip the resource selection step (no custom fields)
+  bool get _skipResourceStep => widget.customFields.isEmpty;
+  int get _totalSteps => _skipResourceStep ? 2 : 3;
+
   // Step 1: Resource
   ClientResource? _selectedResource;
 
@@ -143,7 +147,7 @@ class _CreateReservationViewState extends State<_CreateReservationView> {
   }
 
   void _nextStep() {
-    if (_currentStep < 2) {
+    if (_currentStep < _totalSteps - 1) {
       _goToStep(_currentStep + 1);
     }
   }
@@ -166,14 +170,11 @@ class _CreateReservationViewState extends State<_CreateReservationView> {
   }
 
   Future<void> _submitReservation() async {
-    if (_selectedResource == null ||
-        _selectedSlot == null ||
-        _selectedService == null) {
-      return;
-    }
+    if (_selectedSlot == null || _selectedService == null) return;
+    if (!_skipResourceStep && _selectedResource == null) return;
 
     context.read<CreateReservationCubit>().createReservation(
-          clientResourceId: _selectedResource!.id,
+          clientResourceId: _selectedResource?.id,
           serviceId: _selectedService!.id,
           scheduledAt: DateFormat('yyyy-MM-dd HH:mm:ss').format(_selectedSlot!.start),
           notes: _notesController.text.trim().isNotEmpty
@@ -233,24 +234,27 @@ class _CreateReservationViewState extends State<_CreateReservationView> {
         ),
         body: Column(
           children: [
-            StepIndicator(currentStep: _currentStep),
+            StepIndicator(currentStep: _currentStep, totalSteps: _totalSteps),
             // Step labels
             Padding(
               padding: const EdgeInsets.symmetric(horizontal: 20),
               child: Row(
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
-                  _StepLabel(
-                    label: 'Registro',
-                    isActive: _currentStep >= 0,
-                  ),
+                  if (!_skipResourceStep)
+                    _StepLabel(
+                      label: 'Registro',
+                      isActive: _currentStep >= 0,
+                    ),
                   _StepLabel(
                     label: 'Fecha y hora',
-                    isActive: _currentStep >= 1,
+                    isActive: _skipResourceStep
+                        ? _currentStep >= 0
+                        : _currentStep >= 1,
                   ),
                   _StepLabel(
                     label: 'Confirmar',
-                    isActive: _currentStep >= 2,
+                    isActive: _currentStep >= _totalSteps - 1,
                   ),
                 ],
               ),
@@ -261,75 +265,76 @@ class _CreateReservationViewState extends State<_CreateReservationView> {
                 controller: _pageController,
                 physics: const NeverScrollableScrollPhysics(),
                 children: [
-                  _Step1ResourceSelection(
-                    selectedResource: _selectedResource,
-                    scrollController: _step1ScrollController,
-                    onResourceSelected: (r) {
-                      setState(() => _selectedResource = r);
-                    },
-                    onCreateResource: () async {
-                      final result = await context.push(
-                        '/resources/add',
-                        extra: {
-                          'customFields': widget.customFields,
-                          'businessType': widget.businessType,
-                        },
-                      );
-                      if (result == true && mounted) {
-                        context.read<ResourcesCubit>().loadResources();
-                        // Wait for resources to reload, then select the last one
-                        await Future.delayed(const Duration(milliseconds: 500));
-                        if (mounted) {
-                          final state = context.read<ResourcesCubit>().state;
-                          if (state is ResourcesLoaded && state.resources.isNotEmpty) {
-                            setState(() {
-                              _selectedResource = state.resources.last;
-                            });
+                  if (!_skipResourceStep)
+                    _Step1ResourceSelection(
+                      selectedResource: _selectedResource,
+                      scrollController: _step1ScrollController,
+                      onResourceSelected: (r) {
+                        setState(() => _selectedResource = r);
+                      },
+                      onCreateResource: () async {
+                        final result = await context.push(
+                          '/resources/add',
+                          extra: {
+                            'customFields': widget.customFields,
+                            'businessType': widget.businessType,
+                          },
+                        );
+                        if (result == true && mounted) {
+                          context.read<ResourcesCubit>().loadResources();
+                          // Wait for resources to reload, then select the last one
+                          await Future.delayed(const Duration(milliseconds: 500));
+                          if (mounted) {
+                            final state = context.read<ResourcesCubit>().state;
+                            if (state is ResourcesLoaded && state.resources.isNotEmpty) {
+                              setState(() {
+                                _selectedResource = state.resources.last;
+                              });
+                            }
                           }
                         }
-                      }
-                    },
-                    onEditResource: (resource) async {
-                      final result = await context.push(
-                        '/resources/add',
-                        extra: {
-                          'customFields': widget.customFields,
-                          'resource': resource,
-                          'businessType': widget.businessType,
-                        },
-                      );
-                      if (result == true && mounted) {
-                        context.read<ResourcesCubit>().loadResources();
-                      }
-                    },
-                    onDeleteResource: (resource) async {
-                      final confirmed = await showDialog<bool>(
-                        context: context,
-                        builder: (ctx) => AlertDialog(
-                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
-                          title: const Text('Eliminar registro'),
-                          content: Text('Eliminar "${resource.label}"?'),
-                          actions: [
-                            TextButton(onPressed: () => Navigator.pop(ctx, false), child: const Text('Cancelar')),
-                            TextButton(
-                              onPressed: () => Navigator.pop(ctx, true),
-                              style: TextButton.styleFrom(foregroundColor: AppColors.error),
-                              child: const Text('Eliminar'),
-                            ),
-                          ],
-                        ),
-                      );
-                      if (confirmed == true && mounted) {
-                        await context.read<ResourcesCubit>().deleteResource(resource.id);
-                        if (mounted && _selectedResource?.id == resource.id) {
-                          setState(() => _selectedResource = null);
+                      },
+                      onEditResource: (resource) async {
+                        final result = await context.push(
+                          '/resources/add',
+                          extra: {
+                            'customFields': widget.customFields,
+                            'resource': resource,
+                            'businessType': widget.businessType,
+                          },
+                        );
+                        if (result == true && mounted) {
+                          context.read<ResourcesCubit>().loadResources();
                         }
-                      }
-                    },
-                    onNext: () {
-                      if (_selectedResource != null) _nextStep();
-                    },
-                  ),
+                      },
+                      onDeleteResource: (resource) async {
+                        final confirmed = await showDialog<bool>(
+                          context: context,
+                          builder: (ctx) => AlertDialog(
+                            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+                            title: const Text('Eliminar registro'),
+                            content: Text('Eliminar "${resource.label}"?'),
+                            actions: [
+                              TextButton(onPressed: () => Navigator.pop(ctx, false), child: const Text('Cancelar')),
+                              TextButton(
+                                onPressed: () => Navigator.pop(ctx, true),
+                                style: TextButton.styleFrom(foregroundColor: AppColors.error),
+                                child: const Text('Eliminar'),
+                              ),
+                            ],
+                          ),
+                        );
+                        if (confirmed == true && mounted) {
+                          await context.read<ResourcesCubit>().deleteResource(resource.id);
+                          if (mounted && _selectedResource?.id == resource.id) {
+                            setState(() => _selectedResource = null);
+                          }
+                        }
+                      },
+                      onNext: () {
+                        if (_selectedResource != null) _nextStep();
+                      },
+                    ),
                   _Step2DateSlot(
                     services: widget.services,
                     selectedService: _selectedService,

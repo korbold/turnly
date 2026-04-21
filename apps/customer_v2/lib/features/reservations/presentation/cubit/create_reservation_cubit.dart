@@ -19,14 +19,14 @@ class CreateReservationCubit extends Cubit<CreateReservationState> {
   }
 
   Future<void> createReservation({
-    required String clientResourceId,
+    String? clientResourceId,
     required String serviceId,
     required String scheduledAt,
     String? notes,
   }) async {
     emit(const CreateReservationSubmitting());
     final result = await _repository.create(
-      clientResourceId: clientResourceId,
+      clientResourceId: clientResourceId ?? '',
       serviceId: serviceId,
       scheduledAt: scheduledAt,
       notes: notes,
