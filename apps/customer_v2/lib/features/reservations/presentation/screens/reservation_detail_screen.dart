@@ -401,7 +401,7 @@ class _ReservationDetailContent extends StatelessWidget {
             const SizedBox(height: 8),
             AppButton(
               label: 'Cancelar Reserva',
-              variant: AppButtonVariant.outline,
+              variant: AppButtonVariant.primary,
               color: AppColors.error,
               onPressed: onCancel,
               isLoading: cancelling,
