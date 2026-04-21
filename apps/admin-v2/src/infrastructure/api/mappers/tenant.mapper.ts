@@ -10,6 +10,7 @@ export function mapTenant(raw: Record<string, unknown>): Tenant {
     phone: (raw.phone as string) ?? null,
     city: (raw.city as string) ?? null,
     country: (raw.country as string) ?? 'CO',
+    businessType: (raw.business_type as Tenant['businessType']) ?? null,
     plan: raw.plan as Tenant['plan'],
     status: raw.status as Tenant['status'],
     trialEndsAt: raw.trial_ends_at ? new Date(raw.trial_ends_at as string) : null,

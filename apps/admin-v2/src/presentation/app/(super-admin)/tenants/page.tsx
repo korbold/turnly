@@ -27,7 +27,25 @@ import {
   useSuspendTenant,
   useActivateTenant,
 } from '@/presentation/hooks/use-super-admin';
-import type { TenantStatus } from '@/domain/entities/tenant';
+import type { TenantStatus, BusinessType } from '@/domain/entities/tenant';
+
+const BUSINESS_TYPE_LABELS: Record<BusinessType, string> = {
+  car_wash: 'Car Wash',
+  barbershop: 'Barberia',
+  medical: 'Medico',
+  spa: 'Spa',
+  gym: 'Gym',
+  other: 'Otro',
+};
+
+const BUSINESS_TYPE_COLORS: Record<BusinessType, string> = {
+  car_wash: 'bg-blue-50 text-blue-700 border-blue-200',
+  barbershop: 'bg-orange-50 text-orange-700 border-orange-200',
+  medical: 'bg-teal-50 text-teal-700 border-teal-200',
+  spa: 'bg-purple-50 text-purple-700 border-purple-200',
+  gym: 'bg-red-50 text-red-700 border-red-200',
+  other: 'bg-zinc-50 text-zinc-600 border-zinc-200',
+};
 
 const STATUS_COLORS: Record<TenantStatus, string> = {
   active: 'bg-emerald-50 text-emerald-700 border-emerald-200',
@@ -46,6 +64,7 @@ const STATUS_LABELS: Record<TenantStatus, string> = {
 export default function TenantsPage() {
   const [search, setSearch] = useState('');
   const [statusFilter, setStatusFilter] = useState<TenantStatus | ''>('');
+  const [typeFilter, setTypeFilter] = useState<BusinessType | ''>('');
   const [page, setPage] = useState(1);
   const { data, isLoading } = useSuperAdminTenants(page);
   const suspendTenant = useSuspendTenant();
@@ -57,7 +76,8 @@ export default function TenantsPage() {
   const filtered = tenants.filter((t) => {
     const matchesSearch = !search || t.name.toLowerCase().includes(search.toLowerCase()) || t.email.toLowerCase().includes(search.toLowerCase());
     const matchesStatus = !statusFilter || t.status === statusFilter;
-    return matchesSearch && matchesStatus;
+    const matchesType = !typeFilter || t.businessType === typeFilter;
+    return matchesSearch && matchesStatus && matchesType;
   });
 
   async function handleSuspend(id: string) {
@@ -96,7 +116,7 @@ export default function TenantsPage() {
             className="pl-9"
           />
         </div>
-        <div className="flex gap-2">
+        <div className="flex flex-wrap gap-2">
           {(['', 'active', 'pending', 'suspended'] as const).map((s) => (
             <Button
               key={s}
@@ -105,6 +125,18 @@ export default function TenantsPage() {
               onClick={() => setStatusFilter(s as TenantStatus | '')}
             >
               {s ? STATUS_LABELS[s] : 'Todos'}
+            </Button>
+          ))}
+        </div>
+        <div className="flex flex-wrap gap-2">
+          {(['', 'car_wash', 'barbershop', 'medical', 'spa', 'gym', 'other'] as const).map((t) => (
+            <Button
+              key={t}
+              variant={typeFilter === t ? 'default' : 'outline'}
+              size="sm"
+              onClick={() => setTypeFilter(t as BusinessType | '')}
+            >
+              {t ? BUSINESS_TYPE_LABELS[t] : 'Todos los tipos'}
             </Button>
           ))}
         </div>
@@ -123,6 +155,7 @@ export default function TenantsPage() {
             <TableHeader>
               <TableRow>
                 <TableHead>Nombre</TableHead>
+                <TableHead>Tipo</TableHead>
                 <TableHead>Email</TableHead>
                 <TableHead>Plan</TableHead>
                 <TableHead>Estado</TableHead>
@@ -133,7 +166,7 @@ export default function TenantsPage() {
             <TableBody>
               {filtered.length === 0 ? (
                 <TableRow>
-                  <TableCell colSpan={6} className="py-8 text-center text-sm text-muted-foreground">
+                  <TableCell colSpan={7} className="py-8 text-center text-sm text-muted-foreground">
                     No se encontraron tenants
                   </TableCell>
                 </TableRow>
@@ -145,6 +178,15 @@ export default function TenantsPage() {
                         <p className="font-medium">{tenant.name}</p>
                         <p className="text-xs text-muted-foreground">{tenant.slug}</p>
                       </div>
+                    </TableCell>
+                    <TableCell>
+                      {tenant.businessType ? (
+                        <Badge variant="outline" className={BUSINESS_TYPE_COLORS[tenant.businessType]}>
+                          {BUSINESS_TYPE_LABELS[tenant.businessType]}
+                        </Badge>
+                      ) : (
+                        <span className="text-xs text-muted-foreground">—</span>
+                      )}
                     </TableCell>
                     <TableCell className="text-sm">{tenant.email}</TableCell>
                     <TableCell>

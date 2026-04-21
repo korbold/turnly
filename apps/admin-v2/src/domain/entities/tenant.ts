@@ -11,6 +11,7 @@ export interface Tenant {
   phone: string | null;
   city: string | null;
   country: string;
+  businessType: BusinessType | null;
   plan: TenantPlan;
   status: TenantStatus;
   trialEndsAt: Date | null;
