@@ -24,7 +24,7 @@ import {
 } from '@/presentation/hooks/use-categories';
 
 export default function CategoriesPage() {
-  const { data: categories, isLoading } = useCategories();
+  const { data: categories, isLoading, error } = useCategories();
   const createCategory = useCreateCategory();
   const updateCategory = useUpdateCategory();
   const deleteCategory = useDeleteCategory();
@@ -108,6 +108,10 @@ export default function CategoriesPage() {
           {Array.from({ length: 4 }).map((_, i) => (
             <Skeleton key={i} className="h-14 w-full rounded-lg" />
           ))}
+        </div>
+      ) : error ? (
+        <div className="rounded-lg border border-rose-200 bg-rose-50 p-4 text-sm text-rose-600">
+          Error al cargar categorias: {(error as { message?: string })?.message ?? 'Error desconocido'}
         </div>
       ) : (
         <div className="overflow-x-auto rounded-lg border bg-white">
