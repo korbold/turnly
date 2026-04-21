@@ -10,6 +10,7 @@ import '../../../../shared/widgets/app_button.dart';
 import '../../../../shared/widgets/empty_state.dart';
 import '../../../../shared/widgets/shimmer_loader.dart';
 import '../../domain/entities/reservation.dart';
+import '../../domain/enums/reservation_status.dart';
 import '../../domain/repositories/reservation_repository.dart';
 
 class ReservationDetailScreen extends StatefulWidget {
@@ -396,28 +397,42 @@ class _ReservationDetailContent extends StatelessWidget {
             const SizedBox(height: 24),
           ],
 
-          // Cancellation policy + cancel button
-          if (reservation.canCancel) ...[
+          // Cancellation policy notice
+          if (reservation.status == ReservationStatus.pending || reservation.status == ReservationStatus.confirmed) ...[
             const SizedBox(height: 8),
             Container(
               padding: const EdgeInsets.all(12),
               decoration: BoxDecoration(
-                color: AppColors.warning.withValues(alpha: 0.08),
+                color: reservation.canCancel
+                    ? AppColors.warning.withValues(alpha: 0.08)
+                    : AppColors.error.withValues(alpha: 0.06),
                 borderRadius: BorderRadius.circular(12),
-                border: Border.all(color: AppColors.warning.withValues(alpha: 0.3)),
+                border: Border.all(
+                  color: reservation.canCancel
+                      ? AppColors.warning.withValues(alpha: 0.3)
+                      : AppColors.error.withValues(alpha: 0.2),
+                ),
               ),
               child: Row(
                 children: [
-                  Icon(Icons.info_outline_rounded, size: 18, color: AppColors.warning),
+                  Icon(
+                    Icons.info_outline_rounded,
+                    size: 18,
+                    color: reservation.canCancel ? AppColors.warning : AppColors.error,
+                  ),
                   const SizedBox(width: 10),
                   Expanded(
                     child: Text(
-                      reservation.cancellationHours > 0
-                          ? 'Puedes cancelar hasta ${reservation.cancellationHours == 1 ? "1 hora" : "${reservation.cancellationHours} horas"} antes de tu cita'
-                          : 'Puedes cancelar en cualquier momento antes de tu cita',
+                      reservation.canCancel
+                          ? (reservation.cancellationHours > 0
+                              ? 'Puedes cancelar hasta ${reservation.cancellationHours == 1 ? "1 hora" : "${reservation.cancellationHours} horas"} antes de tu cita'
+                              : 'Puedes cancelar en cualquier momento antes de tu cita')
+                          : 'Ya no es posible cancelar (limite: ${reservation.cancellationHours}h antes)',
                       style: TextStyle(
                         fontSize: 12,
-                        color: AppColors.warning.withValues(alpha: 0.9),
+                        color: reservation.canCancel
+                            ? AppColors.warning.withValues(alpha: 0.9)
+                            : AppColors.error.withValues(alpha: 0.8),
                         fontWeight: FontWeight.w500,
                       ),
                     ),
