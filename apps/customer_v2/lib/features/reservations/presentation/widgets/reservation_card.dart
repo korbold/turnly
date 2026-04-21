@@ -77,7 +77,7 @@ class ReservationCard extends StatelessWidget {
                     ),
                     const SizedBox(height: 6),
                     Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                      padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 2),
                       decoration: BoxDecoration(
                         color: statusColor,
                         borderRadius: BorderRadius.circular(6),
@@ -85,10 +85,12 @@ class ReservationCard extends StatelessWidget {
                       child: Text(
                         reservation.status.label,
                         style: const TextStyle(
-                          fontSize: 9,
+                          fontSize: 8,
                           fontWeight: FontWeight.w700,
                           color: Colors.white,
                         ),
+                        maxLines: 1,
+                        overflow: TextOverflow.visible,
                       ),
                     ),
                   ],
