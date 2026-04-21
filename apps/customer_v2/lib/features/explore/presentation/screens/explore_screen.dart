@@ -225,13 +225,27 @@ class _CategoryGrid extends StatefulWidget {
   State<_CategoryGrid> createState() => _CategoryGridState();
 }
 
-class _CategoryGridState extends State<_CategoryGrid> {
+class _CategoryGridState extends State<_CategoryGrid> with WidgetsBindingObserver {
   List<BusinessCategory>? _categories;
 
   @override
   void initState() {
     super.initState();
+    WidgetsBinding.instance.addObserver(this);
     _loadCategories();
+  }
+
+  @override
+  void dispose() {
+    WidgetsBinding.instance.removeObserver(this);
+    super.dispose();
+  }
+
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    if (state == AppLifecycleState.resumed) {
+      _loadCategories();
+    }
   }
 
   Future<void> _loadCategories() async {
