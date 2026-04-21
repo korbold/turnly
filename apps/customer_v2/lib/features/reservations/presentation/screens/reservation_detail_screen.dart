@@ -397,7 +397,7 @@ class _ReservationDetailContent extends StatelessWidget {
           ],
 
           // Cancellation policy + cancel button
-          if (reservation.status.isUpcoming) ...[
+          if (reservation.canCancel) ...[
             const SizedBox(height: 8),
             Container(
               padding: const EdgeInsets.all(12),
