@@ -44,7 +44,8 @@ class ReservationController extends Controller
             $query->where('status', $request->status);
         }
 
-        $reservations = $query->orderBy('scheduled_at', 'desc')->paginate(30);
+        $sort = in_array($request->status, ['completed', 'cancelled', 'no_show']) ? 'desc' : 'asc';
+        $reservations = $query->orderBy('scheduled_at', $sort)->paginate(30);
 
         return ReservationResource::collection($reservations);
     }
