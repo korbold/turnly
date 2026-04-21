@@ -7,6 +7,7 @@ import 'package:go_router/go_router.dart';
 import '../../../../app/theme/app_colors.dart';
 import '../../../../core/di/injection.dart';
 import '../../../../shared/widgets/empty_state.dart';
+import '../../../../shared/widgets/shimmer_loader.dart';
 import '../../domain/repositories/notification_repository.dart';
 import '../cubit/notifications_cubit.dart';
 import '../cubit/notifications_state.dart';
@@ -49,7 +50,10 @@ class _NotificationsView extends StatelessWidget {
       body: BlocBuilder<NotificationsCubit, NotificationsState>(
         builder: (context, state) {
           if (state is NotificationsLoading || state is NotificationsInitial) {
-            return const Center(child: CircularProgressIndicator());
+            return Padding(
+              padding: const EdgeInsets.all(20),
+              child: ShimmerLoader.list(count: 5, itemHeight: 72),
+            );
           }
 
           if (state is NotificationsError) {

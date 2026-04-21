@@ -8,6 +8,7 @@ import '../../../../app/theme/app_colors.dart';
 import '../../../../core/di/injection.dart';
 import '../../../../shared/widgets/avatar_circle.dart';
 import '../../../../shared/widgets/section_header.dart';
+import '../../../../shared/widgets/shimmer_loader.dart';
 import '../../../auth/presentation/cubit/auth_cubit.dart';
 import '../../../auth/presentation/cubit/auth_state.dart';
 import '../../../reservations/domain/repositories/reservation_repository.dart';
@@ -261,9 +262,17 @@ class _CategoryGridState extends State<_CategoryGrid> with WidgetsBindingObserve
   @override
   Widget build(BuildContext context) {
     if (_categories == null) {
-      return const Padding(
-        padding: EdgeInsets.symmetric(horizontal: 20),
-        child: SizedBox(height: 100, child: Center(child: CircularProgressIndicator())),
+      return Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 20),
+        child: GridView.builder(
+          shrinkWrap: true,
+          physics: const NeverScrollableScrollPhysics(),
+          gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+            crossAxisCount: 2, mainAxisSpacing: 14, crossAxisSpacing: 14, childAspectRatio: 1.4,
+          ),
+          itemCount: 6,
+          itemBuilder: (_, __) => ShimmerLoader(height: 100, borderRadius: 20),
+        ),
       );
     }
 
