@@ -97,6 +97,7 @@ class PublicController extends Controller
                     'address' => $tenant->address,
                     'phone' => $tenant->phone,
                     'custom_fields' => $tenant->custom_fields,
+                    'slot_duration' => $tenant->settings['slot_duration_minutes'] ?? 30,
                     'cancellation_hours' => $tenant->settings['cancellation_hours'] ?? 1,
                 ],
                 'services' => $services,
