@@ -11,7 +11,7 @@ return new class extends Migration {
         Schema::create('device_tokens', function (Blueprint $table) {
             $table->uuid('id')->primary();
             $table->uuid('user_id')->nullable()->index();
-            $table->uuid('tenant_id')->index();
+            $table->uuid('tenant_id')->nullable()->index();
             $table->enum('platform', ['android', 'ios', 'web']);
             $table->string('token', 512)->unique();
             $table->boolean('is_active')->default(true);
@@ -20,7 +20,7 @@ return new class extends Migration {
             $table->index(['user_id', 'platform']);
 
             $table->foreign('user_id')->references('id')->on('users')->nullOnDelete();
-            $table->foreign('tenant_id')->references('id')->on('tenants')->cascadeOnDelete();
+            $table->foreign('tenant_id')->references('id')->on('tenants')->nullOnDelete();
         });
     }
 

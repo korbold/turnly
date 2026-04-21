@@ -51,6 +51,10 @@ Route::prefix('v1')->group(function () {
         Route::get('client/reservations/{id}', [ReservationController::class, 'myReservationShow']);
         Route::patch('client/reservations/{id}/cancel', [ReservationController::class, 'myReservationCancel']);
 
+        // Device tokens (no tenant middleware — tokens can be registered from client app)
+        Route::post('device-tokens', [\App\Infrastructure\Http\Controllers\Notification\DeviceTokenController::class, 'store']);
+        Route::delete('device-tokens/{token}', [\App\Infrastructure\Http\Controllers\Notification\DeviceTokenController::class, 'destroy']);
+
         // Tenant-scoped routes
         Route::middleware('tenant')->group(function () {
             // Auth
