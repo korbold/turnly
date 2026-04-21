@@ -11,7 +11,7 @@ import { Button } from '@/presentation/components/ui/button';
 const NAV_ITEMS = [
   { label: 'Dashboard', href: '/super-admin', icon: LayoutDashboard },
   { label: 'Tenants', href: '/super-admin/tenants', icon: Building2 },
-  { label: 'Categorias', href: '/super-admin/categories', icon: Tags },
+  { label: 'Categorias', href: '/categories', icon: Tags },
   { label: 'Users', href: '/super-admin/users', icon: Users },
 ];
 
