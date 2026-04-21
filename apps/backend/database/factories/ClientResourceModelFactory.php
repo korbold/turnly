@@ -35,7 +35,6 @@ class ClientResourceModelFactory extends Factory
         return [
             'tenant_id'  => null, // must be set by the caller
             'client_id'  => null, // must be set by the caller
-            'label'      => fake()->words(2, true),
             'data'       => null,
             'plate'      => $plate,
             'brand'      => $brand,
