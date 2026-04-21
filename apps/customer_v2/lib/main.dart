@@ -13,6 +13,8 @@ import 'features/auth/domain/repositories/auth_repository.dart';
 import 'features/auth/presentation/cubit/auth_cubit.dart';
 import 'features/favorites/data/favorites_storage.dart';
 import 'features/favorites/presentation/cubit/favorites_cubit.dart';
+import 'features/reservations/domain/repositories/reservation_repository.dart';
+import 'features/reservations/presentation/cubit/reservations_cubit.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -59,6 +61,9 @@ class TurnlyApp extends StatelessWidget {
         ),
         BlocProvider<FavoritesCubit>(
           create: (_) => FavoritesCubit(favoritesStorage)..loadAll(),
+        ),
+        BlocProvider<ReservationsCubit>(
+          create: (_) => ReservationsCubit(getIt<ReservationRepository>())..loadReservations(),
         ),
       ],
       child: MaterialApp.router(

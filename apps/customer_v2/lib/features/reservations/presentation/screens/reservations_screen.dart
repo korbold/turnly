@@ -20,12 +20,9 @@ class ReservationsScreen extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return BlocProvider(
-      create: (_) =>
-          ReservationsCubit(getIt<ReservationRepository>())
-            ..loadReservations(),
-      child: const _ReservationsView(),
-    );
+    // Refresh on enter — uses global cubit from main.dart
+    context.read<ReservationsCubit>().loadReservations();
+    return const _ReservationsView();
   }
 }
 

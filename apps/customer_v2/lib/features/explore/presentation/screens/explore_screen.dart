@@ -25,18 +25,10 @@ class ExploreScreen extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return MultiBlocProvider(
-      providers: [
-        BlocProvider(
-          create: (_) =>
-              ExploreCubit(getIt<ExploreRepository>())..loadBusinesses(),
-        ),
-        BlocProvider(
-          create: (_) =>
-              ReservationsCubit(getIt<ReservationRepository>())
-                ..loadReservations(),
-        ),
-      ],
+    // Uses global ReservationsCubit from main.dart
+    return BlocProvider(
+      create: (_) =>
+          ExploreCubit(getIt<ExploreRepository>())..loadBusinesses(),
       child: const _ExploreView(),
     );
   }

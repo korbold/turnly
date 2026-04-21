@@ -1,7 +1,11 @@
 // lib/features/home/presentation/screens/main_shell.dart
 import 'package:flutter/material.dart';
+import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:go_router/go_router.dart';
 import '../../../../app/theme/app_colors.dart';
+import '../../../reservations/presentation/cubit/reservations_cubit.dart';
+import '../../../reservations/presentation/cubit/reservations_state.dart';
+import '../../../reservations/domain/enums/reservation_status.dart';
 
 class MainShell extends StatelessWidget {
   final Widget child;
@@ -19,6 +23,15 @@ class MainShell extends StatelessWidget {
   Widget build(BuildContext context) {
     final index = _currentIndex(context);
     final primary = Theme.of(context).colorScheme.primary;
+
+    // Count upcoming reservations
+    final upcomingCount = context.select<ReservationsCubit, int>((cubit) {
+      final state = cubit.state;
+      if (state is ReservationsLoaded) {
+        return state.reservations.where((r) => r.status.isUpcoming).length;
+      }
+      return 0;
+    });
 
     return Scaffold(
       body: child,
@@ -56,6 +69,7 @@ class MainShell extends StatelessWidget {
                 label: 'Reservas',
                 isActive: index == 1,
                 primaryColor: primary,
+                badgeCount: upcomingCount,
                 onTap: () => context.go('/reservations'),
               ),
               _NavItem(
@@ -81,6 +95,7 @@ class _NavItem extends StatelessWidget {
   final bool isActive;
   final Color primaryColor;
   final VoidCallback onTap;
+  final int badgeCount;
 
   const _NavItem({
     required this.icon,
@@ -89,6 +104,7 @@ class _NavItem extends StatelessWidget {
     required this.isActive,
     required this.primaryColor,
     required this.onTap,
+    this.badgeCount = 0,
   });
 
   @override
@@ -147,6 +163,29 @@ class _NavItem extends StatelessWidget {
                 ),
               ),
             ),
+            // Badge
+            if (badgeCount > 0)
+              Positioned(
+                top: isActive ? -14 : 4,
+                right: 6,
+                child: Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 5, vertical: 1),
+                  decoration: BoxDecoration(
+                    color: AppColors.error,
+                    borderRadius: BorderRadius.circular(10),
+                  ),
+                  constraints: const BoxConstraints(minWidth: 18, minHeight: 16),
+                  child: Text(
+                    '$badgeCount',
+                    style: const TextStyle(
+                      color: Colors.white,
+                      fontSize: 10,
+                      fontWeight: FontWeight.w700,
+                    ),
+                    textAlign: TextAlign.center,
+                  ),
+                ),
+              ),
           ],
         ),
       ),
