@@ -73,6 +73,7 @@ class AuthRepositoryImpl implements AuthRepository {
       final response = await _dio.get('/auth/me');
       final data = response.data['data'] as Map<String, dynamic>;
       final userJson = data['user'] as Map<String, dynamic>? ?? data;
+      await SecureStorage.saveUserData(jsonEncode(userJson));
       return Right(UserDto.fromJson(userJson).toEntity());
     } on DioException catch (e) {
       if (e.response?.statusCode == 401) {
