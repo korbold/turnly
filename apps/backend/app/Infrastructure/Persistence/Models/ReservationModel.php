@@ -69,6 +69,11 @@ class ReservationModel extends Model
         return $this->hasOne(ServiceLogModel::class, 'reservation_id');
     }
 
+    public function reminders()
+    {
+        return $this->hasMany(ReservationReminderModel::class, 'reservation_id');
+    }
+
     protected static function newFactory()
     {
         return \Database\Factories\ReservationModelFactory::new();
