@@ -14,12 +14,12 @@ importScripts('https://www.gstatic.com/firebasejs/11.0.0/firebase-messaging-comp
 // initialize with the project's public config.
 if (!firebase.apps.length) {
   firebase.initializeApp({
-    apiKey: 'PLACEHOLDER_FILL_AFTER_FIREBASE_SETUP',
+    apiKey: 'AIzaSyCdkYmtOYBIVqW7KC3cyrYtA_pqVDgKpvg',
     authDomain: 'turnly-services.firebaseapp.com',
     projectId: 'turnly-services',
     storageBucket: 'turnly-services.firebasestorage.app',
     messagingSenderId: '624883049252',
-    appId: 'PLACEHOLDER_FILL_AFTER_FIREBASE_SETUP',
+    appId: '1:624883049252:web:0e9804053703606aab09b1',
   });
 }
 
