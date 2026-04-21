@@ -68,12 +68,11 @@ class ServiceCard extends StatelessWidget {
                 Text(
                   service.name,
                   style: const TextStyle(
-                    fontSize: 15,
+                    fontSize: 13,
                     fontWeight: FontWeight.w600,
                     color: AppColors.textPrimary,
                   ),
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
+                  maxLines: 2,
                 ),
                 if (service.description != null &&
                     service.description!.isNotEmpty) ...[
