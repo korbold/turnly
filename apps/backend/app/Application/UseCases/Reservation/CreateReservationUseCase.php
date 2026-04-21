@@ -84,7 +84,7 @@ class CreateReservationUseCase
             if ($model) {
                 $admins = TenantModel::find($saved->tenantId)
                     ?->users()
-                    ->wherePivotIn('role', ['owner', 'tenant_admin'])
+                    ->wherePivotIn('role', ['owner', 'tenant_admin', 'cashier'])
                     ->wherePivot('is_active', true)
                     ->get();
 

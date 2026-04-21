@@ -61,7 +61,7 @@ class CancelReservationUseCase
                 // Notify tenant admins
                 $admins = TenantModel::find($model->tenant_id)
                     ?->users()
-                    ->wherePivotIn('role', ['owner', 'tenant_admin'])
+                    ->wherePivotIn('role', ['owner', 'tenant_admin', 'cashier'])
                     ->wherePivot('is_active', true)
                     ->where('users.id', '!=', $model->client_id)
                     ->get();
