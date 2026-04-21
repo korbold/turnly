@@ -47,27 +47,31 @@ class CancelReservationUseCase
         $this->reservationRepository->updateStatus($reservationId, ReservationStatus::Cancelled, $reason);
 
         // Notify both client and tenant admins
-        $model = ReservationModel::with(['service', 'client', 'tenant'])->find($reservationId);
-        if ($model) {
-            $notification = new ReservationCancelled($model);
+        try {
+            $model = ReservationModel::with(['service', 'client', 'tenant'])->find($reservationId);
+            if ($model) {
+                $notification = new ReservationCancelled($model);
 
-            // Notify client
-            $client = UserModel::find($model->client_id);
-            if ($client) {
-                $client->notify($notification);
+                // Notify client
+                $client = UserModel::find($model->client_id);
+                if ($client) {
+                    $client->notify($notification);
+                }
+
+                // Notify tenant admins
+                $admins = TenantModel::find($model->tenant_id)
+                    ?->users()
+                    ->wherePivotIn('role', ['owner', 'tenant_admin'])
+                    ->wherePivot('is_active', true)
+                    ->where('users.id', '!=', $model->client_id)
+                    ->get();
+
+                if ($admins && $admins->isNotEmpty()) {
+                    Notification::send($admins, $notification);
+                }
             }
-
-            // Notify tenant admins
-            $admins = TenantModel::find($model->tenant_id)
-                ?->users()
-                ->wherePivotIn('role', ['owner', 'tenant_admin'])
-                ->wherePivot('is_active', true)
-                ->where('users.id', '!=', $model->client_id)
-                ->get();
-
-            if ($admins && $admins->isNotEmpty()) {
-                Notification::send($admins, $notification);
-            }
+        } catch (\Throwable $e) {
+            \Illuminate\Support\Facades\Log::error('Failed to send reservation cancelled notification', ['error' => $e->getMessage()]);
         }
     }
 }

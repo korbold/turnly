@@ -31,10 +31,14 @@ class ConfirmReservationUseCase
         $this->reservationRepository->updateStatus($reservationId, ReservationStatus::Confirmed);
 
         // Notify client
-        $model = ReservationModel::with(['service', 'tenant'])->find($reservationId);
-        $client = $model ? UserModel::find($model->client_id) : null;
-        if ($client && $model) {
-            $client->notify(new ReservationConfirmed($model));
+        try {
+            $model = ReservationModel::with(['service', 'tenant'])->find($reservationId);
+            $client = $model ? UserModel::find($model->client_id) : null;
+            if ($client && $model) {
+                $client->notify(new ReservationConfirmed($model));
+            }
+        } catch (\Throwable $e) {
+            \Illuminate\Support\Facades\Log::error('Failed to send reservation confirmed notification', ['error' => $e->getMessage()]);
         }
     }
 }

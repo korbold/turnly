@@ -12,6 +12,7 @@ use App\Infrastructure\Persistence\Models\AvailabilitySlotModel;
 use App\Infrastructure\Notifications\Notifications\NewReservationForAdmin;
 use App\Infrastructure\Persistence\Models\ReservationModel;
 use App\Infrastructure\Persistence\Models\TenantModel;
+use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Notification;
 use Illuminate\Support\Str;
 
@@ -78,17 +79,21 @@ class CreateReservationUseCase
         $saved = $this->reservationRepository->save($reservation);
 
         // Notify tenant admins about new reservation
-        $model = ReservationModel::with(['service', 'client', 'tenant'])->find($saved->id);
-        if ($model) {
-            $admins = TenantModel::find($saved->tenantId)
-                ?->users()
-                ->wherePivotIn('role', ['owner', 'tenant_admin'])
-                ->wherePivot('is_active', true)
-                ->get();
+        try {
+            $model = ReservationModel::with(['service', 'client', 'tenant'])->find($saved->id);
+            if ($model) {
+                $admins = TenantModel::find($saved->tenantId)
+                    ?->users()
+                    ->wherePivotIn('role', ['owner', 'tenant_admin'])
+                    ->wherePivot('is_active', true)
+                    ->get();
 
-            if ($admins && $admins->isNotEmpty()) {
-                Notification::send($admins, new NewReservationForAdmin($model));
+                if ($admins && $admins->isNotEmpty()) {
+                    Notification::send($admins, new NewReservationForAdmin($model));
+                }
             }
+        } catch (\Throwable $e) {
+            Log::error('Failed to send new reservation notification', ['error' => $e->getMessage()]);
         }
 
         return $saved;

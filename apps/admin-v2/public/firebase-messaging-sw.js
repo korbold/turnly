@@ -1,14 +1,27 @@
+// Firebase Messaging Service Worker
+// Config is automatically provided by the Firebase SDK when the service worker
+// is registered via getToken(). No manual firebase.initializeApp() needed
+// when using the modular SDK's getToken with vapidKey.
+//
+// For background message handling, we use the compat SDK which auto-configures
+// from the main app's Firebase instance.
+
 importScripts('https://www.gstatic.com/firebasejs/11.0.0/firebase-app-compat.js');
 importScripts('https://www.gstatic.com/firebasejs/11.0.0/firebase-messaging-compat.js');
 
-firebase.initializeApp({
-  apiKey: self.__FIREBASE_API_KEY,
-  authDomain: self.__FIREBASE_AUTH_DOMAIN,
-  projectId: self.__FIREBASE_PROJECT_ID,
-  storageBucket: self.__FIREBASE_STORAGE_BUCKET,
-  messagingSenderId: self.__FIREBASE_MESSAGING_SENDER_ID,
-  appId: self.__FIREBASE_APP_ID,
-});
+// The Firebase SDK automatically sends the config to the service worker
+// when using getToken() from the main thread. If that hasn't happened yet,
+// initialize with the project's public config.
+if (!firebase.apps.length) {
+  firebase.initializeApp({
+    apiKey: 'PLACEHOLDER_FILL_AFTER_FIREBASE_SETUP',
+    authDomain: 'turnly-services.firebaseapp.com',
+    projectId: 'turnly-services',
+    storageBucket: 'turnly-services.firebasestorage.app',
+    messagingSenderId: '624883049252',
+    appId: 'PLACEHOLDER_FILL_AFTER_FIREBASE_SETUP',
+  });
+}
 
 const messaging = firebase.messaging();
 
@@ -29,7 +42,7 @@ self.addEventListener('notificationclick', (event) => {
   const data = event.notification.data;
   let url = '/dashboard';
 
-  if (data?.action_type === 'reservation_detail' && data?.action_id) {
+  if (data?.action_type === 'reservation_detail') {
     url = '/reservations';
   }
 
