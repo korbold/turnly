@@ -29,8 +29,32 @@ class ReservationsScreen extends StatelessWidget {
   }
 }
 
-class _ReservationsView extends StatelessWidget {
+class _ReservationsView extends StatefulWidget {
   const _ReservationsView();
+
+  @override
+  State<_ReservationsView> createState() => _ReservationsViewState();
+}
+
+class _ReservationsViewState extends State<_ReservationsView> with WidgetsBindingObserver {
+  @override
+  void initState() {
+    super.initState();
+    WidgetsBinding.instance.addObserver(this);
+  }
+
+  @override
+  void dispose() {
+    WidgetsBinding.instance.removeObserver(this);
+    super.dispose();
+  }
+
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    if (state == AppLifecycleState.resumed) {
+      context.read<ReservationsCubit>().loadReservations();
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
