@@ -55,7 +55,12 @@ export function GeneralTab() {
 
   async function handleSave() {
     try {
-      await update.mutateAsync(form);
+      const payload = {
+        ...form,
+        slotDuration: form.slotDuration || 30,
+        cancellationHours: form.cancellationHours ?? 0,
+      };
+      await update.mutateAsync(payload);
       toast.success('Configuracion guardada');
     } catch {
       toast.error('Error al guardar');
@@ -152,8 +157,8 @@ export function GeneralTab() {
           <Input
             type="number"
             min={5}
-            value={form.slotDuration ?? 30}
-            onChange={(e) => handleChange('slotDuration', parseInt(e.target.value) || 30)}
+            value={form.slotDuration ?? ''}
+            onChange={(e) => handleChange('slotDuration', e.target.value === '' ? '' : parseInt(e.target.value))}
           />
         </div>
         <div className="space-y-1.5">
@@ -161,8 +166,8 @@ export function GeneralTab() {
           <Input
             type="number"
             min={0}
-            value={form.cancellationHours ?? 2}
-            onChange={(e) => handleChange('cancellationHours', parseInt(e.target.value) || 0)}
+            value={form.cancellationHours ?? ''}
+            onChange={(e) => handleChange('cancellationHours', e.target.value === '' ? '' : parseInt(e.target.value))}
           />
         </div>
       </div>
