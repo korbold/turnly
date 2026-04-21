@@ -22,6 +22,7 @@ class BusinessDto {
       businessType: json['business_type'] as String?,
       logoUrl: json['logo_url'] as String?,
       coverUrl: json['cover_url'] as String?,
+      mapsUrl: (json['social_links'] as Map<String, dynamic>?)?['maps_url'] as String?,
       slotDuration: json['slot_duration'] as int? ?? 30,
       cancellationHours: json['cancellation_hours'] as int? ?? 1,
       services: servicesJson

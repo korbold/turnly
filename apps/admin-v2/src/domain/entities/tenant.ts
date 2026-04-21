@@ -35,6 +35,7 @@ export interface TenantSettings {
     instagram: string | null;
     facebook: string | null;
     whatsapp: string | null;
+    maps_url: string | null;
   };
   customFields: CustomField[];
   permissions: Record<string, Record<string, string>>;

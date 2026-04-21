@@ -37,6 +37,7 @@ export function mapTenantSettings(raw: Record<string, unknown>): TenantSettings 
       instagram: socialLinks.instagram ?? null,
       facebook: socialLinks.facebook ?? null,
       whatsapp: socialLinks.whatsapp ?? null,
+      maps_url: socialLinks.maps_url ?? null,
     },
     customFields: (raw.custom_fields ?? raw.customFields ?? []) as TenantSettings['customFields'],
     permissions: (raw.permissions ?? {}) as Record<string, Record<string, string>>,

@@ -37,7 +37,7 @@ export function GeneralTab() {
         phone: settings.phone,
         slotDuration: settings.slotDuration,
         cancellationHours: settings.cancellationHours,
-        socialLinks: settings.socialLinks ?? { instagram: null, facebook: null, whatsapp: null },
+        socialLinks: settings.socialLinks ?? { instagram: null, facebook: null, whatsapp: null, maps_url: null },
       });
     }
   }, [settings]);
@@ -195,6 +195,14 @@ export function GeneralTab() {
               onChange={(e) => handleSocialChange('whatsapp', e.target.value)}
             />
           </div>
+        </div>
+        <div className="space-y-1.5">
+          <Label className="text-xs">URL de ubicacion (Google Maps / Waze)</Label>
+          <Input
+            placeholder="https://maps.google.com/..."
+            value={form.socialLinks?.maps_url ?? ''}
+            onChange={(e) => handleSocialChange('maps_url', e.target.value)}
+          />
         </div>
       </div>
 

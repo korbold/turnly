@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:flutter_animate/flutter_animate.dart';
 import 'package:go_router/go_router.dart';
+import 'package:url_launcher/url_launcher.dart';
 
 import '../../../../app/theme/app_colors.dart';
 import '../../../../app/theme/tenant_theme.dart';
@@ -255,6 +256,30 @@ class _InfoTab extends StatelessWidget {
             value: business.phone!,
             color: tenantTheme.primary,
           ).animate().fadeIn(duration: 400.ms, delay: 100.ms),
+
+        if (business.mapsUrl != null && business.mapsUrl!.isNotEmpty)
+          Padding(
+            padding: const EdgeInsets.only(top: 12),
+            child: SizedBox(
+              width: double.infinity,
+              child: OutlinedButton.icon(
+                onPressed: () => launchUrl(
+                  Uri.parse(business.mapsUrl!),
+                  mode: LaunchMode.externalApplication,
+                ),
+                icon: Icon(Icons.map_outlined, color: tenantTheme.primary),
+                label: Text(
+                  'Abrir en mapa',
+                  style: TextStyle(color: tenantTheme.primary, fontWeight: FontWeight.w600),
+                ),
+                style: OutlinedButton.styleFrom(
+                  side: BorderSide(color: tenantTheme.primary.withValues(alpha: 0.3)),
+                  padding: const EdgeInsets.symmetric(vertical: 12),
+                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                ),
+              ),
+            ),
+          ).animate().fadeIn(duration: 400.ms, delay: 150.ms),
 
         if (business.description != null &&
             business.description!.isNotEmpty) ...[

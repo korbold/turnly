@@ -13,6 +13,7 @@ class Business extends Equatable {
   final String? businessType;
   final String? logoUrl;
   final String? coverUrl;
+  final String? mapsUrl;
   final int slotDuration;
   final int cancellationHours;
   final List<Service> services;
@@ -29,6 +30,7 @@ class Business extends Equatable {
     this.businessType,
     this.logoUrl,
     this.coverUrl,
+    this.mapsUrl,
     this.slotDuration = 30,
     this.cancellationHours = 1,
     this.services = const [],
