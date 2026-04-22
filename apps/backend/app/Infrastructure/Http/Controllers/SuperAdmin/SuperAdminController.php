@@ -74,4 +74,22 @@ class SuperAdminController extends Controller
             'meta' => ['timestamp' => now()->toIso8601String()],
         ]);
     }
+
+    public function assignPlan(Request $request, string $id): JsonResponse
+    {
+        $request->validate([
+            'plan_id' => 'required|exists:plans,id',
+        ]);
+
+        $tenant = TenantModel::findOrFail($id);
+        $tenant->update([
+            'plan_id' => $request->plan_id,
+            'is_trial' => false,
+        ]);
+
+        return response()->json([
+            'data' => ['message' => 'Plan assigned'],
+            'meta' => ['timestamp' => now()->toIso8601String()],
+        ]);
+    }
 }
