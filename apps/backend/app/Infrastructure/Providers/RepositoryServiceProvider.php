@@ -8,11 +8,13 @@ use App\Domain\Reservation\Contracts\ReservationRepositoryInterface;
 use App\Domain\ServiceLog\Contracts\ServiceLogRepositoryInterface;
 use App\Domain\ClientResource\Contracts\ClientResourceRepositoryInterface;
 use App\Domain\User\Contracts\UserRepositoryInterface;
+use App\Domain\Plan\Contracts\PlanRepositoryInterface;
 use App\Infrastructure\Persistence\Repositories\EloquentTenantRepository;
 use App\Infrastructure\Persistence\Repositories\EloquentReservationRepository;
 use App\Infrastructure\Persistence\Repositories\EloquentServiceLogRepository;
 use App\Infrastructure\Persistence\Repositories\EloquentClientResourceRepository;
 use App\Infrastructure\Persistence\Repositories\EloquentUserRepository;
+use App\Infrastructure\Persistence\Repositories\EloquentPlanRepository;
 
 class RepositoryServiceProvider extends ServiceProvider
 {
@@ -23,5 +25,6 @@ class RepositoryServiceProvider extends ServiceProvider
         $this->app->bind(ServiceLogRepositoryInterface::class, EloquentServiceLogRepository::class);
         $this->app->bind(ClientResourceRepositoryInterface::class, EloquentClientResourceRepository::class);
         $this->app->bind(UserRepositoryInterface::class, EloquentUserRepository::class);
+        $this->app->bind(PlanRepositoryInterface::class, EloquentPlanRepository::class);
     }
 }
