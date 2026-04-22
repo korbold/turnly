@@ -4,6 +4,7 @@ namespace App\Infrastructure\Http\Controllers\Reservation;
 
 use App\Application\DTOs\Reservation\AvailableSlotsQueryDTO;
 use App\Application\DTOs\Reservation\CreateReservationDTO;
+use App\Application\Services\PlanLimitsService;
 use App\Application\UseCases\Reservation\CancelReservationUseCase;
 use App\Application\UseCases\Reservation\CompleteWashUseCase;
 use App\Application\UseCases\Reservation\ConfirmReservationUseCase;
@@ -29,6 +30,7 @@ class ReservationController extends Controller
         private CompleteWashUseCase $completeWash,
         private GetAvailableSlotsUseCase $getAvailableSlots,
         private NoShowReservationUseCase $noShowReservation,
+        private PlanLimitsService $planLimits,
     ) {}
 
     /**
@@ -99,6 +101,12 @@ class ReservationController extends Controller
 
     public function store(CreateReservationRequest $request): JsonResponse
     {
+        if (!$this->planLimits->canCreateReservation(app('current_tenant_id'))) {
+            return response()->json([
+                'error' => ['code' => 'PLAN_LIMIT', 'message' => 'Límite de reservas mensuales alcanzado. Actualiza tu plan.'],
+            ], 403);
+        }
+
         $dto = new CreateReservationDTO(
             tenantId: app('current_tenant_id'),
             clientId: $request->client_id ?? $request->user()->id,

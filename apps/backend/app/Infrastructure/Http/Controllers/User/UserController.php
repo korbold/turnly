@@ -2,6 +2,7 @@
 
 namespace App\Infrastructure\Http\Controllers\User;
 
+use App\Application\Services\PlanLimitsService;
 use App\Infrastructure\Http\Controllers\Controller;
 use App\Infrastructure\Http\Resources\UserResource;
 use App\Infrastructure\Persistence\Models\TenantUserModel;
@@ -11,6 +12,10 @@ use Illuminate\Http\Request;
 
 class UserController extends Controller
 {
+    public function __construct(
+        private PlanLimitsService $planLimits,
+    ) {}
+
     public function index(Request $request)
     {
         $tenantId = app('current_tenant_id');
@@ -47,6 +52,14 @@ class UserController extends Controller
             'role' => 'required|in:tenant_admin,cashier,washer,client',
             'phone' => 'nullable|string|max:20',
         ]);
+
+        if (in_array($request->role, ['cashier', 'washer', 'tenant_admin'])) {
+            if (!$this->planLimits->canAddEmployee(app('current_tenant_id'))) {
+                return response()->json([
+                    'error' => ['code' => 'PLAN_LIMIT', 'message' => 'Límite de empleados alcanzado. Actualiza tu plan.'],
+                ], 403);
+            }
+        }
 
         $tenantId = app('current_tenant_id');
 
