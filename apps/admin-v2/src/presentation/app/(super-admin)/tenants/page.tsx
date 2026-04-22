@@ -2,7 +2,7 @@
 
 import { useState } from 'react';
 import { format } from 'date-fns';
-import { Search, MoreHorizontal, Ban, CheckCircle, LogIn } from 'lucide-react';
+import { Search, MoreHorizontal, Ban, CheckCircle, LogIn, CreditCard } from 'lucide-react';
 import { toast } from 'sonner';
 import { Input } from '@/presentation/components/ui/input';
 import { Button } from '@/presentation/components/ui/button';
@@ -27,6 +27,7 @@ import {
   useSuspendTenant,
   useActivateTenant,
 } from '@/presentation/hooks/use-super-admin';
+import { usePlans, useAssignPlan } from '@/presentation/hooks/use-plans';
 import type { TenantStatus, BusinessType } from '@/domain/entities/tenant';
 
 const BUSINESS_TYPE_LABELS: Record<BusinessType, string> = {
@@ -69,6 +70,8 @@ export default function TenantsPage() {
   const { data, isLoading } = useSuperAdminTenants(page);
   const suspendTenant = useSuspendTenant();
   const activateTenant = useActivateTenant();
+  const { data: plans } = usePlans();
+  const assignPlan = useAssignPlan();
 
   const tenants = data?.data ?? [];
   const meta = data?.meta;
@@ -95,6 +98,15 @@ export default function TenantsPage() {
       toast.success('Tenant activado');
     } catch {
       toast.error('Error al activar');
+    }
+  }
+
+  async function handleAssignPlan(tenantId: string, planId: string) {
+    try {
+      await assignPlan.mutateAsync({ tenantId, planId });
+      toast.success('Plan asignado');
+    } catch {
+      toast.error('Error al asignar plan');
     }
   }
 
@@ -190,7 +202,22 @@ export default function TenantsPage() {
                     </TableCell>
                     <TableCell className="text-sm">{tenant.email}</TableCell>
                     <TableCell>
-                      <Badge variant="outline" className="text-xs capitalize">{tenant.plan}</Badge>
+                      {tenant.isTrial ? (
+                        <Badge variant="outline" className="bg-amber-50 text-amber-700 border-amber-200 text-xs">
+                          Trial
+                          {tenant.trialEndsAt && (
+                            <span className="ml-1">
+                              ({Math.max(0, Math.ceil((new Date(tenant.trialEndsAt).getTime() - Date.now()) / 86400000))}d)
+                            </span>
+                          )}
+                        </Badge>
+                      ) : tenant.plan ? (
+                        <Badge variant="outline" className="text-xs">
+                          {tenant.plan.name} — ${tenant.plan.price}
+                        </Badge>
+                      ) : (
+                        <Badge variant="outline" className="bg-zinc-100 text-zinc-500 border-zinc-200 text-xs">Sin plan</Badge>
+                      )}
                     </TableCell>
                     <TableCell>
                       <Badge variant="outline" className={STATUS_COLORS[tenant.status]}>
@@ -223,6 +250,20 @@ export default function TenantsPage() {
                             <LogIn className="mr-2 h-4 w-4" />
                             Entrar como tenant
                           </DropdownMenuItem>
+                          {plans && plans.length > 0 && (
+                            <>
+                              <div className="px-2 py-1.5 text-xs font-medium text-muted-foreground">Asignar plan</div>
+                              {plans.filter(p => p.isActive).map((plan) => (
+                                <DropdownMenuItem
+                                  key={plan.id}
+                                  onClick={() => handleAssignPlan(tenant.id, plan.id)}
+                                >
+                                  <CreditCard className="mr-2 h-4 w-4" />
+                                  {plan.name} — {plan.price === 0 ? 'Gratis' : `$${plan.price}`}
+                                </DropdownMenuItem>
+                              ))}
+                            </>
+                          )}
                         </DropdownMenuContent>
                       </DropdownMenu>
                     </TableCell>
