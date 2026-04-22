@@ -9,3 +9,4 @@ Artisan::command('inspire', function () {
 })->purpose('Display an inspiring quote');
 
 Schedule::command('reservations:send-reminders')->everyMinute();
+Schedule::command('plan:check-trials')->daily();
