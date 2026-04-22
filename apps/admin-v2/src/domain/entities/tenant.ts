@@ -1,4 +1,4 @@
-export type TenantPlan = 'trial' | 'basic' | 'pro';
+import type { PlanSummary } from './plan';
 export type TenantStatus = 'pending' | 'active' | 'suspended' | 'cancelled';
 export type BusinessType = 'car_wash' | 'barbershop' | 'medical' | 'spa' | 'gym' | 'other';
 
@@ -12,7 +12,9 @@ export interface Tenant {
   city: string | null;
   country: string;
   businessType: BusinessType | null;
-  plan: TenantPlan;
+  planId: string | null;
+  isTrial: boolean;
+  plan: PlanSummary | null;
   status: TenantStatus;
   trialEndsAt: Date | null;
   onboardingStep: number;

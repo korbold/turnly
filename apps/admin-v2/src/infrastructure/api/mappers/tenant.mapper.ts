@@ -1,4 +1,5 @@
 import type { Tenant, TenantSettings, TenantImage } from '@/domain/entities/tenant';
+import { mapPlanSummary } from './plan.mapper';
 
 export function mapTenant(raw: Record<string, unknown>): Tenant {
   return {
@@ -11,7 +12,9 @@ export function mapTenant(raw: Record<string, unknown>): Tenant {
     city: (raw.city as string) ?? null,
     country: (raw.country as string) ?? 'CO',
     businessType: (raw.business_type as Tenant['businessType']) ?? null,
-    plan: raw.plan as Tenant['plan'],
+    planId: (raw.plan_id as string) ?? null,
+    isTrial: (raw.is_trial as boolean) ?? false,
+    plan: raw.plan ? mapPlanSummary(raw.plan as Record<string, unknown>) : null,
     status: raw.status as Tenant['status'],
     trialEndsAt: raw.trial_ends_at ? new Date(raw.trial_ends_at as string) : null,
     onboardingStep: (raw.onboarding_step as number) ?? 0,
