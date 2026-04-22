@@ -21,7 +21,8 @@ class SuperAdminController extends Controller
 
     public function index(Request $request)
     {
-        $tenants = TenantModel::orderBy('created_at', 'desc')
+        $tenants = TenantModel::with('plan')
+            ->orderBy('created_at', 'desc')
             ->paginate($request->get('per_page', 15));
 
         return TenantResource::collection($tenants);

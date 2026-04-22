@@ -47,7 +47,8 @@ class EloquentTenantRepository implements TenantRepositoryInterface
             'phone'            => $tenant->phone,
             'city'             => $tenant->city,
             'country'          => $tenant->country,
-            'plan'             => $tenant->plan,
+            'plan_id'          => $tenant->planId,
+            'is_trial'         => $tenant->isTrial,
             'status'           => $tenant->status,
             'trial_ends_at'    => $tenant->trialEndsAt,
             'settings'         => $tenant->settings,
@@ -100,7 +101,8 @@ class EloquentTenantRepository implements TenantRepositoryInterface
             phone: $model->phone,
             city: $model->city,
             country: $model->country,
-            plan: $model->plan,
+            planId: $model->plan_id,
+            isTrial: (bool) $model->is_trial,
             status: $model->status,
             trialEndsAt: $model->trial_ends_at
                 ? \DateTimeImmutable::createFromMutable($model->trial_ends_at->toDateTime())

@@ -13,7 +13,8 @@ final readonly class Tenant
         public ?string $phone,
         public ?string $city,
         public string $country,
-        public string $plan,
+        public ?string $planId,
+        public bool $isTrial,
         public string $status,
         public ?\DateTimeImmutable $trialEndsAt,
         public ?array $settings,
@@ -31,9 +32,19 @@ final readonly class Tenant
         return $this->status === 'suspended';
     }
 
+    public function hasPlan(): bool
+    {
+        return $this->planId !== null;
+    }
+
+    public function isOnTrial(): bool
+    {
+        return $this->isTrial && !$this->isTrialExpired();
+    }
+
     public function isTrialExpired(): bool
     {
-        return $this->plan === 'trial'
+        return $this->isTrial
             && $this->trialEndsAt !== null
             && $this->trialEndsAt < new \DateTimeImmutable();
     }
