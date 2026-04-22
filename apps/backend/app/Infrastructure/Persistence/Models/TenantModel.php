@@ -15,7 +15,7 @@ class TenantModel extends Model
 
     protected $fillable = [
         'slug', 'name', 'owner_name', 'email', 'phone',
-        'city', 'country', 'plan', 'status',
+        'city', 'country', 'plan_id', 'is_trial', 'status',
         'trial_ends_at', 'settings', 'onboarding_step', 'activated_at',
         'business_type', 'custom_fields', 'description', 'address',
         'logo_url', 'cover_url', 'social_links', 'brand_theme',
@@ -30,6 +30,7 @@ class TenantModel extends Model
             'onboarding_step' => 'integer',
             'custom_fields' => 'array',
             'social_links' => 'array',
+            'is_trial' => 'boolean',
         ];
     }
 
@@ -53,6 +54,11 @@ class TenantModel extends Model
     public function images()
     {
         return $this->hasMany(TenantImageModel::class, 'tenant_id')->orderBy('sort_order');
+    }
+
+    public function plan()
+    {
+        return $this->belongsTo(PlanModel::class, 'plan_id');
     }
 
     // Factory linkage
