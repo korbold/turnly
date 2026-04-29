@@ -26,7 +26,7 @@ const registerSchema = z.object({
   password: z
     .string()
     .min(1, 'La contraseña es requerida')
-    .min(6, 'Mínimo 6 caracteres'),
+    .min(8, 'Mínimo 8 caracteres'),
 });
 
 type RegisterFormValues = z.infer<typeof registerSchema>;
@@ -124,7 +124,7 @@ export default function RegisterPage() {
             <Input
               id="password"
               type="password"
-              placeholder="Mínimo 6 caracteres"
+              placeholder="Mínimo 8 caracteres"
               autoComplete="new-password"
               {...register('password')}
             />
