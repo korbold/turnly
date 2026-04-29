@@ -2,6 +2,7 @@
 
 namespace App\Infrastructure\Console\Commands;
 
+use App\Application\Services\PlanLimitsService;
 use App\Infrastructure\Notifications\Notifications\ReservationReminder;
 use App\Infrastructure\Persistence\Models\ReservationModel;
 use App\Infrastructure\Persistence\Models\ReservationReminderModel;
@@ -68,9 +69,14 @@ class SendReservationReminders extends Command
     private function sendReminders($reservations, string $type): int
     {
         $sent = 0;
+        $planLimits = app(PlanLimitsService::class);
 
         foreach ($reservations as $reservation) {
             try {
+                if (!$planLimits->hasFeature($reservation->tenant_id, 'reminders')) {
+                    continue;
+                }
+
                 // Notify client
                 $client = UserModel::find($reservation->client_id);
                 if ($client) {

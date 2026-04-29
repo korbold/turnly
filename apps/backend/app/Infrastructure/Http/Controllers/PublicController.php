@@ -2,8 +2,10 @@
 
 namespace App\Infrastructure\Http\Controllers;
 
+use App\Application\Services\PlanLimitsService;
 use App\Infrastructure\Persistence\Models\AvailabilitySlotModel;
 use App\Infrastructure\Persistence\Models\ClientResourceModel;
+use App\Infrastructure\Persistence\Models\PlanModel;
 use App\Infrastructure\Persistence\Models\ReservationModel;
 use App\Infrastructure\Persistence\Models\ServiceModel;
 use App\Infrastructure\Persistence\Models\TenantModel;
@@ -15,6 +17,36 @@ use Illuminate\Support\Str;
 
 class PublicController extends Controller
 {
+    public function __construct(private PlanLimitsService $planLimits) {}
+
+    private function hasCustomPage(string $tenantId): bool
+    {
+        return $this->planLimits->hasFeature($tenantId, 'custom_page');
+    }
+
+    public function listPlans(): JsonResponse
+    {
+        $plans = PlanModel::where('is_active', true)
+            ->orderBy('price')
+            ->get()
+            ->map(fn ($p) => [
+                'id' => $p->id,
+                'slug' => $p->slug,
+                'name' => $p->name,
+                'description' => $p->description,
+                'price' => (float) $p->price,
+                'max_services' => $p->max_services,
+                'max_reservations_per_month' => $p->max_reservations_per_month,
+                'max_employees' => $p->max_employees,
+                'has_push_notifications' => (bool) $p->has_push_notifications,
+                'has_reports' => (bool) $p->has_reports,
+                'has_reminders' => (bool) $p->has_reminders,
+                'has_custom_page' => (bool) $p->has_custom_page,
+            ]);
+
+        return response()->json(['data' => $plans]);
+    }
+
     public function listCategories(): JsonResponse
     {
         $categories = \App\Infrastructure\Persistence\Models\BusinessCategoryModel::where('is_active', true)
@@ -28,6 +60,12 @@ class PublicController extends Controller
     {
         $query = TenantModel::where('status', 'active')
             ->whereNull('deleted_at')
+            ->where(function ($q) {
+                $q->where(function ($trial) {
+                    $trial->where('is_trial', true)
+                        ->where('trial_ends_at', '>', now());
+                })->orWhereHas('plan', fn ($p) => $p->where('has_custom_page', true));
+            })
             ->orderBy('name');
 
         if ($request->has('search')) {
@@ -73,6 +111,12 @@ class PublicController extends Controller
             ->first();
 
         if (!$tenant) {
+            return response()->json([
+                'error' => ['code' => 'NOT_FOUND', 'message' => 'Negocio no encontrado'],
+            ], 404);
+        }
+
+        if (!$this->hasCustomPage($tenant->id)) {
             return response()->json([
                 'error' => ['code' => 'NOT_FOUND', 'message' => 'Negocio no encontrado'],
             ], 404);
@@ -124,6 +168,10 @@ class PublicController extends Controller
         ]);
 
         $tenant = TenantModel::where('slug', $slug)->where('status', 'active')->firstOrFail();
+
+        if (!$this->hasCustomPage($tenant->id)) {
+            abort(404);
+        }
 
         $date = new \DateTimeImmutable($request->date);
         $dayOfWeek = (int) $date->format('N') - 1;
@@ -187,6 +235,10 @@ class PublicController extends Controller
 
         $tenant = TenantModel::where('slug', $slug)->where('status', 'active')->firstOrFail();
 
+        if (!$this->hasCustomPage($tenant->id)) {
+            abort(404);
+        }
+
         $resources = ClientResourceModel::withoutGlobalScopes()
             ->where('tenant_id', $tenant->id)
             ->where('client_id', $user->id)
@@ -233,6 +285,10 @@ class PublicController extends Controller
         }
 
         $tenant = TenantModel::where('slug', $slug)->where('status', 'active')->firstOrFail();
+
+        if (!$this->hasCustomPage($tenant->id)) {
+            abort(404);
+        }
 
         if ($authenticatedUser) {
             $client = $authenticatedUser;

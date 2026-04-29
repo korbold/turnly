@@ -54,7 +54,10 @@ export function InviteModal({ open, onClose }: InviteModalProps) {
           toast.success('Invitacion enviada');
           handleClose();
         },
-        onError: () => toast.error('Error al enviar invitacion'),
+        onError: (err: unknown) => {
+          const e = err as { message?: string };
+          toast.error(e?.message ?? 'Error al enviar invitacion');
+        },
       }
     );
   }

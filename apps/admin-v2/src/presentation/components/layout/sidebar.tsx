@@ -1,9 +1,10 @@
 'use client';
 
-import { useState } from 'react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { motion } from 'framer-motion';
+import { useQuery } from '@tanstack/react-query';
+import api from '@/infrastructure/api/client';
 import {
   LayoutDashboard,
   Calendar,
@@ -12,6 +13,7 @@ import {
   Scissors,
   UserPlus,
   BarChart3,
+  CreditCard,
   Settings,
   ChevronsLeft,
   ChevronsRight,
@@ -43,6 +45,7 @@ const mainNavItems: NavItem[] = [
   { label: 'Servicios', href: '/services', icon: Scissors },
   { label: 'Equipo', href: '/team', icon: UserPlus },
   { label: 'Reportes', href: '/reports', icon: BarChart3 },
+  { label: 'Mi Plan', href: '/plan', icon: CreditCard },
 ];
 
 const bottomNavItems: NavItem[] = [
@@ -54,10 +57,24 @@ interface SidebarProps {
   onToggle?: () => void;
 }
 
+interface TenantPlanData {
+  current: { id: string; name: string; price: number } | null;
+  is_trial: boolean;
+}
+
 export function Sidebar({ collapsed = false, onToggle }: SidebarProps) {
   const pathname = usePathname();
   const { data: me } = useMe();
   const logout = useLogout();
+  const { data: planData } = useQuery({
+    queryKey: ['tenant', 'plan'],
+    queryFn: async () => {
+      const { data } = await api.get<{ data: TenantPlanData }>('/tenant/plan');
+      return data.data;
+    },
+    enabled: !!me?.tenant,
+    staleTime: 60_000,
+  });
 
   const isActive = (href: string) => pathname?.startsWith(href);
 
@@ -79,26 +96,48 @@ export function Sidebar({ collapsed = false, onToggle }: SidebarProps) {
         className="flex h-screen flex-col border-r border-zinc-200 bg-white"
       >
         {/* Logo + Tenant */}
-        <div className="flex h-16 items-center gap-3 border-b border-zinc-200 px-4">
-          <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-indigo-600 text-sm font-bold text-white">
-            T
-          </div>
-          {!collapsed && (
-            <motion.div
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 1 }}
-              exit={{ opacity: 0 }}
-              className="min-w-0"
-            >
-              <p className="text-sm font-semibold text-zinc-900 truncate">
-                Turnly
-              </p>
-              {me?.tenant?.name && (
-                <p className="text-xs text-zinc-500 truncate">
-                  {me.tenant.name}
+        <div className="border-b border-zinc-200">
+          <div className="flex h-16 items-center gap-3 px-4">
+            <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-indigo-600 text-sm font-bold text-white">
+              T
+            </div>
+            {!collapsed && (
+              <motion.div
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                exit={{ opacity: 0 }}
+                className="min-w-0"
+              >
+                <p className="text-sm font-semibold text-zinc-900 truncate">
+                  Turnly
                 </p>
-              )}
-            </motion.div>
+                {me?.tenant?.name && (
+                  <p className="text-xs text-zinc-500 truncate">
+                    {me.tenant.name}
+                  </p>
+                )}
+              </motion.div>
+            )}
+          </div>
+          {!collapsed && planData?.current && (
+            <div className="px-4 pb-3">
+              <div className="flex items-center justify-between gap-2 rounded-md bg-indigo-50 px-2.5 py-1.5">
+                <div className="min-w-0">
+                  <p className="text-[10px] uppercase tracking-wide text-indigo-500">
+                    {planData.is_trial ? 'Prueba' : 'Plan'}
+                  </p>
+                  <p className="truncate text-xs font-semibold text-indigo-900">
+                    {planData.current.name}
+                  </p>
+                </div>
+                <Link
+                  href="/plan"
+                  className="shrink-0 rounded bg-indigo-600 px-2 py-1 text-[10px] font-medium text-white hover:bg-indigo-700 transition-colors"
+                >
+                  Actualizar
+                </Link>
+              </div>
+            </div>
           )}
         </div>
 

@@ -17,8 +17,8 @@ class UploadController extends Controller
         ]);
 
         $folder = 'uploads/' . ($request->input('folder', 'general'));
-        $path = $request->file('file')->store($folder, 'public');
-        $url = Storage::disk('public')->url($path);
+        $path = $request->file('file')->store($folder);
+        $url = Storage::url($path);
 
         return response()->json([
             'data' => [

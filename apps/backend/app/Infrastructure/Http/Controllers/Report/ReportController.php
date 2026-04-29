@@ -2,6 +2,7 @@
 
 namespace App\Infrastructure\Http\Controllers\Report;
 
+use App\Application\Services\PlanLimitsService;
 use App\Infrastructure\Http\Controllers\Controller;
 use App\Infrastructure\Persistence\Models\ReservationModel;
 use App\Infrastructure\Persistence\Models\ServiceLogModel;
@@ -10,8 +11,23 @@ use Illuminate\Http\Request;
 
 class ReportController extends Controller
 {
+    public function __construct(private PlanLimitsService $planLimits) {}
+
+    private function ensureFeature(): void
+    {
+        if (!$this->planLimits->hasFeature(app('current_tenant_id'), 'reports')) {
+            abort(response()->json([
+                'error' => [
+                    'code' => 'PLAN_FEATURE_REQUIRED',
+                    'message' => 'Tu plan no incluye reportes. Actualiza para acceder.',
+                ],
+            ], 403));
+        }
+    }
+
     public function daily(Request $request): JsonResponse
     {
+        $this->ensureFeature();
         $date = $request->get('date', now()->toDateString());
         $tenantId = app('current_tenant_id');
 
@@ -53,6 +69,7 @@ class ReportController extends Controller
 
     public function range(Request $request): JsonResponse
     {
+        $this->ensureFeature();
         $request->validate([
             'from' => 'required|date',
             'to' => 'required|date|after_or_equal:from',
@@ -117,6 +134,7 @@ class ReportController extends Controller
 
     public function weekly(Request $request): JsonResponse
     {
+        $this->ensureFeature();
         $week = $request->get('week', now()->format('Y-\\WW'));
         // Parse week to get start/end dates
         $startOfWeek = new \DateTime();
@@ -165,6 +183,7 @@ class ReportController extends Controller
 
     public function monthly(Request $request): JsonResponse
     {
+        $this->ensureFeature();
         $month = $request->get('month', now()->format('Y-m'));
         $year = (int) substr($month, 0, 4);
         $mon = (int) substr($month, 5, 2);

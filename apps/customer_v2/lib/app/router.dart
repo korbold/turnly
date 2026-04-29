@@ -20,6 +20,7 @@ import '../features/resources/presentation/screens/resource_history_screen.dart'
 import '../features/explore/presentation/screens/category_screen.dart';
 import '../features/favorites/presentation/screens/favorites_screen.dart';
 import '../features/notifications/presentation/screens/notifications_screen.dart';
+import '../features/legal/presentation/screens/legal_screen.dart';
 
 final _rootNavigatorKey = GlobalKey<NavigatorState>();
 final _shellNavigatorKey = GlobalKey<NavigatorState>();
@@ -149,6 +150,14 @@ final appRouter = GoRouter(
     GoRoute(
       path: '/notifications',
       builder: (context, state) => const NotificationsScreen(),
+    ),
+    GoRoute(
+      path: '/legal/terms',
+      builder: (context, state) => const LegalScreen(type: LegalType.terms),
+    ),
+    GoRoute(
+      path: '/legal/privacy',
+      builder: (context, state) => const LegalScreen(type: LegalType.privacy),
     ),
   ],
 );

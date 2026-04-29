@@ -36,8 +36,9 @@ api.interceptors.response.use(
     const data = error.response?.data;
     const message =
       data?.error?.message ?? data?.message ?? error.message ?? 'Error inesperado';
+    const code = data?.error?.code ?? null;
     const fieldErrors = data?.errors ?? null;
-    return Promise.reject({ message, fieldErrors, status: error.response?.status });
+    return Promise.reject({ message, code, fieldErrors, status: error.response?.status });
   },
 );
 

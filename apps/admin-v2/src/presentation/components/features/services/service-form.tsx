@@ -99,7 +99,10 @@ export function ServiceForm({ open, onClose, service }: ServiceFormProps) {
             toast.success('Servicio actualizado');
             handleClose();
           },
-          onError: () => toast.error('Error al actualizar'),
+          onError: (err: unknown) => {
+            const e = err as { message?: string };
+            toast.error(e?.message ?? 'Error al actualizar');
+          },
         }
       );
     } else {
@@ -108,7 +111,10 @@ export function ServiceForm({ open, onClose, service }: ServiceFormProps) {
           toast.success('Servicio creado');
           handleClose();
         },
-        onError: () => toast.error('Error al crear'),
+        onError: (err: unknown) => {
+          const e = err as { message?: string };
+          toast.error(e?.message ?? 'Error al crear');
+        },
       });
     }
   }

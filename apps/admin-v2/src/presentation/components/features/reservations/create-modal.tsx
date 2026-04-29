@@ -119,7 +119,10 @@ export function CreateModal({ open, onClose }: CreateModalProps) {
           toast.success('Reserva creada');
           handleClose();
         },
-        onError: () => toast.error('Error al crear la reserva'),
+        onError: (err: unknown) => {
+          const e = err as { message?: string };
+          toast.error(e?.message ?? 'Error al crear la reserva');
+        },
       }
     );
   }

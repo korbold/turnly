@@ -18,6 +18,8 @@ use Illuminate\Support\Facades\Route;
 
 // Public business pages
 Route::prefix('v1/public')->group(function () {
+    Route::get('plans', [PublicController::class, 'listPlans']);
+    Route::get('legal/{type}', [\App\Infrastructure\Http\Controllers\LegalController::class, 'show']);
     Route::get('categories', [PublicController::class, 'listCategories']);
     Route::get('tenants', [PublicController::class, 'listTenants']);
     Route::get('tenants/{slug}', [PublicController::class, 'getTenant']);
@@ -69,6 +71,9 @@ Route::prefix('v1')->group(function () {
             // Tenant settings
             Route::get('tenant/settings', [TenantSettingsController::class, 'show']);
             Route::patch('tenant/settings', [TenantSettingsController::class, 'update']);
+
+            // Tenant plan + usage
+            Route::get('tenant/plan', [\App\Infrastructure\Http\Controllers\Tenant\TenantPlanController::class, 'show']);
 
             // Reservations
             Route::get('reservations/available-slots', [ReservationController::class, 'availableSlots']);

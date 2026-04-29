@@ -198,6 +198,18 @@ class ProfileScreen extends StatelessWidget {
                             );
                           },
                         ),
+                        const Divider(height: 1, indent: 60, endIndent: 16),
+                        _ProfileMenuItem(
+                          icon: Icons.description_outlined,
+                          label: 'Términos y Condiciones',
+                          onTap: () => context.push('/legal/terms'),
+                        ),
+                        const Divider(height: 1, indent: 60, endIndent: 16),
+                        _ProfileMenuItem(
+                          icon: Icons.privacy_tip_outlined,
+                          label: 'Política de Privacidad',
+                          onTap: () => context.push('/legal/privacy'),
+                        ),
                       ],
                     ),
                   ).animate().fadeIn(duration: 400.ms, delay: 150.ms).slideY(
