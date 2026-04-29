@@ -49,8 +49,12 @@ export function useLogout() {
 export function useRegister() {
   const repo = useRepository('auth');
   return useMutation({
-    mutationFn: (data: { name: string; email: string; password: string }) =>
-      new RegisterUseCase(repo).execute(data),
+    mutationFn: (data: {
+      name: string;
+      email: string;
+      password: string;
+      businessName?: string;
+    }) => new RegisterUseCase(repo).execute(data),
     onSuccess: (result) => {
       authStorage.setToken(result.token);
       if (result.tenant) {
