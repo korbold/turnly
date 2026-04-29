@@ -14,8 +14,18 @@ export class ApiAuthRepository implements AuthRepository {
     };
   }
 
-  async register(params: { name: string; email: string; password: string }): Promise<LoginResult> {
-    const { data: res } = await api.post('/auth/register', params);
+  async register(params: {
+    name: string;
+    email: string;
+    password: string;
+    businessName?: string;
+  }): Promise<LoginResult> {
+    const { data: res } = await api.post('/auth/register', {
+      name: params.name,
+      email: params.email,
+      password: params.password,
+      business_name: params.businessName,
+    });
     const d = res.data;
     return {
       user: mapUser(d.user),

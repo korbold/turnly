@@ -48,7 +48,12 @@ export default function RegisterPage() {
   const onSubmit = (data: RegisterFormValues) => {
     setApiError(null);
     registerMutation.mutate(
-      { name: data.name, email: data.email, password: data.password },
+      {
+        name: data.name,
+        email: data.email,
+        password: data.password,
+        businessName: data.businessName,
+      },
       {
         onSuccess: () => {
           router.push('/dashboard');

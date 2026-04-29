@@ -9,7 +9,12 @@ export interface LoginResult {
 
 export interface AuthRepository {
   login(email: string, password: string): Promise<LoginResult>;
-  register(data: { name: string; email: string; password: string }): Promise<LoginResult>;
+  register(data: {
+    name: string;
+    email: string;
+    password: string;
+    businessName?: string;
+  }): Promise<LoginResult>;
   logout(): Promise<void>;
   me(): Promise<{ user: User; tenant: Tenant | null }>;
 }

@@ -14,10 +14,11 @@ class RegisterRequest extends FormRequest
     public function rules(): array
     {
         return [
-            'name'     => ['required', 'string', 'max:255'],
-            'email'    => ['required', 'email', 'unique:users'],
-            'password' => ['required', 'string', 'min:8'],
-            'phone'    => ['nullable', 'string', 'max:20'],
+            'name'          => ['required', 'string', 'max:255'],
+            'business_name' => ['nullable', 'string', 'max:255'],
+            'email'         => ['required', 'email', 'unique:users'],
+            'password'      => ['required', 'string', 'min:8'],
+            'phone'         => ['nullable', 'string', 'max:20'],
         ];
     }
 
