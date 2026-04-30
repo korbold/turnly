@@ -16,6 +16,7 @@ class RegisterRequest extends FormRequest
         return [
             'name'          => ['required', 'string', 'max:255'],
             'business_name' => ['nullable', 'string', 'max:255'],
+            'business_type' => ['nullable', 'string', 'max:50', 'exists:business_categories,slug'],
             'email'         => ['required', 'email', 'unique:users'],
             'password'      => ['required', 'string', 'min:8'],
             'phone'         => ['nullable', 'string', 'max:20'],
@@ -31,6 +32,7 @@ class RegisterRequest extends FormRequest
             'email.unique' => 'Este email ya está registrado.',
             'password.required' => 'La contraseña es obligatoria.',
             'password.min' => 'La contraseña debe tener al menos 8 caracteres.',
+            'business_type.exists' => 'El tipo de negocio no es válido.',
         ];
     }
 }

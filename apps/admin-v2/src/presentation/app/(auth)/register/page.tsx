@@ -3,9 +3,10 @@
 import { useState } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
-import { useForm } from 'react-hook-form';
+import { useForm, Controller } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
+import { useQuery } from '@tanstack/react-query';
 import { Loader2 } from 'lucide-react';
 import { Button } from '@/presentation/components/ui/button';
 import {
@@ -17,10 +18,26 @@ import {
 } from '@/presentation/components/ui/card';
 import { Input } from '@/presentation/components/ui/input';
 import { Label } from '@/presentation/components/ui/label';
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/presentation/components/ui/select';
 import { useRegister } from '@/presentation/hooks/use-auth';
+import api from '@/infrastructure/api/client';
+
+interface BusinessCategory {
+  id: string;
+  slug: string;
+  name: string;
+  emoji?: string | null;
+}
 
 const registerSchema = z.object({
   businessName: z.string().min(1, 'El nombre del negocio es requerido'),
+  businessType: z.string().min(1, 'Selecciona el tipo de negocio'),
   name: z.string().min(1, 'Tu nombre es requerido'),
   email: z.string().min(1, 'El email es requerido').email('Email inválido'),
   password: z
@@ -36,13 +53,31 @@ export default function RegisterPage() {
   const registerMutation = useRegister();
   const [apiError, setApiError] = useState<string | null>(null);
 
+  const { data: categories = [], isLoading: loadingCategories } = useQuery<
+    BusinessCategory[]
+  >({
+    queryKey: ['business-categories'],
+    queryFn: async () => {
+      const { data } = await api.get('/public/categories');
+      return data.data;
+    },
+    staleTime: 5 * 60 * 1000,
+  });
+
   const {
     register,
     handleSubmit,
+    control,
     formState: { errors },
   } = useForm<RegisterFormValues>({
     resolver: zodResolver(registerSchema),
-    defaultValues: { businessName: '', name: '', email: '', password: '' },
+    defaultValues: {
+      businessName: '',
+      businessType: '',
+      name: '',
+      email: '',
+      password: '',
+    },
   });
 
   const onSubmit = (data: RegisterFormValues) => {
@@ -53,6 +88,7 @@ export default function RegisterPage() {
         email: data.email,
         password: data.password,
         businessName: data.businessName,
+        businessType: data.businessType,
       },
       {
         onSuccess: () => {
@@ -71,9 +107,7 @@ export default function RegisterPage() {
     <Card>
       <CardHeader className="text-center">
         <CardTitle className="text-xl">Crear mi negocio</CardTitle>
-        <CardDescription>
-          Crea tu negocio en 30 segundos
-        </CardDescription>
+        <CardDescription>Crea tu negocio en 30 segundos</CardDescription>
       </CardHeader>
       <CardContent>
         <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
@@ -93,6 +127,42 @@ export default function RegisterPage() {
             {errors.businessName && (
               <p className="text-sm text-red-500">
                 {errors.businessName.message}
+              </p>
+            )}
+          </div>
+
+          <div className="space-y-2">
+            <Label htmlFor="businessType">Tipo de negocio</Label>
+            <Controller
+              name="businessType"
+              control={control}
+              render={({ field }) => (
+                <Select
+                  value={field.value}
+                  onValueChange={field.onChange}
+                  disabled={loadingCategories}
+                >
+                  <SelectTrigger id="businessType">
+                    <SelectValue
+                      placeholder={
+                        loadingCategories ? 'Cargando...' : 'Selecciona una opción'
+                      }
+                    />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {categories.map((cat) => (
+                      <SelectItem key={cat.slug} value={cat.slug}>
+                        {cat.emoji ? `${cat.emoji} ` : ''}
+                        {cat.name}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              )}
+            />
+            {errors.businessType && (
+              <p className="text-sm text-red-500">
+                {errors.businessType.message}
               </p>
             )}
           </div>

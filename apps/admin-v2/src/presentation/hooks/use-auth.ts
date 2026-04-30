@@ -54,6 +54,7 @@ export function useRegister() {
       email: string;
       password: string;
       businessName?: string;
+      businessType?: string;
     }) => new RegisterUseCase(repo).execute(data),
     onSuccess: (result) => {
       authStorage.setToken(result.token);

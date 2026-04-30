@@ -47,6 +47,7 @@ class AuthController extends Controller
                     'email' => $user->email,
                     'phone' => $user->phone,
                     'country' => 'EC',
+                    'business_type' => $request->business_type,
                     'plan_id' => $defaultPlan?->id,
                     'is_trial' => true,
                     'trial_ends_at' => now()->addDays(14),

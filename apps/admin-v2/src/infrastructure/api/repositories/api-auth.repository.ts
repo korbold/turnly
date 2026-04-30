@@ -19,12 +19,14 @@ export class ApiAuthRepository implements AuthRepository {
     email: string;
     password: string;
     businessName?: string;
+    businessType?: string;
   }): Promise<LoginResult> {
     const { data: res } = await api.post('/auth/register', {
       name: params.name,
       email: params.email,
       password: params.password,
       business_name: params.businessName,
+      business_type: params.businessType,
     });
     const d = res.data;
     return {

@@ -14,6 +14,7 @@ export interface AuthRepository {
     email: string;
     password: string;
     businessName?: string;
+    businessType?: string;
   }): Promise<LoginResult>;
   logout(): Promise<void>;
   me(): Promise<{ user: User; tenant: Tenant | null }>;
