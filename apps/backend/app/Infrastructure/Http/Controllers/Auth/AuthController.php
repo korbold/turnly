@@ -2,9 +2,11 @@
 
 namespace App\Infrastructure\Http\Controllers\Auth;
 
+use App\Application\Services\EmailVerificationService;
 use App\Infrastructure\Http\Controllers\Controller;
 use App\Infrastructure\Http\Requests\Auth\LoginRequest;
 use App\Infrastructure\Http\Requests\Auth\RegisterRequest;
+use App\Infrastructure\Http\Requests\Auth\VerifyEmailRequest;
 use App\Infrastructure\Persistence\Models\PlanModel;
 use App\Infrastructure\Persistence\Models\TenantModel;
 use App\Infrastructure\Persistence\Models\TenantUserModel;
@@ -13,10 +15,13 @@ use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Hash;
+use Illuminate\Support\Facades\RateLimiter;
 use Illuminate\Support\Str;
 
 class AuthController extends Controller
 {
+    public function __construct(private EmailVerificationService $verification) {}
+
     public function register(RegisterRequest $request): JsonResponse
     {
         $result = DB::transaction(function () use ($request) {
@@ -66,6 +71,8 @@ class AuthController extends Controller
             return ['user' => $user, 'tenant' => $tenant];
         });
 
+        $this->verification->issueAndSend($result['user']);
+
         $token = $result['user']->createToken('auth_token')->plainTextToken;
 
         return response()->json([
@@ -74,6 +81,7 @@ class AuthController extends Controller
                     'id' => $result['user']->id,
                     'name' => $result['user']->name,
                     'email' => $result['user']->email,
+                    'email_verified' => false,
                 ],
                 'tenant' => $result['tenant'] ? [
                     'id' => $result['tenant']->id,
@@ -107,6 +115,16 @@ class AuthController extends Controller
                     'message' => 'Invalid email or password',
                 ],
             ], 401);
+        }
+
+        if ($user->email_verified_at === null) {
+            return response()->json([
+                'error' => [
+                    'code' => 'EMAIL_NOT_VERIFIED',
+                    'message' => 'Verifica tu email antes de iniciar sesión.',
+                    'email' => $user->email,
+                ],
+            ], 403);
         }
 
         $token = $user->createToken('auth_token')->plainTextToken;
@@ -145,6 +163,115 @@ class AuthController extends Controller
         return response()->json([
             'data' => ['message' => 'Logged out successfully'],
             'meta' => ['timestamp' => now()->toIso8601String()],
+        ]);
+    }
+
+    public function verifyEmail(VerifyEmailRequest $request): JsonResponse
+    {
+        $user = UserModel::where('email', $request->string('email')->toString())->firstOrFail();
+
+        if ($user->email_verified_at !== null) {
+            return response()->json([
+                'data' => ['message' => 'Email ya verificado'],
+            ]);
+        }
+
+        $result = $this->verification->verify($user, $request->string('code')->toString());
+
+        if (!$result['ok']) {
+            $statusByReason = [
+                'EXPIRED' => 410,
+                'LOCKED' => 429,
+                'NO_CODE' => 410,
+                'INVALID' => 422,
+            ];
+            $messageByReason = [
+                'EXPIRED' => 'El código expiró. Solicita uno nuevo.',
+                'LOCKED' => 'Demasiados intentos. Solicita un nuevo código.',
+                'NO_CODE' => 'No hay código activo. Solicita uno nuevo.',
+                'INVALID' => 'Código incorrecto.',
+            ];
+            $reason = $result['reason'] ?? 'INVALID';
+            return response()->json([
+                'error' => [
+                    'code' => $reason,
+                    'message' => $messageByReason[$reason] ?? 'Código inválido.',
+                ],
+            ], $statusByReason[$reason] ?? 422);
+        }
+
+        // Activate tenant if it was pending awaiting email verification.
+        $tenantUser = TenantUserModel::where('user_id', $user->id)
+            ->where('is_active', true)
+            ->with('tenant')
+            ->first();
+        if ($tenantUser && $tenantUser->tenant && $tenantUser->tenant->status === 'pending') {
+            $tenantUser->tenant->update([
+                'status' => 'active',
+                'activated_at' => now(),
+            ]);
+        }
+
+        // Issue a fresh login token now that the email is verified.
+        $token = $user->createToken('auth_token')->plainTextToken;
+        $tenantUserActive = TenantUserModel::where('user_id', $user->id)
+            ->where('is_active', true)
+            ->with('tenant')
+            ->first();
+        $tenant = $tenantUserActive?->tenant;
+
+        return response()->json([
+            'data' => [
+                'message' => 'Email verificado',
+                'email_verified_at' => $user->fresh()->email_verified_at?->toIso8601String(),
+                'token' => $token,
+                'user' => [
+                    'id' => $user->id,
+                    'name' => $user->name,
+                    'email' => $user->email,
+                    'is_super_admin' => (bool) $user->is_super_admin,
+                ],
+                'tenant' => $tenant ? [
+                    'id' => $tenant->id,
+                    'slug' => $tenant->slug,
+                    'name' => $tenant->name,
+                ] : null,
+            ],
+        ]);
+    }
+
+    public function resendVerification(Request $request): JsonResponse
+    {
+        $request->validate([
+            'email' => ['required', 'email', 'exists:users,email'],
+        ]);
+
+        $user = UserModel::where('email', $request->string('email')->toString())->first();
+
+        if (!$user || $user->email_verified_at !== null) {
+            // Always 200 to avoid disclosing account state.
+            return response()->json([
+                'data' => ['message' => 'Si el email existe y no está verificado, te llegará un código.'],
+            ]);
+        }
+
+        $key = 'verify-email:resend:' . $user->id;
+        if (RateLimiter::tooManyAttempts($key, 1)) {
+            $seconds = RateLimiter::availableIn($key);
+            return response()->json([
+                'error' => [
+                    'code' => 'RATE_LIMITED',
+                    'message' => "Espera {$seconds}s antes de reenviar.",
+                    'retry_after' => $seconds,
+                ],
+            ], 429);
+        }
+        RateLimiter::hit($key, 60);
+
+        $this->verification->issueAndSend($user);
+
+        return response()->json([
+            'data' => ['message' => 'Código reenviado'],
         ]);
     }
 

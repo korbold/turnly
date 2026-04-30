@@ -51,7 +51,11 @@ export default function LoginPage() {
         const isSuperAdmin = authStorage.getIsSuperAdmin();
         router.push(isSuperAdmin ? '/super-admin' : '/dashboard');
       },
-      onError: (error: Error) => {
+      onError: (error: { message?: string; code?: string }) => {
+        if (error.code === 'EMAIL_NOT_VERIFIED') {
+          router.push(`/verify-email?email=${encodeURIComponent(data.email)}`);
+          return;
+        }
         setApiError(
           error.message || 'Error al iniciar sesión. Verifica tus credenciales.'
         );

@@ -31,9 +31,14 @@ Route::prefix('v1/public')->group(function () {
 Route::prefix('v1')->group(function () {
 
     // Public auth
-    Route::post('auth/register', [AuthController::class, 'register']);
+    Route::post('auth/register', [AuthController::class, 'register'])
+        ->middleware('throttle:5,60');
     Route::post('auth/login', [AuthController::class, 'login']);
     Route::post('auth/google', [GoogleAuthController::class, 'login']);
+    Route::post('auth/verify-email', [AuthController::class, 'verifyEmail'])
+        ->middleware('throttle:10,60');
+    Route::post('auth/verify-email/resend', [AuthController::class, 'resendVerification'])
+        ->middleware('throttle:5,60');
 
     // Public onboarding
     Route::prefix('onboarding')->group(function () {
@@ -47,7 +52,8 @@ Route::prefix('v1')->group(function () {
         Route::post('auth/logout', [AuthController::class, 'logout']);
 
         // Authenticated onboarding (no tenant middleware — tenant resolved from user)
-        Route::post('onboarding/business-type', [OnboardingController::class, 'setBusinessType']);
+        Route::post('onboarding/business-type', [OnboardingController::class, 'setBusinessType'])
+            ->middleware('verified.email');
 
         // Client-facing routes (no tenant middleware — returns data across all tenants for the authenticated user)
         Route::get('client/reservations', [ReservationController::class, 'myReservations']);
@@ -63,8 +69,8 @@ Route::prefix('v1')->group(function () {
         Route::post('notifications/read-all', [\App\Infrastructure\Http\Controllers\Notification\NotificationController::class, 'markAllAsRead']);
         Route::post('notifications/{id}/read', [\App\Infrastructure\Http\Controllers\Notification\NotificationController::class, 'markAsRead']);
 
-        // Tenant-scoped routes
-        Route::middleware('tenant')->group(function () {
+        // Tenant-scoped routes (require verified email)
+        Route::middleware(['verified.email', 'tenant'])->group(function () {
             // Auth
             Route::get('auth/me', [AuthController::class, 'me']);
 

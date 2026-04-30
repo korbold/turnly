@@ -10,3 +10,4 @@ Artisan::command('inspire', function () {
 
 Schedule::command('reservations:send-reminders')->everyMinute();
 Schedule::command('plan:check-trials')->daily();
+Schedule::command('users:purge-unverified')->hourly();

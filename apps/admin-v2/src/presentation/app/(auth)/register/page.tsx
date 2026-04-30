@@ -92,7 +92,7 @@ export default function RegisterPage() {
       },
       {
         onSuccess: () => {
-          router.push('/dashboard');
+          router.push(`/verify-email?email=${encodeURIComponent(data.email)}`);
         },
         onError: (error: Error) => {
           setApiError(
