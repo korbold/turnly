@@ -1,5 +1,12 @@
 import type { TenantRepository } from '@/domain/repositories/tenant.repository';
-import type { TenantSettings, TenantImage } from '@/domain/entities/tenant';
+import type {
+  TenantSettings,
+  TenantImage,
+  BillingProfile,
+  BillingProfileInput,
+  SriLookupResult,
+  TaxIdType,
+} from '@/domain/entities/tenant';
 import api from '../client';
 import { mapTenantSettings, mapTenantImage } from '../mappers/tenant.mapper';
 
@@ -51,4 +58,53 @@ export class ApiTenantRepository implements TenantRepository {
   async reorderImages(ids: string[]): Promise<void> {
     await api.post('/tenant/images/reorder', { ids });
   }
+
+  async getBillingProfile(): Promise<BillingProfile> {
+    const { data: res } = await api.get('/tenant/billing-profile');
+    return mapBillingProfile(res.data);
+  }
+
+  async updateBillingProfile(input: BillingProfileInput): Promise<BillingProfile> {
+    const { data: res } = await api.patch('/tenant/billing-profile', {
+      tax_id_type: input.taxIdType,
+      tax_id: input.taxId,
+      legal_name: input.legalName,
+      billing_email: input.billingEmail,
+      billing_address: input.billingAddress,
+      billing_phone: input.billingPhone ?? null,
+    });
+    return mapBillingProfile(res.data);
+  }
+
+  async lookupTaxId(type: TaxIdType, taxId: string): Promise<SriLookupResult> {
+    const { data: res } = await api.get('/tenant/billing-profile/lookup', {
+      params: { tax_id_type: type, tax_id: taxId },
+    });
+    const d = res.data;
+    return {
+      formatValid: Boolean(d.format_valid),
+      lookup: d.lookup
+        ? {
+            razonSocial: d.lookup.razon_social,
+            estado: d.lookup.estado,
+            tipoIdentificacion: d.lookup.tipo_identificacion,
+          }
+        : null,
+    };
+  }
+}
+
+function mapBillingProfile(d: Record<string, unknown>): BillingProfile {
+  return {
+    taxIdType: (d.tax_id_type as BillingProfile['taxIdType']) ?? null,
+    taxId: (d.tax_id as string | null) ?? null,
+    legalName: (d.legal_name as string | null) ?? null,
+    billingEmail: (d.billing_email as string | null) ?? null,
+    billingAddress: (d.billing_address as string | null) ?? null,
+    billingPhone: (d.billing_phone as string | null) ?? null,
+    billingVerified: Boolean(d.billing_verified),
+    billingVerifiedAt: d.billing_verified_at
+      ? new Date(d.billing_verified_at as string)
+      : null,
+  };
 }

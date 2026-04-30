@@ -2,7 +2,7 @@
 
 import { Suspense } from 'react';
 import { useQueryState, parseAsString } from 'nuqs';
-import { Settings, Clock, Image, List, Shield, Palette } from 'lucide-react';
+import { Settings, Clock, Image, List, Shield, Palette, Receipt } from 'lucide-react';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/presentation/components/ui/tabs';
 import { Skeleton } from '@/presentation/components/ui/skeleton';
 import { GeneralTab } from '@/presentation/components/features/settings/general-tab';
@@ -11,6 +11,7 @@ import { GalleryTab } from '@/presentation/components/features/settings/gallery-
 import { CustomFieldsTab } from '@/presentation/components/features/settings/custom-fields-tab';
 import { PermissionsTab } from '@/presentation/components/features/settings/permissions-tab';
 import { BrandTab } from '@/presentation/components/features/settings/brand-tab';
+import { BillingTab } from '@/presentation/components/features/settings/billing-tab';
 
 const TABS = [
   { value: 'general', label: 'General', icon: Settings },
@@ -19,6 +20,7 @@ const TABS = [
   { value: 'fields', label: 'Campos', icon: List },
   { value: 'permissions', label: 'Permisos', icon: Shield },
   { value: 'brand', label: 'Marca', icon: Palette },
+  { value: 'billing', label: 'Facturación', icon: Receipt },
 ] as const;
 
 function SettingsContent() {
@@ -66,6 +68,7 @@ function SettingsContent() {
             <TabsContent value="fields"><CustomFieldsTab /></TabsContent>
             <TabsContent value="permissions"><PermissionsTab /></TabsContent>
             <TabsContent value="brand"><BrandTab /></TabsContent>
+            <TabsContent value="billing"><BillingTab /></TabsContent>
           </div>
         </div>
       </Tabs>

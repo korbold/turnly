@@ -75,6 +75,11 @@ Route::prefix('v1')->group(function () {
             // Tenant plan + usage
             Route::get('tenant/plan', [\App\Infrastructure\Http\Controllers\Tenant\TenantPlanController::class, 'show']);
 
+            // Tenant billing profile
+            Route::get('tenant/billing-profile', [\App\Infrastructure\Http\Controllers\Tenant\BillingProfileController::class, 'show']);
+            Route::patch('tenant/billing-profile', [\App\Infrastructure\Http\Controllers\Tenant\BillingProfileController::class, 'update']);
+            Route::get('tenant/billing-profile/lookup', [\App\Infrastructure\Http\Controllers\Tenant\BillingProfileController::class, 'lookup']);
+
             // Reservations
             Route::get('reservations/available-slots', [ReservationController::class, 'availableSlots']);
             Route::get('reservations', [ReservationController::class, 'index']);
