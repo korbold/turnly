@@ -18,6 +18,8 @@ build/
 .idea/
 .vscode/
 !.vscode/settings.json
+!apps/customer_v2/.vscode/
+!apps/customer_v2/.vscode/launch.json
 *.swp
 
 # OS
