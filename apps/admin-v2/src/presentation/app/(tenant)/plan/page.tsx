@@ -175,7 +175,7 @@ function PlanContent() {
             <p className="font-medium text-amber-900">Periodo de prueba activo</p>
             {trial_ends_at && (
               <p className="text-amber-700">
-                Termina el {new Date(trial_ends_at).toLocaleDateString()}
+                Termina el {new Date(trial_ends_at).toLocaleDateString('es-EC', { day: '2-digit', month: '2-digit', year: 'numeric' })}
               </p>
             )}
           </div>
