@@ -1,8 +1,11 @@
-name: Deploy Dev
+name: Deploy Dev (backend)
 
 on:
   push:
     branches: [develop]
+    paths:
+      - 'apps/backend/**'
+      - '.github/workflows/deploy-dev.yml'
   workflow_dispatch:
 
 concurrency:
