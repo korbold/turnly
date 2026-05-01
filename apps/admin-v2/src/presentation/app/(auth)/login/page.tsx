@@ -53,7 +53,8 @@ export default function LoginPage() {
       },
       onError: (error: { message?: string; code?: string }) => {
         if (error.code === 'EMAIL_NOT_VERIFIED') {
-          router.push(`/verify-email?email=${encodeURIComponent(data.email)}`);
+          sessionStorage.setItem('pendingVerifyEmail', data.email);
+          router.push('/verify-email');
           return;
         }
         setApiError(

@@ -2,7 +2,7 @@
 
 import { Suspense, useEffect, useRef, useState } from 'react';
 import Link from 'next/link';
-import { useRouter, useSearchParams } from 'next/navigation';
+import { useRouter } from 'next/navigation';
 import { Loader2, MailCheck } from 'lucide-react';
 import { toast } from 'sonner';
 import { Button } from '@/presentation/components/ui/button';
@@ -24,8 +24,14 @@ const RESEND_COOLDOWN_SECONDS = 60;
 
 function VerifyEmailContent() {
   const router = useRouter();
-  const params = useSearchParams();
-  const email = params.get('email') ?? '';
+  const [email, setEmail] = useState<string>('');
+  const [loaded, setLoaded] = useState(false);
+
+  useEffect(() => {
+    const stored = sessionStorage.getItem('pendingVerifyEmail') ?? '';
+    setEmail(stored);
+    setLoaded(true);
+  }, []);
 
   const verify = useVerifyEmail();
   const resend = useResendVerification();
@@ -46,6 +52,16 @@ function VerifyEmailContent() {
     const t = setInterval(() => setCooldown((s) => Math.max(0, s - 1)), 1000);
     return () => clearInterval(t);
   }, [cooldown]);
+
+  if (!loaded) {
+    return (
+      <Card>
+        <CardContent className="py-10">
+          <Loader2 className="mx-auto h-6 w-6 animate-spin text-zinc-400" />
+        </CardContent>
+      </Card>
+    );
+  }
 
   if (!email) {
     return (
@@ -109,6 +125,7 @@ function VerifyEmailContent() {
       { email, code },
       {
         onSuccess: () => {
+          sessionStorage.removeItem('pendingVerifyEmail');
           const isSuperAdmin = authStorage.getIsSuperAdmin();
           router.push(isSuperAdmin ? '/super-admin' : '/dashboard');
         },

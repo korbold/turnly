@@ -92,7 +92,8 @@ export default function RegisterPage() {
       },
       {
         onSuccess: () => {
-          router.push(`/verify-email?email=${encodeURIComponent(data.email)}`);
+          sessionStorage.setItem('pendingVerifyEmail', data.email);
+          router.push('/verify-email');
         },
         onError: (error: Error) => {
           setApiError(
