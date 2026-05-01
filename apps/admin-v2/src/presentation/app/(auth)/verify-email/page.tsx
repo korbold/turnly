@@ -163,6 +163,9 @@ function VerifyEmailContent() {
                 ref={(el) => {
                   inputs.current[i] = el;
                 }}
+                id={`otp-${i}`}
+                name={`otp-${i}`}
+                aria-label={`Dígito ${i + 1} del código`}
                 inputMode="numeric"
                 autoComplete={i === 0 ? 'one-time-code' : 'off'}
                 maxLength={CODE_LENGTH}
