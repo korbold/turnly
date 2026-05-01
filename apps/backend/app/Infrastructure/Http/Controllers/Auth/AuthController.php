@@ -55,7 +55,7 @@ class AuthController extends Controller
                     'business_type' => $request->business_type,
                     'plan_id' => $defaultPlan?->id,
                     'is_trial' => true,
-                    'trial_ends_at' => now()->addDays(14),
+                    'trial_ends_at' => now()->addDays(30),
                     'status' => 'pending',
                     'onboarding_step' => 0,
                 ]);

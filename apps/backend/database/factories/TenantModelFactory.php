@@ -21,7 +21,7 @@ class TenantModelFactory extends Factory
             'country' => 'EC',
             'plan' => 'trial',
             'status' => 'active',
-            'trial_ends_at' => now()->addDays(14),
+            'trial_ends_at' => now()->addDays(30),
             'settings' => null,
             'onboarding_step' => 0,
             'activated_at' => now(),
