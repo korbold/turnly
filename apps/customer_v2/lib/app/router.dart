@@ -23,11 +23,11 @@ import '../features/favorites/presentation/screens/favorites_screen.dart';
 import '../features/notifications/presentation/screens/notifications_screen.dart';
 import '../features/legal/presentation/screens/legal_screen.dart';
 
-final _rootNavigatorKey = GlobalKey<NavigatorState>();
+final rootNavigatorKey = GlobalKey<NavigatorState>();
 final _shellNavigatorKey = GlobalKey<NavigatorState>();
 
 final appRouter = GoRouter(
-  navigatorKey: _rootNavigatorKey,
+  navigatorKey: rootNavigatorKey,
   initialLocation: '/login',
   redirect: (context, state) async {
     final token = await SecureStorage.getToken();

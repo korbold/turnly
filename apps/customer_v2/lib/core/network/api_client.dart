@@ -2,6 +2,7 @@
 import 'package:dio/dio.dart';
 import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'auth_interceptor.dart';
+import 'email_verification_interceptor.dart';
 import 'tenant_interceptor.dart';
 
 class ApiClient {
@@ -29,6 +30,7 @@ class ApiClient {
     dio.interceptors.addAll([
       AuthInterceptor(),
       TenantInterceptor(),
+      EmailVerificationInterceptor(),
     ]);
 
     return dio;
