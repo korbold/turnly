@@ -1,109 +1,136 @@
 'use client';
 
 import { useMemo } from 'react';
+import Link from 'next/link';
 import { useRouter } from 'next/navigation';
-import { format, differenceInMinutes } from 'date-fns';
-import { Clock, CalendarCheck } from 'lucide-react';
-import { Card, CardContent, CardHeader, CardTitle } from '@/presentation/components/ui/card';
+import { format } from 'date-fns';
+import { ChevronRight } from 'lucide-react';
+import { Card } from '@/presentation/components/ui/card';
 import { Badge } from '@/presentation/components/ui/badge';
+import { Avatar, AvatarFallback } from '@/presentation/components/ui/avatar';
 import { Skeleton } from '@/presentation/components/ui/skeleton';
 import { useReservations } from '@/presentation/hooks/use-reservations';
+import { RESERVATION_STATUS_CONFIG } from '@/shared/constants/status';
+import { cn } from '@/shared/utils/cn';
+
+function getInitials(name: string | undefined): string {
+  if (!name) return '?';
+  return name
+    .split(' ')
+    .map((n) => n[0])
+    .filter(Boolean)
+    .slice(0, 2)
+    .join('')
+    .toUpperCase();
+}
 
 export function UpcomingReservations() {
   const today = format(new Date(), 'yyyy-MM-dd');
   const { data, isLoading } = useReservations({
     dateFrom: today,
     dateTo: today,
-    status: 'confirmed',
   });
-
-  const upcoming = useMemo(() => {
-    if (!data?.data) return [];
-    const now = new Date();
-    return data.data
-      .filter((r) => new Date(r.scheduledAt) >= now)
-      .sort(
-        (a, b) =>
-          new Date(a.scheduledAt).getTime() - new Date(b.scheduledAt).getTime()
-      )
-      .slice(0, 5);
-  }, [data]);
 
   const router = useRouter();
 
-  if (isLoading) {
-    return (
-      <Card>
-        <CardHeader className="pb-3">
-          <CardTitle className="text-base">Proximas</CardTitle>
-        </CardHeader>
-        <CardContent className="space-y-3">
-          {Array.from({ length: 3 }).map((_, i) => (
-            <Skeleton key={i} className="h-12 w-full rounded-lg" />
-          ))}
-        </CardContent>
-      </Card>
-    );
-  }
+  const reservations = useMemo(
+    () =>
+      (data?.data ?? [])
+        .slice()
+        .sort(
+          (a, b) =>
+            new Date(a.scheduledAt).getTime() -
+            new Date(b.scheduledAt).getTime()
+        ),
+    [data]
+  );
 
   return (
-    <Card>
-      <CardHeader className="pb-3">
-        <CardTitle className="flex items-center gap-2 text-base">
-          <CalendarCheck className="h-4 w-4 text-[var(--color-primary)]" />
-          Proximas Reservas
-        </CardTitle>
-      </CardHeader>
-      <CardContent>
-        {upcoming.length === 0 ? (
-          <div className="flex flex-col items-center justify-center py-6 text-center">
-            <CalendarCheck className="mb-2 h-10 w-10 text-zinc-300" />
-            <p className="text-sm text-muted-foreground">
-              Sin reservas pendientes hoy
-            </p>
+    <Card className="p-0">
+      <div className="flex items-center justify-between border-b border-[var(--border)] px-4 py-3.5">
+        <div>
+          <div className="text-[13px] font-semibold text-[var(--fg-strong)]">
+            Agenda de hoy
+          </div>
+          <div className="text-[11.5px] text-[var(--fg-secondary)]">
+            {isLoading
+              ? 'Cargando…'
+              : `${reservations.length} reservas programadas`}
+          </div>
+        </div>
+        <Link
+          href="/reservations"
+          className="text-[12.5px] font-medium text-[var(--fg-secondary)] hover:text-[var(--fg-strong)]"
+        >
+          Ver calendario →
+        </Link>
+      </div>
+
+      <div>
+        {isLoading ? (
+          <div className="space-y-2 p-3">
+            {Array.from({ length: 3 }).map((_, i) => (
+              <Skeleton key={i} className="h-12 w-full rounded-md" />
+            ))}
+          </div>
+        ) : reservations.length === 0 ? (
+          <div className="px-4 py-8 text-center text-[13px] text-[var(--fg-muted)]">
+            Sin reservas pendientes hoy
           </div>
         ) : (
-          <div className="space-y-2">
-            {upcoming.map((res) => {
-              const mins = differenceInMinutes(
-                new Date(res.scheduledAt),
-                new Date()
-              );
-              const soon = mins <= 30 && mins >= 0;
+          reservations.map((res) => {
+            const statusCfg = RESERVATION_STATUS_CONFIG[res.status];
+            const start = format(new Date(res.scheduledAt), 'HH:mm');
+            const end = format(new Date(res.estimatedEnd), 'HH:mm');
+            const customer = res.client?.name ?? 'Cliente';
 
-              return (
-                <button
-                  key={res.id}
-                  className="flex w-full items-center gap-3 rounded-lg border bg-white p-3 text-left transition-shadow hover:shadow-sm"
-                  onClick={() => router.push('/reservations')}
+            return (
+              <button
+                key={res.id}
+                onClick={() => router.push('/reservations')}
+                className="flex w-full items-center gap-3.5 border-b border-[var(--border)] px-3.5 py-2.5 text-left transition-colors last:border-b-0 hover:bg-[var(--bg-sunken)]"
+              >
+                <div
+                  className="w-[78px] shrink-0 text-[12.5px] font-medium text-[var(--fg-strong)] tabular-nums"
+                  style={{ fontFamily: 'var(--font-mono)' }}
                 >
-                  <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-zinc-100">
-                    <Clock className="h-4 w-4 text-zinc-500" />
+                  {start}
+                  <span className="text-[var(--fg-muted)]">—{end}</span>
+                </div>
+                <Avatar className="h-7 w-7 shrink-0">
+                  <AvatarFallback className="bg-[var(--ink-100)] text-[10px] font-semibold text-[var(--fg)]">
+                    {getInitials(customer)}
+                  </AvatarFallback>
+                </Avatar>
+                <div className="min-w-0 flex-1">
+                  <div className="truncate text-[13px] font-semibold text-[var(--fg-strong)]">
+                    {customer}
                   </div>
-                  <div className="min-w-0 flex-1">
-                    <div className="flex items-center gap-2">
-                      <span className="text-sm font-medium">
-                        {format(new Date(res.scheduledAt), 'HH:mm')}
-                      </span>
-                      <span className="truncate text-sm text-muted-foreground">
-                        {res.client?.name ?? 'Cliente'}
-                      </span>
-                    </div>
-                    <p className="truncate text-xs text-muted-foreground">
-                      {res.service?.name ?? 'Servicio'}
-                    </p>
+                  <div className="truncate text-[11.5px] text-[var(--fg-secondary)]">
+                    {res.service?.name ?? 'Servicio'}
                   </div>
-                  {soon && (
-                    <Badge className="shrink-0 border-amber-200 bg-amber-50 text-amber-700 hover:bg-amber-50">
-                      en {mins}min
-                    </Badge>
+                </div>
+                <Badge
+                  className={cn(
+                    'shrink-0 border-0 text-[11px] font-semibold',
+                    statusCfg.bgColor,
+                    statusCfg.color
                   )}
-                </button>
-              );
-            })}
-          </div>
+                >
+                  <span
+                    className={cn(
+                      'mr-1 inline-block h-1.5 w-1.5 rounded-full',
+                      statusCfg.dotColor
+                    )}
+                  />
+                  {statusCfg.label}
+                </Badge>
+                <ChevronRight className="h-3.5 w-3.5 shrink-0 text-[var(--fg-muted)]" />
+              </button>
+            );
+          })
         )}
-      </CardContent>
+      </div>
     </Card>
   );
 }
