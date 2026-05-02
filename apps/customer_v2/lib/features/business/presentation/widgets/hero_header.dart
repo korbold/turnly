@@ -1,4 +1,5 @@
 // lib/features/business/presentation/widgets/hero_header.dart
+import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_animate/flutter_animate.dart';
 import '../../../../app/theme/app_colors.dart';
@@ -38,6 +39,8 @@ class HeroHeader extends StatelessWidget {
     final typeLabel =
         _typeLabels[business.businessType] ?? business.businessType ?? '';
     final typeEmoji = _typeEmojis[business.businessType] ?? '🏪';
+    final hasLogo = business.logoUrl != null && business.logoUrl!.isNotEmpty;
+    final hasCover = business.coverUrl != null && business.coverUrl!.isNotEmpty;
 
     return Container(
       width: double.infinity,
@@ -48,58 +51,116 @@ class HeroHeader extends StatelessWidget {
         bottom: false,
         child: Stack(
           children: [
-            // Decorative blobs
-            Positioned(
-              right: -30,
-              top: 20,
-              child: Container(
-                width: 120,
-                height: 120,
-                decoration: BoxDecoration(
-                  shape: BoxShape.circle,
-                  color: tenantTheme.primary.withValues(alpha: 0.08),
+            if (hasCover)
+              Positioned.fill(
+                child: CachedNetworkImage(
+                  imageUrl: business.coverUrl!,
+                  fit: BoxFit.cover,
+                  errorWidget: (_, __, ___) => const SizedBox.shrink(),
                 ),
               ),
-            ),
-            Positioned(
-              right: 40,
-              top: -20,
-              child: Container(
-                width: 80,
-                height: 80,
-                decoration: BoxDecoration(
-                  shape: BoxShape.circle,
-                  color: tenantTheme.primary.withValues(alpha: 0.06),
+            if (hasCover)
+              Positioned.fill(
+                child: DecoratedBox(
+                  decoration: BoxDecoration(
+                    gradient: LinearGradient(
+                      begin: Alignment.topCenter,
+                      end: Alignment.bottomCenter,
+                      colors: [
+                        Colors.black.withValues(alpha: 0.10),
+                        Colors.black.withValues(alpha: 0.55),
+                      ],
+                    ),
+                  ),
                 ),
               ),
-            ),
-            Positioned(
-              left: -20,
-              bottom: 10,
-              child: Container(
-                width: 60,
-                height: 60,
-                decoration: BoxDecoration(
-                  shape: BoxShape.circle,
-                  color: tenantTheme.primary.withValues(alpha: 0.05),
+            // Decorative blobs (only when no cover)
+            if (!hasCover) ...[
+              Positioned(
+                right: -30,
+                top: 20,
+                child: Container(
+                  width: 120,
+                  height: 120,
+                  decoration: BoxDecoration(
+                    shape: BoxShape.circle,
+                    color: tenantTheme.primary.withValues(alpha: 0.08),
+                  ),
                 ),
               ),
-            ),
+              Positioned(
+                right: 40,
+                top: -20,
+                child: Container(
+                  width: 80,
+                  height: 80,
+                  decoration: BoxDecoration(
+                    shape: BoxShape.circle,
+                    color: tenantTheme.primary.withValues(alpha: 0.06),
+                  ),
+                ),
+              ),
+              Positioned(
+                left: -20,
+                bottom: 10,
+                child: Container(
+                  width: 60,
+                  height: 60,
+                  decoration: BoxDecoration(
+                    shape: BoxShape.circle,
+                    color: tenantTheme.primary.withValues(alpha: 0.05),
+                  ),
+                ),
+              ),
+            ],
 
-            // Big emoji decoration
+            // Logo or emoji decoration (right side)
             Positioned(
               right: 20,
               bottom: 30,
-              child: Text(
-                typeEmoji,
-                style: const TextStyle(fontSize: 64),
-              ).animate().fadeIn(duration: 600.ms, delay: 200.ms).scale(
-                    begin: const Offset(0.5, 0.5),
-                    end: const Offset(1, 1),
-                    duration: 600.ms,
-                    delay: 200.ms,
-                    curve: Curves.elasticOut,
-                  ),
+              child: hasLogo
+                  ? Container(
+                      width: 72,
+                      height: 72,
+                      decoration: BoxDecoration(
+                        color: Colors.white,
+                        borderRadius: BorderRadius.circular(18),
+                        boxShadow: [
+                          BoxShadow(
+                            color: Colors.black.withValues(alpha: 0.18),
+                            blurRadius: 14,
+                            offset: const Offset(0, 6),
+                          ),
+                        ],
+                      ),
+                      clipBehavior: Clip.antiAlias,
+                      child: CachedNetworkImage(
+                        imageUrl: business.logoUrl!,
+                        fit: BoxFit.cover,
+                        errorWidget: (_, __, ___) => Center(
+                          child: Text(
+                            typeEmoji,
+                            style: const TextStyle(fontSize: 40),
+                          ),
+                        ),
+                      ),
+                    ).animate().fadeIn(duration: 600.ms, delay: 200.ms).scale(
+                        begin: const Offset(0.5, 0.5),
+                        end: const Offset(1, 1),
+                        duration: 600.ms,
+                        delay: 200.ms,
+                        curve: Curves.elasticOut,
+                      )
+                  : Text(
+                      typeEmoji,
+                      style: const TextStyle(fontSize: 64),
+                    ).animate().fadeIn(duration: 600.ms, delay: 200.ms).scale(
+                          begin: const Offset(0.5, 0.5),
+                          end: const Offset(1, 1),
+                          duration: 600.ms,
+                          delay: 200.ms,
+                          curve: Curves.elasticOut,
+                        ),
             ),
 
             Padding(
@@ -116,7 +177,9 @@ class HeroHeader extends StatelessWidget {
                           width: 40,
                           height: 40,
                           decoration: BoxDecoration(
-                            color: tenantTheme.primary.withValues(alpha: 0.1),
+                            color: hasCover
+                                ? Colors.white.withValues(alpha: 0.92)
+                                : tenantTheme.primary.withValues(alpha: 0.1),
                             borderRadius: BorderRadius.circular(12),
                           ),
                           child: Icon(
@@ -136,10 +199,19 @@ class HeroHeader extends StatelessWidget {
                     child: Text(
                       business.name,
                       style: TextStyle(
-                        color: AppColors.textPrimary,
+                        color: hasCover ? Colors.white : AppColors.textPrimary,
                         fontSize: 24,
                         fontWeight: FontWeight.w800,
                         height: 1.2,
+                        shadows: hasCover
+                            ? [
+                                Shadow(
+                                  color: Colors.black.withValues(alpha: 0.45),
+                                  blurRadius: 8,
+                                  offset: const Offset(0, 2),
+                                ),
+                              ]
+                            : null,
                       ),
                     ).animate()
                         .fadeIn(duration: 400.ms, delay: 100.ms)

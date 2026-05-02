@@ -1,4 +1,5 @@
 // lib/features/explore/presentation/widgets/business_card.dart
+import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_animate/flutter_animate.dart';
 import '../../../../app/theme/app_colors.dart';
@@ -31,6 +32,8 @@ class BusinessCard extends StatelessWidget {
     final tenantTheme = TenantTheme.fromBusinessType(business.businessType);
     final typeLabel =
         _typeLabels[business.businessType] ?? business.businessType ?? '';
+    final hasLogo = business.logoUrl != null && business.logoUrl!.isNotEmpty;
+    final hasCover = business.coverUrl != null && business.coverUrl!.isNotEmpty;
 
     return GestureDetector(
       onTap: onTap,
@@ -45,7 +48,7 @@ class BusinessCard extends StatelessWidget {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            // Cover area — solid tint + initial monogram (no gradient)
+            // Cover area — cover image (if available) + logo / monogram
             Container(
               height: 120,
               width: double.infinity,
@@ -53,42 +56,60 @@ class BusinessCard extends StatelessWidget {
                 color: tenantTheme.primary.withValues(alpha: 0.08),
               ),
               child: Stack(
+                fit: StackFit.expand,
                 children: [
-                  // Subtle decorative dot in corner
-                  Positioned(
-                    right: -24,
-                    top: -24,
-                    child: Container(
-                      width: 96,
-                      height: 96,
-                      decoration: BoxDecoration(
-                        shape: BoxShape.circle,
-                        color: tenantTheme.primary.withValues(alpha: 0.06),
+                  if (hasCover)
+                    CachedNetworkImage(
+                      imageUrl: business.coverUrl!,
+                      fit: BoxFit.cover,
+                      errorWidget: (_, __, ___) => const SizedBox.shrink(),
+                    ),
+                  // Subtle decorative dot in corner (only when no cover)
+                  if (!hasCover)
+                    Positioned(
+                      right: -24,
+                      top: -24,
+                      child: Container(
+                        width: 96,
+                        height: 96,
+                        decoration: BoxDecoration(
+                          shape: BoxShape.circle,
+                          color: tenantTheme.primary.withValues(alpha: 0.06),
+                        ),
                       ),
                     ),
-                  ),
-                  // Business initial / logo placeholder
+                  // Business logo / initial monogram
                   Center(
                     child: Container(
                       width: 56,
                       height: 56,
                       decoration: BoxDecoration(
-                        color: tenantTheme.primary,
+                        color: hasLogo ? Colors.white : tenantTheme.primary,
                         borderRadius: BorderRadius.circular(14),
+                        boxShadow: hasCover
+                            ? [
+                                BoxShadow(
+                                  color: Colors.black.withValues(alpha: 0.18),
+                                  blurRadius: 12,
+                                  offset: const Offset(0, 4),
+                                ),
+                              ]
+                            : null,
                       ),
-                      child: Center(
-                        child: Text(
-                          business.name.isNotEmpty
-                              ? business.name[0].toUpperCase()
-                              : '?',
-                          style: const TextStyle(
-                            color: Colors.white,
-                            fontSize: 24,
-                            fontWeight: FontWeight.w800,
-                            letterSpacing: -0.5,
-                          ),
-                        ),
-                      ),
+                      clipBehavior: Clip.antiAlias,
+                      child: hasLogo
+                          ? CachedNetworkImage(
+                              imageUrl: business.logoUrl!,
+                              fit: BoxFit.cover,
+                              errorWidget: (_, __, ___) => _MonogramFallback(
+                                name: business.name,
+                                color: tenantTheme.primary,
+                              ),
+                            )
+                          : _MonogramFallback(
+                              name: business.name,
+                              color: tenantTheme.primary,
+                            ),
                     ),
                   ),
                 ],
@@ -174,5 +195,29 @@ class BusinessCard extends StatelessWidget {
           duration: Duration(milliseconds: 400 + index * 80),
           curve: Curves.easeOut,
         );
+  }
+}
+
+class _MonogramFallback extends StatelessWidget {
+  final String name;
+  final Color color;
+
+  const _MonogramFallback({required this.name, required this.color});
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      color: color,
+      alignment: Alignment.center,
+      child: Text(
+        name.isNotEmpty ? name[0].toUpperCase() : '?',
+        style: const TextStyle(
+          color: Colors.white,
+          fontSize: 24,
+          fontWeight: FontWeight.w800,
+          letterSpacing: -0.5,
+        ),
+      ),
+    );
   }
 }

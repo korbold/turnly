@@ -7,6 +7,7 @@ class Service extends Equatable {
   final String? description;
   final double price;
   final int durationMinutes;
+  final String? imageUrl;
 
   const Service({
     required this.id,
@@ -14,6 +15,7 @@ class Service extends Equatable {
     this.description,
     required this.price,
     required this.durationMinutes,
+    this.imageUrl,
   });
 
   @override

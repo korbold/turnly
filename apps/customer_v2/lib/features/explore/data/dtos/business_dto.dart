@@ -52,6 +52,7 @@ class BusinessDto {
       description: json['description'] as String?,
       price: price,
       durationMinutes: json['duration_minutes'] as int? ?? tenantSlotDuration,
+      imageUrl: json['image_url'] as String?,
     );
   }
 
