@@ -100,8 +100,11 @@ class _CreateReservationViewState extends State<_CreateReservationView> {
   final _pageController = PageController();
   int _currentStep = 0;
 
-  // Whether to skip the resource selection step (no custom fields)
-  bool get _skipResourceStep => widget.customFields.isEmpty;
+  // Whether to skip the resource selection step (no usable custom fields)
+  bool get _skipResourceStep =>
+      widget.customFields
+          .where((f) => (f['label'] as String?)?.trim().isNotEmpty == true)
+          .isEmpty;
   int get _totalSteps => _skipResourceStep ? 2 : 3;
 
   // Step 1: Resource

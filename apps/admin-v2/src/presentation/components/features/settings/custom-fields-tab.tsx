@@ -181,12 +181,14 @@ export function CustomFieldsTab() {
         </Card>
       ))}
 
-      {fields.length > 0 && (
-        <Button onClick={handleSave} disabled={update.isPending}>
-          <Save className="mr-1.5 h-4 w-4" />
-          {update.isPending ? 'Guardando...' : 'Guardar Campos'}
-        </Button>
-      )}
+      <Button onClick={handleSave} disabled={update.isPending}>
+        <Save className="mr-1.5 h-4 w-4" />
+        {update.isPending
+          ? 'Guardando...'
+          : fields.length === 0
+            ? 'Guardar (sin campos)'
+            : 'Guardar Campos'}
+      </Button>
     </div>
   );
 }
