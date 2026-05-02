@@ -292,16 +292,30 @@ class AuthController extends Controller
         $tenantUser = $tenantId
             ? TenantUserModel::where('user_id', $user->id)
                 ->where('tenant_id', $tenantId)
+                ->with('tenant')
                 ->first()
-            : null;
+            : TenantUserModel::where('user_id', $user->id)
+                ->where('is_active', true)
+                ->with('tenant')
+                ->first();
+
+        $tenant = $tenantUser?->tenant;
 
         return response()->json([
             'data' => [
-                'id' => $user->id,
-                'name' => $user->name,
-                'email' => $user->email,
-                'is_super_admin' => $user->is_super_admin,
-                'role' => $tenantUser?->role,
+                'user' => [
+                    'id' => $user->id,
+                    'name' => $user->name,
+                    'email' => $user->email,
+                    'is_super_admin' => $user->is_super_admin,
+                    'role' => $tenantUser?->role,
+                ],
+                'tenant' => $tenant ? [
+                    'id' => $tenant->id,
+                    'slug' => $tenant->slug,
+                    'name' => $tenant->name,
+                    'status' => $tenant->status,
+                ] : null,
             ],
         ]);
     }
