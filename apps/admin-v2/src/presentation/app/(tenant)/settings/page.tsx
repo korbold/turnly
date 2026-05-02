@@ -28,7 +28,6 @@ function SettingsContent() {
 
   return (
     <div className="space-y-4">
-      <h1 className="text-xl font-semibold">Configuracion</h1>
 
       <Tabs value={tab} onValueChange={setTab}>
         {/* Desktop: vertical side tabs */}

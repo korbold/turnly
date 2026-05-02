@@ -29,7 +29,6 @@ function ClientsContent() {
     <div className="space-y-4">
       {/* Header */}
       <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-        <h1 className="text-xl font-semibold">Clientes</h1>
         <Button size="sm" onClick={() => setCreateOpen(true)}>
           <Plus className="mr-1 h-4 w-4" />
           Nuevo

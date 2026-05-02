@@ -17,7 +17,6 @@ function TeamContent() {
     <div className="space-y-4">
       {/* Header */}
       <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-        <h1 className="text-xl font-semibold">Equipo</h1>
         <Button size="sm" onClick={() => setInviteOpen(true)}>
           <Plus className="mr-1 h-4 w-4" />
           Invitar
