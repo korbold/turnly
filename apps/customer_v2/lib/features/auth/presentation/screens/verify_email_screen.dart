@@ -1,11 +1,13 @@
 // lib/features/auth/presentation/screens/verify_email_screen.dart
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:go_router/go_router.dart';
 
 import '../../../../app/theme/app_colors.dart';
 import '../../../../core/di/injection.dart';
 import '../../domain/repositories/auth_repository.dart';
+import '../cubit/auth_cubit.dart';
 
 class VerifyEmailScreen extends StatefulWidget {
   final String email;
@@ -78,8 +80,12 @@ class _VerifyEmailScreenState extends State<VerifyEmailScreen> {
           _error = failure.message;
         });
       },
-      (_) {
-        if (mounted) context.go('/home');
+      (_) async {
+        // Refresh AuthCubit so the rest of the app sees the verified state.
+        if (mounted) {
+          await context.read<AuthCubit>().getMe();
+          if (mounted) context.go('/home');
+        }
       },
     );
   }

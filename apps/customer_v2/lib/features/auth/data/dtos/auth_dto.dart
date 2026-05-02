@@ -21,6 +21,7 @@ class UserDto {
   final String email;
   final String? phone;
   final bool isSuperAdmin;
+  final bool emailVerified;
 
   UserDto({
     required this.id,
@@ -28,6 +29,7 @@ class UserDto {
     required this.email,
     this.phone,
     this.isSuperAdmin = false,
+    this.emailVerified = true,
   });
 
   factory UserDto.fromJson(Map<String, dynamic> json) {
@@ -37,6 +39,7 @@ class UserDto {
       email: json['email'] as String,
       phone: json['phone'] as String?,
       isSuperAdmin: json['is_super_admin'] as bool? ?? false,
+      emailVerified: json['email_verified'] as bool? ?? true,
     );
   }
 
@@ -46,6 +49,7 @@ class UserDto {
     'email': email,
     'phone': phone,
     'is_super_admin': isSuperAdmin,
+    'email_verified': emailVerified,
   };
 
   User toEntity() => User(
@@ -54,5 +58,6 @@ class UserDto {
     email: email,
     phone: phone,
     isSuperAdmin: isSuperAdmin,
+    emailVerified: emailVerified,
   );
 }

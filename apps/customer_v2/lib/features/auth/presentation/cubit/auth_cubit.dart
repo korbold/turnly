@@ -26,8 +26,12 @@ class AuthCubit extends Cubit<AuthState> {
         }
       },
       (data) {
-        emit(AuthAuthenticated(data.user));
-        getIt<PushNotificationService>().init();
+        if (!data.user.emailVerified) {
+          emit(AuthEmailUnverified(data.user.email));
+        } else {
+          emit(AuthAuthenticated(data.user));
+          getIt<PushNotificationService>().init();
+        }
       },
     );
   }
@@ -79,7 +83,13 @@ class AuthCubit extends Cubit<AuthState> {
     final result = await _repository.getMe();
     result.fold(
       (failure) => emit(const AuthUnauthenticated()),
-      (user) => emit(AuthAuthenticated(user)),
+      (user) {
+        if (!user.emailVerified) {
+          emit(AuthEmailUnverified(user.email));
+        } else {
+          emit(AuthAuthenticated(user));
+        }
+      },
     );
   }
 
@@ -94,8 +104,12 @@ class AuthCubit extends Cubit<AuthState> {
       final userData = await SecureStorage.getUserData();
       if (userData != null) {
         final user = UserDto.fromJson(jsonDecode(userData) as Map<String, dynamic>).toEntity();
-        emit(AuthAuthenticated(user));
-        getIt<PushNotificationService>().init();
+        if (!user.emailVerified) {
+          emit(AuthEmailUnverified(user.email));
+        } else {
+          emit(AuthAuthenticated(user));
+          getIt<PushNotificationService>().init();
+        }
       } else {
         await getMe();
       }

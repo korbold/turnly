@@ -117,16 +117,6 @@ class AuthController extends Controller
             ], 401);
         }
 
-        if ($user->email_verified_at === null) {
-            return response()->json([
-                'error' => [
-                    'code' => 'EMAIL_NOT_VERIFIED',
-                    'message' => 'Verifica tu email antes de iniciar sesión.',
-                    'email' => $user->email,
-                ],
-            ], 403);
-        }
-
         $tenantUser = TenantUserModel::where('user_id', $user->id)
             ->where('is_active', true)
             ->with('tenant')
@@ -152,6 +142,7 @@ class AuthController extends Controller
                     'name' => $user->name,
                     'email' => $user->email,
                     'is_super_admin' => $user->is_super_admin,
+                    'email_verified' => $user->email_verified_at !== null,
                 ],
                 'token' => $token,
                 'tenant' => $tenant ? [
@@ -309,6 +300,7 @@ class AuthController extends Controller
                     'email' => $user->email,
                     'is_super_admin' => $user->is_super_admin,
                     'role' => $tenantUser?->role,
+                    'email_verified' => $user->email_verified_at !== null,
                 ],
                 'tenant' => $tenant ? [
                     'id' => $tenant->id,
