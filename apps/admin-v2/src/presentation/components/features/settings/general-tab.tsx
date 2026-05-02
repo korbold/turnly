@@ -1,8 +1,9 @@
 'use client';
 
-import { useState, useEffect } from 'react';
-import { Save, Upload } from 'lucide-react';
+import { useState, useEffect, useRef } from 'react';
+import { Loader2, Save, Upload, X } from 'lucide-react';
 import { toast } from 'sonner';
+import api from '@/infrastructure/api/client';
 import { Button } from '@/presentation/components/ui/button';
 import { Input } from '@/presentation/components/ui/input';
 import { Label } from '@/presentation/components/ui/label';
@@ -26,6 +27,9 @@ export function GeneralTab() {
   const update = useUpdateSettings();
 
   const [form, setForm] = useState<Partial<TenantSettings>>({});
+  const [uploading, setUploading] = useState<'logo' | 'cover' | null>(null);
+  const logoInputRef = useRef<HTMLInputElement>(null);
+  const coverInputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
     if (settings) {
@@ -38,9 +42,52 @@ export function GeneralTab() {
         slotDuration: settings.slotDuration,
         cancellationHours: settings.cancellationHours,
         socialLinks: settings.socialLinks ?? { instagram: null, facebook: null, whatsapp: null, maps_url: null },
+        logoUrl: settings.logoUrl,
+        coverUrl: settings.coverUrl,
       });
     }
   }, [settings]);
+
+  async function uploadImage(file: File, folder: 'logos' | 'covers'): Promise<string> {
+    const fd = new FormData();
+    fd.append('file', file);
+    fd.append('folder', folder);
+    const { data } = await api.post<{ data: { url: string } }>('/uploads', fd, {
+      headers: { 'Content-Type': 'multipart/form-data' },
+    });
+    return data.data.url;
+  }
+
+  async function handleFile(kind: 'logo' | 'cover', file: File | null) {
+    if (!file) return;
+    if (file.size > 5 * 1024 * 1024) {
+      toast.error('Imagen muy grande (máx 5MB)');
+      return;
+    }
+    setUploading(kind);
+    try {
+      const folder = kind === 'logo' ? 'logos' : 'covers';
+      const url = await uploadImage(file, folder);
+      const key = kind === 'logo' ? 'logoUrl' : 'coverUrl';
+      setForm((prev) => ({ ...prev, [key]: url }));
+      await update.mutateAsync({ [key]: url });
+      toast.success(kind === 'logo' ? 'Logo actualizado' : 'Portada actualizada');
+    } catch {
+      toast.error('Error al subir imagen');
+    } finally {
+      setUploading(null);
+    }
+  }
+
+  async function clearImage(kind: 'logo' | 'cover') {
+    const key = kind === 'logo' ? 'logoUrl' : 'coverUrl';
+    setForm((prev) => ({ ...prev, [key]: null }));
+    try {
+      await update.mutateAsync({ [key]: null });
+    } catch {
+      toast.error('Error al eliminar imagen');
+    }
+  }
 
   function handleChange(key: string, value: unknown) {
     setForm((prev) => ({ ...prev, [key]: value }));
@@ -79,27 +126,79 @@ export function GeneralTab() {
 
   return (
     <div className="max-w-2xl space-y-6">
-      {/* Logo + Cover placeholders */}
+      {/* Logo + Cover */}
       <div className="grid grid-cols-2 gap-4">
         <div>
           <Label>Logo</Label>
-          <div className="mt-1 flex h-24 items-center justify-center rounded-lg border-2 border-dashed border-zinc-300 bg-zinc-50">
-            {settings?.logoUrl ? (
-              <img src={settings.logoUrl} alt="Logo" className="h-16 w-16 rounded-lg object-cover" />
+          <input
+            ref={logoInputRef}
+            type="file"
+            accept="image/png,image/jpeg,image/webp"
+            className="hidden"
+            onChange={(e) => handleFile('logo', e.target.files?.[0] ?? null)}
+          />
+          <button
+            type="button"
+            onClick={() => logoInputRef.current?.click()}
+            className="group relative mt-1 flex h-24 w-full items-center justify-center overflow-hidden rounded-lg border-2 border-dashed border-zinc-300 bg-zinc-50 transition-colors hover:border-[var(--brand-500)] hover:bg-[var(--brand-50)]"
+          >
+            {form.logoUrl ? (
+              <img src={form.logoUrl} alt="Logo" className="h-full w-full object-contain p-2" />
             ) : (
-              <Upload className="h-5 w-5 text-zinc-400" />
+              <Upload className="h-5 w-5 text-zinc-400 group-hover:text-[var(--brand-500)]" />
             )}
-          </div>
+            {uploading === 'logo' && (
+              <span className="absolute inset-0 flex items-center justify-center bg-white/70">
+                <Loader2 className="h-5 w-5 animate-spin text-[var(--brand-500)]" />
+              </span>
+            )}
+          </button>
+          {form.logoUrl && uploading !== 'logo' && (
+            <button
+              type="button"
+              onClick={() => clearImage('logo')}
+              className="mt-1 inline-flex items-center gap-1 text-[11.5px] text-[var(--fg-muted)] hover:text-[var(--danger-500)]"
+            >
+              <X className="h-3 w-3" />
+              Quitar
+            </button>
+          )}
         </div>
         <div>
           <Label>Portada</Label>
-          <div className="mt-1 flex h-24 items-center justify-center rounded-lg border-2 border-dashed border-zinc-300 bg-zinc-50">
-            {settings?.coverUrl ? (
-              <img src={settings.coverUrl} alt="Cover" className="h-full w-full rounded-lg object-cover" />
+          <input
+            ref={coverInputRef}
+            type="file"
+            accept="image/png,image/jpeg,image/webp"
+            className="hidden"
+            onChange={(e) => handleFile('cover', e.target.files?.[0] ?? null)}
+          />
+          <button
+            type="button"
+            onClick={() => coverInputRef.current?.click()}
+            className="group relative mt-1 flex h-24 w-full items-center justify-center overflow-hidden rounded-lg border-2 border-dashed border-zinc-300 bg-zinc-50 transition-colors hover:border-[var(--brand-500)] hover:bg-[var(--brand-50)]"
+          >
+            {form.coverUrl ? (
+              <img src={form.coverUrl} alt="Portada" className="h-full w-full object-cover" />
             ) : (
-              <Upload className="h-5 w-5 text-zinc-400" />
+              <Upload className="h-5 w-5 text-zinc-400 group-hover:text-[var(--brand-500)]" />
             )}
-          </div>
+            {uploading === 'cover' && (
+              <span className="absolute inset-0 flex items-center justify-center bg-white/70">
+                <Loader2 className="h-5 w-5 animate-spin text-[var(--brand-500)]" />
+              </span>
+            )}
+          </button>
+          {form.coverUrl && uploading !== 'cover' && (
+            <button
+              type="button"
+              onClick={() => clearImage('cover')}
+              className="mt-1 inline-flex items-center gap-1 text-[11.5px] text-[var(--fg-muted)] hover:text-[var(--danger-500)]"
+            >
+              <X className="h-3 w-3" />
+              Quitar
+            </button>
+          )}
         </div>
       </div>
 
