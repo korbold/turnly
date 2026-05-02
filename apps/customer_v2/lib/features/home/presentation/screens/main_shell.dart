@@ -1,11 +1,11 @@
 // lib/features/home/presentation/screens/main_shell.dart
+import 'dart:ui';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:go_router/go_router.dart';
 import '../../../../app/theme/app_colors.dart';
 import '../../../reservations/presentation/cubit/reservations_cubit.dart';
 import '../../../reservations/presentation/cubit/reservations_state.dart';
-import '../../../reservations/domain/enums/reservation_status.dart';
 
 class MainShell extends StatelessWidget {
   final Widget child;
@@ -24,7 +24,6 @@ class MainShell extends StatelessWidget {
     final index = _currentIndex(context);
     final primary = Theme.of(context).colorScheme.primary;
 
-    // Count upcoming reservations
     final upcomingCount = context.select<ReservationsCubit, int>((cubit) {
       final state = cubit.state;
       if (state is ReservationsLoaded) {
@@ -36,51 +35,52 @@ class MainShell extends StatelessWidget {
     return Scaffold(
       body: child,
       extendBody: true,
-      bottomNavigationBar: Padding(
-        padding: const EdgeInsets.fromLTRB(24, 0, 24, 12),
-        child: Container(
-          height: 60,
-          clipBehavior: Clip.none,
-          decoration: BoxDecoration(
-            color: AppColors.surface,
-            borderRadius: BorderRadius.circular(28),
-            boxShadow: [
-              BoxShadow(
-                color: Colors.black.withValues(alpha: 0.1),
-                blurRadius: 24,
-                offset: const Offset(0, 8),
+      bottomNavigationBar: ClipRect(
+        child: BackdropFilter(
+          filter: ImageFilter.blur(sigmaX: 18, sigmaY: 18),
+          child: Container(
+            decoration: BoxDecoration(
+              color: AppColors.surface.withValues(alpha: 0.85),
+              border: const Border(
+                top: BorderSide(color: AppColors.border, width: 1),
               ),
-            ],
-          ),
-          child: Row(
-            mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-            children: [
-              _NavItem(
-                icon: Icons.explore_outlined,
-                activeIcon: Icons.explore,
-                label: 'Inicio',
-                isActive: index == 0,
-                primaryColor: primary,
-                onTap: () => context.go('/home'),
+            ),
+            child: SafeArea(
+              top: false,
+              minimum: const EdgeInsets.only(bottom: 8),
+              child: SizedBox(
+                height: 64,
+                child: Row(
+                  children: [
+                    _NavItem(
+                      icon: Icons.explore_outlined,
+                      activeIcon: Icons.explore,
+                      label: 'Explorar',
+                      isActive: index == 0,
+                      primaryColor: primary,
+                      onTap: () => context.go('/home'),
+                    ),
+                    _NavItem(
+                      icon: Icons.calendar_today_outlined,
+                      activeIcon: Icons.calendar_today,
+                      label: 'Reservas',
+                      isActive: index == 1,
+                      primaryColor: primary,
+                      badgeCount: upcomingCount,
+                      onTap: () => context.go('/reservations'),
+                    ),
+                    _NavItem(
+                      icon: Icons.person_outline,
+                      activeIcon: Icons.person,
+                      label: 'Perfil',
+                      isActive: index == 2,
+                      primaryColor: primary,
+                      onTap: () => context.go('/profile'),
+                    ),
+                  ],
+                ),
               ),
-              _NavItem(
-                icon: Icons.calendar_today_outlined,
-                activeIcon: Icons.calendar_today,
-                label: 'Reservas',
-                isActive: index == 1,
-                primaryColor: primary,
-                badgeCount: upcomingCount,
-                onTap: () => context.go('/reservations'),
-              ),
-              _NavItem(
-                icon: Icons.person_outline,
-                activeIcon: Icons.person,
-                label: 'Perfil',
-                isActive: index == 2,
-                primaryColor: primary,
-                onTap: () => context.go('/profile'),
-              ),
-            ],
+            ),
           ),
         ),
       ),
@@ -109,83 +109,84 @@ class _NavItem extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return GestureDetector(
-      onTap: onTap,
-      behavior: HitTestBehavior.opaque,
-      child: SizedBox(
-        width: 64,
-        height: 60,
+    final fg = isActive ? primaryColor : AppColors.textTertiary;
+    return Expanded(
+      child: GestureDetector(
+        onTap: onTap,
+        behavior: HitTestBehavior.opaque,
         child: Stack(
-          alignment: Alignment.center,
-          clipBehavior: Clip.none,
+          alignment: Alignment.topCenter,
           children: [
-            // Label (bottom, hidden when active)
-            Positioned(
-              bottom: 6,
-              child: AnimatedOpacity(
-                duration: const Duration(milliseconds: 200),
-                opacity: isActive ? 0 : 1,
-                child: Text(
-                  label,
-                  style: const TextStyle(
-                    color: AppColors.textTertiary,
-                    fontSize: 11,
-                    fontWeight: FontWeight.w500,
+            // Top bar indicator (4px brand color when active)
+            if (isActive)
+              Container(
+                width: 36,
+                height: 3,
+                decoration: BoxDecoration(
+                  color: primaryColor,
+                  borderRadius: const BorderRadius.vertical(
+                    bottom: Radius.circular(99),
                   ),
                 ),
               ),
-            ),
-            // Icon bubble
-            AnimatedPositioned(
-              duration: const Duration(milliseconds: 250),
-              curve: Curves.easeInOut,
-              top: isActive ? -10 : 8,
-              child: Container(
-                width: 44,
-                height: 44,
-                decoration: isActive
-                    ? BoxDecoration(
-                        color: primaryColor,
-                        shape: BoxShape.circle,
-                        boxShadow: [
-                          BoxShadow(
-                            color: primaryColor.withValues(alpha: 0.4),
-                            blurRadius: 12,
-                            offset: const Offset(0, 4),
+            // Icon + label
+            Padding(
+              padding: const EdgeInsets.only(top: 10),
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Stack(
+                    clipBehavior: Clip.none,
+                    children: [
+                      Icon(
+                        isActive ? activeIcon : icon,
+                        color: fg,
+                        size: 22,
+                      ),
+                      if (badgeCount > 0)
+                        Positioned(
+                          right: -8,
+                          top: -4,
+                          child: Container(
+                            padding: const EdgeInsets.symmetric(
+                              horizontal: 4,
+                              vertical: 1,
+                            ),
+                            decoration: BoxDecoration(
+                              color: AppColors.error,
+                              borderRadius: BorderRadius.circular(99),
+                            ),
+                            constraints: const BoxConstraints(
+                              minWidth: 16,
+                              minHeight: 14,
+                            ),
+                            child: Text(
+                              '$badgeCount',
+                              style: const TextStyle(
+                                color: Colors.white,
+                                fontSize: 9,
+                                fontWeight: FontWeight.w700,
+                                height: 1.2,
+                              ),
+                              textAlign: TextAlign.center,
+                            ),
                           ),
-                        ],
-                      )
-                    : null,
-                child: Icon(
-                  isActive ? activeIcon : icon,
-                  color: isActive ? Colors.white : AppColors.textTertiary,
-                  size: 22,
-                ),
+                        ),
+                    ],
+                  ),
+                  const SizedBox(height: 4),
+                  Text(
+                    label,
+                    style: TextStyle(
+                      color: fg,
+                      fontSize: 10.5,
+                      fontWeight: FontWeight.w600,
+                      height: 1,
+                    ),
+                  ),
+                ],
               ),
             ),
-            // Badge
-            if (badgeCount > 0)
-              Positioned(
-                top: isActive ? -14 : 4,
-                right: 6,
-                child: Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 5, vertical: 1),
-                  decoration: BoxDecoration(
-                    color: AppColors.error,
-                    borderRadius: BorderRadius.circular(10),
-                  ),
-                  constraints: const BoxConstraints(minWidth: 18, minHeight: 16),
-                  child: Text(
-                    '$badgeCount',
-                    style: const TextStyle(
-                      color: Colors.white,
-                      fontSize: 10,
-                      fontWeight: FontWeight.w700,
-                    ),
-                    textAlign: TextAlign.center,
-                  ),
-                ),
-              ),
           ],
         ),
       ),
