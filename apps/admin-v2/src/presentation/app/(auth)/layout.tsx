@@ -14,20 +14,13 @@ export default function AuthLayout({
       <div className="w-full max-w-md">
         {/* Logo */}
         <div className="mb-8 flex justify-center">
-          <div className="flex items-center gap-2">
-            <div
-              className="flex h-10 w-10 items-center justify-center rounded-xl text-lg font-extrabold text-white"
-              style={{ backgroundColor: 'var(--color-primary)', fontStretch: '90%' }}
-            >
-              T
-            </div>
-            <span
-              className="text-2xl font-extrabold text-[var(--color-text-primary)]"
-              style={{ fontStretch: '90%', letterSpacing: '-0.02em' }}
-            >
-              Turnly
-            </span>
-          </div>
+          <img
+            src="/turnly-wordmark.svg"
+            alt="Turnly"
+            width={160}
+            height={56}
+            className="h-14 w-auto"
+          />
         </div>
 
         {children}

@@ -98,9 +98,13 @@ export function Sidebar({ collapsed = false, onToggle }: SidebarProps) {
         {/* Logo + Tenant */}
         <div className="border-b border-zinc-200">
           <div className="flex h-16 items-center gap-3 px-4">
-            <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-[var(--color-primary)] text-sm font-bold text-white">
-              T
-            </div>
+            <img
+              src="/turnly-mark.svg"
+              alt="Turnly"
+              width={32}
+              height={32}
+              className="h-8 w-8 shrink-0 rounded-lg"
+            />
             {!collapsed && (
               <motion.div
                 initial={{ opacity: 0 }}

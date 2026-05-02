@@ -57,7 +57,7 @@ export function Topbar() {
   };
 
   return (
-    <header className="flex h-16 shrink-0 items-center justify-between border-b border-zinc-200 bg-white px-4 lg:px-6">
+    <header className="sticky top-0 z-30 flex h-14 shrink-0 items-center justify-between border-b border-zinc-200 bg-white px-4 lg:px-6">
       {/* Left: Breadcrumb / Page title */}
       <div className="flex items-center">
         <h1 className="text-lg font-semibold text-zinc-900">{title}</h1>
