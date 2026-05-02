@@ -70,6 +70,8 @@ class _RegisterViewState extends State<_RegisterView> {
         listener: (context, state) {
           if (state is AuthAuthenticated) {
             context.go('/home');
+          } else if (state is AuthEmailUnverified) {
+            context.go('/verify-email?email=${Uri.encodeComponent(state.email)}');
           }
         },
         builder: (context, state) {

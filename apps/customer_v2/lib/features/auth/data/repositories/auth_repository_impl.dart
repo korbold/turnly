@@ -33,6 +33,15 @@ class AuthRepositoryImpl implements AuthRepository {
       if (e.response?.statusCode == 401) {
         return const Left(AuthFailure('Email o contrasena incorrectos'));
       }
+      if (e.response?.statusCode == 403 &&
+          e.response?.data is Map &&
+          (e.response?.data['error']?['code'] == 'EMAIL_NOT_VERIFIED')) {
+        final body = e.response!.data['error'] as Map;
+        return Left(EmailUnverifiedFailure(
+          (body['email'] ?? email).toString(),
+          body['message']?.toString(),
+        ));
+      }
       return Left(_extractError(e, 'Error al iniciar sesion'));
     } catch (e) {
       return Left(ServerFailure(e.toString()));
@@ -144,6 +153,36 @@ class AuthRepositoryImpl implements AuthRepository {
       return Left(_extractError(e, 'Error al iniciar con Google'));
     } catch (e) {
       return Left(ServerFailure('Error al iniciar con Google'));
+    }
+  }
+
+  @override
+  Future<Either<Failure, Unit>> verifyEmail({
+    required String email,
+    required String code,
+  }) async {
+    try {
+      await _dio.post('/auth/verify-email', data: {
+        'email': email,
+        'code': code,
+      });
+      return const Right(unit);
+    } on DioException catch (e) {
+      return Left(_extractError(e, 'Código inválido'));
+    } catch (e) {
+      return Left(ServerFailure(e.toString()));
+    }
+  }
+
+  @override
+  Future<Either<Failure, Unit>> resendVerification({required String email}) async {
+    try {
+      await _dio.post('/auth/verify-email/resend', data: {'email': email});
+      return const Right(unit);
+    } on DioException catch (e) {
+      return Left(_extractError(e, 'No se pudo reenviar el código'));
+    } catch (e) {
+      return Left(ServerFailure(e.toString()));
     }
   }
 

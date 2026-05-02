@@ -36,3 +36,12 @@ class AuthError extends AuthState {
   @override
   List<Object?> get props => [message];
 }
+
+/// Emitted when login/register succeeds but the email isn't verified yet.
+class AuthEmailUnverified extends AuthState {
+  final String email;
+  const AuthEmailUnverified(this.email);
+
+  @override
+  List<Object?> get props => [email];
+}

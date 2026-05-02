@@ -2,6 +2,7 @@
 import 'dart:convert';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import '../../../../core/di/injection.dart';
+import '../../../../core/error/failures.dart';
 import '../../../../core/push/push_notification_service.dart';
 import '../../../../core/storage/secure_storage.dart';
 import '../../data/dtos/auth_dto.dart';
@@ -17,7 +18,13 @@ class AuthCubit extends Cubit<AuthState> {
     emit(const AuthLoading());
     final result = await _repository.login(email, password);
     result.fold(
-      (failure) => emit(AuthError(failure.message)),
+      (failure) {
+        if (failure is EmailUnverifiedFailure) {
+          emit(AuthEmailUnverified(failure.email));
+        } else {
+          emit(AuthError(failure.message));
+        }
+      },
       (data) {
         emit(AuthAuthenticated(data.user));
         getIt<PushNotificationService>().init();
@@ -41,8 +48,10 @@ class AuthCubit extends Cubit<AuthState> {
     result.fold(
       (failure) => emit(AuthError(failure.message)),
       (data) {
-        emit(AuthAuthenticated(data.user));
-        getIt<PushNotificationService>().init();
+        // Backend issues a token, but the email isn't verified yet —
+        // stop short of AuthAuthenticated so the verify-email screen
+        // takes over before the app shell tries to load tenant data.
+        emit(AuthEmailUnverified(data.user.email));
       },
     );
   }

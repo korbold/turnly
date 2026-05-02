@@ -15,4 +15,6 @@ abstract class AuthRepository {
   Future<Either<Failure, Unit>> logout();
   Future<bool> isAuthenticated();
   Future<Either<Failure, ({User user, String token})>> loginWithGoogle();
+  Future<Either<Failure, Unit>> verifyEmail({required String email, required String code});
+  Future<Either<Failure, Unit>> resendVerification({required String email});
 }

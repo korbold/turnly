@@ -5,6 +5,7 @@ import '../core/storage/secure_storage.dart';
 import '../features/onboarding/presentation/screens/onboarding_screen.dart';
 import '../features/auth/presentation/screens/login_screen.dart';
 import '../features/auth/presentation/screens/register_screen.dart';
+import '../features/auth/presentation/screens/verify_email_screen.dart';
 import '../features/home/presentation/screens/main_shell.dart';
 import '../features/explore/presentation/screens/explore_screen.dart';
 import '../features/business/presentation/screens/business_detail_screen.dart';
@@ -34,6 +35,9 @@ final appRouter = GoRouter(
     final isAuthRoute = state.matchedLocation == '/login' ||
         state.matchedLocation == '/register' ||
         state.matchedLocation == '/onboarding';
+    // /verify-email is reachable while authenticated-but-unverified, so it
+    // doesn't go in the auth-route list (we don't want to bounce verified
+    // users away from it back to /home automatically when token exists).
 
     if (!isAuthenticated && !isAuthRoute) return '/login';
     if (isAuthenticated && isAuthRoute) return '/home';
@@ -51,6 +55,13 @@ final appRouter = GoRouter(
     GoRoute(
       path: '/register',
       builder: (context, state) => const RegisterScreen(),
+    ),
+    GoRoute(
+      path: '/verify-email',
+      builder: (context, state) {
+        final email = state.uri.queryParameters['email'] ?? '';
+        return VerifyEmailScreen(email: email);
+      },
     ),
 
     // Main app shell with bottom nav
