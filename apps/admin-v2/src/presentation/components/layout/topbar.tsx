@@ -1,9 +1,8 @@
 'use client';
 
 import { usePathname, useRouter } from 'next/navigation';
-import { LogOut, User } from 'lucide-react';
+import { LogOut, Search, User } from 'lucide-react';
 import { NotificationBell } from '@/presentation/components/features/notifications/notification-bell';
-import { Button } from '@/presentation/components/ui/button';
 import { Avatar, AvatarFallback } from '@/presentation/components/ui/avatar';
 import {
   DropdownMenu,
@@ -56,15 +55,44 @@ export function Topbar() {
     });
   };
 
+  const today = new Intl.DateTimeFormat('es-CO', {
+    weekday: 'long',
+    day: 'numeric',
+    month: 'long',
+    year: 'numeric',
+  }).format(new Date());
+
   return (
-    <header className="sticky top-0 z-30 flex h-14 shrink-0 items-center justify-between border-b border-zinc-200 bg-white px-4 lg:px-6">
-      {/* Left: Breadcrumb / Page title */}
-      <div className="flex items-center">
-        <h1 className="text-lg font-semibold text-zinc-900">{title}</h1>
+    <header className="sticky top-0 z-30 flex h-14 shrink-0 items-center justify-between border-b border-[var(--border)] bg-[var(--bg-surface)] px-6">
+      {/* Left: Title + date */}
+      <div className="flex items-center gap-3.5">
+        <h1
+          className="text-[17px] font-bold text-[var(--fg-strong)]"
+          style={{ fontFamily: 'var(--font-display)', letterSpacing: '-0.01em' }}
+        >
+          {title}
+        </h1>
+        <span className="hidden h-[18px] w-px bg-[var(--border)] sm:block" />
+        <span className="hidden text-[12.5px] capitalize text-[var(--fg-secondary)] sm:block">
+          {today}
+        </span>
       </div>
 
-      {/* Right: Notifications + Avatar */}
+      {/* Right: Search + Notifications + Avatar */}
       <div className="flex items-center gap-2">
+        <button
+          type="button"
+          className="hidden h-8 min-w-[220px] items-center gap-1.5 rounded-md border border-[var(--border)] bg-[var(--bg-sunken)] px-2.5 text-[12.5px] text-[var(--fg-muted)] hover:border-[var(--border-strong)] transition-colors md:inline-flex"
+        >
+          <Search className="h-3.5 w-3.5" />
+          <span>Buscar reservas, clientes…</span>
+          <span
+            className="ml-auto rounded border border-[var(--border)] px-1.5 py-px text-[10px] text-[var(--fg-muted)]"
+            style={{ fontFamily: 'var(--font-mono)' }}
+          >
+            ⌘K
+          </span>
+        </button>
         <NotificationBell />
 
         <DropdownMenu>
