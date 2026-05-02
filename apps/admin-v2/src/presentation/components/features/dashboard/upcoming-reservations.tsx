@@ -50,7 +50,7 @@ export function UpcomingReservations() {
     <Card>
       <CardHeader className="pb-3">
         <CardTitle className="flex items-center gap-2 text-base">
-          <CalendarCheck className="h-4 w-4 text-sky-500" />
+          <CalendarCheck className="h-4 w-4 text-[var(--color-primary)]" />
           Proximas Reservas
         </CardTitle>
       </CardHeader>

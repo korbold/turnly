@@ -1,11 +1,18 @@
 import type { Metadata } from "next";
-import { Roboto } from "next/font/google";
+import { Roboto, JetBrains_Mono } from "next/font/google";
 import "../styles/globals.css";
 import { Providers } from "../components/providers";
 
 const roboto = Roboto({
   subsets: ["latin"],
-  variable: "--font-roboto", weight: ["400","500","600","700","800"],
+  variable: "--font-roboto",
+  weight: ["400", "500", "600", "700", "800"],
+});
+
+const jetbrainsMono = JetBrains_Mono({
+  subsets: ["latin"],
+  variable: "--font-mono",
+  weight: ["400", "500", "600"],
 });
 
 export const metadata: Metadata = {
@@ -28,7 +35,7 @@ export default function RootLayout({
   return (
     <html
       lang="es"
-      className={`${roboto.className} ${roboto.variable} h-full antialiased`}
+      className={`${roboto.className} ${roboto.variable} ${jetbrainsMono.variable} h-full antialiased`}
     >
       <body className="min-h-full flex flex-col" suppressHydrationWarning>
         <Providers>{children}</Providers>

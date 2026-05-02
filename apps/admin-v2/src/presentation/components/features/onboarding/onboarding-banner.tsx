@@ -79,7 +79,7 @@ export function OnboardingBanner() {
             </p>
 
             {/* Progress bar */}
-            <div className="mt-2 h-1.5 w-full overflow-hidden rounded-full bg-indigo-200">
+            <div className="mt-2 h-1.5 w-full overflow-hidden rounded-full bg-[var(--color-primary)]/20">
               <div
                 className="h-full rounded-full bg-[var(--color-primary)] transition-all"
                 style={{ width: `${progress}%` }}

@@ -162,8 +162,8 @@ function ClientDetailContent() {
         </Card>
         <Card>
           <CardContent className="flex items-center gap-3 p-4">
-            <div className="rounded-lg bg-sky-50 p-2">
-              <CalendarDays className="h-4 w-4 text-sky-600" />
+            <div className="rounded-lg bg-[var(--color-primary-muted)] p-2">
+              <CalendarDays className="h-4 w-4 text-[var(--color-primary)]" />
             </div>
             <div>
               <p className="text-xs text-muted-foreground">Ultima visita</p>
