@@ -35,13 +35,12 @@ final appRouter = GoRouter(
     final isAuthRoute = state.matchedLocation == '/login' ||
         state.matchedLocation == '/register' ||
         state.matchedLocation == '/onboarding';
-    // /verify-email is reachable while authenticated-but-unverified, so it
-    // doesn't go in the auth-route list (we don't want to bounce verified
-    // users away from it back to /home automatically when token exists).
 
-    if (!isAuthenticated && !isAuthRoute) return '/login';
-    if (isAuthenticated && isAuthRoute) return '/home';
-    return null;
+    String? decision;
+    if (!isAuthenticated && !isAuthRoute) decision = '/login';
+    if (isAuthenticated && isAuthRoute) decision = '/home';
+    print('[Router] -> ${state.matchedLocation} auth=$isAuthenticated authRoute=$isAuthRoute decision=${decision ?? "allow"}');
+    return decision;
   },
   routes: [
     GoRoute(

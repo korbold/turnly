@@ -73,11 +73,15 @@ class TurnlyApp extends StatelessWidget {
         ),
       ],
       child: BlocListener<AuthCubit, AuthState>(
-        listenWhen: (prev, curr) =>
-            curr is AuthEmailUnverified && prev is! AuthEmailUnverified,
+        listenWhen: (prev, curr) {
+          final fire = curr is AuthEmailUnverified && prev is! AuthEmailUnverified;
+          print('[GlobalAuthListener] prev=${prev.runtimeType} curr=${curr.runtimeType} fire=$fire');
+          return fire;
+        },
         listener: (_, state) {
           if (state is AuthEmailUnverified) {
             final ctx = rootNavigatorKey.currentContext;
+            print('[GlobalAuthListener] AuthEmailUnverified email=${state.email} ctx=${ctx != null}');
             if (ctx != null) {
               ctx.go('/verify-email?email=${Uri.encodeComponent(state.email)}');
             }

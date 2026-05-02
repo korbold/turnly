@@ -63,15 +63,19 @@ class AuthRepositoryImpl implements AuthRepository {
         'password_confirmation': password,
         if (phone != null) 'phone': phone,
       });
+      print('[AuthRepo] register status=${response.statusCode} body=${response.data}');
       final dto = AuthResponseDto.fromJson(
         response.data['data'] as Map<String, dynamic>,
       );
       await SecureStorage.saveToken(dto.token);
       await SecureStorage.saveUserData(jsonEncode(dto.user.toJson()));
+      print('[AuthRepo] register parsed user.email=${dto.user.email} verified=${dto.user.emailVerified}');
       return Right((user: dto.user.toEntity(), token: dto.token));
     } on DioException catch (e) {
+      print('[AuthRepo] register DIO err status=${e.response?.statusCode} body=${e.response?.data}');
       return Left(_extractError(e, 'Error al registrarse'));
     } catch (e) {
+      print('[AuthRepo] register catch: $e');
       return Left(ServerFailure(e.toString()));
     }
   }

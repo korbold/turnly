@@ -68,9 +68,12 @@ class _RegisterViewState extends State<_RegisterView> {
     return Scaffold(
       body: BlocConsumer<AuthCubit, AuthState>(
         listener: (context, state) {
+          print('[RegisterScreen] state=${state.runtimeType}');
           if (state is AuthAuthenticated) {
+            print('[RegisterScreen] -> /home');
             context.go('/home');
           } else if (state is AuthEmailUnverified) {
+            print('[RegisterScreen] -> /verify-email email=${state.email}');
             context.go('/verify-email?email=${Uri.encodeComponent(state.email)}');
           }
         },

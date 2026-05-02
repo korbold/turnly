@@ -31,6 +31,7 @@ class _VerifyEmailScreenState extends State<VerifyEmailScreen> {
   @override
   void initState() {
     super.initState();
+    print('[VerifyEmailScreen] initState email=${widget.email}');
     _focusNodes.first.requestFocus();
   }
 

@@ -43,6 +43,7 @@ class AuthCubit extends Cubit<AuthState> {
     String? phone,
   }) async {
     emit(const AuthLoading());
+    print('[AuthCubit] register start email=$email');
     final result = await _repository.register(
       name: name,
       email: email,
@@ -50,11 +51,12 @@ class AuthCubit extends Cubit<AuthState> {
       phone: phone,
     );
     result.fold(
-      (failure) => emit(AuthError(failure.message)),
+      (failure) {
+        print('[AuthCubit] register FAIL: ${failure.message}');
+        emit(AuthError(failure.message));
+      },
       (data) {
-        // Backend issues a token, but the email isn't verified yet —
-        // stop short of AuthAuthenticated so the verify-email screen
-        // takes over before the app shell tries to load tenant data.
+        print('[AuthCubit] register OK email=${data.user.email} verified=${data.user.emailVerified} -> emitting AuthEmailUnverified');
         emit(AuthEmailUnverified(data.user.email));
       },
     );
