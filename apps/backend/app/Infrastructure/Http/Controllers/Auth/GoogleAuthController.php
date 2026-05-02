@@ -43,7 +43,10 @@ class GoogleAuthController extends Controller
                 'name' => $name,
                 'email' => $email,
                 'password' => Hash::make(Str::random(32)),
+                'email_verified_at' => now(),
             ]);
+        } elseif ($user->email_verified_at === null) {
+            $user->forceFill(['email_verified_at' => now()])->save();
         }
 
         $tenantUser = TenantUserModel::where('user_id', $user->id)
