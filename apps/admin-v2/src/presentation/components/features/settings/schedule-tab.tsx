@@ -168,7 +168,7 @@ export function ScheduleTab() {
                     type="button"
                     onClick={() => toggleDay(row.dayOfWeek)}
                     className={`h-5 w-9 rounded-full transition-colors ${
-                      row.ranges.some((r) => r.isActive) ? 'bg-indigo-600' : 'bg-zinc-300'
+                      row.ranges.some((r) => r.isActive) ? 'bg-[var(--color-primary)]' : 'bg-zinc-300'
                     }`}
                   >
                     <div

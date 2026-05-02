@@ -211,7 +211,7 @@ export default function RegisterPage() {
 
           <Button
             type="submit"
-            className="w-full bg-indigo-600 hover:bg-indigo-700"
+            className="w-full bg-[var(--color-primary)] hover:bg-[var(--color-primary-hover)]"
             disabled={registerMutation.isPending}
           >
             {registerMutation.isPending ? (
@@ -228,7 +228,7 @@ export default function RegisterPage() {
             ¿Ya tienes cuenta?{' '}
             <Link
               href="/login"
-              className="font-medium text-indigo-600 hover:text-indigo-500"
+              className="font-medium text-[var(--color-primary)] hover:text-[var(--color-primary)]"
             >
               Inicia sesión
             </Link>

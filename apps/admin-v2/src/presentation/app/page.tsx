@@ -84,7 +84,7 @@ export default async function LandingPage() {
       <header className="border-b border-zinc-200 bg-white/80 backdrop-blur sticky top-0 z-50">
         <div className="mx-auto flex h-16 max-w-6xl items-center justify-between px-6">
           <div className="flex items-center gap-2">
-            <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-indigo-600 text-sm font-bold text-white">
+            <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-[var(--color-primary)] text-sm font-bold text-white">
               T
             </div>
             <span className="font-semibold text-zinc-900">Turnly</span>
@@ -109,7 +109,7 @@ export default async function LandingPage() {
             </Link>
             <Link
               href="/register"
-              className="rounded-lg bg-indigo-600 px-4 py-2 text-sm font-medium text-white hover:bg-indigo-700 transition-colors"
+              className="rounded-lg bg-[var(--color-primary)] px-4 py-2 text-sm font-medium text-white hover:bg-[var(--color-primary-hover)] transition-colors"
             >
               Empezar gratis
             </Link>
@@ -119,13 +119,13 @@ export default async function LandingPage() {
 
       {/* Hero */}
       <section className="mx-auto max-w-6xl px-6 py-20 text-center">
-        <span className="inline-flex items-center rounded-full bg-indigo-50 px-3 py-1 text-xs font-medium text-indigo-700">
+        <span className="inline-flex items-center rounded-full bg-[var(--color-primary-muted)] px-3 py-1 text-xs font-medium text-[var(--color-primary-hover)]">
           Pensado para Ecuador
         </span>
         <h1 className="mt-6 text-4xl font-bold tracking-tight text-zinc-900 sm:text-6xl">
           Tu negocio, tus reservas,
           <br />
-          <span className="text-indigo-600">en piloto automático.</span>
+          <span className="text-[var(--color-primary)]">en piloto automático.</span>
         </h1>
         <p className="mx-auto mt-6 max-w-2xl text-lg text-zinc-600">
           Agenda online, recordatorios automáticos, reportes y página pública.
@@ -134,7 +134,7 @@ export default async function LandingPage() {
         <div className="mt-10 flex items-center justify-center gap-4">
           <Link
             href="/register"
-            className="inline-flex items-center gap-2 rounded-lg bg-indigo-600 px-6 py-3 text-base font-medium text-white hover:bg-indigo-700 transition-colors"
+            className="inline-flex items-center gap-2 rounded-lg bg-[var(--color-primary)] px-6 py-3 text-base font-medium text-white hover:bg-[var(--color-primary-hover)] transition-colors"
           >
             Crear mi negocio
             <ArrowRight className="h-4 w-4" />
@@ -170,7 +170,7 @@ export default async function LandingPage() {
                   key={f.title}
                   className="rounded-xl border border-zinc-200 bg-white p-6 shadow-sm"
                 >
-                  <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-indigo-50 text-indigo-600">
+                  <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-[var(--color-primary-muted)] text-[var(--color-primary)]">
                     <Icon className="h-5 w-5" />
                   </div>
                   <h3 className="mt-4 text-base font-semibold text-zinc-900">
@@ -204,12 +204,12 @@ export default async function LandingPage() {
                   key={plan.id}
                   className={`rounded-xl border bg-white p-6 shadow-sm ${
                     popular
-                      ? 'border-indigo-600 ring-2 ring-indigo-600/20 relative'
+                      ? 'border-[var(--color-primary)] ring-2 ring-[var(--color-primary)]/20 relative'
                       : 'border-zinc-200'
                   }`}
                 >
                   {popular && (
-                    <span className="absolute -top-3 left-1/2 -translate-x-1/2 rounded-full bg-indigo-600 px-3 py-1 text-xs font-medium text-white">
+                    <span className="absolute -top-3 left-1/2 -translate-x-1/2 rounded-full bg-[var(--color-primary)] px-3 py-1 text-xs font-medium text-white">
                       Más popular
                     </span>
                   )}
@@ -229,7 +229,7 @@ export default async function LandingPage() {
                     href="/register"
                     className={`mt-5 block w-full rounded-lg py-2 text-center text-sm font-medium transition-colors ${
                       popular
-                        ? 'bg-indigo-600 text-white hover:bg-indigo-700'
+                        ? 'bg-[var(--color-primary)] text-white hover:bg-[var(--color-primary-hover)]'
                         : 'border border-zinc-300 text-zinc-700 hover:bg-zinc-50'
                     }`}
                   >
@@ -282,17 +282,17 @@ export default async function LandingPage() {
       </section>
 
       {/* CTA */}
-      <section className="bg-indigo-600 py-16">
+      <section className="bg-[var(--color-primary)] py-16">
         <div className="mx-auto max-w-4xl px-6 text-center">
           <h2 className="text-3xl font-bold tracking-tight text-white sm:text-4xl">
             Empieza hoy. Gratis.
           </h2>
-          <p className="mt-4 text-lg text-indigo-100">
+          <p className="mt-4 text-lg text-white/90">
             Crea tu negocio en menos de 2 minutos. Sin tarjeta de crédito.
           </p>
           <Link
             href="/register"
-            className="mt-8 inline-flex items-center gap-2 rounded-lg bg-white px-6 py-3 text-base font-medium text-indigo-600 hover:bg-indigo-50 transition-colors"
+            className="mt-8 inline-flex items-center gap-2 rounded-lg bg-white px-6 py-3 text-base font-medium text-[var(--color-primary)] hover:bg-[var(--color-primary-muted)] transition-colors"
           >
             Crear mi cuenta
             <ArrowRight className="h-4 w-4" />
@@ -304,7 +304,7 @@ export default async function LandingPage() {
       <footer className="border-t border-zinc-200 py-10">
         <div className="mx-auto flex max-w-6xl flex-col items-center justify-between gap-4 px-6 sm:flex-row">
           <div className="flex items-center gap-2">
-            <div className="flex h-6 w-6 items-center justify-center rounded bg-indigo-600 text-xs font-bold text-white">
+            <div className="flex h-6 w-6 items-center justify-center rounded bg-[var(--color-primary)] text-xs font-bold text-white">
               T
             </div>
             <span className="text-sm text-zinc-600">

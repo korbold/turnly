@@ -24,7 +24,7 @@ import { PAYMENT_METHOD_CONFIG } from '@/shared/constants/status';
 import type { ServiceLog, ServiceLogStatus } from '@/domain/entities/service-log';
 
 const STATUS_CONFIG: Record<ServiceLogStatus, { label: string; color: string; bg: string }> = {
-  in_progress: { label: 'En Progreso', color: 'text-indigo-600', bg: 'bg-indigo-50' },
+  in_progress: { label: 'En Progreso', color: 'text-[var(--color-primary)]', bg: 'bg-[var(--color-primary-muted)]' },
   completed: { label: 'Completado', color: 'text-emerald-600', bg: 'bg-emerald-50' },
 };
 

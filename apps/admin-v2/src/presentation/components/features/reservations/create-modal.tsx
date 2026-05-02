@@ -159,7 +159,7 @@ export function CreateModal({ open, onClose }: CreateModalProps) {
               key={i}
               className={cn(
                 'h-1 flex-1 rounded-full',
-                i <= step ? 'bg-indigo-500' : 'bg-zinc-200'
+                i <= step ? 'bg-[var(--color-primary)]' : 'bg-zinc-200'
               )}
             />
           ))}
@@ -180,14 +180,14 @@ export function CreateModal({ open, onClose }: CreateModalProps) {
                       className={cn(
                         'cursor-pointer transition-all',
                         selectedService?.id === svc.id
-                          ? 'border-indigo-500 ring-2 ring-indigo-200'
+                          ? 'border-[var(--color-primary)] ring-2 ring-[var(--color-primary)]/20'
                           : 'hover:border-zinc-300'
                       )}
                       onClick={() => setSelectedService(svc)}
                     >
                       <CardContent className="flex items-center gap-2 p-3">
                         {selectedService?.id === svc.id && (
-                          <Check className="h-4 w-4 shrink-0 text-indigo-500" />
+                          <Check className="h-4 w-4 shrink-0 text-[var(--color-primary)]" />
                         )}
                         <div className="min-w-0">
                           <p className="truncate text-sm font-medium">
@@ -294,20 +294,20 @@ export function CreateModal({ open, onClose }: CreateModalProps) {
                     className={cn(
                       'flex w-full items-center gap-3 rounded-lg border p-3 text-left transition-all',
                       selectedClientResourceId === cr.id
-                        ? 'border-indigo-500 bg-indigo-50/50 ring-1 ring-indigo-200'
+                        ? 'border-[var(--color-primary)] bg-[var(--color-primary-muted)]/50 ring-1 ring-[var(--color-primary)]/20'
                         : 'hover:bg-zinc-50'
                     )}
                     onClick={() => setSelectedClientResourceId(cr.id)}
                   >
                     {selectedClientResourceId === cr.id && (
-                      <Check className="h-4 w-4 shrink-0 text-indigo-500" />
+                      <Check className="h-4 w-4 shrink-0 text-[var(--color-primary)]" />
                     )}
                     <div className="min-w-0">
                       <p className="truncate text-sm font-medium">
                         {cr.plate ?? cr.client?.name ?? 'Sin identificar'}
                       </p>
                       {cr.client?.name && cr.plate && (
-                        <p className="truncate text-xs font-medium text-indigo-600">
+                        <p className="truncate text-xs font-medium text-[var(--color-primary)]">
                           {cr.client.name}
                         </p>
                       )}

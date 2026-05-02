@@ -83,8 +83,8 @@ export default function SuperAdminDashboard() {
                   <stop offset="95%" stopColor="#F59E0B" stopOpacity={0} />
                 </linearGradient>
                 <linearGradient id="userGrad" x1="0" y1="0" x2="0" y2="1">
-                  <stop offset="5%" stopColor="#4F46E5" stopOpacity={0.3} />
-                  <stop offset="95%" stopColor="#4F46E5" stopOpacity={0} />
+                  <stop offset="5%" stopColor="#F2693A" stopOpacity={0.3} />
+                  <stop offset="95%" stopColor="#F2693A" stopOpacity={0} />
                 </linearGradient>
               </defs>
               <CartesianGrid strokeDasharray="3 3" stroke="#f1f5f9" />
@@ -92,7 +92,7 @@ export default function SuperAdminDashboard() {
               <YAxis tick={{ fontSize: 12 }} tickLine={false} axisLine={false} />
               <Tooltip contentStyle={{ borderRadius: 8, border: '1px solid #e2e8f0' }} />
               <Area type="monotone" dataKey="tenants" name="Tenants" stroke="#F59E0B" strokeWidth={2} fill="url(#tenantGrad)" />
-              <Area type="monotone" dataKey="users" name="Usuarios" stroke="#4F46E5" strokeWidth={2} fill="url(#userGrad)" />
+              <Area type="monotone" dataKey="users" name="Usuarios" stroke="#F2693A" strokeWidth={2} fill="url(#userGrad)" />
             </AreaChart>
           </ResponsiveContainer>
         </CardContent>

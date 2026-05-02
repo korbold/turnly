@@ -53,7 +53,7 @@ export default function PublicTenantPage() {
     );
   }
 
-  const primaryColor = tenant.themeColor ?? '#4F46E5';
+  const primaryColor = tenant.themeColor ?? '#F2693A';
 
   function handleBookService(serviceId: string) {
     setBookingServiceId(serviceId);

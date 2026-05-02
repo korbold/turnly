@@ -82,7 +82,7 @@ export function RangeSelector({ from, to, onChange }: RangeSelectorProps) {
               <Button
                 variant={activePreset === 'custom' ? 'default' : 'outline'}
                 size="sm"
-                className={cn(activePreset === 'custom' && 'bg-indigo-600 hover:bg-indigo-700')}
+                className={cn(activePreset === 'custom' && 'bg-[var(--color-primary)] hover:bg-[var(--color-primary-hover)]')}
               >
                 <CalendarDays className="mr-1.5 h-3.5 w-3.5" />
                 {activePreset === 'custom' ? `${from} — ${to}` : label}
@@ -111,7 +111,7 @@ export function RangeSelector({ from, to, onChange }: RangeSelectorProps) {
             key={key}
             variant={activePreset === key ? 'default' : 'outline'}
             size="sm"
-            className={cn(activePreset === key && 'bg-indigo-600 hover:bg-indigo-700')}
+            className={cn(activePreset === key && 'bg-[var(--color-primary)] hover:bg-[var(--color-primary-hover)]')}
             onClick={() => handlePreset(key)}
           >
             {label}

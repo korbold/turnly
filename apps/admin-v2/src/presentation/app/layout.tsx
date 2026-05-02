@@ -1,18 +1,18 @@
 import type { Metadata } from "next";
-import { Inter } from "next/font/google";
+import { Roboto } from "next/font/google";
 import "../styles/globals.css";
 import { Providers } from "../components/providers";
 
-const inter = Inter({
+const roboto = Roboto({
   subsets: ["latin"],
-  variable: "--font-inter",
+  variable: "--font-roboto", weight: ["400","500","600","700","800"],
 });
 
 export const metadata: Metadata = {
   title: "Turnly Admin",
   description: "Panel de administración Turnly",
   manifest: "/manifest.json",
-  themeColor: "#4F46E5",
+  themeColor: "#F2693A",
   appleWebApp: {
     capable: true,
     statusBarStyle: "default",
@@ -28,7 +28,7 @@ export default function RootLayout({
   return (
     <html
       lang="es"
-      className={`${inter.className} ${inter.variable} h-full antialiased`}
+      className={`${roboto.className} ${roboto.variable} h-full antialiased`}
     >
       <body className="min-h-full flex flex-col" suppressHydrationWarning>
         <Providers>{children}</Providers>

@@ -276,7 +276,7 @@ export function BillingTab() {
         <Button
           onClick={handleSave}
           disabled={update.isPending}
-          className="bg-indigo-600 hover:bg-indigo-700"
+          className="bg-[var(--color-primary)] hover:bg-[var(--color-primary-hover)]"
         >
           {update.isPending ? (
             <>

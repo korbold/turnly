@@ -40,7 +40,7 @@ function ProgressBar({
   return (
     <div className="mt-2 h-1.5 w-full overflow-hidden rounded-full bg-zinc-100">
       <div
-        className="h-full rounded-full bg-indigo-500 transition-all"
+        className="h-full rounded-full bg-[var(--color-primary)] transition-all"
         style={{ width: `${pct}%` }}
       />
     </div>
@@ -122,10 +122,10 @@ export function LiveTracker() {
     <Card>
       <CardHeader className="pb-3">
         <CardTitle className="flex items-center gap-2 text-base">
-          <Droplets className="h-4 w-4 text-indigo-500" />
+          <Droplets className="h-4 w-4 text-[var(--color-primary)]" />
           En Progreso
           {inProgress.length > 0 && (
-            <span className="rounded-full bg-indigo-50 px-2 py-0.5 text-xs font-medium text-indigo-600">
+            <span className="rounded-full bg-[var(--color-primary-muted)] px-2 py-0.5 text-xs font-medium text-[var(--color-primary)]">
               {inProgress.length}
             </span>
           )}

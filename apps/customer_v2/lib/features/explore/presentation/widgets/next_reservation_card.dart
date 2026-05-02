@@ -28,22 +28,8 @@ class NextReservationCard extends StatelessWidget {
         margin: const EdgeInsets.symmetric(horizontal: 20),
         padding: const EdgeInsets.all(16),
         decoration: BoxDecoration(
-          gradient: const LinearGradient(
-            begin: Alignment.topLeft,
-            end: Alignment.bottomRight,
-            colors: [
-              Color(0xFF6366F1),
-              Color(0xFF8B5CF6),
-            ],
-          ),
+          color: AppColors.accent,
           borderRadius: BorderRadius.circular(16),
-          boxShadow: [
-            BoxShadow(
-              color: AppColors.accent.withValues(alpha: 0.3),
-              blurRadius: 20,
-              offset: const Offset(0, 8),
-            ),
-          ],
         ),
         child: Row(
           children: [
@@ -52,8 +38,8 @@ class NextReservationCard extends StatelessWidget {
               width: 52,
               height: 52,
               decoration: BoxDecoration(
-                color: Colors.white.withValues(alpha: 0.2),
-                borderRadius: BorderRadius.circular(14),
+                color: Colors.white.withValues(alpha: 0.18),
+                borderRadius: BorderRadius.circular(12),
               ),
               child: Column(
                 mainAxisAlignment: MainAxisAlignment.center,
@@ -63,8 +49,9 @@ class NextReservationCard extends StatelessWidget {
                     style: const TextStyle(
                       color: Colors.white,
                       fontSize: 20,
-                      fontWeight: FontWeight.w700,
+                      fontWeight: FontWeight.w800,
                       height: 1.1,
+                      letterSpacing: -0.5,
                     ),
                   ),
                   Text(
@@ -72,9 +59,10 @@ class NextReservationCard extends StatelessWidget {
                         .format(reservation.scheduledAt)
                         .toUpperCase(),
                     style: TextStyle(
-                      color: Colors.white.withValues(alpha: 0.8),
+                      color: Colors.white.withValues(alpha: 0.85),
                       fontSize: 11,
                       fontWeight: FontWeight.w600,
+                      letterSpacing: 0.5,
                     ),
                   ),
                 ],
@@ -98,10 +86,11 @@ class NextReservationCard extends StatelessWidget {
                   ),
                   const SizedBox(height: 4),
                   Text(
-                    '${_capitalize(dateStr)} - $timeStr',
+                    '${_capitalize(dateStr)} · $timeStr',
                     style: TextStyle(
-                      color: Colors.white.withValues(alpha: 0.85),
+                      color: Colors.white.withValues(alpha: 0.9),
                       fontSize: 13,
+                      fontWeight: FontWeight.w500,
                     ),
                   ),
                   if (reservation.tenantName != null) ...[
@@ -109,7 +98,7 @@ class NextReservationCard extends StatelessWidget {
                     Text(
                       reservation.tenantName!,
                       style: TextStyle(
-                        color: Colors.white.withValues(alpha: 0.7),
+                        color: Colors.white.withValues(alpha: 0.75),
                         fontSize: 12,
                       ),
                       maxLines: 1,
@@ -122,7 +111,7 @@ class NextReservationCard extends StatelessWidget {
             const SizedBox(width: 8),
             Icon(
               Icons.chevron_right_rounded,
-              color: Colors.white.withValues(alpha: 0.7),
+              color: Colors.white.withValues(alpha: 0.85),
               size: 24,
             ),
           ],

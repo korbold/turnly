@@ -59,7 +59,7 @@ function UsageBar({ used, limit }: { used: number; limit: number | null }) {
           <div
             className={cn(
               'h-full rounded-full transition-all',
-              danger ? 'bg-rose-500' : pct > 75 ? 'bg-amber-500' : 'bg-indigo-600',
+              danger ? 'bg-rose-500' : pct > 75 ? 'bg-amber-500' : 'bg-[var(--color-primary)]',
             )}
             style={{ width: `${pct}%` }}
           />
@@ -87,7 +87,7 @@ function PlanCard({ plan, isCurrent }: { plan: Plan; isCurrent: boolean }) {
     <div
       className={cn(
         'rounded-lg border bg-white p-5 shadow-sm transition',
-        isCurrent ? 'border-indigo-600 ring-2 ring-indigo-600/20' : 'border-zinc-200',
+        isCurrent ? 'border-[var(--color-primary)] ring-2 ring-[var(--color-primary)]/20' : 'border-zinc-200',
       )}
     >
       <div className="mb-3 flex items-start justify-between">
@@ -97,11 +97,11 @@ function PlanCard({ plan, isCurrent }: { plan: Plan; isCurrent: boolean }) {
             <p className="mt-1 text-xs text-zinc-500">{plan.description}</p>
           )}
         </div>
-        {isCurrent && <Badge className="bg-indigo-600">Actual</Badge>}
+        {isCurrent && <Badge className="bg-[var(--color-primary)]">Actual</Badge>}
       </div>
 
       <div className="mb-4">
-        <span className="text-2xl font-bold text-indigo-600">
+        <span className="text-2xl font-bold text-[var(--color-primary)]">
           {plan.price === 0 ? 'Gratis' : `$${plan.price.toFixed(2)}`}
         </span>
         {plan.price > 0 && <span className="ml-1 text-xs text-zinc-500">/mes</span>}
@@ -189,7 +189,7 @@ function PlanContent() {
               <p className="text-xs uppercase tracking-wide text-zinc-500">Plan actual</p>
               <h2 className="mt-1 text-2xl font-bold text-zinc-900">{current.name}</h2>
             </div>
-            <span className="text-2xl font-bold text-indigo-600">
+            <span className="text-2xl font-bold text-[var(--color-primary)]">
               {current.price === 0 ? 'Gratis' : `$${current.price.toFixed(2)}`}
             </span>
           </div>

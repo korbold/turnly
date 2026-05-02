@@ -170,7 +170,7 @@ export function ServiceForm({ open, onClose, service }: ServiceFormProps) {
               </div>
             ) : (
               <div
-                className="flex cursor-pointer flex-col items-center justify-center gap-2 rounded-lg border-2 border-dashed py-8 text-muted-foreground hover:border-indigo-300 hover:bg-indigo-50/30"
+                className="flex cursor-pointer flex-col items-center justify-center gap-2 rounded-lg border-2 border-dashed py-8 text-muted-foreground hover:border-[var(--color-primary)]/40 hover:bg-[var(--color-primary-muted)]/30"
                 onClick={() => fileInputRef.current?.click()}
               >
                 <Upload className="h-6 w-6" />
@@ -201,7 +201,7 @@ export function ServiceForm({ open, onClose, service }: ServiceFormProps) {
               aria-checked={form.watch('isActive')}
               className={cn(
                 'relative inline-flex h-5 w-9 shrink-0 cursor-pointer rounded-full transition-colors',
-                form.watch('isActive') ? 'bg-indigo-500' : 'bg-zinc-300'
+                form.watch('isActive') ? 'bg-[var(--color-primary)]' : 'bg-zinc-300'
               )}
               onClick={() => form.setValue('isActive', !form.getValues('isActive'))}
             >

@@ -38,8 +38,8 @@ export function DailySummary({ date }: DailySummaryProps) {
       label: 'Total servicios',
       value: String(summary?.totalWashes ?? 0),
       icon: Activity,
-      color: 'text-indigo-600',
-      bg: 'bg-indigo-50',
+      color: 'text-[var(--color-primary)]',
+      bg: 'bg-[var(--color-primary-muted)]',
     },
     {
       label: 'Ingresos',

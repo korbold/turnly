@@ -10,8 +10,8 @@ const ACTIONS = [
     label: 'Nueva Reserva',
     icon: CalendarPlus,
     href: '/reservations?create=true',
-    color: 'text-indigo-600',
-    bg: 'bg-indigo-50',
+    color: 'text-[var(--color-primary)]',
+    bg: 'bg-[var(--color-primary-muted)]',
   },
   {
     label: 'Walk-in',

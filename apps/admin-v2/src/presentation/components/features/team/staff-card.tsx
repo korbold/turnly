@@ -19,7 +19,7 @@ import type { User, UserRole } from '@/domain/entities/user';
 
 const ROLE_CONFIG: Record<UserRole, { label: string; color: string; bg: string }> = {
   owner: { label: 'Propietario', color: 'text-purple-600', bg: 'bg-purple-50' },
-  tenant_admin: { label: 'Admin', color: 'text-indigo-600', bg: 'bg-indigo-50' },
+  tenant_admin: { label: 'Admin', color: 'text-[var(--color-primary)]', bg: 'bg-[var(--color-primary-muted)]' },
   cashier: { label: 'Cajero', color: 'text-amber-600', bg: 'bg-amber-50' },
   washer: { label: 'Lavador', color: 'text-sky-600', bg: 'bg-sky-50' },
   client: { label: 'Cliente', color: 'text-zinc-600', bg: 'bg-zinc-100' },
@@ -58,7 +58,7 @@ export function StaffCard({ user }: StaffCardProps) {
         <CardContent className="p-4">
           <div className="flex items-start gap-3">
             <Avatar className="h-10 w-10 shrink-0">
-              <AvatarFallback className="bg-indigo-100 text-sm font-medium text-indigo-700">
+              <AvatarFallback className="bg-[var(--color-primary-muted)] text-sm font-medium text-[var(--color-primary-hover)]">
                 {initials}
               </AvatarFallback>
             </Avatar>

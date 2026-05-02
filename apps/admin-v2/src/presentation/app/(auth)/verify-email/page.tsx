@@ -73,7 +73,7 @@ function VerifyEmailContent() {
         <CardContent>
           <Link
             href="/login"
-            className="block text-center text-sm font-medium text-indigo-600 hover:text-indigo-500"
+            className="block text-center text-sm font-medium text-[var(--color-primary)] hover:text-[var(--color-primary)]"
           >
             Volver al inicio de sesión
           </Link>
@@ -156,8 +156,8 @@ function VerifyEmailContent() {
   return (
     <Card>
       <CardHeader className="text-center">
-        <div className="mx-auto mb-2 flex h-12 w-12 items-center justify-center rounded-full bg-indigo-50">
-          <MailCheck className="h-6 w-6 text-indigo-600" />
+        <div className="mx-auto mb-2 flex h-12 w-12 items-center justify-center rounded-full bg-[var(--color-primary-muted)]">
+          <MailCheck className="h-6 w-6 text-[var(--color-primary)]" />
         </div>
         <CardTitle className="text-xl">Verifica tu email</CardTitle>
         <CardDescription>
@@ -190,13 +190,13 @@ function VerifyEmailContent() {
                 onChange={(e) => setDigit(i, e.target.value)}
                 onKeyDown={(e) => handleKey(e, i)}
                 onFocus={(e) => e.currentTarget.select()}
-                className="h-12 w-10 rounded-md border border-input bg-background text-center text-lg font-semibold focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                className="h-12 w-10 rounded-md border border-input bg-background text-center text-lg font-semibold focus:outline-none focus:ring-2 focus:ring-[var(--color-primary)]"
               />
             ))}
           </div>
 
           <Button
-            className="w-full bg-indigo-600 hover:bg-indigo-700"
+            className="w-full bg-[var(--color-primary)] hover:bg-[var(--color-primary-hover)]"
             disabled={!allFilled || verify.isPending}
             onClick={submit}
           >
@@ -215,7 +215,7 @@ function VerifyEmailContent() {
               type="button"
               onClick={handleResend}
               disabled={cooldown > 0 || resend.isPending}
-              className="font-medium text-indigo-600 hover:text-indigo-500 disabled:cursor-not-allowed disabled:text-zinc-400"
+              className="font-medium text-[var(--color-primary)] hover:text-[var(--color-primary)] disabled:cursor-not-allowed disabled:text-zinc-400"
             >
               {cooldown > 0 ? `Reenviar (${cooldown}s)` : 'Reenviar código'}
             </button>

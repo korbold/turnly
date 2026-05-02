@@ -93,8 +93,8 @@ export function RevenueCards({ isLoading = false }: { isLoading?: boolean }) {
         >
           <CardContent className="p-4">
             <div className="mb-1 flex items-center gap-2">
-              <div className="rounded-md bg-indigo-50 p-1.5">
-                <DollarSign className="h-3.5 w-3.5 text-indigo-600" />
+              <div className="rounded-md bg-[var(--color-primary-muted)] p-1.5">
+                <DollarSign className="h-3.5 w-3.5 text-[var(--color-primary)]" />
               </div>
               <span className="text-xs font-medium text-muted-foreground">
                 {item.label}

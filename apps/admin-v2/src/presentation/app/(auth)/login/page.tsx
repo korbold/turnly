@@ -110,7 +110,7 @@ export default function LoginPage() {
 
           <Button
             type="submit"
-            className="w-full bg-indigo-600 hover:bg-indigo-700"
+            className="w-full bg-[var(--color-primary)] hover:bg-[var(--color-primary-hover)]"
             disabled={login.isPending}
           >
             {login.isPending ? (
@@ -127,7 +127,7 @@ export default function LoginPage() {
             ¿No tienes cuenta?{' '}
             <Link
               href="/register"
-              className="font-medium text-indigo-600 hover:text-indigo-500"
+              className="font-medium text-[var(--color-primary)] hover:text-[var(--color-primary)]"
             >
               Registrarte
             </Link>

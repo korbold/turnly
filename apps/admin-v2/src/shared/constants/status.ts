@@ -28,9 +28,9 @@ export const RESERVATION_STATUS_CONFIG: Record<ReservationStatus, StatusConfig> 
   },
   in_progress: {
     label: 'En Progreso',
-    color: 'text-indigo-600',
-    bgColor: 'bg-indigo-50',
-    dotColor: 'bg-indigo-500',
+    color: 'text-[var(--color-primary)]',
+    bgColor: 'bg-[var(--color-primary-muted)]',
+    dotColor: 'bg-[var(--color-primary)]',
   },
   completed: {
     label: 'Completada',

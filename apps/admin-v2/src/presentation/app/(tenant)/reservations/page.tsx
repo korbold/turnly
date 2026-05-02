@@ -115,7 +115,7 @@ function ReservationsContent() {
             <button
               className={`rounded-md px-2.5 py-1.5 text-xs font-medium transition-colors ${
                 view === 'timeline'
-                  ? 'bg-indigo-50 text-indigo-700'
+                  ? 'bg-[var(--color-primary-muted)] text-[var(--color-primary-hover)]'
                   : 'text-muted-foreground hover:text-foreground'
               }`}
               onClick={() => setView('timeline')}
@@ -126,7 +126,7 @@ function ReservationsContent() {
             <button
               className={`rounded-md px-2.5 py-1.5 text-xs font-medium transition-colors ${
                 view === 'calendar'
-                  ? 'bg-indigo-50 text-indigo-700'
+                  ? 'bg-[var(--color-primary-muted)] text-[var(--color-primary-hover)]'
                   : 'text-muted-foreground hover:text-foreground'
               }`}
               onClick={() => setView('calendar')}

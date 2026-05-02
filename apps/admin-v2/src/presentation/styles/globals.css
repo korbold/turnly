@@ -1,56 +1,61 @@
 @import "tailwindcss";
 @plugin "@tailwindcss/typography";
 
-/* ─── Design Tokens ─── */
+/* ==========================================================================
+   Turnly · Design Tokens
+   Source of truth: ../../docs (Turnly Design System project)
+   Brand: Coral #F2693A · neutrals: zinc-cool · type: Roboto + JetBrains Mono
+   ========================================================================== */
+
 :root {
-  /* Primary */
-  --color-primary: #4F46E5;
-  --color-primary-hover: #4338CA;
-  --color-primary-muted: #EEF2FF;
+  /* ─── Brand (Coral) ─── */
+  --color-primary: #F2693A;
+  --color-primary-hover: #D9501F;
+  --color-primary-muted: #FDEEE6;
 
-  /* Background */
-  --color-bg: #F8FAFC;
+  /* ─── Surfaces ─── */
+  --color-bg: #FAFAFB;
   --color-card-bg: #FFFFFF;
-  --color-card-border: #E2E8F0;
+  --color-card-border: #E4E7EC;
 
-  /* Text */
-  --color-text-primary: #0F172A;
-  --color-text-secondary: #475569;
-  --color-text-muted: #94A3B8;
+  /* ─── Text (zinc-cool) ─── */
+  --color-text-primary: #1A1F2B;
+  --color-text-secondary: #4B5462;
+  --color-text-muted: #8B92A0;
 
-  /* Semantic */
-  --color-success: #10B981;
-  --color-success-muted: #D1FAE5;
-  --color-error: #F43F5E;
-  --color-error-muted: #FFE4E6;
-  --color-warning: #F59E0B;
-  --color-warning-muted: #FEF3C7;
-  --color-info: #0EA5E9;
-  --color-info-muted: #E0F2FE;
+  /* ─── Semantic ─── */
+  --color-success: #0F9D58;
+  --color-success-muted: #E8F8F0;
+  --color-error: #DC2A3A;
+  --color-error-muted: #FCE9EB;
+  --color-warning: #E89320;
+  --color-warning-muted: #FFF6E0;
+  --color-info: #1E88F5;
+  --color-info-muted: #E4F1FE;
 
-  /* Reservation Status */
-  --status-pending: #F59E0B;
-  --status-pending-bg: #FFFBEB;
-  --status-confirmed: #0EA5E9;
-  --status-confirmed-bg: #E0F2FE;
-  --status-in-progress: #4F46E5;
-  --status-in-progress-bg: #EEF2FF;
-  --status-completed: #10B981;
-  --status-completed-bg: #D1FAE5;
-  --status-cancelled: #F43F5E;
-  --status-cancelled-bg: #FFE4E6;
-  --status-no-show: #64748B;
-  --status-no-show-bg: #F1F5F9;
+  /* ─── Reservation Status ─── */
+  --status-pending: #B47114;
+  --status-pending-bg: #FFF6E0;
+  --status-confirmed: #1666BF;
+  --status-confirmed-bg: #E4F1FE;
+  --status-in-progress: #D9501F;
+  --status-in-progress-bg: #FDEEE6;
+  --status-completed: #0B7A44;
+  --status-completed-bg: #E8F8F0;
+  --status-cancelled: #A91D2C;
+  --status-cancelled-bg: #FCE9EB;
+  --status-no-show: #4B5462;
+  --status-no-show-bg: #EEF0F3;
 
-  /* Spacing / Radius */
+  /* ─── Radii (tightened) ─── */
   --radius-card: 12px;
   --radius-input: 8px;
-  --radius-button-lg: 20px;
+  --radius-button-lg: 10px;   /* was 20px — disciplined, denser */
   --radius: 0.5rem;
 
-  /* Shadows */
-  --shadow-card: 0 1px 3px 0 rgb(0 0 0 / 0.1), 0 1px 2px -1px rgb(0 0 0 / 0.1);
-  --shadow-card-hover: 0 4px 6px -1px rgb(0 0 0 / 0.1), 0 2px 4px -2px rgb(0 0 0 / 0.1);
+  /* ─── Shadows (single soft + hairline first) ─── */
+  --shadow-card: 0 1px 0 0 rgb(15 18 26 / 0.04), 0 1px 2px 0 rgb(15 18 26 / 0.05);
+  --shadow-card-hover: 0 2px 4px -1px rgb(15 18 26 / 0.06), 0 4px 6px -1px rgb(15 18 26 / 0.06);
 }
 
 @theme inline {
@@ -62,19 +67,19 @@
   --color-card-foreground: var(--color-text-primary);
   --color-popover: #FFFFFF;
   --color-popover-foreground: var(--color-text-primary);
-  --color-primary: #4F46E5;
+  --color-primary: #F2693A;
   --color-primary-foreground: #FFFFFF;
-  --color-secondary: #F1F5F9;
-  --color-secondary-foreground: #0F172A;
-  --color-muted: #F1F5F9;
-  --color-muted-foreground: #64748B;
-  --color-accent: #F1F5F9;
-  --color-accent-foreground: #0F172A;
-  --color-destructive: #F43F5E;
+  --color-secondary: #F4F5F7;
+  --color-secondary-foreground: #1A1F2B;
+  --color-muted: #F4F5F7;
+  --color-muted-foreground: #6B7280;
+  --color-accent: #F4F5F7;
+  --color-accent-foreground: #1A1F2B;
+  --color-destructive: #DC2A3A;
   --color-destructive-foreground: #FFFFFF;
-  --color-border: #E2E8F0;
-  --color-input: #E2E8F0;
-  --color-ring: #4F46E5;
+  --color-border: #E4E7EC;
+  --color-input: #E4E7EC;
+  --color-ring: #F2693A;
 
   /* Radius */
   --radius-sm: calc(var(--radius) - 4px);
@@ -82,13 +87,23 @@
   --radius-lg: var(--radius);
   --radius-xl: calc(var(--radius) + 4px);
 
-  --font-sans: "Inter", ui-sans-serif, system-ui, sans-serif;
+  --font-sans: "Roboto", ui-sans-serif, system-ui, sans-serif;
+  --font-mono: "JetBrains Mono", ui-monospace, "SFMono-Regular", monospace;
 }
 
 body {
   background: var(--color-bg);
   color: var(--color-text-primary);
-  font-family: "Inter", ui-sans-serif, system-ui, sans-serif;
+  font-family: "Roboto", ui-sans-serif, system-ui, sans-serif;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+/* Display headings — condensed Roboto */
+h1, h2, .display {
+  font-family: "Roboto", ui-sans-serif, system-ui, sans-serif;
+  font-stretch: 90%;
+  letter-spacing: -0.02em;
 }
 
 /* Calendar (react-day-picker) table layout fix */

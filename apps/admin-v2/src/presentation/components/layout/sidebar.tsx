@@ -98,7 +98,7 @@ export function Sidebar({ collapsed = false, onToggle }: SidebarProps) {
         {/* Logo + Tenant */}
         <div className="border-b border-zinc-200">
           <div className="flex h-16 items-center gap-3 px-4">
-            <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-indigo-600 text-sm font-bold text-white">
+            <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-[var(--color-primary)] text-sm font-bold text-white">
               T
             </div>
             {!collapsed && (
@@ -121,18 +121,18 @@ export function Sidebar({ collapsed = false, onToggle }: SidebarProps) {
           </div>
           {!collapsed && planData?.current && (
             <div className="px-4 pb-3">
-              <div className="flex items-center justify-between gap-2 rounded-md bg-indigo-50 px-2.5 py-1.5">
+              <div className="flex items-center justify-between gap-2 rounded-md bg-[var(--color-primary-muted)] px-2.5 py-1.5">
                 <div className="min-w-0">
-                  <p className="text-[10px] uppercase tracking-wide text-indigo-500">
+                  <p className="text-[10px] uppercase tracking-wide text-[var(--color-primary)]">
                     {planData.is_trial ? 'Prueba' : 'Plan'}
                   </p>
-                  <p className="truncate text-xs font-semibold text-indigo-900">
+                  <p className="truncate text-xs font-semibold text-[var(--color-text-primary)]">
                     {planData.current.name}
                   </p>
                 </div>
                 <Link
                   href="/plan"
-                  className="shrink-0 rounded bg-indigo-600 px-2 py-1 text-[10px] font-medium text-white hover:bg-indigo-700 transition-colors"
+                  className="shrink-0 rounded bg-[var(--color-primary)] px-2 py-1 text-[10px] font-medium text-white hover:bg-[var(--color-primary-hover)] transition-colors"
                 >
                   Actualizar
                 </Link>
@@ -174,7 +174,7 @@ export function Sidebar({ collapsed = false, onToggle }: SidebarProps) {
             )}
           >
             <Avatar className="h-7 w-7 shrink-0">
-              <AvatarFallback className="text-xs bg-indigo-100 text-indigo-700">
+              <AvatarFallback className="text-xs bg-[var(--color-primary-muted)] text-[var(--color-primary-hover)]">
                 {userInitials}
               </AvatarFallback>
             </Avatar>
@@ -232,7 +232,7 @@ function NavLink({
       className={cn(
         'flex items-center gap-3 rounded-lg px-3 py-2 text-sm font-medium transition-colors',
         active
-          ? 'bg-indigo-50 border-l-2 border-indigo-600 text-indigo-600'
+          ? 'bg-[var(--color-primary-muted)] border-l-2 border-[var(--color-primary)] text-[var(--color-primary)]'
           : 'text-zinc-600 hover:bg-zinc-100 hover:text-zinc-900',
         collapsed && 'justify-center px-0'
       )}
@@ -242,7 +242,7 @@ function NavLink({
         <>
           <span className="truncate">{item.label}</span>
           {item.badge != null && item.badge > 0 && (
-            <span className="ml-auto inline-flex h-5 min-w-5 items-center justify-center rounded-full bg-indigo-600 px-1.5 text-xs font-medium text-white">
+            <span className="ml-auto inline-flex h-5 min-w-5 items-center justify-center rounded-full bg-[var(--color-primary)] px-1.5 text-xs font-medium text-white">
               {item.badge}
             </span>
           )}

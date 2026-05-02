@@ -69,19 +69,19 @@ export function OnboardingBanner() {
   const progress = (completed / total) * 100;
 
   return (
-    <Card className="border-indigo-200 bg-indigo-50/50">
+    <Card className="border-[var(--color-primary)]/20 bg-[var(--color-primary-muted)]/50">
       <CardContent className="p-4">
         <div className="flex items-start justify-between">
           <div className="flex-1">
-            <h3 className="text-sm font-semibold text-indigo-900">Configura tu negocio</h3>
-            <p className="mt-0.5 text-xs text-indigo-700/70">
+            <h3 className="text-sm font-semibold text-[var(--color-text-primary)]">Configura tu negocio</h3>
+            <p className="mt-0.5 text-xs text-[var(--color-primary-hover)]/70">
               {completed} de {total} pasos completados
             </p>
 
             {/* Progress bar */}
             <div className="mt-2 h-1.5 w-full overflow-hidden rounded-full bg-indigo-200">
               <div
-                className="h-full rounded-full bg-indigo-600 transition-all"
+                className="h-full rounded-full bg-[var(--color-primary)] transition-all"
                 style={{ width: `${progress}%` }}
               />
             </div>
@@ -95,17 +95,17 @@ export function OnboardingBanner() {
                     <div
                       className={cn(
                         'flex h-4 w-4 items-center justify-center rounded-full',
-                        done ? 'bg-indigo-600 text-white' : 'border border-indigo-300'
+                        done ? 'bg-[var(--color-primary)] text-white' : 'border border-[var(--color-primary)]/40'
                       )}
                     >
                       {done && <Check className="h-2.5 w-2.5" />}
                     </div>
                     {done ? (
-                      <span className="text-xs text-indigo-700 line-through">{step.label}</span>
+                      <span className="text-xs text-[var(--color-primary-hover)] line-through">{step.label}</span>
                     ) : (
                       <Link
                         href={step.href}
-                        className="flex items-center gap-0.5 text-xs font-medium text-indigo-700 hover:underline"
+                        className="flex items-center gap-0.5 text-xs font-medium text-[var(--color-primary-hover)] hover:underline"
                       >
                         {step.label}
                         <ChevronRight className="h-3 w-3" />
@@ -117,13 +117,13 @@ export function OnboardingBanner() {
             </div>
           </div>
 
-          <Button variant="ghost" size="sm" className="text-indigo-600" onClick={handleDismiss}>
+          <Button variant="ghost" size="sm" className="text-[var(--color-primary)]" onClick={handleDismiss}>
             <X className="h-4 w-4" />
           </Button>
         </div>
 
         <div className="mt-2">
-          <button onClick={handleDismiss} className="text-xs text-indigo-600/60 hover:underline">
+          <button onClick={handleDismiss} className="text-xs text-[var(--color-primary)]/60 hover:underline">
             Omitir
           </button>
         </div>

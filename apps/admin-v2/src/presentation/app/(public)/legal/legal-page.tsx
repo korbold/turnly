@@ -30,7 +30,7 @@ export async function LegalPage({ type }: { type: 'terms' | 'privacy' }) {
       <header className="border-b border-zinc-200">
         <div className="mx-auto flex h-16 max-w-3xl items-center justify-between px-6">
           <Link href="/" className="flex items-center gap-2">
-            <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-indigo-600 text-sm font-bold text-white">
+            <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-[var(--color-primary)] text-sm font-bold text-white">
               T
             </div>
             <span className="font-semibold text-zinc-900">Turnly</span>
@@ -45,7 +45,7 @@ export async function LegalPage({ type }: { type: 'terms' | 'privacy' }) {
         {!doc ? (
           <p className="text-sm text-zinc-500">No se pudo cargar el documento.</p>
         ) : (
-          <article className="prose prose-zinc max-w-none prose-headings:text-zinc-900 prose-p:text-zinc-700 prose-a:text-indigo-600 prose-strong:text-zinc-900 prose-table:text-sm">
+          <article className="prose prose-zinc max-w-none prose-headings:text-zinc-900 prose-p:text-zinc-700 prose-a:text-[var(--color-primary)] prose-strong:text-zinc-900 prose-table:text-sm">
             <ReactMarkdown>{doc.content}</ReactMarkdown>
             <p className="mt-12 text-xs text-zinc-400">
               Versión {doc.version} · Actualizado el {doc.updated_at}

@@ -71,7 +71,7 @@ export function BottomTabs() {
                   onClick={() => setFabOpen(true)}
                   className="flex items-center justify-center -mt-5"
                 >
-                  <div className="flex h-14 w-14 items-center justify-center rounded-full bg-indigo-600 text-white shadow-lg shadow-indigo-200 active:scale-95 transition-transform">
+                  <div className="flex h-14 w-14 items-center justify-center rounded-full bg-[var(--color-primary)] text-white shadow-lg shadow-[var(--color-primary)]/20 active:scale-95 transition-transform">
                     <Plus className="h-6 w-6" />
                   </div>
                 </button>
@@ -94,11 +94,11 @@ export function BottomTabs() {
                 className={cn(
                   'flex flex-col items-center gap-0.5 px-3 py-1.5 text-xs transition-colors',
                   active
-                    ? 'text-indigo-600 font-bold'
+                    ? 'text-[var(--color-primary)] font-bold'
                     : 'text-zinc-400'
                 )}
               >
-                <Icon className={cn('h-5 w-5', active && 'fill-indigo-600/20')} />
+                <Icon className={cn('h-5 w-5', active && 'fill-[var(--color-primary)]/20')} />
                 <span>{tab.label}</span>
               </button>
             );
@@ -124,7 +124,7 @@ export function BottomTabs() {
                   }}
                   className="flex w-full items-center gap-3 rounded-lg px-3 py-3 text-sm font-medium text-zinc-700 hover:bg-zinc-100 transition-colors"
                 >
-                  <Icon className="h-5 w-5 text-indigo-600" />
+                  <Icon className="h-5 w-5 text-[var(--color-primary)]" />
                   {action.label}
                 </button>
               );

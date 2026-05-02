@@ -21,7 +21,7 @@ const ICON_MAP: Record<string, { icon: typeof BellRing; color: string; bg: strin
   check_circle: { icon: CalendarCheck, color: 'text-green-600', bg: 'bg-green-50' },
   cancel: { icon: CalendarX, color: 'text-red-600', bg: 'bg-red-50' },
   edit_calendar: { icon: CalendarClock, color: 'text-amber-600', bg: 'bg-amber-50' },
-  calendar_today: { icon: CalendarPlus, color: 'text-indigo-600', bg: 'bg-indigo-50' },
+  calendar_today: { icon: CalendarPlus, color: 'text-[var(--color-primary)]', bg: 'bg-[var(--color-primary-muted)]' },
 };
 
 export function NotificationItem({ notification, onClick }: NotificationItemProps) {
@@ -39,7 +39,7 @@ export function NotificationItem({ notification, onClick }: NotificationItemProp
       onClick={onClick}
       className={cn(
         'flex w-full items-start gap-3 rounded-lg p-3 text-left transition-colors hover:bg-zinc-50',
-        !notification.readAt && 'bg-indigo-50/50',
+        !notification.readAt && 'bg-[var(--color-primary-muted)]/50',
       )}
     >
       <div className={cn('flex h-9 w-9 shrink-0 items-center justify-center rounded-lg', iconConfig.bg)}>
@@ -51,7 +51,7 @@ export function NotificationItem({ notification, onClick }: NotificationItemProp
             {notification.title}
           </p>
           {!notification.readAt && (
-            <span className="mt-1.5 h-2 w-2 shrink-0 rounded-full bg-indigo-600" />
+            <span className="mt-1.5 h-2 w-2 shrink-0 rounded-full bg-[var(--color-primary)]" />
           )}
         </div>
         <p className="mt-0.5 line-clamp-2 text-xs text-zinc-500">{notification.body}</p>

@@ -92,11 +92,11 @@ function ClientDetailContent() {
       <Card>
         <CardContent className="p-5">
           <div className="flex items-start gap-4">
-            <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-full bg-indigo-50">
+            <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-full bg-[var(--color-primary-muted)]">
               {hasPlate ? (
-                <Car className="h-6 w-6 text-indigo-600" />
+                <Car className="h-6 w-6 text-[var(--color-primary)]" />
               ) : (
-                <User className="h-6 w-6 text-indigo-600" />
+                <User className="h-6 w-6 text-[var(--color-primary)]" />
               )}
             </div>
             <div className="min-w-0 flex-1">
@@ -107,7 +107,7 @@ function ClientDetailContent() {
                 <p className="text-sm text-muted-foreground">{client.client.email}</p>
               )}
               {hasPlate && (
-                <p className="mt-1 text-sm font-medium text-indigo-600">{client.plate}</p>
+                <p className="mt-1 text-sm font-medium text-[var(--color-primary)]">{client.plate}</p>
               )}
               <div className="mt-2 flex flex-wrap gap-2 text-xs text-muted-foreground">
                 {client.brand && <Badge variant="secondary">{client.brand}</Badge>}
@@ -140,8 +140,8 @@ function ClientDetailContent() {
       <div className="grid grid-cols-3 gap-3">
         <Card>
           <CardContent className="flex items-center gap-3 p-4">
-            <div className="rounded-lg bg-indigo-50 p-2">
-              <Hash className="h-4 w-4 text-indigo-600" />
+            <div className="rounded-lg bg-[var(--color-primary-muted)] p-2">
+              <Hash className="h-4 w-4 text-[var(--color-primary)]" />
             </div>
             <div>
               <p className="text-xs text-muted-foreground">Total visitas</p>
@@ -217,7 +217,7 @@ function ClientDetailContent() {
                           'text-[10px]',
                           item.status === 'completed'
                             ? 'bg-emerald-50 text-emerald-600'
-                            : 'bg-indigo-50 text-indigo-600'
+                            : 'bg-[var(--color-primary-muted)] text-[var(--color-primary)]'
                         )}
                       >
                         {item.status === 'completed' ? 'Completado' : 'En progreso'}

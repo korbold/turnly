@@ -74,7 +74,7 @@ export function ServiceCard({ service, onEdit }: ServiceCardProps) {
           <div className="flex items-start justify-between gap-2">
             <div className="min-w-0">
               <p className="truncate text-sm font-semibold">{service.name}</p>
-              <p className="text-lg font-bold text-indigo-600">{fmt(service.price)}</p>
+              <p className="text-lg font-bold text-[var(--color-primary)]">{fmt(service.price)}</p>
               {service.description && (
                 <p className="mt-1 line-clamp-2 text-xs text-muted-foreground">
                   {service.description}
@@ -120,7 +120,7 @@ export function ServiceCard({ service, onEdit }: ServiceCardProps) {
               aria-checked={service.isActive}
               className={cn(
                 'relative inline-flex h-5 w-9 shrink-0 cursor-pointer rounded-full transition-colors',
-                service.isActive ? 'bg-indigo-500' : 'bg-zinc-300'
+                service.isActive ? 'bg-[var(--color-primary)]' : 'bg-zinc-300'
               )}
               onClick={handleToggleActive}
               disabled={updateMutation.isPending}

@@ -71,7 +71,7 @@ export function Topbar() {
           <DropdownMenuTrigger asChild>
             <button className="flex items-center gap-2 rounded-lg p-1 hover:bg-zinc-100 transition-colors">
               <Avatar className="h-8 w-8">
-                <AvatarFallback className="text-xs bg-indigo-100 text-indigo-700">
+                <AvatarFallback className="text-xs bg-[var(--color-primary-muted)] text-[var(--color-primary-hover)]">
                   {userInitials}
                 </AvatarFallback>
               </Avatar>

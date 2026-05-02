@@ -11,7 +11,7 @@ interface PaymentDonutProps {
 }
 
 const COLORS: Record<string, string> = {
-  cash: '#4F46E5',
+  cash: '#F2693A',
   card: '#06B6D4',
   transfer: '#F59E0B',
 };

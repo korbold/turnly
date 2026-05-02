@@ -35,11 +35,11 @@ export function ClientCard({ client }: ClientCardProps) {
       >
         <CardContent className="p-4">
           <div className="flex items-start gap-3">
-            <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-indigo-50">
+            <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-[var(--color-primary-muted)]">
               {hasPlate ? (
-                <Car className="h-5 w-5 text-indigo-600" />
+                <Car className="h-5 w-5 text-[var(--color-primary)]" />
               ) : (
-                <User className="h-5 w-5 text-indigo-600" />
+                <User className="h-5 w-5 text-[var(--color-primary)]" />
               )}
             </div>
             <div className="min-w-0 flex-1">
@@ -48,7 +48,7 @@ export function ClientCard({ client }: ClientCardProps) {
                 {isFrequent && <Star className="h-3.5 w-3.5 shrink-0 fill-amber-400 text-amber-400" />}
               </div>
               {clientName && hasPlate && (
-                <p className="truncate text-xs font-medium text-indigo-600">{clientName}</p>
+                <p className="truncate text-xs font-medium text-[var(--color-primary)]">{clientName}</p>
               )}
               {vehicleInfo && hasPlate && (
                 <p className="truncate text-xs text-muted-foreground">{vehicleInfo}</p>

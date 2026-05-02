@@ -38,7 +38,7 @@ function SettingsContent() {
               <TabsTrigger
                 key={value}
                 value={value}
-                className="justify-start gap-2 rounded-lg px-3 py-2 text-sm font-medium data-[state=active]:bg-indigo-50 data-[state=active]:text-indigo-700 data-[state=active]:shadow-none"
+                className="justify-start gap-2 rounded-lg px-3 py-2 text-sm font-medium data-[state=active]:bg-[var(--color-primary-muted)] data-[state=active]:text-[var(--color-primary-hover)] data-[state=active]:shadow-none"
               >
                 <Icon className="h-4 w-4" />
                 {label}
@@ -52,7 +52,7 @@ function SettingsContent() {
               <TabsTrigger
                 key={value}
                 value={value}
-                className="gap-1.5 rounded-full px-3 py-1.5 text-xs data-[state=active]:bg-indigo-50 data-[state=active]:text-indigo-700 data-[state=active]:shadow-none"
+                className="gap-1.5 rounded-full px-3 py-1.5 text-xs data-[state=active]:bg-[var(--color-primary-muted)] data-[state=active]:text-[var(--color-primary-hover)] data-[state=active]:shadow-none"
               >
                 <Icon className="h-3.5 w-3.5" />
                 {label}
