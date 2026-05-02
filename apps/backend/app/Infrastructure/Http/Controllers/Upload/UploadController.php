@@ -16,7 +16,7 @@ class UploadController extends Controller
             'folder' => ['nullable', 'string', 'in:logos,covers,gallery,services'],
         ]);
 
-        $disk = env('R2_BUCKET') ? 'r2' : 'public';
+        $disk = config('filesystems.disks.r2.bucket') ? 'r2' : 'public';
         $folder = 'uploads/' . ($request->input('folder', 'general'));
         $path = $request->file('file')->store($folder, $disk);
         $url = Storage::disk($disk)->url($path);
