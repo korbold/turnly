@@ -208,6 +208,44 @@ class _LoginViewState extends State<_LoginView> {
                                 duration: 400.ms,
                               ),
 
+                        // Google Sign-In (primary)
+                        GoogleSignInButton(
+                          isLoading: state is AuthLoading,
+                          onPressed: () {
+                            context.read<AuthCubit>().loginWithGoogle();
+                          },
+                        )
+                            .animate()
+                            .fadeIn(duration: 500.ms, delay: 320.ms)
+                            .slideY(
+                              begin: 0.1,
+                              end: 0,
+                              duration: 500.ms,
+                              delay: 320.ms,
+                            ),
+
+                        const SizedBox(height: 20),
+
+                        // Divider — "or continue with email"
+                        Row(
+                          children: [
+                            Expanded(child: Divider(color: Colors.grey.shade300)),
+                            Padding(
+                              padding: const EdgeInsets.symmetric(horizontal: 16),
+                              child: Text(
+                                'o continúa con email',
+                                style: TextStyle(
+                                  color: Colors.grey.shade500,
+                                  fontSize: 13,
+                                ),
+                              ),
+                            ),
+                            Expanded(child: Divider(color: Colors.grey.shade300)),
+                          ],
+                        ),
+
+                        const SizedBox(height: 20),
+
                         // Email field
                         AppTextField(
                           label: 'Correo electronico',
@@ -227,12 +265,12 @@ class _LoginViewState extends State<_LoginView> {
                           },
                         )
                             .animate()
-                            .fadeIn(duration: 500.ms, delay: 350.ms)
+                            .fadeIn(duration: 500.ms, delay: 400.ms)
                             .slideY(
                               begin: 0.1,
                               end: 0,
                               duration: 500.ms,
-                              delay: 350.ms,
+                              delay: 400.ms,
                             ),
 
                         const SizedBox(height: 16),
@@ -292,36 +330,6 @@ class _LoginViewState extends State<_LoginView> {
                               duration: 500.ms,
                               delay: 450.ms,
                             ),
-
-                        const SizedBox(height: 20),
-
-                        // Divider
-                        Row(
-                          children: [
-                            Expanded(child: Divider(color: Colors.grey.shade300)),
-                            Padding(
-                              padding: const EdgeInsets.symmetric(horizontal: 16),
-                              child: Text(
-                                'o',
-                                style: TextStyle(
-                                  color: Colors.grey.shade500,
-                                  fontSize: 13,
-                                ),
-                              ),
-                            ),
-                            Expanded(child: Divider(color: Colors.grey.shade300)),
-                          ],
-                        ),
-
-                        const SizedBox(height: 20),
-
-                        // Google Sign-In button
-                        GoogleSignInButton(
-                          isLoading: state is AuthLoading,
-                          onPressed: () {
-                            context.read<AuthCubit>().loginWithGoogle();
-                          },
-                        ),
 
                         const SizedBox(height: 24),
 

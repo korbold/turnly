@@ -186,14 +186,14 @@ class _RegisterViewState extends State<_RegisterView> {
 
                         const SizedBox(height: 20),
 
-                        // Divider
+                        // Divider — "or continue with email"
                         Row(
                           children: [
                             Expanded(child: Divider(color: Colors.grey.shade300)),
                             Padding(
                               padding: const EdgeInsets.symmetric(horizontal: 16),
                               child: Text(
-                                'o',
+                                'o continúa con email',
                                 style: TextStyle(
                                   color: Colors.grey.shade500,
                                   fontSize: 13,
