@@ -46,12 +46,23 @@ class GoogleAuthController extends Controller
             ]);
         }
 
-        $token = $user->createToken('auth_token')->plainTextToken;
-
         $tenantUser = TenantUserModel::where('user_id', $user->id)
             ->where('is_active', true)
             ->with('tenant')
             ->first();
+
+        $tenant = $tenantUser?->tenant;
+
+        if ($tenant && $tenant->status === 'suspended' && !$user->is_super_admin) {
+            return response()->json([
+                'error' => [
+                    'code' => 'TENANT_SUSPENDED',
+                    'message' => 'Este negocio está suspendido. Contacta soporte.',
+                ],
+            ], 403);
+        }
+
+        $token = $user->createToken('auth_token')->plainTextToken;
 
         return response()->json([
             'data' => [
@@ -62,10 +73,11 @@ class GoogleAuthController extends Controller
                     'is_super_admin' => $user->is_super_admin,
                 ],
                 'token' => $token,
-                'tenant' => $tenantUser ? [
-                    'id' => $tenantUser->tenant->id,
-                    'slug' => $tenantUser->tenant->slug,
-                    'name' => $tenantUser->tenant->name,
+                'tenant' => $tenant ? [
+                    'id' => $tenant->id,
+                    'slug' => $tenant->slug,
+                    'name' => $tenant->name,
+                    'status' => $tenant->status,
                 ] : null,
             ],
         ]);

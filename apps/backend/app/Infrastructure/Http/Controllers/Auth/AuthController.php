@@ -127,15 +127,23 @@ class AuthController extends Controller
             ], 403);
         }
 
-        $token = $user->createToken('auth_token')->plainTextToken;
-
-        // Get the user's first active tenant
         $tenantUser = TenantUserModel::where('user_id', $user->id)
             ->where('is_active', true)
             ->with('tenant')
             ->first();
 
         $tenant = $tenantUser?->tenant;
+
+        if ($tenant && $tenant->status === 'suspended' && !$user->is_super_admin) {
+            return response()->json([
+                'error' => [
+                    'code' => 'TENANT_SUSPENDED',
+                    'message' => 'Este negocio está suspendido. Contacta soporte.',
+                ],
+            ], 403);
+        }
+
+        $token = $user->createToken('auth_token')->plainTextToken;
 
         return response()->json([
             'data' => [
@@ -150,6 +158,7 @@ class AuthController extends Controller
                     'id' => $tenant->id,
                     'slug' => $tenant->slug,
                     'name' => $tenant->name,
+                    'status' => $tenant->status,
                 ] : null,
             ],
             'meta' => ['timestamp' => now()->toIso8601String()],
