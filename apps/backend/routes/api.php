@@ -60,9 +60,11 @@ Route::prefix('v1')->group(function () {
         Route::get('client/reservations/{id}', [ReservationController::class, 'myReservationShow']);
         Route::patch('client/reservations/{id}/cancel', [ReservationController::class, 'myReservationCancel']);
 
-        // Device tokens (no tenant middleware — tokens can be registered from client app)
-        Route::post('device-tokens', [\App\Infrastructure\Http\Controllers\Notification\DeviceTokenController::class, 'store']);
-        Route::delete('device-tokens/{token}', [\App\Infrastructure\Http\Controllers\Notification\DeviceTokenController::class, 'destroy']);
+        // Device tokens (tenant middleware tolerates no-slug for client app)
+        Route::middleware('tenant')->group(function () {
+            Route::post('device-tokens', [\App\Infrastructure\Http\Controllers\Notification\DeviceTokenController::class, 'store']);
+            Route::delete('device-tokens/{token}', [\App\Infrastructure\Http\Controllers\Notification\DeviceTokenController::class, 'destroy']);
+        });
 
         // Notifications inbox
         Route::get('notifications', [\App\Infrastructure\Http\Controllers\Notification\NotificationController::class, 'index']);
