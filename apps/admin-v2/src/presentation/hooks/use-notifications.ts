@@ -48,11 +48,15 @@ export function useRegisterPushToken() {
   useEffect(() => {
     let unsubscribe: (() => void) | undefined;
 
-    async function setup() {
+    async function registerToken() {
       const token = await requestPushToken();
       if (token) {
         await new RegisterDeviceTokenUseCase(repo).execute(token, 'web');
       }
+    }
+
+    async function setup() {
+      await registerToken();
 
       unsubscribe = onForegroundMessage((payload) => {
         if (payload.title) {
@@ -61,7 +65,20 @@ export function useRegisterPushToken() {
       });
     }
 
+    // Re-register when tab regains focus — handles token rotation after
+    // service worker refresh or browser cache clear.
+    function handleVisibilityChange() {
+      if (document.visibilityState === 'visible') {
+        registerToken();
+      }
+    }
+
     setup();
-    return () => unsubscribe?.();
+    document.addEventListener('visibilitychange', handleVisibilityChange);
+
+    return () => {
+      unsubscribe?.();
+      document.removeEventListener('visibilitychange', handleVisibilityChange);
+    };
   }, [repo]);
 }
