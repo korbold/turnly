@@ -1,4 +1,4 @@
-// Firebase Messaging Service Worker
+// Firebase Messaging Service Worker - v2
 // Config is automatically provided by the Firebase SDK when the service worker
 // is registered via getToken(). No manual firebase.initializeApp() needed
 // when using the modular SDK's getToken with vapidKey.
