@@ -985,12 +985,14 @@ class _Step3Confirm extends StatelessWidget {
                   ),
                   const Divider(height: 24),
                 ],
-                _SummaryRow(
-                  icon: Icons.badge_outlined,
-                  label: 'Registro',
-                  value: selectedResource?.label ?? '-',
-                ),
-                const Divider(height: 24),
+                if (selectedResource != null) ...[
+                  _SummaryRow(
+                    icon: Icons.badge_outlined,
+                    label: 'Registro',
+                    value: selectedResource!.label,
+                  ),
+                  const Divider(height: 24),
+                ],
                 _SummaryRow(
                   icon: Icons.calendar_today_rounded,
                   label: 'Fecha',
