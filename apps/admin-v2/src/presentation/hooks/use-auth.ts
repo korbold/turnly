@@ -9,6 +9,7 @@ import { RegisterUseCase } from '@/application/use-cases/auth/register.use-case'
 import { VerifyEmailUseCase } from '@/application/use-cases/auth/verify-email.use-case';
 import { ResendVerificationUseCase } from '@/application/use-cases/auth/resend-verification.use-case';
 import { authStorage } from '@/infrastructure/storage/auth-storage';
+import api from '@/infrastructure/api/client';
 
 export function useMe() {
   const repo = useRepository('auth');
@@ -84,5 +85,21 @@ export function useResendVerification() {
   return useMutation({
     mutationFn: (email: string) =>
       new ResendVerificationUseCase(repo).execute(email),
+  });
+}
+
+export function useImpersonate() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async (tenantId: string) => {
+      const { data: res } = await api.post(`/superadmin/tenants/${tenantId}/impersonate`);
+      return res.data as { token: string; tenant: { slug: string; id: string; name: string; status: string }; user: { id: string; name: string; email: string; is_super_admin: boolean } };
+    },
+    onSuccess: (result) => {
+      authStorage.setToken(result.token);
+      authStorage.setTenantSlug(result.tenant.slug);
+      authStorage.setIsSuperAdmin(false);
+      queryClient.clear();
+    },
   });
 }

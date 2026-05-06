@@ -172,6 +172,7 @@ Route::prefix('v1')->group(function () {
 
             // Assign plan to tenant
             Route::post('tenants/{id}/assign-plan', [SuperAdminController::class, 'assignPlan']);
+            Route::post('tenants/{id}/impersonate', [SuperAdminController::class, 'impersonate']);
         });
     });
 });
