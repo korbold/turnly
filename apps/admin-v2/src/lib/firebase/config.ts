@@ -33,6 +33,18 @@ export function getNotificationPermission(): NotificationPermission | 'unsupport
   return Notification.permission;
 }
 
+async function getFcmServiceWorker(): Promise<ServiceWorkerRegistration | undefined> {
+  if (typeof navigator === 'undefined' || !('serviceWorker' in navigator)) return undefined;
+  try {
+    const existing = await navigator.serviceWorker.getRegistration('/firebase-messaging-sw.js');
+    if (existing) return existing;
+    return await navigator.serviceWorker.register('/firebase-messaging-sw.js', { scope: '/firebase-cloud-messaging-push-scope' });
+  } catch (err) {
+    console.error('[push] SW register failed', err);
+    return undefined;
+  }
+}
+
 export async function requestPushToken(): Promise<string | null> {
   try {
     const m = getFirebaseMessaging();
@@ -45,12 +57,19 @@ export async function requestPushToken(): Promise<string | null> {
       return null;
     }
 
-    const token = await getToken(m, {
-      vapidKey: process.env.NEXT_PUBLIC_FIREBASE_VAPID_KEY,
-    });
+    const swReg = await getFcmServiceWorker();
 
+    const tokenPromise = getToken(m, {
+      vapidKey: process.env.NEXT_PUBLIC_FIREBASE_VAPID_KEY,
+      serviceWorkerRegistration: swReg,
+    });
+    const timeout = new Promise<null>((resolve) => setTimeout(() => resolve(null), 15000));
+    const token = await Promise.race([tokenPromise, timeout]);
+
+    if (!token) console.error('[push] getToken returned null/timeout');
     return token;
-  } catch {
+  } catch (err) {
+    console.error('[push] requestPushToken error', err);
     return null;
   }
 }

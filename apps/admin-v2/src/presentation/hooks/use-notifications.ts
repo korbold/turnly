@@ -50,6 +50,8 @@ function isIosPwa(): boolean {
   return isIos && isStandalone;
 }
 
+const PUSH_GRANTED_KEY = 'push-permission-granted';
+
 export function useRegisterPushToken() {
   const repo = useRepository('notification');
   const [needsPrompt, setNeedsPrompt] = useState(false);
@@ -58,6 +60,9 @@ export function useRegisterPushToken() {
     const token = await requestPushToken();
     if (token) {
       await new RegisterDeviceTokenUseCase(repo).execute(token, 'web');
+    }
+    if (getNotificationPermission() === 'granted') {
+      localStorage.setItem(PUSH_GRANTED_KEY, '1');
       setNeedsPrompt(false);
     }
   }, [repo]);
@@ -72,8 +77,12 @@ export function useRegisterPushToken() {
 
     async function setup() {
       const permission = getNotificationPermission();
+      const wasGranted = localStorage.getItem(PUSH_GRANTED_KEY) === '1';
 
-      if (isIosPwa() && permission === 'default') {
+      if (permission === 'granted' || wasGranted) {
+        setNeedsPrompt(false);
+        await registerToken();
+      } else if (isIosPwa() && permission === 'default') {
         // iOS PWA: can't request permission without user gesture — show prompt button
         setNeedsPrompt(true);
       } else {
