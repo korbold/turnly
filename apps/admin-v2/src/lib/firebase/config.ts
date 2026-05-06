@@ -28,13 +28,22 @@ function getFirebaseMessaging(): Messaging | null {
   return messaging;
 }
 
+export function getNotificationPermission(): NotificationPermission | 'unsupported' {
+  if (typeof window === 'undefined' || !('Notification' in window)) return 'unsupported';
+  return Notification.permission;
+}
+
 export async function requestPushToken(): Promise<string | null> {
   try {
     const m = getFirebaseMessaging();
     if (!m) return null;
 
-    const permission = await Notification.requestPermission();
-    if (permission !== 'granted') return null;
+    if (Notification.permission === 'default') {
+      const permission = await Notification.requestPermission();
+      if (permission !== 'granted') return null;
+    } else if (Notification.permission !== 'granted') {
+      return null;
+    }
 
     const token = await getToken(m, {
       vapidKey: process.env.NEXT_PUBLIC_FIREBASE_VAPID_KEY,

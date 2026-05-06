@@ -29,11 +29,31 @@ messaging.onBackgroundMessage((payload) => {
   const title = payload.notification?.title || 'Turnly';
   const options = {
     body: payload.notification?.body || '',
-    icon: '/icon-192x192.png',
+    icon: '/icons/icon-192.png',
+    badge: '/icons/icon-192.png',
     data: payload.data,
   };
 
   self.registration.showNotification(title, options);
+});
+
+// iOS 16.4+ PWA: handle raw Web Push events (Firebase compat doesn't cover iOS)
+self.addEventListener('push', (event) => {
+  if (!event.data) return;
+
+  let payload = {};
+  try { payload = event.data.json(); } catch { return; }
+
+  const notification = payload.notification || {};
+  const title = notification.title || 'Turnly';
+  const options = {
+    body: notification.body || '',
+    icon: '/icons/icon-192.png',
+    badge: '/icons/icon-192.png',
+    data: payload.data || {},
+  };
+
+  event.waitUntil(self.registration.showNotification(title, options));
 });
 
 self.addEventListener('notificationclick', (event) => {

@@ -1,13 +1,13 @@
 'use client';
 
-import { useEffect } from 'react';
+import { useEffect, useState, useCallback } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { useRepository } from '@/infrastructure/providers/repository.provider';
 import { GetNotificationsUseCase } from '@/application/use-cases/notifications/get-notifications.use-case';
 import { MarkNotificationReadUseCase } from '@/application/use-cases/notifications/mark-notification-read.use-case';
 import { MarkAllReadUseCase } from '@/application/use-cases/notifications/mark-all-read.use-case';
 import { RegisterDeviceTokenUseCase } from '@/application/use-cases/notifications/register-device-token.use-case';
-import { requestPushToken, onForegroundMessage } from '@/lib/firebase/config';
+import { requestPushToken, onForegroundMessage, getNotificationPermission } from '@/lib/firebase/config';
 import { toast } from 'sonner';
 
 export function useNotifications() {
@@ -42,21 +42,43 @@ export function useMarkAllRead() {
   });
 }
 
+function isIosPwa(): boolean {
+  if (typeof window === 'undefined') return false;
+  const isIos = /iphone|ipad|ipod/i.test(navigator.userAgent);
+  const isStandalone = window.matchMedia('(display-mode: standalone)').matches ||
+    (navigator as Navigator & { standalone?: boolean }).standalone === true;
+  return isIos && isStandalone;
+}
+
 export function useRegisterPushToken() {
   const repo = useRepository('notification');
+  const [needsPrompt, setNeedsPrompt] = useState(false);
+
+  const registerToken = useCallback(async () => {
+    const token = await requestPushToken();
+    if (token) {
+      await new RegisterDeviceTokenUseCase(repo).execute(token, 'web');
+      setNeedsPrompt(false);
+    }
+  }, [repo]);
+
+  // Called from a button click on iOS (requires user gesture)
+  const enableNotifications = useCallback(async () => {
+    await registerToken();
+  }, [registerToken]);
 
   useEffect(() => {
     let unsubscribe: (() => void) | undefined;
 
-    async function registerToken() {
-      const token = await requestPushToken();
-      if (token) {
-        await new RegisterDeviceTokenUseCase(repo).execute(token, 'web');
-      }
-    }
-
     async function setup() {
-      await registerToken();
+      const permission = getNotificationPermission();
+
+      if (isIosPwa() && permission === 'default') {
+        // iOS PWA: can't request permission without user gesture — show prompt button
+        setNeedsPrompt(true);
+      } else {
+        await registerToken();
+      }
 
       unsubscribe = onForegroundMessage((payload) => {
         if (payload.title) {
@@ -65,11 +87,10 @@ export function useRegisterPushToken() {
       });
     }
 
-    // Re-register when tab regains focus — handles token rotation after
-    // service worker refresh or browser cache clear.
     function handleVisibilityChange() {
       if (document.visibilityState === 'visible') {
-        registerToken();
+        const permission = getNotificationPermission();
+        if (permission === 'granted') registerToken();
       }
     }
 
@@ -80,5 +101,7 @@ export function useRegisterPushToken() {
       unsubscribe?.();
       document.removeEventListener('visibilitychange', handleVisibilityChange);
     };
-  }, [repo]);
+  }, [registerToken]);
+
+  return { needsPrompt, enableNotifications };
 }

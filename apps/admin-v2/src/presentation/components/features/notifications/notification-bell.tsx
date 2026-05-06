@@ -1,14 +1,28 @@
 'use client';
 
-import { Bell } from 'lucide-react';
+import { Bell, BellOff } from 'lucide-react';
 import { Button } from '@/presentation/components/ui/button';
 import { Popover, PopoverContent, PopoverTrigger } from '@/presentation/components/ui/popover';
 import { useUnreadCount, useRegisterPushToken } from '@/presentation/hooks/use-notifications';
 import { NotificationDropdown } from './notification-dropdown';
 
 export function NotificationBell() {
-  useRegisterPushToken();
+  const { needsPrompt, enableNotifications } = useRegisterPushToken();
   const unreadCount = useUnreadCount();
+
+  if (needsPrompt) {
+    return (
+      <Button
+        variant="ghost"
+        size="icon"
+        className="relative text-amber-500 hover:text-amber-600"
+        onClick={enableNotifications}
+        title="Toca para activar notificaciones"
+      >
+        <BellOff className="h-5 w-5" />
+      </Button>
+    );
+  }
 
   return (
     <Popover>
