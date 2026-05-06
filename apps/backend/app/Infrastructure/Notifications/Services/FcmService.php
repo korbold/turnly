@@ -25,6 +25,15 @@ class FcmService
                     'body' => $notification['body'],
                 ],
                 'data' => array_map('strval', $data),
+                'webpush' => $this->buildWebPushConfig($data),
+                'android' => [
+                    'priority' => 'HIGH',
+                    'notification' => ['default_sound' => true],
+                ],
+                'apns' => [
+                    'headers' => ['apns-priority' => '10'],
+                    'payload' => ['aps' => ['sound' => 'default']],
+                ],
             ],
         ];
 
@@ -58,6 +67,31 @@ class FcmService
         foreach ($fcmTokens as $token) {
             $this->send($token, $notification, $data);
         }
+    }
+
+    private function buildWebPushConfig(array $data): array
+    {
+        $base = rtrim(config('services.firebase.admin_url'), '/');
+        $link = $base . '/dashboard';
+
+        if (($data['action_type'] ?? null) === 'reservation_detail') {
+            $link = $base . '/reservations';
+        }
+
+        return [
+            'headers' => [
+                'Urgency' => 'high',
+                'TTL' => '86400',
+            ],
+            'notification' => [
+                'icon' => $base . '/icons/icon-192.png',
+                'badge' => $base . '/icons/icon-192.png',
+                'requireInteraction' => false,
+            ],
+            'fcm_options' => [
+                'link' => $link,
+            ],
+        ];
     }
 
     private function getAccessToken(): string
