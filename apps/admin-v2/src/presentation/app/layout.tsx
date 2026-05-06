@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import { Roboto, JetBrains_Mono } from "next/font/google";
 import "../styles/globals.css";
 import { Providers } from "../components/providers";
+import { IosInstallBanner } from "../components/ios-install-banner";
 
 const roboto = Roboto({
   subsets: ["latin"],
@@ -39,6 +40,7 @@ export default function RootLayout({
     >
       <body className="min-h-full flex flex-col" suppressHydrationWarning>
         <Providers>{children}</Providers>
+        <IosInstallBanner />
         <script
           dangerouslySetInnerHTML={{
             __html: `
