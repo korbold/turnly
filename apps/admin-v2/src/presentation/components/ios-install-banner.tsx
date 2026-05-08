@@ -65,7 +65,7 @@ export function IosInstallBanner() {
         <X className="h-4 w-4" />
       </button>
       <div className="flex items-center gap-3 pr-6">
-        <img src="/icons/icon-192.png" alt="Turnly" className="h-12 w-12 rounded-xl flex-shrink-0" />
+        <img src="/turnly-mark.svg" alt="Turnly" className="h-12 w-12 rounded-xl flex-shrink-0" />
         <div className="flex-1">
           <p className="font-semibold text-sm text-zinc-900">Instalar Turnly</p>
           {mode === 'ios' ? (
