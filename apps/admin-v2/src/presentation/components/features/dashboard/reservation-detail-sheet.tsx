@@ -14,6 +14,19 @@ import {
 import { Button } from '@/presentation/components/ui/button';
 import { Avatar, AvatarFallback } from '@/presentation/components/ui/avatar';
 import { useTransitionReservation, useCancelReservation } from '@/presentation/hooks/use-reservations';
+import { useEffect, useState } from 'react';
+
+function useIsDesktop(query = '(min-width: 640px)'): boolean {
+  const [isDesktop, setIsDesktop] = useState(false);
+  useEffect(() => {
+    const mql = window.matchMedia(query);
+    const update = () => setIsDesktop(mql.matches);
+    update();
+    mql.addEventListener('change', update);
+    return () => mql.removeEventListener('change', update);
+  }, [query]);
+  return isDesktop;
+}
 import { RESERVATION_STATUS_CONFIG } from '@/shared/constants/status';
 import type {
   Reservation,
@@ -72,6 +85,7 @@ export function ReservationDetailSheet({
   const router = useRouter();
   const transition = useTransitionReservation();
   const cancel = useCancelReservation();
+  const isDesktop = useIsDesktop();
 
   if (!reservation) return null;
 
@@ -118,8 +132,12 @@ export function ReservationDetailSheet({
   return (
     <Sheet open={open} onOpenChange={onOpenChange}>
       <SheetContent
-        side="bottom"
-        className="rounded-t-2xl sm:max-w-md sm:left-1/2 sm:right-auto sm:bottom-auto sm:top-1/2 sm:-translate-x-1/2 sm:-translate-y-1/2 sm:rounded-2xl"
+        side={isDesktop ? 'right' : 'bottom'}
+        className={
+          isDesktop
+            ? 'flex h-full w-full flex-col gap-0 overflow-y-auto p-8 sm:max-w-xl'
+            : 'max-h-[90dvh] overflow-y-auto rounded-t-2xl px-5 pb-[max(1.25rem,env(safe-area-inset-bottom))] pt-6'
+        }
       >
         <SheetHeader className="text-left">
           <span
@@ -141,8 +159,8 @@ export function ReservationDetailSheet({
           <SheetDescription>{service}</SheetDescription>
         </SheetHeader>
 
-        <div className="mt-5 space-y-4">
-          <div className="flex items-center gap-3 rounded-lg border border-[var(--border)] bg-[var(--bg-app)] p-3">
+        <div className="mt-6 space-y-5">
+          <div className="flex items-center gap-3 rounded-lg border border-[var(--border)] bg-[var(--bg-app)] p-3.5">
             <Avatar className="h-10 w-10">
               <AvatarFallback className="bg-[var(--ink-75)] text-[13px] font-semibold text-[var(--fg-strong)]">
                 {getInitials(customer)}
@@ -160,7 +178,7 @@ export function ReservationDetailSheet({
             </div>
           </div>
 
-          <dl className="grid grid-cols-2 gap-3 text-[13px]">
+          <dl className="grid grid-cols-2 gap-x-5 gap-y-2 text-[13px]">
             <div>
               <dt className="text-[11px] font-semibold uppercase tracking-[0.04em] text-[var(--fg-muted)]">
                 Cuándo
@@ -202,10 +220,11 @@ export function ReservationDetailSheet({
           )}
         </div>
 
-        <div className="mt-6 flex flex-col gap-2">
+        <div className="mt-7 flex flex-col gap-2.5">
           {actions.map((action) => (
             <Button
               key={action}
+              size="lg"
               variant={action === 'cancel' ? 'outline' : 'default'}
               disabled={isPending}
               onClick={() => runAction(action)}
@@ -216,6 +235,7 @@ export function ReservationDetailSheet({
             </Button>
           ))}
           <Button
+            size="lg"
             variant="ghost"
             className="w-full"
             onClick={() => {
