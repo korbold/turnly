@@ -2,7 +2,7 @@
 
 import { useState, useMemo } from 'react';
 import { toast } from 'sonner';
-import { Search, Check } from 'lucide-react';
+import { Search, Check, Plus, Loader2 } from 'lucide-react';
 import {
   Dialog,
   DialogContent,
@@ -25,7 +25,7 @@ import { Card, CardContent } from '@/presentation/components/ui/card';
 import { Skeleton } from '@/presentation/components/ui/skeleton';
 import { cn } from '@/shared/utils/cn';
 import { useServices } from '@/presentation/hooks/use-services';
-import { useClients } from '@/presentation/hooks/use-clients';
+import { useClients, useCreateClient } from '@/presentation/hooks/use-clients';
 import { useTeam } from '@/presentation/hooks/use-team';
 import { useCreateServiceLog } from '@/presentation/hooks/use-service-logs';
 import type { Service } from '@/domain/entities/service';
@@ -56,6 +56,19 @@ export function NewServiceModal({ open, onClose }: NewServiceModalProps) {
   const { data: clientsData, isLoading: clientsLoading } = useClients(1, clientSearch || undefined);
   const { data: teamData } = useTeam({ excludeRole: 'client' as const });
   const createMutation = useCreateServiceLog();
+  const createClient = useCreateClient();
+
+  async function handleQuickCreateClient() {
+    const plate = clientSearch.trim();
+    if (!plate) return;
+    try {
+      const created = await createClient.mutateAsync({ plate });
+      setSelectedClientResourceId(created.id);
+      toast.success('Cliente creado');
+    } catch {
+      toast.error('No se pudo crear');
+    }
+  }
 
   const services = servicesData?.data ?? [];
   const clients = clientsData?.data ?? [];
@@ -201,6 +214,27 @@ export function NewServiceModal({ open, onClose }: NewServiceModalProps) {
                     </div>
                   </button>
                 ))}
+                {clientSearch.trim() && (
+                  <button
+                    type="button"
+                    onClick={handleQuickCreateClient}
+                    disabled={createClient.isPending}
+                    className="flex w-full items-center gap-2 rounded-lg border border-dashed border-[var(--border-strong)] p-2.5 text-left transition-colors hover:bg-[var(--bg-hover)] disabled:opacity-60"
+                  >
+                    {createClient.isPending ? (
+                      <Loader2 className="h-4 w-4 shrink-0 animate-spin text-[var(--fg-muted)]" />
+                    ) : (
+                      <Plus className="h-4 w-4 shrink-0 text-[var(--brand-500)]" />
+                    )}
+                    <span className="min-w-0 truncate text-sm">
+                      Crear{' '}
+                      <span className="font-semibold text-[var(--brand-700)]">
+                        &quot;{clientSearch.trim()}&quot;
+                      </span>{' '}
+                      y usar
+                    </span>
+                  </button>
+                )}
               </div>
             )}
           </div>
