@@ -21,6 +21,10 @@ export function IosInstallBanner() {
       (navigator as Navigator & { standalone?: boolean }).standalone === true;
     if (isStandalone) return;
 
+    const isMobileViewport = window.matchMedia('(max-width: 767px)').matches;
+    const isTouchPrimary = window.matchMedia('(pointer: coarse)').matches;
+    if (!isMobileViewport && !isTouchPrimary) return;
+
     const isIos = /iphone|ipad|ipod/i.test(navigator.userAgent);
     if (isIos) {
       setMode('ios');
