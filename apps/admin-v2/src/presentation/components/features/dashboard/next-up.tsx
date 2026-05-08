@@ -148,7 +148,7 @@ export function NextUp({
           Nada en agenda por ahora.
         </p>
         <p className="mt-1 text-[14px] leading-snug text-[var(--fg-secondary)]">
-          Sigue tu día. Los walk-ins también cuentan.
+          Sigue tu día. Las visitas sin cita también cuentan.
         </p>
       </section>
     );

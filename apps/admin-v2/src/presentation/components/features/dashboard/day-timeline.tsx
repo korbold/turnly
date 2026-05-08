@@ -86,8 +86,8 @@ export function DayTimeline({
         </p>
         <p className="mt-1 text-[13px] text-[var(--fg-secondary)]">
           {filter
-            ? 'Cambia el filtro o registra un walk-in.'
-            : 'Comparte tu link de reservas o registra un walk-in.'}
+            ? 'Cambia el filtro o registra una visita sin cita.'
+            : 'Comparte tu link de reservas o registra una visita sin cita.'}
         </p>
       </div>
     );
@@ -158,7 +158,7 @@ export function DayTimeline({
                   className="inline-flex items-center gap-1 text-[11px] font-semibold text-[var(--fg-muted)] transition-colors hover:text-[var(--brand-700)] focus-visible:outline-none focus-visible:underline"
                 >
                   <Plus className="h-3 w-3" aria-hidden="true" />
-                  Walk-in
+                  Sin cita
                 </button>
               )}
             </li>

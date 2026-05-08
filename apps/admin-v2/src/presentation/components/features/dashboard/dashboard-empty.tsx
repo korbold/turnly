@@ -128,11 +128,11 @@ export function DashboardEmpty({
         Hoy no hay citas todavía.
       </h2>
       <p className="mt-1 text-[14px] leading-snug text-[var(--fg-secondary)]">
-        Sigue tu día. Los walk-ins también cuentan.
+        Sigue tu día. Las visitas sin cita también cuentan.
       </p>
 
       <div className="mt-5 flex flex-col gap-2 sm:flex-row sm:items-center">
-        <Button onClick={onCreateWalkIn}>Registrar walk-in</Button>
+        <Button onClick={onCreateWalkIn}>Registrar sin cita</Button>
         {bookingUrl && (
           <Link
             href={bookingUrl}

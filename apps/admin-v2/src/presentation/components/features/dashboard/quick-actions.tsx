@@ -14,7 +14,7 @@ const ACTIONS = [
     bg: 'bg-[var(--color-primary-muted)]',
   },
   {
-    label: 'Walk-in',
+    label: 'Sin cita',
     icon: UserPlus,
     href: '/service-log',
     color: 'text-emerald-600',
