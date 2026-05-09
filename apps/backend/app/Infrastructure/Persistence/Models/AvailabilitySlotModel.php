@@ -2,14 +2,14 @@
 
 namespace App\Infrastructure\Persistence\Models;
 
-use App\Infrastructure\Persistence\Scopes\TenantScope;
+use App\Infrastructure\Persistence\Concerns\BelongsToTenant;
 use Illuminate\Database\Eloquent\Concerns\HasUuids;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 
 class AvailabilitySlotModel extends Model
 {
-    use HasUuids, HasFactory;
+    use HasUuids, HasFactory, BelongsToTenant;
 
     protected $table = 'availability_slots';
 
@@ -25,11 +25,6 @@ class AvailabilitySlotModel extends Model
             'max_concurrent' => 'integer',
             'is_active' => 'boolean',
         ];
-    }
-
-    protected static function booted(): void
-    {
-        static::addGlobalScope(new TenantScope());
     }
 
     public function tenant()

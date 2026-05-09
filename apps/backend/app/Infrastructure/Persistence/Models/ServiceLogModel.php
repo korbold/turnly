@@ -2,14 +2,14 @@
 
 namespace App\Infrastructure\Persistence\Models;
 
-use App\Infrastructure\Persistence\Scopes\TenantScope;
+use App\Infrastructure\Persistence\Concerns\BelongsToTenant;
 use Illuminate\Database\Eloquent\Concerns\HasUuids;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 
 class ServiceLogModel extends Model
 {
-    use HasUuids, HasFactory;
+    use HasUuids, HasFactory, BelongsToTenant;
 
     protected $table = 'service_logs';
 
@@ -27,11 +27,6 @@ class ServiceLogModel extends Model
             'price_charged' => 'decimal:2',
             'log_date' => 'date',
         ];
-    }
-
-    protected static function booted(): void
-    {
-        static::addGlobalScope(new TenantScope());
     }
 
     public function tenant()

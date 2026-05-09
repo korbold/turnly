@@ -68,8 +68,8 @@ class EloquentServiceLogRepository implements ServiceLogRepositoryInterface
     {
         $rows = ServiceLogModel::whereDate('log_date', $date)->get();
 
-        $reservations = \App\Infrastructure\Persistence\Models\ReservationModel::withoutGlobalScopes()
-            ->where('tenant_id', $tenantId)
+        $reservations = \App\Infrastructure\Persistence\Models\ReservationModel::query()
+            ->forTenant($tenantId)
             ->whereDate('scheduled_at', $date)
             ->whereNotIn('status', ['cancelled', 'no_show'])
             ->with('service')

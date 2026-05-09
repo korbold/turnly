@@ -37,8 +37,8 @@ class CreateReservationUseCase
 
         // Check business hours
         $dayOfWeek = (int) $localScheduled->format('N') - 1; // 0=Monday
-        $slot = AvailabilitySlotModel::withoutGlobalScopes()
-            ->where('tenant_id', $dto->tenantId)
+        $slot = AvailabilitySlotModel::query()
+            ->forTenant($dto->tenantId)
             ->where('day_of_week', $dayOfWeek)
             ->where('is_active', true)
             ->where('start_time', '<=', $localScheduled->format('H:i:s'))
