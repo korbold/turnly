@@ -52,6 +52,9 @@ dependencies:
   url_launcher: ^6.3.2
   flutter_markdown: ^0.7.7+1
 
+  # Deep links / App Links
+  app_links: ^6.3.2
+
 dev_dependencies:
   flutter_test:
     sdk: flutter

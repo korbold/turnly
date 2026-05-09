@@ -10,6 +10,7 @@ import { Skeleton } from '@/presentation/components/ui/skeleton';
 import { useRepository } from '@/infrastructure/providers/repository.provider';
 import { GalleryCarousel } from '@/presentation/components/features/public/gallery-carousel';
 import { BookingFlow } from '@/presentation/components/features/public/booking-flow';
+import { OpenInAppBanner } from '@/presentation/components/features/public/open-in-app-banner';
 import type { PublicTenant } from '@/domain/repositories/public.repository';
 
 export default function PublicTenantPage() {
@@ -211,6 +212,8 @@ export default function PublicTenantPage() {
           </div>
         )}
       </div>
+
+      <OpenInAppBanner slug={slug} tenantName={tenant.name} />
     </div>
   );
 }

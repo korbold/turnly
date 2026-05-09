@@ -1,4 +1,6 @@
 // lib/main.dart
+import 'dart:async';
+
 import 'package:firebase_core/firebase_core.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
@@ -7,6 +9,7 @@ import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'package:hive_flutter/hive_flutter.dart';
 import 'package:intl/date_symbol_data_local.dart';
 
+import 'app/deep_link_handler.dart';
 import 'app/router.dart';
 import 'app/theme/app_theme.dart';
 import 'core/di/injection.dart';
@@ -48,6 +51,10 @@ void main() async {
 
   // Register FavoritesStorage singleton in DI
   getIt.registerSingleton<FavoritesStorage>(favoritesStorage);
+
+  // Start deep link handler (Android App Links). Safe to call before runApp;
+  // it queues incoming links until the router has a navigator context.
+  unawaited(DeepLinkHandler.instance.start());
 
   runApp(TurnlyApp(favoritesStorage: favoritesStorage));
 }
