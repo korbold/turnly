@@ -53,7 +53,9 @@ final appRouter = GoRouter(
     ),
     GoRoute(
       path: '/register',
-      builder: (context, state) => const RegisterScreen(),
+      // Passwordless: there's no separate register form anymore. The
+      // login screen's magic link covers both new and returning users.
+      redirect: (_, __) => '/login',
     ),
     GoRoute(
       path: '/verify-email',

@@ -4,10 +4,8 @@ import 'package:flutter_animate/flutter_animate.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:go_router/go_router.dart';
 import '../../../../app/theme/app_colors.dart';
-import '../../../../core/di/injection.dart';
 import '../../../../shared/widgets/app_button.dart';
 import '../../../../shared/widgets/app_text_field.dart';
-import '../../domain/repositories/auth_repository.dart';
 import '../cubit/auth_cubit.dart';
 import '../cubit/auth_state.dart';
 import '../widgets/google_sign_in_button.dart';
@@ -30,23 +28,17 @@ class _LoginView extends StatefulWidget {
 
 class _LoginViewState extends State<_LoginView> {
   final _emailController = TextEditingController();
-  final _passwordController = TextEditingController();
   final _formKey = GlobalKey<FormState>();
-  bool _obscurePassword = true;
 
   @override
   void dispose() {
     _emailController.dispose();
-    _passwordController.dispose();
     super.dispose();
   }
 
-  void _submit() {
+  void _sendMagicLink() {
     if (_formKey.currentState?.validate() ?? false) {
-      context.read<AuthCubit>().login(
-            _emailController.text.trim(),
-            _passwordController.text,
-          );
+      context.read<AuthCubit>().sendMagicLink(_emailController.text.trim());
     }
   }
 
@@ -144,7 +136,7 @@ class _LoginViewState extends State<_LoginView> {
 
                         // Title
                         Text(
-                          'Iniciar Sesion',
+                          'Entra a Turnly',
                           style: theme.textTheme.headlineMedium,
                         )
                             .animate()
@@ -159,7 +151,7 @@ class _LoginViewState extends State<_LoginView> {
                         const SizedBox(height: 8),
 
                         Text(
-                          'Ingresa tus credenciales para continuar',
+                          'Una sola dirección de correo. Sin contraseña.',
                           style: theme.textTheme.bodyMedium,
                         )
                             .animate()
@@ -228,14 +220,14 @@ class _LoginViewState extends State<_LoginView> {
 
                         const SizedBox(height: 20),
 
-                        // Divider — "or continue with email"
+                        // Divider — "or"
                         Row(
                           children: [
                             Expanded(child: Divider(color: Colors.grey.shade300)),
                             Padding(
                               padding: const EdgeInsets.symmetric(horizontal: 16),
                               child: Text(
-                                'o continúa con email',
+                                'o',
                                 style: TextStyle(
                                   color: Colors.grey.shade500,
                                   fontSize: 13,
@@ -275,48 +267,7 @@ class _LoginViewState extends State<_LoginView> {
                               delay: 400.ms,
                             ),
 
-                        const SizedBox(height: 16),
-
-                        // Password field
-                        AppTextField(
-                          label: 'Contrasena',
-                          hint: 'Tu contrasena',
-                          controller: _passwordController,
-                          obscureText: _obscurePassword,
-                          prefixIcon:
-                              const Icon(Icons.lock_outline_rounded, size: 20),
-                          suffixIcon: IconButton(
-                            icon: Icon(
-                              _obscurePassword
-                                  ? Icons.visibility_off_outlined
-                                  : Icons.visibility_outlined,
-                              size: 20,
-                              color: AppColors.textTertiary,
-                            ),
-                            onPressed: () => setState(
-                              () => _obscurePassword = !_obscurePassword,
-                            ),
-                          ),
-                          validator: (value) {
-                            if (value == null || value.isEmpty) {
-                              return 'Ingresa tu contrasena';
-                            }
-                            if (value.length < 6) {
-                              return 'Minimo 6 caracteres';
-                            }
-                            return null;
-                          },
-                        )
-                            .animate()
-                            .fadeIn(duration: 500.ms, delay: 400.ms)
-                            .slideY(
-                              begin: 0.1,
-                              end: 0,
-                              duration: 500.ms,
-                              delay: 400.ms,
-                            ),
-
-                        const SizedBox(height: 28),
+                        const SizedBox(height: 24),
 
                         // Magic-link confirmation banner
                         if (magicLinkEmail != null)
@@ -370,55 +321,11 @@ class _LoginViewState extends State<_LoginView> {
                             ),
                           ).animate().fadeIn(duration: 300.ms),
 
-                        // Magic link button
-                        OutlinedButton.icon(
-                          onPressed: isLoading
-                              ? null
-                              : () {
-                                  if (_emailController.text.trim().isEmpty ||
-                                      !_emailController.text.contains('@')) {
-                                    ScaffoldMessenger.of(context).showSnackBar(
-                                      const SnackBar(
-                                        content: Text(
-                                          'Ingresa un correo válido para enviar el link',
-                                        ),
-                                      ),
-                                    );
-                                    return;
-                                  }
-                                  context
-                                      .read<AuthCubit>()
-                                      .sendMagicLink(_emailController.text.trim());
-                                },
-                          icon: const Icon(Icons.link_rounded, size: 18),
-                          label: const Text('Enviarme link mágico al email'),
-                          style: OutlinedButton.styleFrom(
-                            minimumSize: const Size.fromHeight(48),
-                            side: BorderSide(
-                              color: AppColors.accent.withValues(alpha: 0.4),
-                            ),
-                            foregroundColor: AppColors.accent,
-                            shape: RoundedRectangleBorder(
-                              borderRadius: BorderRadius.circular(12),
-                            ),
-                          ),
-                        )
-                            .animate()
-                            .fadeIn(duration: 500.ms, delay: 420.ms)
-                            .slideY(
-                              begin: 0.1,
-                              end: 0,
-                              duration: 500.ms,
-                              delay: 420.ms,
-                            ),
-
-                        const SizedBox(height: 12),
-
-                        // Login button
+                        // Primary CTA: send magic link
                         AppButton(
-                          label: 'Iniciar Sesion',
+                          label: 'Enviarme link al email',
                           isLoading: isLoading,
-                          onPressed: _submit,
+                          onPressed: _sendMagicLink,
                         )
                             .animate()
                             .fadeIn(duration: 500.ms, delay: 450.ms)
@@ -429,31 +336,17 @@ class _LoginViewState extends State<_LoginView> {
                               delay: 450.ms,
                             ),
 
-                        const SizedBox(height: 24),
+                        const SizedBox(height: 8),
 
-                        // Register link
-                        Row(
-                          mainAxisAlignment: MainAxisAlignment.center,
-                          children: [
-                            Text(
-                              'No tienes cuenta? ',
-                              style: theme.textTheme.bodyMedium,
-                            ),
-                            GestureDetector(
-                              onTap: () => context.go('/register'),
-                              child: Text(
-                                'Registrarte',
-                                style: TextStyle(
-                                  color: AppColors.accent,
-                                  fontWeight: FontWeight.w600,
-                                  fontSize: 14,
-                                ),
-                              ),
-                            ),
-                          ],
-                        )
-                            .animate()
-                            .fadeIn(duration: 500.ms, delay: 500.ms),
+                        Text(
+                          'Sin contraseñas. Te mandamos un link y entras con un toque.',
+                          textAlign: TextAlign.center,
+                          style: theme.textTheme.bodySmall?.copyWith(
+                            color: AppColors.textTertiary,
+                          ),
+                        ).animate().fadeIn(duration: 500.ms, delay: 480.ms),
+
+                        const SizedBox(height: 24),
 
                         const SizedBox(height: 40),
                       ],
