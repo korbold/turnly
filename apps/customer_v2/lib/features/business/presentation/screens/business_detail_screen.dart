@@ -41,8 +41,23 @@ class _BusinessDetailView extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return BlocBuilder<BusinessDetailCubit, BusinessDetailState>(
-      builder: (context, state) {
+    // When the screen is reached via a deep link cold-start there's
+    // nothing under it on the navigator stack, so the system back
+    // gesture would pop into a black void. PopScope intercepts that
+    // and routes the user to /home, which is the expected parent
+    // surface for any business detail.
+    return PopScope(
+      canPop: false,
+      onPopInvokedWithResult: (didPop, _) {
+        if (didPop) return;
+        if (context.canPop()) {
+          context.pop();
+        } else {
+          context.go('/home');
+        }
+      },
+      child: BlocBuilder<BusinessDetailCubit, BusinessDetailState>(
+        builder: (context, state) {
         if (state is BusinessDetailLoading || state is BusinessDetailInitial) {
           return _buildLoadingState();
         }
@@ -68,6 +83,7 @@ class _BusinessDetailView extends StatelessWidget {
 
         return const SizedBox.shrink();
       },
+      ),
     );
   }
 
@@ -124,6 +140,16 @@ class _BusinessContent extends StatelessWidget {
                   child: HeroHeader(
                     business: business,
                     tenantTheme: tenantTheme,
+                    // Cold-start deep link has nothing on the stack to
+                    // pop into, which would render a black screen. Fall
+                    // back to /home in that case.
+                    onBack: () {
+                      if (context.canPop()) {
+                        context.pop();
+                      } else {
+                        context.go('/home');
+                      }
+                    },
                   ),
                 ),
                 SliverPersistentHeader(

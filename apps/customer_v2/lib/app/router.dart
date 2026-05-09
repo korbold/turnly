@@ -20,6 +20,7 @@ import '../features/explore/presentation/screens/category_screen.dart';
 import '../features/favorites/presentation/screens/favorites_screen.dart';
 import '../features/notifications/presentation/screens/notifications_screen.dart';
 import '../features/legal/presentation/screens/legal_screen.dart';
+import '../features/shared/presentation/screens/not_found_screen.dart';
 
 final rootNavigatorKey = GlobalKey<NavigatorState>();
 final _shellNavigatorKey = GlobalKey<NavigatorState>();
@@ -53,6 +54,9 @@ const _reservedWebPaths = <String>{
 final appRouter = GoRouter(
   navigatorKey: rootNavigatorKey,
   initialLocation: '/login',
+  errorBuilder: (context, state) => NotFoundScreen(
+    attemptedUri: state.uri,
+  ),
   redirect: (context, state) async {
     // Android App Links and iOS Universal Links can deliver a full
     // `https://dev.goturnly.com/<slug>` URL directly to go_router before

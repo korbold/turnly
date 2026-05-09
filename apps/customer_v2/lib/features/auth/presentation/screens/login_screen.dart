@@ -128,6 +128,7 @@ class _LoginViewState extends State<_LoginView> {
                               height: 72,
                               fit: BoxFit.cover,
                               filterQuality: FilterQuality.medium,
+                              semanticLabel: 'Logo de Turnly',
                             ),
                           ),
                         )
@@ -163,9 +164,14 @@ class _LoginViewState extends State<_LoginView> {
 
                         const SizedBox(height: 28),
 
-                        // Error
+                        // Error — wrapped in a live region so screen
+                        // readers announce it the moment it appears,
+                        // without the user having to refocus.
                         if (errorMessage != null)
-                          Container(
+                          Semantics(
+                            liveRegion: true,
+                            container: true,
+                            child: Container(
                             width: double.infinity,
                             margin: const EdgeInsets.only(bottom: 16),
                             padding: const EdgeInsets.symmetric(
@@ -205,6 +211,7 @@ class _LoginViewState extends State<_LoginView> {
                                 amount: 4,
                                 duration: 400.ms,
                               ),
+                          ),
 
                         // Google Sign-In (primary)
                         GoogleSignInButton(
@@ -280,9 +287,14 @@ class _LoginViewState extends State<_LoginView> {
 
                         const SizedBox(height: 24),
 
-                        // Magic-link confirmation banner
+                        // Magic-link confirmation banner — live region so
+                        // VoiceOver/TalkBack announces "Te enviamos un
+                        // link…" without the user having to refocus.
                         if (magicLinkEmail != null)
-                          Container(
+                          Semantics(
+                            liveRegion: true,
+                            container: true,
+                            child: Container(
                             width: double.infinity,
                             margin: const EdgeInsets.only(bottom: 16),
                             padding: const EdgeInsets.symmetric(
@@ -331,6 +343,7 @@ class _LoginViewState extends State<_LoginView> {
                               ],
                             ),
                           ).animate().fadeIn(duration: 300.ms),
+                          ),
 
                         // Primary CTA: send magic link. Disabled until the
                         // email is well-formed so the tap does not bounce
@@ -355,7 +368,9 @@ class _LoginViewState extends State<_LoginView> {
                           'Sin contraseñas. Te mandamos un link y entras con un toque.',
                           textAlign: TextAlign.center,
                           style: theme.textTheme.bodySmall?.copyWith(
-                            color: AppColors.textTertiary,
+                            // textTertiary fails WCAG AA against the gradient
+                            // background; textSecondary lands at ~7:1.
+                            color: AppColors.textSecondary,
                           ),
                         ).animate().fadeIn(duration: 500.ms, delay: 480.ms),
 
