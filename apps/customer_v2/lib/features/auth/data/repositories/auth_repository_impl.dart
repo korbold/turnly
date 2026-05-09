@@ -2,6 +2,7 @@
 import 'dart:convert';
 import 'package:dio/dio.dart';
 import 'package:fpdart/fpdart.dart';
+import 'package:firebase_auth/firebase_auth.dart';
 import 'package:google_sign_in/google_sign_in.dart';
 import '../../../../core/error/failures.dart';
 import '../../../../core/network/api_client.dart';
@@ -120,29 +121,35 @@ class AuthRepositoryImpl implements AuthRepository {
   @override
   Future<Either<Failure, ({User user, String token})>> loginWithGoogle() async {
     try {
-      // No serverClientId: let google_sign_in pick the OAuth client from the
-      // active GoogleService-Info.plist (iOS) / google-services.json (Android).
-      // Backend verifies the token via Firebase Admin SDK, which accepts any
-      // OAuth client of the active Firebase project — keeps dev/prod isolated.
-      final googleSignIn = GoogleSignIn(
-        scopes: ['email', 'profile'],
-      );
+      // 1. Get a Google credential via google_sign_in.
+      final googleSignIn = GoogleSignIn(scopes: ['email', 'profile']);
       final account = await googleSignIn.signIn();
-
       if (account == null) {
         return const Left(ServerFailure('Inicio de sesión cancelado'));
       }
-
       final auth = await account.authentication;
-      final idToken = auth.idToken;
-
-      if (idToken == null) {
+      if (auth.idToken == null) {
         return const Left(ServerFailure('Error al obtener token de Google'));
+      }
+
+      // 2. Exchange the Google credential for a Firebase ID token. The
+      //    backend validates Firebase ID tokens via the Firebase Admin SDK
+      //    — that's what makes per-env Firebase projects (dev/prod) isolate
+      //    cleanly without an audience headache.
+      final credential = GoogleAuthProvider.credential(
+        accessToken: auth.accessToken,
+        idToken: auth.idToken,
+      );
+      final userCredential =
+          await FirebaseAuth.instance.signInWithCredential(credential);
+      final firebaseIdToken = await userCredential.user?.getIdToken();
+      if (firebaseIdToken == null) {
+        return const Left(ServerFailure('Error al obtener token de Firebase'));
       }
 
       final response = await _dio.post(
         '/auth/google',
-        data: {'id_token': idToken},
+        data: {'id_token': firebaseIdToken},
       );
 
       final dto = AuthResponseDto.fromJson(
