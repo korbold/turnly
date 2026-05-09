@@ -70,6 +70,8 @@ flutter:
     - .env.dev
     - .env.prod
     - assets/icon/turnly-customer-mark.svg
+    - assets/icon/turnly-customer-1024.png
+    - assets/icon/turnly-customer-adaptive-fg-432.png
 
 flutter_launcher_icons:
   android: true

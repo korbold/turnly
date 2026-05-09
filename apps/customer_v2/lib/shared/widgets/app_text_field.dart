@@ -16,6 +16,10 @@ class AppTextField extends StatelessWidget {
   final ValueChanged<String>? onChanged;
   final TextCapitalization textCapitalization;
   final List<TextInputFormatter>? inputFormatters;
+  final TextInputAction? textInputAction;
+  final ValueChanged<String>? onFieldSubmitted;
+  final FocusNode? focusNode;
+  final bool autofocus;
 
   const AppTextField({
     super.key,
@@ -31,6 +35,10 @@ class AppTextField extends StatelessWidget {
     this.onChanged,
     this.textCapitalization = TextCapitalization.none,
     this.inputFormatters,
+    this.textInputAction,
+    this.onFieldSubmitted,
+    this.focusNode,
+    this.autofocus = false,
   });
 
   @override
@@ -59,6 +67,10 @@ class AppTextField extends StatelessWidget {
           onChanged: onChanged,
           textCapitalization: textCapitalization,
           inputFormatters: inputFormatters,
+          textInputAction: textInputAction,
+          onFieldSubmitted: onFieldSubmitted,
+          focusNode: focusNode,
+          autofocus: autofocus,
           decoration: InputDecoration(
             hintText: hint,
             suffixIcon: suffixIcon,

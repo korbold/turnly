@@ -1,5 +1,6 @@
 // lib/features/auth/presentation/screens/login_screen.dart
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_animate/flutter_animate.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:go_router/go_router.dart';
@@ -55,6 +56,10 @@ class _LoginViewState extends State<_LoginView> {
 
   void _sendMagicLink() {
     if (_formKey.currentState?.validate() ?? false) {
+      // Light haptic confirms the tap registered before the network round
+      // trip — important because the result lands in the user's inbox,
+      // not on this screen.
+      HapticFeedback.lightImpact();
       context.read<AuthCubit>().sendMagicLink(_emailController.text.trim());
     }
   }
@@ -100,40 +105,42 @@ class _LoginViewState extends State<_LoginView> {
                       children: [
                         const SizedBox(height: 40),
 
-                        // Logo
-                        Container(
-                          width: 72,
-                          height: 72,
+                        // Logo — real app icon, iOS-style squircle. Reusing
+                        // the same artwork the user sees on their home
+                        // screen reinforces "this is the same app".
+                        DecoratedBox(
                           decoration: BoxDecoration(
-                            color: AppColors.accent,
-                            shape: BoxShape.circle,
+                            borderRadius: BorderRadius.circular(16),
                             boxShadow: [
                               BoxShadow(
                                 color:
-                                    AppColors.accent.withValues(alpha: 0.3),
-                                blurRadius: 24,
-                                offset: const Offset(0, 8),
+                                    AppColors.accent.withValues(alpha: 0.20),
+                                blurRadius: 28,
+                                offset: const Offset(0, 12),
                               ),
                             ],
                           ),
-                          child: const Center(
-                            child: Text(
-                              'T',
-                              style: TextStyle(
-                                color: Colors.white,
-                                fontSize: 32,
-                                fontWeight: FontWeight.w700,
-                              ),
+                          child: ClipRRect(
+                            borderRadius: BorderRadius.circular(16),
+                            child: Image.asset(
+                              'assets/icon/turnly-customer-1024.png',
+                              width: 72,
+                              height: 72,
+                              fit: BoxFit.cover,
+                              filterQuality: FilterQuality.medium,
                             ),
                           ),
                         )
                             .animate()
-                            .fadeIn(duration: 600.ms)
+                            .fadeIn(duration: 500.ms)
+                            // Strong ease-out without a bounce overshoot;
+                            // bouncy entrance reads as toy-like for an auth
+                            // surface where confidence matters.
                             .scale(
-                              begin: const Offset(0.8, 0.8),
+                              begin: const Offset(0.92, 0.92),
                               end: const Offset(1.0, 1.0),
-                              duration: 600.ms,
-                              curve: Curves.easeOutBack,
+                              duration: 500.ms,
+                              curve: Curves.easeOutCubic,
                             ),
 
                         const SizedBox(height: 28),
@@ -237,12 +244,20 @@ class _LoginViewState extends State<_LoginView> {
 
                         const SizedBox(height: 20),
 
-                        // Email field
+                        // Email field — IME "send" action submits the
+                        // form straight from the keyboard, so the user
+                        // never has to dismiss the keyboard before tapping
+                        // the CTA.
                         AppTextField(
                           label: 'Correo electrónico',
                           hint: 'tu@email.com',
                           controller: _emailController,
                           keyboardType: TextInputType.emailAddress,
+                          textInputAction: TextInputAction.send,
+                          textCapitalization: TextCapitalization.none,
+                          onFieldSubmitted: (_) {
+                            if (_emailValid) _sendMagicLink();
+                          },
                           prefixIcon:
                               const Icon(Icons.email_outlined, size: 20),
                           validator: (value) {

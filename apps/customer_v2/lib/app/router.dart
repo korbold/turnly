@@ -24,10 +24,61 @@ import '../features/legal/presentation/screens/legal_screen.dart';
 final rootNavigatorKey = GlobalKey<NavigatorState>();
 final _shellNavigatorKey = GlobalKey<NavigatorState>();
 
+// Web-only paths that must never be interpreted as a tenant slug. Mirrors
+// the equivalent set in DeepLinkHandler so both code paths agree.
+const _reservedWebPaths = <String>{
+  'login',
+  'register',
+  'verify-email',
+  'forgot-password',
+  'dashboard',
+  'reservations',
+  'service-logs',
+  'clients',
+  'services',
+  'team',
+  'reports',
+  'plan',
+  'settings',
+  'super-admin',
+  'explorar',
+  'terms',
+  'privacy',
+  'api',
+  '_next',
+  '.well-known',
+  'm',
+};
+
 final appRouter = GoRouter(
   navigatorKey: rootNavigatorKey,
   initialLocation: '/login',
   redirect: (context, state) async {
+    // Android App Links and iOS Universal Links can deliver a full
+    // `https://dev.goturnly.com/<slug>` URL directly to go_router before
+    // DeepLinkHandler ever sees it. Translate those into in-app routes
+    // here so the user never lands on a "no routes for location" page.
+    final loc = state.uri.toString();
+    if (loc.startsWith('http://') || loc.startsWith('https://')) {
+      final segments =
+          state.uri.pathSegments.where((s) => s.isNotEmpty).toList();
+      if (segments.isEmpty) {
+        return '/home';
+      }
+      // Magic link path: AuthCubit consumes the token via
+      // DeepLinkHandler; meanwhile, send the user to /login so they see
+      // a stable surface while sign-in completes.
+      if (segments.first == 'm' &&
+          segments.length == 2 &&
+          segments[1].length == 64) {
+        return '/login';
+      }
+      if (_reservedWebPaths.contains(segments.first)) {
+        return '/home';
+      }
+      return '/business/${segments.first}';
+    }
+
     final token = await SecureStorage.getToken();
     final isAuthenticated = token != null;
     final isAuthRoute = state.matchedLocation == '/login' ||
