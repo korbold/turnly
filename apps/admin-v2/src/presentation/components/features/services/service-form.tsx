@@ -175,8 +175,8 @@ export function ServiceForm({ open, onClose, service }: ServiceFormProps) {
           </div>
 
           <div>
-            <Label className="mb-1.5">Descripcion (opcional)</Label>
-            <Textarea {...form.register('description')} placeholder="Descripcion del servicio..." rows={3} />
+            <Label className="mb-1.5">Descripción (opcional)</Label>
+            <Textarea {...form.register('description')} placeholder="Descripción del servicio..." rows={3} />
           </div>
 
           {/* Image upload area */}

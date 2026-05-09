@@ -2,7 +2,7 @@
 
 import { useState } from 'react';
 import { format } from 'date-fns';
-import { MoreHorizontal, CheckCircle2, Pencil, Trash2 } from 'lucide-react';
+import { MoreHorizontal, CheckCircle2, Pencil, Trash2, Plus, ClipboardList } from 'lucide-react';
 import { toast } from 'sonner';
 import { motion } from 'framer-motion';
 import { Badge } from '@/presentation/components/ui/badge';
@@ -12,6 +12,7 @@ import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
+  DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from '@/presentation/components/ui/dropdown-menu';
 import { cn } from '@/shared/utils/cn';
@@ -24,23 +25,24 @@ import { PAYMENT_METHOD_CONFIG } from '@/shared/constants/status';
 import type { ServiceLog, ServiceLogStatus } from '@/domain/entities/service-log';
 
 const STATUS_CONFIG: Record<ServiceLogStatus, { label: string; color: string; bg: string }> = {
-  in_progress: { label: 'En Progreso', color: 'text-[var(--color-primary)]', bg: 'bg-[var(--color-primary-muted)]' },
-  completed: { label: 'Completado', color: 'text-emerald-600', bg: 'bg-emerald-50' },
+  in_progress: { label: 'En progreso', color: 'text-[var(--status-progress-fg)]', bg: 'bg-[var(--status-progress-bg)]' },
+  completed: { label: 'Completado', color: 'text-[var(--status-completed-fg)]', bg: 'bg-[var(--status-completed-bg)]' },
 };
 
 const fmt = (v: number) =>
-  new Intl.NumberFormat('es-CO', {
+  new Intl.NumberFormat('es-EC', {
     style: 'currency',
-    currency: 'COP',
+    currency: 'USD',
     minimumFractionDigits: 0,
   }).format(v);
 
 interface LogListProps {
   date: string;
   onEdit?: (log: ServiceLog) => void;
+  onCreate?: () => void;
 }
 
-export function LogList({ date, onEdit }: LogListProps) {
+export function LogList({ date, onEdit, onCreate }: LogListProps) {
   const { data, isLoading } = useServiceLogs({ date });
   const completeMutation = useCompleteServiceLog();
   const deleteMutation = useDeleteServiceLog();
@@ -74,10 +76,22 @@ export function LogList({ date, onEdit }: LogListProps) {
 
   if (logs.length === 0) {
     return (
-      <div className="flex flex-col items-center justify-center rounded-lg border bg-white py-16 text-center">
-        <p className="text-sm text-muted-foreground">
-          No hay registros de servicio para esta fecha
+      <div className="flex flex-col items-center justify-center rounded-xl border border-dashed border-[var(--border-strong)] bg-[var(--bg-surface)] px-6 py-12 text-center">
+        <div className="mb-3 grid h-12 w-12 place-items-center rounded-full bg-[var(--bg-sunken)]">
+          <ClipboardList className="h-5 w-5 text-[var(--fg-secondary)]" aria-hidden="true" />
+        </div>
+        <p className="text-[15px] font-semibold text-[var(--fg-strong)]">
+          Aún no registras servicios hoy
         </p>
+        <p className="mt-1 max-w-xs text-[13px] text-[var(--fg-secondary)]">
+          Cada vez que completes un servicio, anótalo aquí para llevar caja del día.
+        </p>
+        {onCreate && (
+          <Button onClick={onCreate} className="mt-5">
+            <Plus className="mr-1.5 h-4 w-4" aria-hidden="true" />
+            Registrar servicio
+          </Button>
+        )}
       </div>
     );
   }
@@ -112,8 +126,11 @@ export function LogList({ date, onEdit }: LogListProps) {
               {format(new Date(log.startedAt), 'HH:mm')}
             </span>
 
-            <span className="text-sm">
-              {log.clientResource?.plate ?? 'N/A'}
+            <span className="truncate text-sm">
+              {log.clientResource?.plate ||
+                log.clientResource?.client?.name ||
+                log.clientResource?.label ||
+                'Sin recurso'}
             </span>
 
             <span className="text-sm">
@@ -133,7 +150,7 @@ export function LogList({ date, onEdit }: LogListProps) {
             </span>
 
             <div className="flex items-center justify-between gap-2 sm:justify-start">
-              <Badge className={cn('border-0 text-[10px]', statusCfg.bg, statusCfg.color)}>
+              <Badge className={cn('whitespace-nowrap border-0 text-[11px] font-semibold', statusCfg.bg, statusCfg.color)}>
                 {statusCfg.label}
               </Badge>
 
@@ -142,28 +159,30 @@ export function LogList({ date, onEdit }: LogListProps) {
                   <Button
                     variant="ghost"
                     size="sm"
-                    className="h-7 text-xs text-emerald-600 hover:text-emerald-700"
+                    aria-label="Completar"
+                    title="Completar"
+                    className="h-8 w-8 p-0 text-[var(--status-completed-fg)] hover:bg-[var(--status-completed-bg)] hover:text-[var(--status-completed-fg)]"
                     onClick={() => handleComplete(log.id)}
                     disabled={completeMutation.isPending}
                   >
-                    <CheckCircle2 className="mr-1 h-3.5 w-3.5" />
-                    Completar
+                    <CheckCircle2 className="h-4 w-4" />
                   </Button>
                 )}
 
                 <DropdownMenu>
                   <DropdownMenuTrigger asChild>
-                    <Button variant="ghost" size="sm" className="h-7 w-7 p-0">
+                    <Button variant="ghost" size="sm" aria-label="Más acciones" className="h-8 w-8 p-0">
                       <MoreHorizontal className="h-4 w-4" />
                     </Button>
                   </DropdownMenuTrigger>
-                  <DropdownMenuContent align="end">
+                  <DropdownMenuContent align="end" className="min-w-[10rem]">
                     <DropdownMenuItem onClick={() => onEdit?.(log)}>
                       <Pencil className="mr-2 h-3.5 w-3.5" />
                       Editar
                     </DropdownMenuItem>
+                    <DropdownMenuSeparator />
                     <DropdownMenuItem
-                      className="text-rose-600"
+                      className="text-[var(--status-cancelled-fg)] focus:bg-[var(--status-cancelled-bg)] focus:text-[var(--status-cancelled-fg)]"
                       onClick={() => handleDelete(log.id)}
                     >
                       <Trash2 className="mr-2 h-3.5 w-3.5" />

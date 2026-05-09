@@ -2,7 +2,7 @@ export class Money {
   constructor(readonly amount: number, readonly currency: string = 'COP') {}
 
   format(): string {
-    return new Intl.NumberFormat('es-CO', {
+    return new Intl.NumberFormat('es-EC', {
       style: 'currency',
       currency: this.currency,
       minimumFractionDigits: 0,

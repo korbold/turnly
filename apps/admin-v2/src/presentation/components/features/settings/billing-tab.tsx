@@ -122,16 +122,16 @@ export function BillingTab() {
     if (!lookupEnabled) return null;
     if (isLookingUp) {
       return (
-        <span className="inline-flex items-center gap-1 text-xs text-zinc-500">
-          <Loader2 className="h-3.5 w-3.5 animate-spin" /> Verificando con SRI...
+        <span className="inline-flex items-center gap-1 text-xs text-[var(--fg-muted)]">
+          <Loader2 className="h-3.5 w-3.5 animate-spin" aria-hidden="true" /> Verificando con SRI...
         </span>
       );
     }
     if (!lookup) return null;
     if (!lookup.formatValid) {
       return (
-        <span className="inline-flex items-center gap-1 text-xs text-red-600">
-          <ShieldX className="h-3.5 w-3.5" /> Formato inválido
+        <span className="inline-flex items-center gap-1 text-xs text-[#A91D2C]">
+          <ShieldX className="h-3.5 w-3.5" aria-hidden="true" /> Formato inválido
         </span>
       );
     }
@@ -140,10 +140,10 @@ export function BillingTab() {
       return (
         <span
           className={`inline-flex items-center gap-1 text-xs ${
-            active ? 'text-emerald-600' : 'text-amber-600'
+            active ? 'text-[#0B7A44]' : 'text-[#B47114]'
           }`}
         >
-          <ShieldCheck className="h-3.5 w-3.5" />
+          <ShieldCheck className="h-3.5 w-3.5" aria-hidden="true" />
           {active
             ? `Verificado: ${lookup.lookup.razonSocial}`
             : `Estado SRI: ${lookup.lookup.estado}`}
@@ -151,8 +151,8 @@ export function BillingTab() {
       );
     }
     return (
-      <span className="inline-flex items-center gap-1 text-xs text-amber-600">
-        <ShieldAlert className="h-3.5 w-3.5" /> Formato OK, no verificado en SRI
+      <span className="inline-flex items-center gap-1 text-xs text-[#B47114]">
+        <ShieldAlert className="h-3.5 w-3.5" aria-hidden="true" /> Formato OK, no verificado en SRI
       </span>
     );
   }, [lookup, isLookingUp, lookupEnabled]);
@@ -170,9 +170,9 @@ export function BillingTab() {
   return (
     <div className="max-w-2xl space-y-6">
       <div>
-        <h2 className="text-lg font-semibold">Datos de facturación</h2>
-        <p className="text-sm text-zinc-500">
-          Necesitamos estos datos para emitir la factura electrónica cuando contrates un plan.
+        <h2 className="text-[17px] font-semibold tracking-[-0.01em] text-[var(--fg-default,#2E3441)]">Datos de facturación</h2>
+        <p className="mt-1 text-[13px] text-[var(--fg-muted)]">
+          Necesarios para emitir factura electrónica cuando contrates un plan.
         </p>
       </div>
 
@@ -195,7 +195,7 @@ export function BillingTab() {
             </SelectContent>
           </Select>
           {errors.taxIdType && (
-            <p className="text-xs text-red-500">{errors.taxIdType}</p>
+            <p className="text-xs text-[var(--danger-500)]">{errors.taxIdType}</p>
           )}
         </div>
 
@@ -212,7 +212,7 @@ export function BillingTab() {
                   : 'Pasaporte'
             }
           />
-          {errors.taxId && <p className="text-xs text-red-500">{errors.taxId}</p>}
+          {errors.taxId && <p className="text-xs text-[var(--danger-500)]">{errors.taxId}</p>}
           {lookupBadge}
         </div>
       </div>
@@ -225,7 +225,7 @@ export function BillingTab() {
           placeholder="Como aparece en SRI"
         />
         {errors.legalName && (
-          <p className="text-xs text-red-500">{errors.legalName}</p>
+          <p className="text-xs text-[var(--danger-500)]">{errors.legalName}</p>
         )}
       </div>
 
@@ -239,7 +239,7 @@ export function BillingTab() {
             placeholder="facturas@negocio.com"
           />
           {errors.billingEmail && (
-            <p className="text-xs text-red-500">{errors.billingEmail}</p>
+            <p className="text-xs text-[var(--danger-500)]">{errors.billingEmail}</p>
           )}
         </div>
 
@@ -261,30 +261,26 @@ export function BillingTab() {
           placeholder="Calle, número, ciudad"
         />
         {errors.billingAddress && (
-          <p className="text-xs text-red-500">{errors.billingAddress}</p>
+          <p className="text-xs text-[var(--danger-500)]">{errors.billingAddress}</p>
         )}
       </div>
 
-      <div className="flex items-center justify-between">
+      <div className="flex items-center justify-between gap-3">
         {profile?.billingVerified ? (
-          <span className="inline-flex items-center gap-1 text-xs text-emerald-600">
-            <ShieldCheck className="h-3.5 w-3.5" /> Verificado en SRI
+          <span className="inline-flex items-center gap-1 text-xs text-[#0B7A44]">
+            <ShieldCheck className="h-3.5 w-3.5" aria-hidden="true" /> Verificado en SRI
           </span>
         ) : (
           <span />
         )}
-        <Button
-          onClick={handleSave}
-          disabled={update.isPending}
-          className="bg-[var(--color-primary)] hover:bg-[var(--color-primary-hover)]"
-        >
+        <Button onClick={handleSave} disabled={update.isPending}>
           {update.isPending ? (
             <>
-              <Loader2 className="mr-2 h-4 w-4 animate-spin" /> Guardando...
+              <Loader2 className="mr-2 h-4 w-4 animate-spin" aria-hidden="true" /> Guardando...
             </>
           ) : (
             <>
-              <Save className="mr-2 h-4 w-4" /> Guardar
+              <Save className="mr-2 h-4 w-4" aria-hidden="true" /> Guardar
             </>
           )}
         </Button>

@@ -240,40 +240,42 @@ body {
 }
 
 /* ─────────── TYPE DEFAULTS ─────────── */
-h1, .h1 {
-  font-family: var(--font-display);
-  font-size: var(--text-3xl);
-  font-weight: 800;
-  font-stretch: 90%;
-  line-height: var(--leading-tight);
-  letter-spacing: var(--tracking-tight);
-  color: var(--fg-strong);
-}
-@media (min-width: 768px) {
+@layer base {
   h1, .h1 {
-    font-size: var(--text-4xl);
+    font-family: var(--font-display);
+    font-size: var(--text-3xl);
+    font-weight: 800;
+    font-stretch: 90%;
+    line-height: var(--leading-tight);
+    letter-spacing: var(--tracking-tight);
+    color: var(--fg-strong);
   }
-}
-h2, .h2 {
-  font-family: var(--font-display);
-  font-size: var(--text-2xl);
-  font-weight: 700;
-  font-stretch: 90%;
-  line-height: var(--leading-snug);
-  letter-spacing: var(--tracking-snug);
-  color: var(--fg-strong);
-}
-h3, .h3 {
-  font-size: var(--text-lg);
-  font-weight: 600;
-  line-height: var(--leading-snug);
-  color: var(--fg-strong);
-}
-h4, .h4 {
-  font-size: var(--text-md);
-  font-weight: 600;
-  line-height: var(--leading-snug);
-  color: var(--fg-strong);
+  @media (min-width: 768px) {
+    h1, .h1 {
+      font-size: var(--text-4xl);
+    }
+  }
+  h2, .h2 {
+    font-family: var(--font-display);
+    font-size: var(--text-2xl);
+    font-weight: 700;
+    font-stretch: 90%;
+    line-height: var(--leading-snug);
+    letter-spacing: var(--tracking-snug);
+    color: var(--fg-strong);
+  }
+  h3, .h3 {
+    font-size: var(--text-lg);
+    font-weight: 600;
+    line-height: var(--leading-snug);
+    color: var(--fg-strong);
+  }
+  h4, .h4 {
+    font-size: var(--text-md);
+    font-weight: 600;
+    line-height: var(--leading-snug);
+    color: var(--fg-strong);
+  }
 }
 
 .display {

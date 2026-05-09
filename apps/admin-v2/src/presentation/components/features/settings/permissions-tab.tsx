@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useEffect, useRef, useCallback } from 'react';
+import { Check, Eye, Minus } from 'lucide-react';
 import { toast } from 'sonner';
 import { Card, CardContent, CardHeader, CardTitle } from '@/presentation/components/ui/card';
 import { Skeleton } from '@/presentation/components/ui/skeleton';
@@ -8,15 +9,35 @@ import { cn } from '@/shared/utils/cn';
 import { useSettings, useUpdateSettings } from '@/presentation/hooks/use-settings';
 
 const ROLES = ['Admin', 'Cajero', 'Lavador', 'Cliente'] as const;
-const SECTIONS = ['Dashboard', 'Reservas', 'Registro', 'Clientes', 'Servicios', 'Equipo', 'Reportes', 'Settings'] as const;
+const SECTIONS = ['Dashboard', 'Reservas', 'Registro', 'Clientes', 'Servicios', 'Equipo', 'Reportes', 'Config'] as const;
 
 type Permission = 'full' | 'view' | 'none';
 
 const PERMISSION_CYCLE: Permission[] = ['full', 'view', 'none'];
-const PERMISSION_DISPLAY: Record<Permission, { icon: string; color: string }> = {
-  full: { icon: '\u2705', color: 'bg-emerald-50 text-emerald-700 border-emerald-200' },
-  view: { icon: '\uD83D\uDC41', color: 'bg-amber-50 text-amber-700 border-amber-200' },
-  none: { icon: '\u2500', color: 'bg-zinc-50 text-zinc-400 border-zinc-200' },
+const PERMISSION_LABEL: Record<Permission, string> = {
+  full: 'Acceso completo',
+  view: 'Solo lectura',
+  none: 'Sin acceso',
+};
+const PERMISSION_DISPLAY: Record<
+  Permission,
+  { Icon: typeof Check; className: string }
+> = {
+  full: {
+    Icon: Check,
+    className:
+      'bg-[#E8F8F0] text-[#0B7A44] border-[#BCE7CD] hover:bg-[#DCF2E5]',
+  },
+  view: {
+    Icon: Eye,
+    className:
+      'bg-[#FFF6E0] text-[#B47114] border-[#F2DDA7] hover:bg-[#FBEFC8]',
+  },
+  none: {
+    Icon: Minus,
+    className:
+      'bg-[var(--niebla-clara,#F4F5F7)] text-[var(--fg-muted)] border-[var(--border-soft,#E4E7EC)] hover:bg-[var(--niebla-media,#EEF0F3)]',
+  },
 };
 
 type PermissionsMatrix = Record<string, Record<string, Permission>>;
@@ -90,18 +111,23 @@ export function PermissionsTab() {
   return (
     <Card>
       <CardHeader>
-        <CardTitle className="text-sm font-medium">Matriz de Permisos</CardTitle>
-        <p className="text-xs text-muted-foreground">
-          Haz clic en cada celda para cambiar: Full → Vista → Sin acceso
+        <CardTitle className="text-[15px] font-semibold">Matriz de permisos</CardTitle>
+        <p className="text-xs text-[var(--fg-muted)]">
+          Haz clic en una celda para alternar: completo · solo lectura · sin acceso.
         </p>
       </CardHeader>
       <CardContent className="overflow-x-auto p-0">
         <table className="w-full text-sm">
           <thead>
-            <tr className="border-b bg-zinc-50">
-              <th className="px-4 py-2 text-left font-medium text-muted-foreground">Rol</th>
+            <tr className="border-b border-[var(--border-soft)] bg-[var(--niebla-clara,#F4F5F7)]">
+              <th className="px-4 py-2.5 text-left text-[11px] font-semibold uppercase tracking-[0.04em] text-[var(--fg-muted)]">
+                Rol
+              </th>
               {SECTIONS.map((s) => (
-                <th key={s} className="px-2 py-2 text-center font-medium text-muted-foreground">
+                <th
+                  key={s}
+                  className="px-2 py-2.5 text-center text-[11px] font-semibold uppercase tracking-[0.04em] text-[var(--fg-muted)]"
+                >
                   {s}
                 </th>
               ))}
@@ -109,22 +135,27 @@ export function PermissionsTab() {
           </thead>
           <tbody>
             {ROLES.map((role) => (
-              <tr key={role} className="border-b last:border-0">
-                <td className="px-4 py-2 font-medium">{role}</td>
+              <tr key={role} className="border-b border-[var(--border-soft)] last:border-0">
+                <td className="px-4 py-2 text-sm font-medium text-[var(--fg-default,#2E3441)]">
+                  {role}
+                </td>
                 {SECTIONS.map((section) => {
                   const perm = matrix[role]?.[section] ?? 'none';
                   const display = PERMISSION_DISPLAY[perm];
+                  const Icon = display.Icon;
                   return (
                     <td key={section} className="px-2 py-2 text-center">
                       <button
+                        type="button"
                         onClick={() => cyclePermission(role, section)}
                         className={cn(
-                          'inline-flex h-8 w-8 items-center justify-center rounded-md border text-sm transition-colors',
-                          display.color
+                          'inline-flex h-9 w-9 items-center justify-center rounded-md border transition-[background-color,color,transform] duration-150 ease-out active:scale-[0.94] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[rgba(42,109,244,0.20)] focus-visible:ring-offset-1',
+                          display.className
                         )}
-                        title={`${role} - ${section}: ${perm}`}
+                        aria-label={`${role}, ${section}: ${PERMISSION_LABEL[perm]}`}
+                        title={`${role} · ${section}: ${PERMISSION_LABEL[perm]}`}
                       >
-                        {display.icon}
+                        <Icon className="h-4 w-4" aria-hidden="true" />
                       </button>
                     </td>
                   );

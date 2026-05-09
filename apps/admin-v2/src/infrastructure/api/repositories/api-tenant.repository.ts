@@ -24,7 +24,7 @@ export class ApiTenantRepository implements TenantRepository {
     if (settings.phone !== undefined) body.phone = settings.phone;
     if (settings.logoUrl !== undefined) body.logo_url = settings.logoUrl;
     if (settings.coverUrl !== undefined) body.cover_url = settings.coverUrl;
-    if (settings.themeColor !== undefined) body.theme_color = settings.themeColor;
+    if (settings.themeColor !== undefined) body.brand_theme = settings.themeColor;
     if (settings.slotDuration !== undefined) body.slot_duration = settings.slotDuration;
     if (settings.cancellationHours !== undefined) body.cancellation_hours = settings.cancellationHours;
     if (settings.socialLinks !== undefined) body.social_links = settings.socialLinks;

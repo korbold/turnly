@@ -21,6 +21,7 @@ const PAGE_TITLES: Record<string, string> = {
   '/services': 'Servicios',
   '/team': 'Equipo',
   '/reports': 'Reportes',
+  '/plan': 'Mi Plan',
   '/settings': 'Configuración',
 };
 
@@ -55,7 +56,7 @@ export function Topbar() {
     });
   };
 
-  const today = new Intl.DateTimeFormat('es-CO', {
+  const today = new Intl.DateTimeFormat('es-EC', {
     weekday: 'long',
     day: 'numeric',
     month: 'long',
@@ -73,8 +74,8 @@ export function Topbar() {
           {title}
         </h1>
         <span className="hidden h-[18px] w-px bg-[var(--border)] sm:block" />
-        <span className="hidden text-[12.5px] capitalize text-[var(--fg-secondary)] sm:block">
-          {today}
+        <span className="hidden text-[12.5px] text-[var(--fg-secondary)] sm:block">
+          {today.charAt(0).toUpperCase() + today.slice(1)}
         </span>
       </div>
 

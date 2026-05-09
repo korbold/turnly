@@ -86,22 +86,27 @@ export function CustomFieldsTab() {
   }
 
   return (
-    <div className="max-w-2xl space-y-4">
-      <div className="flex items-center justify-between">
-        <p className="text-sm text-muted-foreground">
-          Campos adicionales que se muestran en el formulario de reserva
-        </p>
+    <div className="max-w-3xl space-y-5">
+      <div className="flex items-end justify-between gap-3">
+        <div>
+          <h2 className="text-[15px] font-semibold tracking-[-0.005em] text-[var(--fg-default,#2E3441)]">
+            Campos personalizados
+          </h2>
+          <p className="mt-0.5 text-[13px] text-[var(--fg-muted)]">
+            Datos extra que el cliente completa al reservar (placa, talla, modelo).
+          </p>
+        </div>
         <Button size="sm" onClick={addField}>
-          <Plus className="mr-1 h-3.5 w-3.5" />
-          Agregar
+          <Plus className="mr-1 h-3.5 w-3.5" aria-hidden="true" />
+          Agregar campo
         </Button>
       </div>
 
       {fields.length === 0 && (
-        <div className="flex flex-col items-center justify-center rounded-lg border-2 border-dashed py-12">
-          <p className="text-sm text-muted-foreground">No hay campos personalizados</p>
-          <Button variant="link" size="sm" onClick={addField}>
-            Agregar primer campo
+        <div className="flex flex-col items-center justify-center rounded-xl border border-dashed border-[var(--border-soft)] bg-[var(--niebla-clara,#F4F5F7)] py-12">
+          <p className="text-sm text-[var(--fg-muted)]">Aún no hay campos personalizados.</p>
+          <Button variant="link" size="sm" className="text-[var(--brand-700)]" onClick={addField}>
+            Agregar el primero
           </Button>
         </div>
       )}
@@ -173,8 +178,8 @@ export function CustomFieldsTab() {
                   </div>
                 )}
               </div>
-              <Button variant="ghost" size="sm" onClick={() => removeField(idx)}>
-                <Trash2 className="h-4 w-4 text-rose-500" />
+              <Button variant="ghost" size="sm" onClick={() => removeField(idx)} aria-label="Eliminar campo">
+                <Trash2 className="h-4 w-4 text-[var(--danger-500)]" />
               </Button>
             </div>
           </CardContent>
@@ -182,12 +187,12 @@ export function CustomFieldsTab() {
       ))}
 
       <Button onClick={handleSave} disabled={update.isPending}>
-        <Save className="mr-1.5 h-4 w-4" />
+        <Save className="mr-1.5 h-4 w-4" aria-hidden="true" />
         {update.isPending
           ? 'Guardando...'
           : fields.length === 0
             ? 'Guardar (sin campos)'
-            : 'Guardar Campos'}
+            : 'Guardar campos'}
       </Button>
     </div>
   );

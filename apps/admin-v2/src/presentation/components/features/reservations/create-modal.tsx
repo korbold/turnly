@@ -194,9 +194,9 @@ export function CreateModal({ open, onClose }: CreateModalProps) {
                             {svc.name}
                           </p>
                           <p className="text-xs text-muted-foreground">
-                            {new Intl.NumberFormat('es-CO', {
+                            {new Intl.NumberFormat('es-EC', {
                               style: 'currency',
-                              currency: 'COP',
+                              currency: 'USD',
                               minimumFractionDigits: 0,
                             }).format(svc.price)}
                           </p>
@@ -376,9 +376,9 @@ export function CreateModal({ open, onClose }: CreateModalProps) {
                 <p>
                   <span className="font-medium text-foreground">Precio:</span>{' '}
                   {selectedService
-                    ? new Intl.NumberFormat('es-CO', {
+                    ? new Intl.NumberFormat('es-EC', {
                         style: 'currency',
-                        currency: 'COP',
+                        currency: 'USD',
                         minimumFractionDigits: 0,
                       }).format(selectedService.price)
                     : '-'}

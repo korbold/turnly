@@ -4,6 +4,7 @@ import { useState, useEffect, type ReactNode } from 'react';
 import { Sidebar } from './sidebar';
 import { Topbar } from './topbar';
 import { BottomTabs } from './bottom-tabs';
+import { BrandThemeProvider } from './brand-theme-provider';
 
 function useMediaQuery(query: string): boolean {
   const [matches, setMatches] = useState(false);
@@ -37,29 +38,33 @@ export function AppShell({ children }: { children: ReactNode }) {
   // Mobile: topbar + content + bottom tabs
   if (!isTablet) {
     return (
-      <div className="flex min-h-screen flex-col bg-zinc-50">
-        <Topbar />
-        <main className="flex-1 overflow-y-auto px-4 py-4 pb-24">
-          {children}
-        </main>
-        <BottomTabs />
-      </div>
+      <BrandThemeProvider>
+        <div className="flex min-h-screen flex-col bg-zinc-50">
+          <Topbar />
+          <main className="flex-1 overflow-y-auto px-4 py-4 pb-24">
+            {children}
+          </main>
+          <BottomTabs />
+        </div>
+      </BrandThemeProvider>
     );
   }
 
   // Tablet + Desktop: sidebar + topbar + content
   return (
-    <div className="flex h-screen overflow-hidden bg-zinc-50">
-      <Sidebar
-        collapsed={sidebarCollapsed}
-        onToggle={() => setSidebarCollapsed((c) => !c)}
-      />
-      <div className="flex flex-1 flex-col overflow-hidden">
-        <Topbar />
-        <main className="flex-1 overflow-y-auto px-4 py-6 lg:px-8">
-          {children}
-        </main>
+    <BrandThemeProvider>
+      <div className="flex h-screen overflow-hidden bg-zinc-50">
+        <Sidebar
+          collapsed={sidebarCollapsed}
+          onToggle={() => setSidebarCollapsed((c) => !c)}
+        />
+        <div className="flex flex-1 flex-col overflow-hidden">
+          <Topbar />
+          <main className="flex-1 overflow-y-auto px-4 py-6 lg:px-8">
+            {children}
+          </main>
+        </div>
       </div>
-    </div>
+    </BrandThemeProvider>
   );
 }

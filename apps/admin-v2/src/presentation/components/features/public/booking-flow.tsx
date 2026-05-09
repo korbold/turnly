@@ -189,8 +189,8 @@ export function BookingFlow({ slug, tenant, initialServiceId, primaryColor = '#F
               <Input value={name} onChange={(e) => setName(e.target.value)} placeholder="Tu nombre completo" />
             </div>
             <div className="space-y-1.5">
-              <Label>Telefono</Label>
-              <Input value={phone} onChange={(e) => setPhone(e.target.value)} placeholder="+57 300 1234567" />
+              <Label>Teléfono</Label>
+              <Input value={phone} onChange={(e) => setPhone(e.target.value)} placeholder="+593 99 123 4567" />
             </div>
 
             {/* Custom fields */}

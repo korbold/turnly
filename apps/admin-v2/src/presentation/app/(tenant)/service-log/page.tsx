@@ -1,6 +1,7 @@
 'use client';
 
-import { useState, Suspense } from 'react';
+import { useState, useEffect, Suspense } from 'react';
+import { useSearchParams, useRouter, usePathname } from 'next/navigation';
 import { format, addDays, subDays } from 'date-fns';
 import { es } from 'date-fns/locale';
 import { ChevronLeft, ChevronRight, CalendarIcon, Plus } from 'lucide-react';
@@ -17,56 +18,70 @@ import { LogList } from '@/presentation/components/features/service-logs/log-lis
 import { NewServiceModal } from '@/presentation/components/features/service-logs/new-service-modal';
 
 function ServiceLogContent() {
+  const searchParams = useSearchParams();
+  const router = useRouter();
+  const pathname = usePathname();
   const [selectedDate, setSelectedDate] = useState(new Date());
   const [createOpen, setCreateOpen] = useState(false);
   const dateStr = format(selectedDate, 'yyyy-MM-dd');
 
+  useEffect(() => {
+    if (searchParams?.get('create') === 'true') {
+      setCreateOpen(true);
+      router.replace(pathname, { scroll: false });
+    }
+  }, [searchParams, router, pathname]);
+
   return (
     <div className="space-y-4">
-      {/* Header */}
+      {/* Toolbar: date selector + primary CTA */}
       <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-        <Button size="sm" onClick={() => setCreateOpen(true)}>
-          <Plus className="mr-1 h-4 w-4" />
-          Nuevo Servicio
-        </Button>
-      </div>
+        <div className="flex items-center gap-2">
+          <Button
+            variant="outline"
+            size="sm"
+            aria-label="Día anterior"
+            className="h-9 w-9 p-0"
+            onClick={() => setSelectedDate((d) => subDays(d, 1))}
+          >
+            <ChevronLeft className="h-4 w-4" />
+          </Button>
 
-      {/* Date selector */}
-      <div className="flex items-center gap-2">
-        <Button
-          variant="outline"
-          size="sm"
-          className="h-8 w-8 p-0"
-          onClick={() => setSelectedDate((d) => subDays(d, 1))}
-        >
-          <ChevronLeft className="h-4 w-4" />
-        </Button>
+          <Popover>
+            <PopoverTrigger asChild>
+              <Button variant="outline" size="sm" className="h-9 min-w-[200px]">
+                <CalendarIcon className="mr-2 h-4 w-4" />
+                <span>
+                  {(() => {
+                    const s = format(selectedDate, "EEEE, d 'de' MMMM yyyy", { locale: es });
+                    return s.charAt(0).toUpperCase() + s.slice(1);
+                  })()}
+                </span>
+              </Button>
+            </PopoverTrigger>
+            <PopoverContent className="w-auto p-0" align="start">
+              <Calendar
+                mode="single"
+                selected={selectedDate}
+                onSelect={(d) => d && setSelectedDate(d)}
+              />
+            </PopoverContent>
+          </Popover>
 
-        <Popover>
-          <PopoverTrigger asChild>
-            <Button variant="outline" size="sm" className="min-w-[200px]">
-              <CalendarIcon className="mr-2 h-4 w-4" />
-              <span className="capitalize">
-                {format(selectedDate, "EEEE, d 'de' MMMM yyyy", { locale: es })}
-              </span>
-            </Button>
-          </PopoverTrigger>
-          <PopoverContent className="w-auto p-0" align="start">
-            <Calendar
-              mode="single"
-              selected={selectedDate}
-              onSelect={(d) => d && setSelectedDate(d)}
-            />
-          </PopoverContent>
-        </Popover>
+          <Button
+            variant="outline"
+            size="sm"
+            aria-label="Día siguiente"
+            className="h-9 w-9 p-0"
+            onClick={() => setSelectedDate((d) => addDays(d, 1))}
+          >
+            <ChevronRight className="h-4 w-4" />
+          </Button>
+        </div>
 
-        <Button
-          variant="outline"
-          size="sm"
-          className="h-8 w-8 p-0"
-          onClick={() => setSelectedDate((d) => addDays(d, 1))}
-        >
-          <ChevronRight className="h-4 w-4" />
+        <Button onClick={() => setCreateOpen(true)} className="sm:self-auto">
+          <Plus className="mr-1.5 h-4 w-4" aria-hidden="true" />
+          Registrar servicio
         </Button>
       </div>
 
@@ -74,7 +89,7 @@ function ServiceLogContent() {
       <DailySummary date={dateStr} />
 
       {/* Log list */}
-      <LogList date={dateStr} />
+      <LogList date={dateStr} onCreate={() => setCreateOpen(true)} />
 
       {/* Create modal */}
       <NewServiceModal open={createOpen} onClose={() => setCreateOpen(false)} />

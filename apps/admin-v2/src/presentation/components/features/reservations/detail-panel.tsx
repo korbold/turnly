@@ -304,7 +304,7 @@ export function DetailPanel({ reservation, open, onClose }: DetailPanelProps) {
               onClick={handleCancel}
               disabled={!cancelReason.trim() || cancel.isPending}
             >
-              Confirmar Cancelacion
+              Confirmar Cancelación
             </Button>
           </DialogFooter>
         </DialogContent>

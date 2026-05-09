@@ -243,9 +243,9 @@ export function NewServiceModal({ open, onClose }: NewServiceModalProps) {
                           <div className="min-w-0">
                             <p className="truncate text-sm font-medium">{svc.name}</p>
                             <p className="text-xs text-muted-foreground">
-                              {new Intl.NumberFormat('es-CO', {
+                              {new Intl.NumberFormat('es-EC', {
                                 style: 'currency',
-                                currency: 'COP',
+                                currency: 'USD',
                                 minimumFractionDigits: 0,
                               }).format(svc.price)}
                             </p>
@@ -494,7 +494,7 @@ export function NewServiceModal({ open, onClose }: NewServiceModalProps) {
 
           {/* Payment method radio-style buttons */}
           <div>
-            <label className="mb-2 block text-sm font-medium">Metodo de pago</label>
+            <label className="mb-2 block text-sm font-medium">Método de pago</label>
             <div className="grid grid-cols-4 gap-2">
               {PAYMENT_OPTIONS.map((opt) => (
                 <button

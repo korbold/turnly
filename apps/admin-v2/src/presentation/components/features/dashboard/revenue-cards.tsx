@@ -38,9 +38,9 @@ function endOfPrevMonthStr(): string {
 }
 
 function formatCOP(amount: number): string {
-  return new Intl.NumberFormat('es-CO', {
+  return new Intl.NumberFormat('es-EC', {
     style: 'currency',
-    currency: 'COP',
+    currency: 'USD',
     minimumFractionDigits: 0,
     maximumFractionDigits: 0,
   }).format(amount);

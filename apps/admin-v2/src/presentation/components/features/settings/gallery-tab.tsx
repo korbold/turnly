@@ -56,8 +56,9 @@ export function GalleryTab() {
   return (
     <div className="space-y-4">
       <div className="flex items-center justify-between">
-        <p className="text-sm text-muted-foreground">
-          {count}/{MAX_IMAGES} fotos
+        <p className="text-sm text-[var(--fg-muted)]">
+          <span className="font-medium text-[var(--fg-default,#2E3441)]">{count}</span>
+          <span className="text-[var(--fg-muted)]"> de {MAX_IMAGES} fotos</span>
         </p>
         <div>
           <input
@@ -72,33 +73,45 @@ export function GalleryTab() {
             disabled={count >= MAX_IMAGES || addImage.isPending}
             onClick={() => fileInputRef.current?.click()}
           >
-            <Plus className="mr-1 h-3.5 w-3.5" />
-            Subir Foto
+            <Plus className="mr-1 h-3.5 w-3.5" aria-hidden="true" />
+            Subir foto
           </Button>
         </div>
       </div>
 
-      <div className="grid grid-cols-2 gap-4 sm:grid-cols-3 lg:grid-cols-4">
-        {Array.isArray(images) &&
-          images.map((img) => (
-            <div key={img.id} className="group relative aspect-square overflow-hidden rounded-lg border bg-zinc-100">
-              <img src={img.url} alt="" className="h-full w-full object-cover" />
-              <button
-                onClick={() => handleDelete(img.id)}
-                className="absolute right-1.5 top-1.5 flex h-6 w-6 items-center justify-center rounded-full bg-black/60 text-white opacity-0 transition-opacity group-hover:opacity-100"
+      {count === 0 ? (
+        <div className="flex flex-col items-center justify-center rounded-xl border border-dashed border-[var(--border-soft)] bg-[var(--niebla-clara,#F4F5F7)] py-16">
+          <ImageIcon className="mb-2 h-10 w-10 text-[var(--fg-muted)]" aria-hidden="true" />
+          <p className="text-sm text-[var(--fg-muted)]">Aún no hay fotos</p>
+          <Button
+            variant="ghost"
+            size="sm"
+            className="mt-2 text-[var(--brand-700)] hover:text-[var(--brand-600)]"
+            onClick={() => fileInputRef.current?.click()}
+          >
+            Sube la primera
+          </Button>
+        </div>
+      ) : (
+        <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-4">
+          {Array.isArray(images) &&
+            images.map((img) => (
+              <div
+                key={img.id}
+                className="group relative aspect-square overflow-hidden rounded-xl border border-[var(--border-soft)] bg-[var(--niebla-clara,#F4F5F7)]"
               >
-                <X className="h-3.5 w-3.5" />
-              </button>
-            </div>
-          ))}
-
-        {count === 0 && (
-          <div className="col-span-full flex flex-col items-center justify-center rounded-lg border-2 border-dashed py-16">
-            <ImageIcon className="mb-2 h-10 w-10 text-zinc-300" />
-            <p className="text-sm text-muted-foreground">No hay fotos aun</p>
-          </div>
-        )}
-      </div>
+                <img src={img.url} alt="" className="h-full w-full object-cover transition-transform duration-300 ease-out group-hover:scale-[1.03]" />
+                <button
+                  onClick={() => handleDelete(img.id)}
+                  aria-label="Eliminar foto"
+                  className="absolute right-2 top-2 flex h-7 w-7 items-center justify-center rounded-full bg-black/65 text-white opacity-0 backdrop-blur-sm transition-[opacity,transform] duration-150 ease-out hover:bg-black/80 active:scale-[0.94] group-hover:opacity-100 focus-visible:opacity-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/70"
+                >
+                  <X className="h-3.5 w-3.5" aria-hidden="true" />
+                </button>
+              </div>
+            ))}
+        </div>
+      )}
     </div>
   );
 }

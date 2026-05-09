@@ -3,8 +3,9 @@
 import { useMemo, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { format } from 'date-fns';
-import { Plus } from 'lucide-react';
+import { Plus, ClipboardCheck } from 'lucide-react';
 import { Button } from '@/presentation/components/ui/button';
+import { NewServiceModal } from '@/presentation/components/features/service-logs/new-service-modal';
 import { useMe } from '@/presentation/hooks/use-auth';
 import { useReservations } from '@/presentation/hooks/use-reservations';
 import { useServices } from '@/presentation/hooks/use-services';
@@ -55,6 +56,7 @@ export default function DashboardPage() {
   const [filter, setFilter] = useState<ReservationStatus | null>(null);
   const [selected, setSelected] = useState<Reservation | null>(null);
   const [detailOpen, setDetailOpen] = useState(false);
+  const [logServiceOpen, setLogServiceOpen] = useState(false);
 
   const lastUpdated = reservationsQuery.dataUpdatedAt
     ? new Date(reservationsQuery.dataUpdatedAt)
@@ -130,22 +132,23 @@ export default function DashboardPage() {
             aria-label="Agenda del día"
             className="space-y-3"
           >
-            <header className="flex items-center justify-between">
+            <header className="flex items-center justify-between gap-2">
               <h2
                 className="text-[17px] font-semibold text-[var(--fg-strong)]"
                 style={{ fontFamily: 'var(--font-display)' }}
               >
                 Agenda del día
               </h2>
-              <Button
-                size="sm"
-                variant="outline"
-                onClick={goToWalkIn}
-                className="hidden sm:inline-flex"
-              >
-                <Plus className="mr-1.5 h-3.5 w-3.5" aria-hidden="true" />
-                Nueva reserva
-              </Button>
+              <div className="hidden items-center gap-2 sm:flex">
+                <Button size="sm" variant="outline" onClick={goToWalkIn}>
+                  <Plus className="mr-1.5 h-3.5 w-3.5" aria-hidden="true" />
+                  Nueva reserva
+                </Button>
+                <Button size="sm" onClick={() => setLogServiceOpen(true)}>
+                  <ClipboardCheck className="mr-1.5 h-3.5 w-3.5" aria-hidden="true" />
+                  Registrar servicio
+                </Button>
+              </div>
             </header>
 
             <DayTimeline
@@ -165,6 +168,8 @@ export default function DashboardPage() {
         open={detailOpen}
         onOpenChange={setDetailOpen}
       />
+
+      <NewServiceModal open={logServiceOpen} onClose={() => setLogServiceOpen(false)} />
     </div>
   );
 }

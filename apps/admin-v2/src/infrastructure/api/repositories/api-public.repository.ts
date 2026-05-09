@@ -10,7 +10,7 @@ function mapPublicTenant(raw: Record<string, unknown>): PublicTenant {
     description: (raw.description as string) ?? null,
     logoUrl: (raw.logo_url as string) ?? null,
     coverUrl: (raw.cover_url as string) ?? null,
-    themeColor: (raw.theme_color as string) ?? null,
+    themeColor: (raw.brand_theme as string) ?? (raw.theme_color as string) ?? null,
     socialLinks: {
       instagram: socialLinks.instagram ?? null,
       facebook: socialLinks.facebook ?? null,
