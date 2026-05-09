@@ -38,6 +38,14 @@ jobs:
             php artisan route:cache
             php artisan view:cache
 
+            # PHP-FPM runs as www-data and needs to read .env. Without this,
+            # Laravel silently falls back to config defaults (sqlite/database)
+            # and HTTP requests 500 while CLI keeps working.
+            if [ -f .env ]; then
+              chgrp www-data .env
+              chmod 640 .env
+            fi
+
             sudo /usr/bin/systemctl reload php8.3-fpm
             sudo /usr/bin/systemctl restart turnly-queue
 
