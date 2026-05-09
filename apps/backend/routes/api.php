@@ -26,7 +26,8 @@ Route::prefix('v1/public')->group(function () {
     Route::get('tenants/{slug}', [PublicController::class, 'getTenant']);
     Route::get('tenants/{slug}/available-slots', [PublicController::class, 'getAvailableSlots']);
     Route::get('tenants/{slug}/my-resources', [PublicController::class, 'myResources'])->middleware('auth:sanctum');
-    Route::post('tenants/{slug}/book', [PublicController::class, 'book']);
+    Route::post('tenants/{slug}/book', [PublicController::class, 'book'])
+        ->middleware('throttle:public-book');
 });
 
 Route::prefix('v1')->group(function () {
@@ -34,8 +35,10 @@ Route::prefix('v1')->group(function () {
     // Public auth
     Route::post('auth/register', [AuthController::class, 'register'])
         ->middleware('throttle:5,60');
-    Route::post('auth/login', [AuthController::class, 'login']);
-    Route::post('auth/google', [GoogleAuthController::class, 'login']);
+    Route::post('auth/login', [AuthController::class, 'login'])
+        ->middleware('throttle:login');
+    Route::post('auth/google', [GoogleAuthController::class, 'login'])
+        ->middleware('throttle:google-auth');
     Route::post('auth/magic-link/request', [MagicLinkController::class, 'request'])
         ->middleware(['throttle:magic-link-email', 'throttle:magic-link-global']);
     Route::post('auth/magic-link/verify', [MagicLinkController::class, 'verify'])
@@ -47,9 +50,12 @@ Route::prefix('v1')->group(function () {
 
     // Public onboarding
     Route::prefix('onboarding')->group(function () {
-        Route::post('register', [OnboardingController::class, 'register']);
-        Route::post('verify', [OnboardingController::class, 'verify']);
-        Route::get('check-slug', [OnboardingController::class, 'checkSlug']);
+        Route::post('register', [OnboardingController::class, 'register'])
+            ->middleware('throttle:onboarding-register');
+        Route::post('verify', [OnboardingController::class, 'verify'])
+            ->middleware('throttle:10,60');
+        Route::get('check-slug', [OnboardingController::class, 'checkSlug'])
+            ->middleware('throttle:30,1');
     });
 
     // Authenticated routes

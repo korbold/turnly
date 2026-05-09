@@ -34,12 +34,15 @@ class EloquentUserRepository implements UserRepositoryInterface
             'is_super_admin' => $user->isSuperAdmin,
         ];
 
+        // forceFill: is_super_admin is not in $fillable to block mass-assign
+        // escalation. This repo is the only path allowed to write it.
         if ($model) {
-            $model->update($data);
+            $model->forceFill($data)->save();
             $model->refresh();
         } else {
             $id = $user->id ?: (string) Str::uuid();
-            $model = UserModel::create(array_merge(['id' => $id], $data));
+            $model = (new UserModel())->forceFill(array_merge(['id' => $id], $data));
+            $model->save();
         }
 
         return $this->mapToEntity($model);
