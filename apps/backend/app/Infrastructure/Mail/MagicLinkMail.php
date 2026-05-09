@@ -9,6 +9,7 @@ use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Mail\Mailable;
 use Illuminate\Mail\Mailables\Content;
 use Illuminate\Mail\Mailables\Envelope;
+use Illuminate\Mail\Mailables\Headers;
 use Illuminate\Queue\SerializesModels;
 
 class MagicLinkMail extends Mailable implements ShouldQueue
@@ -32,10 +33,25 @@ class MagicLinkMail extends Mailable implements ShouldQueue
     {
         return new Content(
             view: 'emails.magic-link',
+            text: 'emails.magic-link-text',
             with: [
                 'email' => $this->email,
                 'magicUrl' => $this->magicUrl,
                 'ttlMinutes' => $this->ttlMinutes,
+            ],
+        );
+    }
+
+    public function headers(): Headers
+    {
+        // Marks the message as transactional one-shot for Gmail/Outlook
+        // (no marketing signals, dedupe key, single-recipient hint).
+        return new Headers(
+            messageId: sprintf('<%s.%s@goturnly.com>', bin2hex(random_bytes(8)), time()),
+            text: [
+                'X-Entity-Ref-ID' => bin2hex(random_bytes(16)),
+                'X-Auto-Response-Suppress' => 'All',
+                'Precedence' => 'transactional',
             ],
         );
     }
