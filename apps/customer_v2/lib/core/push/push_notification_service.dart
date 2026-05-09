@@ -1,5 +1,6 @@
 // lib/core/push/push_notification_service.dart
 import 'dart:convert';
+import 'dart:io' show Platform;
 
 import 'package:firebase_messaging/firebase_messaging.dart';
 import 'package:flutter_local_notifications/flutter_local_notifications.dart';
@@ -40,10 +41,33 @@ class PushNotificationService {
     // Foreground messages
     FirebaseMessaging.onMessage.listen(_handleForegroundMessage);
 
-    // Register token
-    final token = await _messaging.getToken();
-    if (token != null) {
-      await _registerToken(token);
+    // Register token. iOS needs APNS to issue an FCM token; if the APNS
+    // auth key isn't uploaded to Firebase yet, skip silently so the app
+    // keeps booting. Android isn't gated by APNS.
+    try {
+      if (Platform.isIOS) {
+        // Wait briefly for APNS to attach. On the first cold launch this
+        // can take a few seconds while iOS provisions the device with APN.
+        String? apns;
+        for (var i = 0; i < 5 && apns == null; i++) {
+          apns = await _messaging.getAPNSToken();
+          if (apns == null) {
+            await Future.delayed(const Duration(milliseconds: 600));
+          }
+        }
+        if (apns == null) {
+          // No APNS yet — likely missing APNS auth key in Firebase or
+          // running on simulator. Don't crash, just skip.
+          return;
+        }
+      }
+      final token = await _messaging.getToken();
+      if (token != null) {
+        await _registerToken(token);
+      }
+    } catch (_) {
+      // Push isn't critical for app boot; missing config will be visible
+      // in Firebase Console (Cloud Messaging → APNS) when needed.
     }
 
     // Token refresh
@@ -76,7 +100,7 @@ class PushNotificationService {
     try {
       await _dio.post('/device-tokens', data: {
         'token': token,
-        'platform': 'android',
+        'platform': Platform.isIOS ? 'ios' : 'android',
       });
     } catch (_) {
       // Silently fail — token will be re-registered on next app start
