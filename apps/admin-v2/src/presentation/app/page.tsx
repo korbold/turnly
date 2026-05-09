@@ -67,9 +67,6 @@ export default async function LandingPage() {
             <a href="#pricing" className="text-[13px] text-[var(--ink-600)] transition-colors duration-150 hover:text-[var(--ink-900)]">
               Planes
             </a>
-            <Link href="/explorar" className="text-[13px] text-[var(--ink-600)] transition-colors duration-150 hover:text-[var(--ink-900)]">
-              Explorar negocios
-            </Link>
           </nav>
           <div className="flex items-center gap-2.5">
             <Link
