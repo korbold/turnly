@@ -37,7 +37,7 @@ Route::prefix('v1')->group(function () {
     Route::post('auth/login', [AuthController::class, 'login']);
     Route::post('auth/google', [GoogleAuthController::class, 'login']);
     Route::post('auth/magic-link/request', [MagicLinkController::class, 'request'])
-        ->middleware('throttle:5,60');
+        ->middleware(['throttle:magic-link-email', 'throttle:magic-link-global']);
     Route::post('auth/magic-link/verify', [MagicLinkController::class, 'verify'])
         ->middleware('throttle:10,60');
     Route::post('auth/verify-email', [AuthController::class, 'verifyEmail'])
