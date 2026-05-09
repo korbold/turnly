@@ -6,15 +6,8 @@ import { useRouter } from 'next/navigation';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
-import { Loader2 } from 'lucide-react';
+import { AlertCircle, Eye, EyeOff, Loader2 } from 'lucide-react';
 import { Button } from '@/presentation/components/ui/button';
-import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardHeader,
-  CardTitle,
-} from '@/presentation/components/ui/card';
 import { Input } from '@/presentation/components/ui/input';
 import { Label } from '@/presentation/components/ui/label';
 import { useLogin } from '@/presentation/hooks/use-auth';
@@ -34,6 +27,7 @@ export default function LoginPage() {
   const router = useRouter();
   const login = useLogin();
   const [apiError, setApiError] = useState<string | null>(null);
+  const [showPassword, setShowPassword] = useState(false);
 
   const {
     register,
@@ -65,76 +59,105 @@ export default function LoginPage() {
   };
 
   return (
-    <Card>
-      <CardHeader className="text-center">
-        <CardTitle className="text-xl">Iniciar Sesión</CardTitle>
-        <CardDescription>
-          Ingresa tus credenciales para continuar
-        </CardDescription>
-      </CardHeader>
-      <CardContent>
-        <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
-          {apiError && (
-            <div className="rounded-lg bg-red-50 p-3 text-sm text-red-600">
-              {apiError}
-            </div>
-          )}
+    <div className="rounded-2xl border border-[var(--border-soft)] bg-white p-6 shadow-[0_1px_2px_0_rgba(15,18,26,0.05),0_1px_1px_0_rgba(15,18,26,0.04)] sm:p-8">
+      <header className="mb-6 text-center">
+        <h1 className="text-[22px] font-bold tracking-[-0.01em] text-[var(--fg-default,#2E3441)]">
+          Iniciar sesión
+        </h1>
+        <p className="mt-1.5 text-[13px] text-[var(--fg-muted)]">
+          Administra tu negocio desde un solo lugar.
+        </p>
+      </header>
 
-          <div className="space-y-2">
-            <Label htmlFor="email">Email</Label>
-            <Input
-              id="email"
-              type="email"
-              placeholder="tu@email.com"
-              autoComplete="email"
-              {...register('email')}
-            />
-            {errors.email && (
-              <p className="text-sm text-red-500">{errors.email.message}</p>
-            )}
+      <form onSubmit={handleSubmit(onSubmit)} className="space-y-4" noValidate>
+        {apiError && (
+          <div
+            role="alert"
+            className="flex items-start gap-2 rounded-lg border border-[#FBC9CE] bg-[#FCE9EB] px-3 py-2.5 text-[13px] text-[#A91D2C]"
+          >
+            <AlertCircle className="mt-0.5 h-4 w-4 shrink-0" aria-hidden="true" />
+            <span>{apiError}</span>
           </div>
+        )}
 
-          <div className="space-y-2">
+        <div className="space-y-1.5">
+          <Label htmlFor="email">Email</Label>
+          <Input
+            id="email"
+            type="email"
+            placeholder="tu@email.com"
+            autoComplete="email"
+            aria-invalid={!!errors.email}
+            {...register('email')}
+          />
+          {errors.email && (
+            <p className="text-xs text-[var(--danger-500)]">{errors.email.message}</p>
+          )}
+        </div>
+
+        <div className="space-y-1.5">
+          <div className="flex items-center justify-between">
             <Label htmlFor="password">Contraseña</Label>
+            <Link
+              href="/forgot-password"
+              className="text-[12px] font-medium text-[var(--brand-700)] transition-colors duration-150 hover:text-[var(--brand-600)]"
+            >
+              ¿La olvidaste?
+            </Link>
+          </div>
+          <div className="relative">
             <Input
               id="password"
-              type="password"
-              placeholder="Tu contraseña"
+              type={showPassword ? 'text' : 'password'}
+              placeholder="••••••••"
               autoComplete="current-password"
+              aria-invalid={!!errors.password}
+              className="pr-10"
               {...register('password')}
             />
-            {errors.password && (
-              <p className="text-sm text-red-500">{errors.password.message}</p>
-            )}
-          </div>
-
-          <Button
-            type="submit"
-            className="w-full bg-[var(--color-primary)] hover:bg-[var(--color-primary-hover)]"
-            disabled={login.isPending}
-          >
-            {login.isPending ? (
-              <>
-                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                Iniciando sesión...
-              </>
-            ) : (
-              'Iniciar Sesión'
-            )}
-          </Button>
-
-          <p className="text-center text-sm text-zinc-500">
-            ¿No tienes cuenta?{' '}
-            <Link
-              href="/register"
-              className="font-medium text-[var(--color-primary)] hover:text-[var(--color-primary)]"
+            <button
+              type="button"
+              onClick={() => setShowPassword((v) => !v)}
+              aria-label={showPassword ? 'Ocultar contraseña' : 'Mostrar contraseña'}
+              className="absolute right-2 top-1/2 inline-flex h-7 w-7 -translate-y-1/2 items-center justify-center rounded-md text-[var(--fg-muted)] transition-[background-color,color,transform] duration-150 ease-out hover:bg-[var(--niebla-media,#EEF0F3)] hover:text-[var(--fg-default,#2E3441)] active:scale-[0.94] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[rgba(42,109,244,0.20)]"
             >
-              Registrarte
-            </Link>
-          </p>
+              {showPassword ? (
+                <EyeOff className="h-4 w-4" aria-hidden="true" />
+              ) : (
+                <Eye className="h-4 w-4" aria-hidden="true" />
+              )}
+            </button>
+          </div>
+          {errors.password && (
+            <p className="text-xs text-[var(--danger-500)]">{errors.password.message}</p>
+          )}
+        </div>
 
-        </form>
-      </CardContent>
-    </Card>
+        <Button
+          type="submit"
+          className="h-11 w-full"
+          disabled={login.isPending}
+        >
+          {login.isPending ? (
+            <>
+              <Loader2 className="mr-2 h-4 w-4 animate-spin" aria-hidden="true" />
+              Iniciando sesión...
+            </>
+          ) : (
+            'Iniciar sesión'
+          )}
+        </Button>
+
+        <p className="pt-1 text-center text-[13px] text-[var(--fg-muted)]">
+          ¿Aún no tienes cuenta?{' '}
+          <Link
+            href="/register"
+            className="font-medium text-[var(--brand-700)] transition-colors duration-150 hover:text-[var(--brand-600)]"
+          >
+            Crear cuenta
+          </Link>
+        </p>
+      </form>
+    </div>
   );
 }
