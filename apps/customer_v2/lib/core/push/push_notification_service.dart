@@ -1,4 +1,5 @@
 // lib/core/push/push_notification_service.dart
+import 'dart:async';
 import 'dart:convert';
 import 'dart:io' show Platform;
 
@@ -41,37 +42,32 @@ class PushNotificationService {
     // Foreground messages
     FirebaseMessaging.onMessage.listen(_handleForegroundMessage);
 
-    // Register token. iOS needs APNS to issue an FCM token; if the APNS
-    // auth key isn't uploaded to Firebase yet, skip silently so the app
-    // keeps booting. Android isn't gated by APNS.
+    // Defer FCM token fetch off the boot hot path. iOS needs APNS to
+    // provision before FCM can mint a token; doing it inline can race
+    // with the engine startup and crash the DartWorker thread.
+    unawaited(_fetchTokenWhenReady());
+
+    // Token refresh
+    _messaging.onTokenRefresh.listen(_registerToken);
+  }
+
+  Future<void> _fetchTokenWhenReady() async {
     try {
       if (Platform.isIOS) {
-        // Wait briefly for APNS to attach. On the first cold launch this
-        // can take a few seconds while iOS provisions the device with APN.
-        String? apns;
-        for (var i = 0; i < 5 && apns == null; i++) {
-          apns = await _messaging.getAPNSToken();
-          if (apns == null) {
-            await Future.delayed(const Duration(milliseconds: 600));
-          }
-        }
-        if (apns == null) {
-          // No APNS yet — likely missing APNS auth key in Firebase or
-          // running on simulator. Don't crash, just skip.
-          return;
-        }
+        // Single longer wait avoids the looped getAPNSToken() calls that
+        // appear to race with native FCM init.
+        await Future.delayed(const Duration(seconds: 3));
+        final apns = await _messaging.getAPNSToken();
+        if (apns == null) return;
       }
       final token = await _messaging.getToken();
       if (token != null) {
         await _registerToken(token);
       }
     } catch (_) {
-      // Push isn't critical for app boot; missing config will be visible
-      // in Firebase Console (Cloud Messaging → APNS) when needed.
+      // Push isn't critical for app boot; failures are recoverable on
+      // the next launch.
     }
-
-    // Token refresh
-    _messaging.onTokenRefresh.listen(_registerToken);
   }
 
   void _handleForegroundMessage(RemoteMessage message) {
