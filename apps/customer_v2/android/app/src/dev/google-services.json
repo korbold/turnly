@@ -1,0 +1,48 @@
+{
+  "project_info": {
+    "project_number": "624883049252",
+    "project_id": "turnly-services",
+    "storage_bucket": "turnly-services.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:624883049252:android:65aa1dc2c2517a60ab09b1",
+        "android_client_info": {
+          "package_name": "com.turnly.customer"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyC89pZcefaZ0pbLgByzGc7dU0Ggn-L8Yuo"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    },
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:624883049252:android:11d75083b5d05444ab09b1",
+        "android_client_info": {
+          "package_name": "com.turnly.customer.dev"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyC89pZcefaZ0pbLgByzGc7dU0Ggn-L8Yuo"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
