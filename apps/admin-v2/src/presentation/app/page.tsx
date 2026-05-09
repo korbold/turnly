@@ -441,7 +441,7 @@ export default async function LandingPage() {
                     </li>
                     <li className="flex items-center gap-2 text-[var(--ink-700)]">
                       <Check className="h-3.5 w-3.5 shrink-0 text-[var(--brand-600)]" aria-hidden="true" />
-                      <span>Página pública del negocio</span>
+                      <span>Página de reservas online</span>
                     </li>
                     <li className="flex items-center gap-2 text-[var(--ink-700)]">
                       <Check className="h-3.5 w-3.5 shrink-0 text-[var(--brand-600)]" aria-hidden="true" />
