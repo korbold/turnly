@@ -465,12 +465,6 @@ export default async function LandingPage() {
                         Reportes en tiempo real
                       </li>
                     )}
-                    {plan.has_custom_page && (
-                      <li className="flex items-center gap-2 text-[var(--ink-700)]">
-                        <Check className="h-3.5 w-3.5 shrink-0 text-[var(--brand-600)]" aria-hidden="true" />
-                        Dominio + branding personalizado
-                      </li>
-                    )}
                     {plan.slug === 'premium' && (
                       <li className="flex items-center gap-2 text-[var(--ink-700)]">
                         <Check className="h-3.5 w-3.5 shrink-0 text-[var(--brand-600)]" aria-hidden="true" />
