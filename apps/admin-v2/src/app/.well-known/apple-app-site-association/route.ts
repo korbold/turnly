@@ -7,7 +7,7 @@ import { NextResponse } from 'next/server';
 // `paths` excludes shell/marketing/auth routes so Universal Links only fire on
 // tenant slug pages; everything else stays in Safari.
 
-const APP_ID = 'T74J34B234.com.turnly.customer';
+const APP_ID = '6KP72DU3LG.com.turnly.customer';
 
 const aasa = {
   applinks: {
