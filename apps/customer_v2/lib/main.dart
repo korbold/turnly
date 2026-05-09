@@ -22,10 +22,19 @@ import 'features/favorites/presentation/cubit/favorites_cubit.dart';
 import 'features/reservations/domain/repositories/reservation_repository.dart';
 import 'features/reservations/presentation/cubit/reservations_cubit.dart';
 
+/// Default entry point. Kept for backward compat with tooling that ignores
+/// `--target`. Reads ENV from --dart-define, defaults to dev.
 void main() async {
+  const env = String.fromEnvironment('ENV', defaultValue: 'dev');
+  await bootstrap(env: env);
+}
+
+/// Boots the app for a given environment. Called by main_dev.dart /
+/// main_prod.dart with hardcoded env so Firebase config + API URL never
+/// cross over between dev and prod.
+Future<void> bootstrap({required String env}) async {
   WidgetsFlutterBinding.ensureInitialized();
 
-  const env = String.fromEnvironment('ENV', defaultValue: 'dev');
   await dotenv.load(fileName: '.env.$env');
 
   // Lock to portrait
@@ -33,7 +42,8 @@ void main() async {
     DeviceOrientation.portraitUp,
   ]);
 
-  // Init Firebase
+  // Init Firebase. Per-flavor google-services.json (Android) and
+  // GoogleService-Info.plist (iOS) carry the right project for this env.
   await Firebase.initializeApp();
 
   // Init Hive for local storage (favorites, etc.)
