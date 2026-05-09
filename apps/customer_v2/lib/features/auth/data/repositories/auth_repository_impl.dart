@@ -3,6 +3,7 @@ import 'dart:convert';
 import 'package:dio/dio.dart';
 import 'package:fpdart/fpdart.dart';
 import 'package:firebase_auth/firebase_auth.dart' hide User;
+import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'package:google_sign_in/google_sign_in.dart';
 import '../../../../core/error/failures.dart';
 import '../../../../core/network/api_client.dart';
@@ -206,19 +207,23 @@ class AuthRepositoryImpl implements AuthRepository {
   @override
   Future<Either<Failure, Unit>> sendMagicLink(String email) async {
     try {
-      // Pick the right host so the deep link routes back to the correct
-      // env. Backend sets API_BASE_URL per env (.env.dev vs .env.prod);
-      // we strip the API path to recover the public domain.
-      final apiUrl = ApiClient.baseUrl;
-      final host = Uri.parse(apiUrl).host.replaceFirst(RegExp(r'^api\.'), '');
-      final continueUrl = 'https://$host/auth/email-link?email=${Uri.encodeComponent(email)}';
+      // Per-env values pulled from .env.<flavor> loaded at bootstrap.
+      final host = dotenv.env['APP_DEEP_LINK_HOST'] ??
+          Uri.parse(ApiClient.baseUrl)
+              .host
+              .replaceFirst(RegExp(r'^api\.'), '');
+      final iosBundleId = dotenv.env['APP_BUNDLE_ID_IOS'];
+      final androidPackage = dotenv.env['APP_BUNDLE_ID_ANDROID'];
+
+      final continueUrl =
+          'https://$host/auth/email-link?email=${Uri.encodeComponent(email)}';
 
       final actionCodeSettings = ActionCodeSettings(
         url: continueUrl,
         handleCodeInApp: true,
-        iOSBundleId: 'com.turnly.customer.dev',
-        androidPackageName: 'com.turnly.customer.dev',
-        androidInstallApp: true,
+        iOSBundleId: iosBundleId,
+        androidPackageName: androidPackage,
+        androidInstallApp: androidPackage != null,
         androidMinimumVersion: '21',
       );
 
