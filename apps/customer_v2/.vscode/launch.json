@@ -2,34 +2,34 @@
   "version": "0.2.0",
   "configurations": [
     {
-      "name": "customer_v2 (dev)",
+      "name": "Turnly Dev (debug)",
       "request": "launch",
       "type": "dart",
-      "program": "lib/main.dart",
-      "args": ["--dart-define=ENV=dev"]
+      "program": "lib/main_dev.dart",
+      "args": ["--flavor", "dev"]
     },
     {
-      "name": "customer_v2 (prod)",
+      "name": "Turnly Dev (profile)",
       "request": "launch",
       "type": "dart",
-      "program": "lib/main.dart",
-      "args": ["--dart-define=ENV=prod"]
-    },
-    {
-      "name": "customer_v2 (dev profile)",
-      "request": "launch",
-      "type": "dart",
-      "program": "lib/main.dart",
+      "program": "lib/main_dev.dart",
       "flutterMode": "profile",
-      "args": ["--dart-define=ENV=dev"]
+      "args": ["--flavor", "dev"]
     },
     {
-      "name": "customer_v2 (prod release)",
+      "name": "Turnly Prod (debug)",
       "request": "launch",
       "type": "dart",
-      "program": "lib/main.dart",
+      "program": "lib/main_prod.dart",
+      "args": ["--flavor", "prod"]
+    },
+    {
+      "name": "Turnly Prod (release)",
+      "request": "launch",
+      "type": "dart",
+      "program": "lib/main_prod.dart",
       "flutterMode": "release",
-      "args": ["--dart-define=ENV=prod"]
+      "args": ["--flavor", "prod"]
     }
   ]
 }

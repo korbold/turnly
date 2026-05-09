@@ -120,9 +120,12 @@ class AuthRepositoryImpl implements AuthRepository {
   @override
   Future<Either<Failure, ({User user, String token})>> loginWithGoogle() async {
     try {
+      // No serverClientId: let google_sign_in pick the OAuth client from the
+      // active GoogleService-Info.plist (iOS) / google-services.json (Android).
+      // Backend verifies the token via Firebase Admin SDK, which accepts any
+      // OAuth client of the active Firebase project — keeps dev/prod isolated.
       final googleSignIn = GoogleSignIn(
         scopes: ['email', 'profile'],
-        serverClientId: '177358786679-hb3nt7ekc905br0vs98sobt4brqgsdka.apps.googleusercontent.com',
       );
       final account = await googleSignIn.signIn();
 
@@ -155,8 +158,11 @@ class AuthRepositoryImpl implements AuthRepository {
         return Left(ServerFailure(msg.toString()));
       }
       return Left(_extractError(e, 'Error al iniciar con Google'));
-    } catch (e) {
-      return Left(ServerFailure('Error al iniciar con Google'));
+    } catch (e, st) {
+      // Log original error so the cause shows in `flutter run` output.
+      // ignore: avoid_print
+      print('[GoogleSignIn] error: $e\n$st');
+      return Left(ServerFailure('Error al iniciar con Google: $e'));
     }
   }
 

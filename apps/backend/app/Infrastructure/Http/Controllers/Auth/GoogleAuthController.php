@@ -10,19 +10,14 @@ use Google\Client as GoogleClient;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Support\Str;
 use Illuminate\Support\Facades\Hash;
+use Kreait\Firebase\Factory as FirebaseFactory;
+use Kreait\Firebase\Exception\Auth\FailedToVerifyToken;
 
 class GoogleAuthController extends Controller
 {
     public function login(GoogleLoginRequest $request): JsonResponse
     {
-        $client = app(GoogleClient::class);
-        $client->setClientId(config('services.google.client_id'));
-
-        try {
-            $payload = $client->verifyIdToken($request->id_token);
-        } catch (\Exception $e) {
-            $payload = false;
-        }
+        $payload = $this->verifyToken($request->id_token);
 
         if (!$payload) {
             return response()->json([
@@ -84,5 +79,54 @@ class GoogleAuthController extends Controller
                 ] : null,
             ],
         ]);
+    }
+
+    /**
+     * Verify a Google ID token from any iOS/Android/Web OAuth client that
+     * belongs to the active Firebase project. Falls back to legacy
+     * Google\Client audience verification when the Firebase Admin SDK
+     * isn't configured (e.g. local dev without service-account JSON).
+     *
+     * Returns ['email' => ..., 'name' => ...] or null on failure.
+     */
+    private function verifyToken(string $idToken): ?array
+    {
+        // Preferred path: Firebase Admin SDK accepts any Firebase-issued
+        // ID token for the configured project, regardless of which OAuth
+        // client (iOS / Android / Web) audience it carries.
+        $credentialsPath = config('services.firebase.credentials');
+        if ($credentialsPath && file_exists(base_path($credentialsPath))) {
+            try {
+                $factory = (new FirebaseFactory())
+                    ->withServiceAccount(base_path($credentialsPath));
+                $auth = $factory->createAuth();
+                $verified = $auth->verifyIdToken($idToken);
+                $claims = $verified->claims()->all();
+                return [
+                    'email' => $claims['email'] ?? null,
+                    'name' => $claims['name'] ?? ($claims['email'] ?? 'Usuario'),
+                ];
+            } catch (FailedToVerifyToken $e) {
+                return null;
+            } catch (\Throwable $e) {
+                // Fall through to legacy path below.
+            }
+        }
+
+        // Legacy path: strict Google\Client audience match.
+        $client = app(GoogleClient::class);
+        $client->setClientId(config('services.google.client_id'));
+        try {
+            $payload = $client->verifyIdToken($idToken);
+        } catch (\Throwable $e) {
+            return null;
+        }
+        if (!$payload) {
+            return null;
+        }
+        return [
+            'email' => $payload['email'] ?? null,
+            'name' => $payload['name'] ?? ($payload['email'] ?? 'Usuario'),
+        ];
     }
 }
