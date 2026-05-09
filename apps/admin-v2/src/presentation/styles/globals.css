@@ -91,6 +91,13 @@
   --border-strong: var(--ink-200);
   --border-brand:  var(--brand-500);
 
+  /* DESIGN.md token aliases */
+  --border-soft:   var(--ink-150);
+  --border-firm:   var(--ink-200);
+  --niebla-clara:  var(--ink-75);
+  --niebla-media:  var(--ink-100);
+  --fg-default:    var(--ink-700);
+
   --primary:       var(--brand-500);
   --primary-hover: var(--brand-600);
   --primary-soft:  var(--brand-50);

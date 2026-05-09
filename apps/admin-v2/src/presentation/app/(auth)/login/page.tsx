@@ -59,13 +59,13 @@ export default function LoginPage() {
   };
 
   return (
-    <div className="rounded-2xl border border-[var(--border-soft)] bg-white p-6 shadow-[0_1px_2px_0_rgba(15,18,26,0.05),0_1px_1px_0_rgba(15,18,26,0.04)] sm:p-8">
-      <header className="mb-6 text-center">
-        <h1 className="text-[22px] font-bold tracking-[-0.01em] text-[var(--fg-default,#2E3441)]">
+    <div className="rounded-2xl border border-[var(--border-soft)] bg-white p-6 shadow-[0_1px_2px_0_rgba(15,18,26,0.05)] sm:p-8 lg:rounded-none lg:border-0 lg:p-0 lg:shadow-none">
+      <header className="mb-6 lg:mb-8">
+        <h1 className="text-[26px] font-bold tracking-[-0.01em] text-[var(--ink-900)] sm:text-[28px]">
           Iniciar sesión
         </h1>
-        <p className="mt-1.5 text-[13px] text-[var(--fg-muted)]">
-          Administra tu negocio desde un solo lugar.
+        <p className="mt-1.5 text-[14px] text-[var(--fg-muted)]">
+          Bienvenido de vuelta. Ingresa para continuar.
         </p>
       </header>
 
