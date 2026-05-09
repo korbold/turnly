@@ -82,7 +82,8 @@
 			<array>
 				<!-- dev (turnly-services) -->
 				<string>com.googleusercontent.apps.624883049252-4i0r3tk9bjm2ft3odvckitmf39ugr4b9</string>
-				<!-- TODO: prod (turnly-services-prod) — append once Google Sign-In is enabled there -->
+				<!-- prod (turnly-services-prod) -->
+				<string>com.googleusercontent.apps.703054651952-d3bdgit0fa30rmmfoc0l8678e369qa64</string>
 			</array>
 		</dict>
 	</array>
