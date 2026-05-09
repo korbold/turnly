@@ -3,7 +3,6 @@ import 'dart:convert';
 import 'package:dio/dio.dart';
 import 'package:fpdart/fpdart.dart';
 import 'package:firebase_auth/firebase_auth.dart' hide User;
-import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'package:google_sign_in/google_sign_in.dart';
 import '../../../../core/error/failures.dart';
 import '../../../../core/network/api_client.dart';
@@ -207,33 +206,10 @@ class AuthRepositoryImpl implements AuthRepository {
   @override
   Future<Either<Failure, Unit>> sendMagicLink(String email) async {
     try {
-      // Per-env values pulled from .env.<flavor> loaded at bootstrap.
-      final host = dotenv.env['APP_DEEP_LINK_HOST'] ??
-          Uri.parse(ApiClient.baseUrl)
-              .host
-              .replaceFirst(RegExp(r'^api\.'), '');
-      final iosBundleId = dotenv.env['APP_BUNDLE_ID_IOS'];
-      final androidPackage = dotenv.env['APP_BUNDLE_ID_ANDROID'];
-
-      final continueUrl =
-          'https://$host/auth/email-link?email=${Uri.encodeComponent(email)}';
-
-      final actionCodeSettings = ActionCodeSettings(
-        url: continueUrl,
-        handleCodeInApp: true,
-        iOSBundleId: iosBundleId,
-        androidPackageName: androidPackage,
-        androidInstallApp: androidPackage != null,
-        androidMinimumVersion: '21',
-      );
-
-      await FirebaseAuth.instance.sendSignInLinkToEmail(
-        email: email,
-        actionCodeSettings: actionCodeSettings,
-      );
+      await _dio.post('/auth/magic-link/request', data: {'email': email});
       return const Right(unit);
-    } on FirebaseAuthException catch (e) {
-      return Left(ServerFailure(e.message ?? 'No se pudo enviar el link'));
+    } on DioException catch (e) {
+      return Left(_extractError(e, 'No se pudo enviar el link'));
     } catch (e) {
       return Left(ServerFailure(e.toString()));
     }
@@ -244,22 +220,26 @@ class AuthRepositoryImpl implements AuthRepository {
     required String email,
     required String link,
   }) async {
+    // Backend flow: tap-link path is /m/<token>. Email param is unused
+    // here because the token alone identifies the email server-side.
     try {
-      if (!FirebaseAuth.instance.isSignInWithEmailLink(link)) {
-        return const Left(ServerFailure('Link inválido'));
+      final uri = Uri.parse(link);
+      String? magicToken;
+      // Accept either a full /m/<token> URL or a bare 64-char token.
+      final segments = uri.pathSegments.where((s) => s.isNotEmpty).toList();
+      final mIdx = segments.indexOf('m');
+      if (mIdx != -1 && mIdx + 1 < segments.length) {
+        magicToken = segments[mIdx + 1];
+      } else if (link.length == 64 && RegExp(r'^[a-f0-9]+$').hasMatch(link)) {
+        magicToken = link;
       }
-      final userCredential = await FirebaseAuth.instance.signInWithEmailLink(
-        email: email,
-        emailLink: link,
-      );
-      final firebaseIdToken = await userCredential.user?.getIdToken();
-      if (firebaseIdToken == null) {
-        return const Left(ServerFailure('Error al obtener token de Firebase'));
+      if (magicToken == null || magicToken.length != 64) {
+        return const Left(ServerFailure('Link inválido'));
       }
 
       final response = await _dio.post(
-        '/auth/google',
-        data: {'id_token': firebaseIdToken},
+        '/auth/magic-link/verify',
+        data: {'token': magicToken},
       );
       final dto = AuthResponseDto.fromJson(
         response.data['data'] as Map<String, dynamic>,
@@ -267,10 +247,8 @@ class AuthRepositoryImpl implements AuthRepository {
       await SecureStorage.saveToken(dto.token);
       await SecureStorage.saveUserData(jsonEncode(dto.user.toJson()));
       return Right((user: dto.user.toEntity(), token: dto.token));
-    } on FirebaseAuthException catch (e) {
-      return Left(ServerFailure(e.message ?? 'Link expirado o inválido'));
     } on DioException catch (e) {
-      return Left(_extractError(e, 'Error al iniciar con email'));
+      return Left(_extractError(e, 'Link inválido o expirado'));
     } catch (e) {
       return Left(ServerFailure(e.toString()));
     }

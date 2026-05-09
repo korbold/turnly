@@ -2,6 +2,7 @@
 
 use App\Infrastructure\Http\Controllers\Auth\AuthController;
 use App\Infrastructure\Http\Controllers\Auth\GoogleAuthController;
+use App\Infrastructure\Http\Controllers\Auth\MagicLinkController;
 use App\Infrastructure\Http\Controllers\Auth\OnboardingController;
 use App\Infrastructure\Http\Controllers\Tenant\TenantSettingsController;
 use App\Infrastructure\Http\Controllers\Tenant\TenantImageController;
@@ -35,6 +36,10 @@ Route::prefix('v1')->group(function () {
         ->middleware('throttle:5,60');
     Route::post('auth/login', [AuthController::class, 'login']);
     Route::post('auth/google', [GoogleAuthController::class, 'login']);
+    Route::post('auth/magic-link/request', [MagicLinkController::class, 'request'])
+        ->middleware('throttle:5,60');
+    Route::post('auth/magic-link/verify', [MagicLinkController::class, 'verify'])
+        ->middleware('throttle:10,60');
     Route::post('auth/verify-email', [AuthController::class, 'verifyEmail'])
         ->middleware('throttle:10,60');
     Route::post('auth/verify-email/resend', [AuthController::class, 'resendVerification'])

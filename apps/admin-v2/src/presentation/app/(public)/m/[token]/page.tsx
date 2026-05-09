@@ -6,7 +6,8 @@ import { Smartphone, ExternalLink, AlertCircle } from 'lucide-react';
 
 const ANDROID_PACKAGE_DEV = 'com.turnly.customer.dev';
 const ANDROID_PACKAGE_PROD = 'com.turnly.customer';
-const PLAY_STORE_URL = 'https://play.google.com/store/apps/details?id=com.turnly.customer';
+const PLAY_STORE_URL =
+  'https://play.google.com/store/apps/details?id=com.turnly.customer';
 const APP_STORE_URL = 'https://apps.apple.com/app/turnly';
 
 function detectPlatform(ua: string): 'android' | 'ios' | 'desktop' {
@@ -15,14 +16,14 @@ function detectPlatform(ua: string): 'android' | 'ios' | 'desktop' {
   return 'desktop';
 }
 
-export default function EmailLinkLandingPage() {
-  const [platform, setPlatform] = useState<'android' | 'ios' | 'desktop' | null>(null);
+export default function MagicLinkLandingPage() {
+  const [platform, setPlatform] =
+    useState<'android' | 'ios' | 'desktop' | null>(null);
   const [tried, setTried] = useState(false);
 
   useEffect(() => {
     if (typeof window === 'undefined') return;
-    const p = detectPlatform(window.navigator.userAgent);
-    setPlatform(p);
+    setPlatform(detectPlatform(window.navigator.userAgent));
   }, []);
 
   function tryOpenApp() {
@@ -50,8 +51,6 @@ export default function EmailLinkLandingPage() {
 
   useEffect(() => {
     if (platform === 'ios' || platform === 'android') {
-      // Auto-try once on mobile load — most of the time UL/App Links
-      // already fired before this page even rendered. This is a fallback.
       const id = setTimeout(tryOpenApp, 400);
       return () => clearTimeout(id);
     }
@@ -67,7 +66,7 @@ export default function EmailLinkLandingPage() {
           Abre Turnly
         </h1>
         <p className="mt-2 text-[13.5px] leading-relaxed text-[var(--ink-600)]">
-          Tu link de acceso te lleva a la app Turnly. Si no se abrió sola, pulsa el botón.
+          Tu link te lleva directo a la app Turnly. Si no se abrió sola, pulsa el botón.
         </p>
 
         {platform === 'desktop' ? (
@@ -105,10 +104,6 @@ export default function EmailLinkLandingPage() {
           </p>
         )}
       </div>
-
-      <p className="mt-6 text-center text-[11.5px] text-[var(--ink-500)]">
-        ¿Querías el panel admin? <Link href="/login" className="font-medium text-[var(--brand-700)]">Inicia sesión aquí</Link>
-      </p>
     </div>
   );
 }

@@ -7,7 +7,6 @@
 import 'dart:async';
 
 import 'package:app_links/app_links.dart';
-import 'package:firebase_auth/firebase_auth.dart' hide User;
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:go_router/go_router.dart';
 
@@ -73,21 +72,18 @@ class DeepLinkHandler {
     final ctx = rootNavigatorKey.currentContext;
     if (ctx == null) return;
 
-    // Firebase email magic link: any URL Firebase recognizes (mode=signIn
-    // + oobCode + apiKey) wins over slug routing. Email is round-tripped
-    // via the continueUrl we set in sendMagicLink().
-    if (FirebaseAuth.instance.isSignInWithEmailLink(uri.toString())) {
-      final email = uri.queryParameters['email'];
-      if (email == null || email.isEmpty) return;
+    final segments = uri.pathSegments.where((s) => s.isNotEmpty).toList();
+    if (segments.isEmpty) return;
+
+    // Backend magic link: /m/<64-char-token>
+    if (segments.first == 'm' && segments.length == 2 &&
+        segments[1].length == 64) {
       ctx.read<AuthCubit>().signInWithEmailLink(
-            email: email,
+            email: '',
             link: uri.toString(),
           );
       return;
     }
-
-    final segments = uri.pathSegments.where((s) => s.isNotEmpty).toList();
-    if (segments.isEmpty) return;
 
     final first = segments.first;
     if (_reservedPaths.contains(first)) return;
