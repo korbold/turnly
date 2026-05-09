@@ -44,6 +44,25 @@ function formatLimit(value: number | null): string {
   return String(value);
 }
 
+function pluralServices(value: number | null): string {
+  if (value === null) return 'Servicios ilimitados';
+  if (value === 1) return '1 servicio';
+  return `${value} servicios`;
+}
+
+function pluralReservations(value: number | null): string {
+  if (value === null) return 'Reservas ilimitadas';
+  if (value === 1) return '1 reserva al mes';
+  return `${value} reservas al mes`;
+}
+
+function pluralEmployees(value: number | null): string {
+  if (value === null) return 'Equipo ilimitado';
+  if (value === 0) return 'Solo dueño';
+  if (value === 1) return '1 empleado + dueño';
+  return `${value} empleados + dueño`;
+}
+
 export default async function LandingPage() {
   const plans = await fetchPlans();
 
@@ -410,24 +429,23 @@ export default async function LandingPage() {
                   <ul className="mt-6 space-y-2.5 text-[13px]">
                     <li className="flex items-center gap-2 text-[var(--ink-700)]">
                       <Check className="h-3.5 w-3.5 shrink-0 text-[var(--brand-600)]" aria-hidden="true" />
-                      <span>
-                        <span className="font-mono tabular-nums">{formatLimit(plan.max_services)}</span>{' '}
-                        servicios
-                      </span>
+                      <span>{pluralServices(plan.max_services)}</span>
                     </li>
                     <li className="flex items-center gap-2 text-[var(--ink-700)]">
                       <Check className="h-3.5 w-3.5 shrink-0 text-[var(--brand-600)]" aria-hidden="true" />
-                      <span>
-                        <span className="font-mono tabular-nums">{formatLimit(plan.max_reservations_per_month)}</span>{' '}
-                        reservas/mes
-                      </span>
+                      <span>{pluralReservations(plan.max_reservations_per_month)}</span>
                     </li>
                     <li className="flex items-center gap-2 text-[var(--ink-700)]">
                       <Check className="h-3.5 w-3.5 shrink-0 text-[var(--brand-600)]" aria-hidden="true" />
-                      <span>
-                        <span className="font-mono tabular-nums">{formatLimit(plan.max_employees)}</span>{' '}
-                        empleados
-                      </span>
+                      <span>{pluralEmployees(plan.max_employees)}</span>
+                    </li>
+                    <li className="flex items-center gap-2 text-[var(--ink-700)]">
+                      <Check className="h-3.5 w-3.5 shrink-0 text-[var(--brand-600)]" aria-hidden="true" />
+                      <span>Página pública del negocio</span>
+                    </li>
+                    <li className="flex items-center gap-2 text-[var(--ink-700)]">
+                      <Check className="h-3.5 w-3.5 shrink-0 text-[var(--brand-600)]" aria-hidden="true" />
+                      <span>App cliente iOS + Android</span>
                     </li>
                     {plan.has_push_notifications && (
                       <li className="flex items-center gap-2 text-[var(--ink-700)]">
@@ -444,13 +462,19 @@ export default async function LandingPage() {
                     {plan.has_reports && (
                       <li className="flex items-center gap-2 text-[var(--ink-700)]">
                         <Check className="h-3.5 w-3.5 shrink-0 text-[var(--brand-600)]" aria-hidden="true" />
-                        Reportes
+                        Reportes en tiempo real
                       </li>
                     )}
                     {plan.has_custom_page && (
                       <li className="flex items-center gap-2 text-[var(--ink-700)]">
                         <Check className="h-3.5 w-3.5 shrink-0 text-[var(--brand-600)]" aria-hidden="true" />
-                        Página pública
+                        Dominio + branding personalizado
+                      </li>
+                    )}
+                    {plan.slug === 'premium' && (
+                      <li className="flex items-center gap-2 text-[var(--ink-700)]">
+                        <Check className="h-3.5 w-3.5 shrink-0 text-[var(--brand-600)]" aria-hidden="true" />
+                        Soporte prioritario
                       </li>
                     )}
                   </ul>
