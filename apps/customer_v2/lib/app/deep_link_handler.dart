@@ -7,8 +7,11 @@
 import 'dart:async';
 
 import 'package:app_links/app_links.dart';
+import 'package:firebase_auth/firebase_auth.dart' hide User;
+import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:go_router/go_router.dart';
 
+import '../features/auth/presentation/cubit/auth_cubit.dart';
 import 'router.dart';
 
 const _allowedHosts = {'goturnly.com', 'dev.goturnly.com'};
@@ -67,14 +70,28 @@ class DeepLinkHandler {
   void _handle(Uri uri) {
     if (!_allowedHosts.contains(uri.host)) return;
 
+    final ctx = rootNavigatorKey.currentContext;
+    if (ctx == null) return;
+
+    // Firebase email magic link: any URL Firebase recognizes (mode=signIn
+    // + oobCode + apiKey) wins over slug routing. Email is round-tripped
+    // via the continueUrl we set in sendMagicLink().
+    if (FirebaseAuth.instance.isSignInWithEmailLink(uri.toString())) {
+      final email = uri.queryParameters['email'];
+      if (email == null || email.isEmpty) return;
+      ctx.read<AuthCubit>().signInWithEmailLink(
+            email: email,
+            link: uri.toString(),
+          );
+      return;
+    }
+
     final segments = uri.pathSegments.where((s) => s.isNotEmpty).toList();
     if (segments.isEmpty) return;
 
     final first = segments.first;
     if (_reservedPaths.contains(first)) return;
 
-    final ctx = rootNavigatorKey.currentContext;
-    if (ctx == null) return;
     ctx.go('/business/$first');
   }
 }

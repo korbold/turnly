@@ -62,6 +62,38 @@ class AuthCubit extends Cubit<AuthState> {
     );
   }
 
+  /// Email magic link: send the link to the user's inbox. UI should
+  /// transition to a "check your email" state on success.
+  Future<void> sendMagicLink(String email) async {
+    emit(const AuthLoading());
+    final result = await _repository.sendMagicLink(email);
+    result.fold(
+      (failure) => emit(AuthError(failure.message)),
+      (_) => emit(AuthMagicLinkSent(email)),
+    );
+  }
+
+  /// Complete sign-in with the link the user tapped from email.
+  /// [email] must match the one that requested the link (Firebase
+  /// requirement for security).
+  Future<void> signInWithEmailLink({
+    required String email,
+    required String link,
+  }) async {
+    emit(const AuthLoading());
+    final result = await _repository.signInWithEmailLink(
+      email: email,
+      link: link,
+    );
+    result.fold(
+      (failure) => emit(AuthError(failure.message)),
+      (data) {
+        emit(AuthAuthenticated(data.user));
+        getIt<PushNotificationService>().init();
+      },
+    );
+  }
+
   Future<void> loginWithGoogle() async {
     emit(const AuthLoading());
     final result = await _repository.loginWithGoogle();

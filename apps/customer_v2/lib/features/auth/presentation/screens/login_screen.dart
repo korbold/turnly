@@ -66,6 +66,8 @@ class _LoginViewState extends State<_LoginView> {
         builder: (context, state) {
           final isLoading = state is AuthLoading;
           final errorMessage = state is AuthError ? state.message : null;
+          final magicLinkEmail =
+              state is AuthMagicLinkSent ? state.email : null;
 
           return Container(
             decoration: const BoxDecoration(
@@ -315,6 +317,102 @@ class _LoginViewState extends State<_LoginView> {
                             ),
 
                         const SizedBox(height: 28),
+
+                        // Magic-link confirmation banner
+                        if (magicLinkEmail != null)
+                          Container(
+                            width: double.infinity,
+                            margin: const EdgeInsets.only(bottom: 16),
+                            padding: const EdgeInsets.symmetric(
+                              horizontal: 16,
+                              vertical: 14,
+                            ),
+                            decoration: BoxDecoration(
+                              color: AppColors.accent.withValues(alpha: 0.08),
+                              borderRadius: BorderRadius.circular(12),
+                              border: Border.all(
+                                color:
+                                    AppColors.accent.withValues(alpha: 0.25),
+                              ),
+                            ),
+                            child: Row(
+                              children: [
+                                Icon(
+                                  Icons.mark_email_read_outlined,
+                                  color: AppColors.accent,
+                                  size: 22,
+                                ),
+                                const SizedBox(width: 12),
+                                Expanded(
+                                  child: Column(
+                                    crossAxisAlignment:
+                                        CrossAxisAlignment.start,
+                                    children: [
+                                      const Text(
+                                        'Te enviamos un link',
+                                        style: TextStyle(
+                                          fontWeight: FontWeight.w600,
+                                          fontSize: 13.5,
+                                        ),
+                                      ),
+                                      const SizedBox(height: 2),
+                                      Text(
+                                        'Abre el correo en $magicLinkEmail y toca el link para entrar.',
+                                        style: TextStyle(
+                                          color: AppColors.textSecondary,
+                                          fontSize: 12.5,
+                                        ),
+                                      ),
+                                    ],
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ).animate().fadeIn(duration: 300.ms),
+
+                        // Magic link button
+                        OutlinedButton.icon(
+                          onPressed: isLoading
+                              ? null
+                              : () {
+                                  if (_emailController.text.trim().isEmpty ||
+                                      !_emailController.text.contains('@')) {
+                                    ScaffoldMessenger.of(context).showSnackBar(
+                                      const SnackBar(
+                                        content: Text(
+                                          'Ingresa un correo válido para enviar el link',
+                                        ),
+                                      ),
+                                    );
+                                    return;
+                                  }
+                                  context
+                                      .read<AuthCubit>()
+                                      .sendMagicLink(_emailController.text.trim());
+                                },
+                          icon: const Icon(Icons.link_rounded, size: 18),
+                          label: const Text('Enviarme link mágico al email'),
+                          style: OutlinedButton.styleFrom(
+                            minimumSize: const Size.fromHeight(48),
+                            side: BorderSide(
+                              color: AppColors.accent.withValues(alpha: 0.4),
+                            ),
+                            foregroundColor: AppColors.accent,
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(12),
+                            ),
+                          ),
+                        )
+                            .animate()
+                            .fadeIn(duration: 500.ms, delay: 420.ms)
+                            .slideY(
+                              begin: 0.1,
+                              end: 0,
+                              duration: 500.ms,
+                              delay: 420.ms,
+                            ),
+
+                        const SizedBox(height: 12),
 
                         // Login button
                         AppButton(

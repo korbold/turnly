@@ -203,6 +203,74 @@ class AuthRepositoryImpl implements AuthRepository {
     }
   }
 
+  @override
+  Future<Either<Failure, Unit>> sendMagicLink(String email) async {
+    try {
+      // Pick the right host so the deep link routes back to the correct
+      // env. Backend sets API_BASE_URL per env (.env.dev vs .env.prod);
+      // we strip the API path to recover the public domain.
+      final apiUrl = ApiClient.baseUrl;
+      final host = Uri.parse(apiUrl).host.replaceFirst(RegExp(r'^api\.'), '');
+      final continueUrl = 'https://$host/auth/email-link?email=${Uri.encodeComponent(email)}';
+
+      final actionCodeSettings = ActionCodeSettings(
+        url: continueUrl,
+        handleCodeInApp: true,
+        iOSBundleId: 'com.turnly.customer.dev',
+        androidPackageName: 'com.turnly.customer.dev',
+        androidInstallApp: true,
+        androidMinimumVersion: '21',
+      );
+
+      await FirebaseAuth.instance.sendSignInLinkToEmail(
+        email: email,
+        actionCodeSettings: actionCodeSettings,
+      );
+      return const Right(unit);
+    } on FirebaseAuthException catch (e) {
+      return Left(ServerFailure(e.message ?? 'No se pudo enviar el link'));
+    } catch (e) {
+      return Left(ServerFailure(e.toString()));
+    }
+  }
+
+  @override
+  Future<Either<Failure, ({User user, String token})>> signInWithEmailLink({
+    required String email,
+    required String link,
+  }) async {
+    try {
+      if (!FirebaseAuth.instance.isSignInWithEmailLink(link)) {
+        return const Left(ServerFailure('Link inválido'));
+      }
+      final userCredential = await FirebaseAuth.instance.signInWithEmailLink(
+        email: email,
+        emailLink: link,
+      );
+      final firebaseIdToken = await userCredential.user?.getIdToken();
+      if (firebaseIdToken == null) {
+        return const Left(ServerFailure('Error al obtener token de Firebase'));
+      }
+
+      final response = await _dio.post(
+        '/auth/google',
+        data: {'id_token': firebaseIdToken},
+      );
+      final dto = AuthResponseDto.fromJson(
+        response.data['data'] as Map<String, dynamic>,
+      );
+      await SecureStorage.saveToken(dto.token);
+      await SecureStorage.saveUserData(jsonEncode(dto.user.toJson()));
+      return Right((user: dto.user.toEntity(), token: dto.token));
+    } on FirebaseAuthException catch (e) {
+      return Left(ServerFailure(e.message ?? 'Link expirado o inválido'));
+    } on DioException catch (e) {
+      return Left(_extractError(e, 'Error al iniciar con email'));
+    } catch (e) {
+      return Left(ServerFailure(e.toString()));
+    }
+  }
+
   ServerFailure _extractError(DioException e, String fallback) {
     final data = e.response?.data;
     if (data is Map) {

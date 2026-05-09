@@ -45,3 +45,14 @@ class AuthEmailUnverified extends AuthState {
   @override
   List<Object?> get props => [email];
 }
+
+/// Emitted after sendMagicLink succeeds. UI should show a "check your
+/// email" screen until the user taps the link and the deep link handler
+/// brings them back into the app.
+class AuthMagicLinkSent extends AuthState {
+  final String email;
+  const AuthMagicLinkSent(this.email);
+
+  @override
+  List<Object?> get props => [email];
+}
