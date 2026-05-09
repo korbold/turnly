@@ -1,8 +1,9 @@
 'use client';
 
 import { usePathname, useRouter } from 'next/navigation';
-import { LogOut, Search, User } from 'lucide-react';
+import { LogOut, User } from 'lucide-react';
 import { NotificationBell } from '@/presentation/components/features/notifications/notification-bell';
+import { ShareBusinessButton } from '@/presentation/components/layout/share-business-button';
 import { Avatar, AvatarFallback } from '@/presentation/components/ui/avatar';
 import {
   DropdownMenu,
@@ -79,21 +80,9 @@ export function Topbar() {
         </span>
       </div>
 
-      {/* Right: Search + Notifications + Avatar */}
+      {/* Right: Share + Notifications + Avatar */}
       <div className="flex items-center gap-2">
-        <button
-          type="button"
-          className="hidden h-8 min-w-[220px] items-center gap-1.5 rounded-md border border-[var(--border)] bg-[var(--bg-sunken)] px-2.5 text-[12.5px] text-[var(--fg-muted)] hover:border-[var(--border-strong)] transition-colors md:inline-flex"
-        >
-          <Search className="h-3.5 w-3.5" />
-          <span>Buscar reservas, clientes…</span>
-          <span
-            className="ml-auto rounded border border-[var(--border)] px-1.5 py-px text-[10px] text-[var(--fg-muted)]"
-            style={{ fontFamily: 'var(--font-mono)' }}
-          >
-            ⌘K
-          </span>
-        </button>
+        <ShareBusinessButton />
         <NotificationBell />
 
         <DropdownMenu>

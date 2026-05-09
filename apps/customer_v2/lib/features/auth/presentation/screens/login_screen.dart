@@ -29,9 +29,26 @@ class _LoginView extends StatefulWidget {
 class _LoginViewState extends State<_LoginView> {
   final _emailController = TextEditingController();
   final _formKey = GlobalKey<FormState>();
+  // Single source of truth for the regex; matches the validator.
+  static final _emailRegex = RegExp(r'^[\w\.\-+]+@[\w\-]+(\.[\w\-]+)+$');
+  bool _emailValid = false;
+
+  @override
+  void initState() {
+    super.initState();
+    _emailController.addListener(_onEmailChanged);
+  }
+
+  void _onEmailChanged() {
+    final next = _emailRegex.hasMatch(_emailController.text.trim());
+    if (next != _emailValid) {
+      setState(() => _emailValid = next);
+    }
+  }
 
   @override
   void dispose() {
+    _emailController.removeListener(_onEmailChanged);
     _emailController.dispose();
     super.dispose();
   }
@@ -119,45 +136,25 @@ class _LoginViewState extends State<_LoginView> {
                               curve: Curves.easeOutBack,
                             ),
 
-                        const SizedBox(height: 16),
+                        const SizedBox(height: 28),
 
-                        // Brand
-                        Text(
-                          'Turnly',
-                          style: theme.textTheme.headlineLarge?.copyWith(
-                            color: AppColors.accent,
-                            fontWeight: FontWeight.w800,
-                          ),
-                        )
-                            .animate()
-                            .fadeIn(duration: 500.ms, delay: 150.ms),
-
-                        const SizedBox(height: 40),
-
-                        // Title
+                        // Title — brand identity is already carried by the
+                        // avatar above and the brand name in this heading;
+                        // no need for a separate "Turnly" wordmark.
                         Text(
                           'Entra a Turnly',
                           style: theme.textTheme.headlineMedium,
                         )
                             .animate()
-                            .fadeIn(duration: 500.ms, delay: 250.ms)
+                            .fadeIn(duration: 500.ms, delay: 200.ms)
                             .slideY(
-                              begin: 0.15,
+                              begin: 0.12,
                               end: 0,
                               duration: 500.ms,
-                              delay: 250.ms,
+                              delay: 200.ms,
                             ),
 
-                        const SizedBox(height: 8),
-
-                        Text(
-                          'Una sola dirección de correo. Sin contraseña.',
-                          style: theme.textTheme.bodyMedium,
-                        )
-                            .animate()
-                            .fadeIn(duration: 500.ms, delay: 300.ms),
-
-                        const SizedBox(height: 32),
+                        const SizedBox(height: 28),
 
                         // Error
                         if (errorMessage != null)
@@ -242,18 +239,17 @@ class _LoginViewState extends State<_LoginView> {
 
                         // Email field
                         AppTextField(
-                          label: 'Correo electronico',
+                          label: 'Correo electrónico',
                           hint: 'tu@email.com',
                           controller: _emailController,
                           keyboardType: TextInputType.emailAddress,
                           prefixIcon:
                               const Icon(Icons.email_outlined, size: 20),
                           validator: (value) {
-                            if (value == null || value.isEmpty) {
-                              return 'Ingresa tu correo';
-                            }
-                            if (!value.contains('@')) {
-                              return 'Correo invalido';
+                            final v = value?.trim() ?? '';
+                            if (v.isEmpty) return 'Ingresa tu correo';
+                            if (!_emailRegex.hasMatch(v)) {
+                              return 'Correo inválido';
                             }
                             return null;
                           },
@@ -321,11 +317,13 @@ class _LoginViewState extends State<_LoginView> {
                             ),
                           ).animate().fadeIn(duration: 300.ms),
 
-                        // Primary CTA: send magic link
+                        // Primary CTA: send magic link. Disabled until the
+                        // email is well-formed so the tap does not bounce
+                        // the user back with an inline error.
                         AppButton(
                           label: 'Enviarme link al email',
                           isLoading: isLoading,
-                          onPressed: _sendMagicLink,
+                          onPressed: _emailValid ? _sendMagicLink : null,
                         )
                             .animate()
                             .fadeIn(duration: 500.ms, delay: 450.ms)
@@ -346,9 +344,7 @@ class _LoginViewState extends State<_LoginView> {
                           ),
                         ).animate().fadeIn(duration: 500.ms, delay: 480.ms),
 
-                        const SizedBox(height: 24),
-
-                        const SizedBox(height: 40),
+                        const SizedBox(height: 32),
                       ],
                     ),
                   ),
