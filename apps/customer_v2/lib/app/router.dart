@@ -4,8 +4,6 @@ import 'package:go_router/go_router.dart';
 import '../core/storage/secure_storage.dart';
 import '../features/onboarding/presentation/screens/onboarding_screen.dart';
 import '../features/auth/presentation/screens/login_screen.dart';
-import '../features/auth/presentation/screens/register_screen.dart';
-import '../features/auth/presentation/screens/verify_email_screen.dart';
 import '../features/home/presentation/screens/main_shell.dart';
 import '../features/explore/presentation/screens/explore_screen.dart';
 import '../features/business/presentation/screens/business_detail_screen.dart';
@@ -58,11 +56,10 @@ final appRouter = GoRouter(
       redirect: (_, __) => '/login',
     ),
     GoRoute(
+      // Legacy: kept so any in-flight deep links don't 404. Magic link
+      // is the new verification surface; bounce to /login.
       path: '/verify-email',
-      builder: (context, state) {
-        final email = state.uri.queryParameters['email'] ?? '';
-        return VerifyEmailScreen(email: email);
-      },
+      redirect: (_, __) => '/login',
     ),
 
     // Main app shell with bottom nav

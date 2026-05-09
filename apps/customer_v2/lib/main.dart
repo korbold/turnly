@@ -15,8 +15,6 @@ import 'app/theme/app_theme.dart';
 import 'core/di/injection.dart';
 import 'features/auth/domain/repositories/auth_repository.dart';
 import 'features/auth/presentation/cubit/auth_cubit.dart';
-import 'features/auth/presentation/cubit/auth_state.dart';
-import 'package:go_router/go_router.dart';
 import 'features/favorites/data/favorites_storage.dart';
 import 'features/favorites/presentation/cubit/favorites_cubit.dart';
 import 'features/reservations/domain/repositories/reservation_repository.dart';
@@ -89,27 +87,11 @@ class TurnlyApp extends StatelessWidget {
           create: (_) => ReservationsCubit(getIt<ReservationRepository>())..loadReservations(),
         ),
       ],
-      child: BlocListener<AuthCubit, AuthState>(
-        listenWhen: (prev, curr) {
-          final fire = curr is AuthEmailUnverified && prev is! AuthEmailUnverified;
-          print('[GlobalAuthListener] prev=${prev.runtimeType} curr=${curr.runtimeType} fire=$fire');
-          return fire;
-        },
-        listener: (_, state) {
-          if (state is AuthEmailUnverified) {
-            final ctx = rootNavigatorKey.currentContext;
-            print('[GlobalAuthListener] AuthEmailUnverified email=${state.email} ctx=${ctx != null}');
-            if (ctx != null) {
-              ctx.go('/verify-email?email=${Uri.encodeComponent(state.email)}');
-            }
-          }
-        },
-        child: MaterialApp.router(
-          title: 'Turnly',
-          debugShowCheckedModeBanner: false,
-          theme: AppTheme.light,
-          routerConfig: appRouter,
-        ),
+      child: MaterialApp.router(
+        title: 'Turnly',
+        debugShowCheckedModeBanner: false,
+        theme: AppTheme.light,
+        routerConfig: appRouter,
       ),
     );
   }
