@@ -12,6 +12,7 @@ use Illuminate\Support\Str;
 use Illuminate\Support\Facades\Hash;
 use Kreait\Firebase\Factory as FirebaseFactory;
 use Kreait\Firebase\Exception\Auth\FailedToVerifyToken;
+use Illuminate\Support\Facades\Log;
 
 class GoogleAuthController extends Controller
 {
@@ -95,21 +96,38 @@ class GoogleAuthController extends Controller
         // ID token for the configured project, regardless of which OAuth
         // client (iOS / Android / Web) audience it carries.
         $credentialsPath = config('services.firebase.credentials');
-        if ($credentialsPath && file_exists(base_path($credentialsPath))) {
+        $absolutePath = $credentialsPath ? base_path($credentialsPath) : null;
+        $firebaseAvailable = $absolutePath && file_exists($absolutePath);
+
+        Log::info('[GoogleAuth] verifyToken start', [
+            'firebase_available' => $firebaseAvailable,
+            'credentials_path' => $credentialsPath,
+        ]);
+
+        if ($firebaseAvailable) {
             try {
                 $factory = (new FirebaseFactory())
-                    ->withServiceAccount(base_path($credentialsPath));
+                    ->withServiceAccount($absolutePath);
                 $auth = $factory->createAuth();
                 $verified = $auth->verifyIdToken($idToken);
                 $claims = $verified->claims()->all();
+                Log::info('[GoogleAuth] firebase verify ok', [
+                    'email' => $claims['email'] ?? null,
+                    'aud' => $claims['aud'] ?? null,
+                ]);
                 return [
                     'email' => $claims['email'] ?? null,
                     'name' => $claims['name'] ?? ($claims['email'] ?? 'Usuario'),
                 ];
             } catch (FailedToVerifyToken $e) {
+                Log::warning('[GoogleAuth] firebase rejected token', [
+                    'error' => $e->getMessage(),
+                ]);
                 return null;
             } catch (\Throwable $e) {
-                // Fall through to legacy path below.
+                Log::warning('[GoogleAuth] firebase verify error, falling through', [
+                    'error' => $e->getMessage(),
+                ]);
             }
         }
 
@@ -119,11 +137,18 @@ class GoogleAuthController extends Controller
         try {
             $payload = $client->verifyIdToken($idToken);
         } catch (\Throwable $e) {
+            Log::warning('[GoogleAuth] legacy Google\Client error', [
+                'error' => $e->getMessage(),
+            ]);
             return null;
         }
         if (!$payload) {
+            Log::warning('[GoogleAuth] legacy Google\Client returned false', [
+                'configured_client_id' => config('services.google.client_id'),
+            ]);
             return null;
         }
+        Log::info('[GoogleAuth] legacy verify ok');
         return [
             'email' => $payload['email'] ?? null,
             'name' => $payload['name'] ?? ($payload['email'] ?? 'Usuario'),
