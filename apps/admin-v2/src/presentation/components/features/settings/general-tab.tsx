@@ -375,7 +375,7 @@ export function GeneralTab() {
       {/* Floating save bar: always visible, actions enabled when dirty */}
       <div
         aria-live="polite"
-        className="pointer-events-none fixed inset-x-0 bottom-4 z-40 flex justify-center px-4"
+        className="pointer-events-none fixed inset-x-0 z-[55] flex justify-center px-4 bottom-[calc(4.5rem+env(safe-area-inset-bottom))] lg:bottom-4"
       >
         <div className="pointer-events-auto flex w-full max-w-xl items-center gap-3 rounded-full border border-[var(--border-soft)] bg-white py-2 pl-4 pr-2 shadow-[0_14px_32px_-8px_rgba(15,18,26,0.12),0_4px_8px_-4px_rgba(15,18,26,0.06)]">
           {isDirty ? (
