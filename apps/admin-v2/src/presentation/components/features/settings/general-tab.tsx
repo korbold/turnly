@@ -372,28 +372,33 @@ export function GeneralTab() {
         </CardContent>
       </Card>
 
-      {/* Floating save bar: only visible when dirty */}
+      {/* Floating save bar: always visible, actions enabled when dirty */}
       <div
         aria-live="polite"
-        data-dirty={isDirty ? 'true' : 'false'}
-        className="pointer-events-none fixed inset-x-0 bottom-4 z-40 flex justify-center px-4 transition-[opacity,transform] duration-200 ease-out data-[dirty=false]:translate-y-3 data-[dirty=false]:opacity-0 data-[dirty=true]:translate-y-0 data-[dirty=true]:opacity-100"
+        className="pointer-events-none fixed inset-x-0 bottom-4 z-40 flex justify-center px-4"
       >
         <div className="pointer-events-auto flex w-full max-w-xl items-center gap-3 rounded-full border border-[var(--border-soft)] bg-white py-2 pl-4 pr-2 shadow-[0_14px_32px_-8px_rgba(15,18,26,0.12),0_4px_8px_-4px_rgba(15,18,26,0.06)]">
-          <span className="hidden h-2 w-2 shrink-0 rounded-full bg-[var(--brand-500)] sm:inline-block" aria-hidden="true" />
-          <p className="flex-1 truncate text-[13px] text-[var(--fg-default,#2E3441)]">
-            <span className="font-medium">Cambios sin guardar.</span>{' '}
-            <span className="text-[var(--fg-muted)]">Guárdalos antes de salir.</span>
-          </p>
-          <button
-            type="button"
-            onClick={handleDiscard}
-            disabled={update.isPending}
-            className="inline-flex h-9 items-center gap-1.5 rounded-full px-3 text-[13px] font-medium text-[var(--fg-default,#4B5462)] transition-[background-color,transform] duration-150 ease-out hover:bg-[var(--niebla-media,#EEF0F3)] active:scale-[0.97] disabled:opacity-50"
-          >
-            <Undo2 className="h-3.5 w-3.5" aria-hidden="true" />
-            Descartar
-          </button>
-          <Button onClick={handleSave} disabled={update.isPending} className="h-9 rounded-full">
+          {isDirty ? (
+            <>
+              <span className="hidden h-2 w-2 shrink-0 rounded-full bg-[var(--brand-500)] sm:inline-block" aria-hidden="true" />
+              <p className="flex-1 truncate text-[13px] text-[var(--fg-default,#2E3441)]">
+                <span className="font-medium">Cambios sin guardar.</span>{' '}
+                <span className="text-[var(--fg-muted)]">Guárdalos antes de salir.</span>
+              </p>
+              <button
+                type="button"
+                onClick={handleDiscard}
+                disabled={update.isPending}
+                className="inline-flex h-9 items-center gap-1.5 rounded-full px-3 text-[13px] font-medium text-[var(--fg-default,#4B5462)] transition-[background-color,transform] duration-150 ease-out hover:bg-[var(--niebla-media,#EEF0F3)] active:scale-[0.97] disabled:opacity-50"
+              >
+                <Undo2 className="h-3.5 w-3.5" aria-hidden="true" />
+                Descartar
+              </button>
+            </>
+          ) : (
+            <p className="flex-1 truncate text-[13px] text-[var(--fg-muted)]">Configuración guardada</p>
+          )}
+          <Button onClick={handleSave} disabled={update.isPending || !isDirty} className="h-9 rounded-full">
             {update.isPending ? (
               <>
                 <Loader2 className="mr-1.5 h-4 w-4 animate-spin" aria-hidden="true" />
