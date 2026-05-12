@@ -27,7 +27,7 @@ api.interceptors.response.use(
       return Promise.reject(error);
     }
 
-    if (error.response?.status === 401 && typeof window !== 'undefined' && !redirecting) {
+    if (error.response?.status === 401 && typeof window !== 'undefined' && !redirecting && error.config?.url !== '/auth/login') {
       redirecting = true;
       authStorage.clear();
       window.location.href = '/login';

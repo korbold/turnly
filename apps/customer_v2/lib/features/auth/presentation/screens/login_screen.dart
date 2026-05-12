@@ -1,13 +1,12 @@
 // lib/features/auth/presentation/screens/login_screen.dart
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_animate/flutter_animate.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:go_router/go_router.dart';
 import '../../../../app/theme/app_colors.dart';
-import '../../../../core/di/injection.dart';
 import '../../../../shared/widgets/app_button.dart';
 import '../../../../shared/widgets/app_text_field.dart';
-import '../../domain/repositories/auth_repository.dart';
 import '../cubit/auth_cubit.dart';
 import '../cubit/auth_state.dart';
 import '../widgets/google_sign_in_button.dart';
@@ -30,23 +29,38 @@ class _LoginView extends StatefulWidget {
 
 class _LoginViewState extends State<_LoginView> {
   final _emailController = TextEditingController();
-  final _passwordController = TextEditingController();
   final _formKey = GlobalKey<FormState>();
-  bool _obscurePassword = true;
+  // Single source of truth for the regex; matches the validator.
+  static final _emailRegex = RegExp(r'^[\w\.\-+]+@[\w\-]+(\.[\w\-]+)+$');
+  bool _emailValid = false;
+
+  @override
+  void initState() {
+    super.initState();
+    _emailController.addListener(_onEmailChanged);
+  }
+
+  void _onEmailChanged() {
+    final next = _emailRegex.hasMatch(_emailController.text.trim());
+    if (next != _emailValid) {
+      setState(() => _emailValid = next);
+    }
+  }
 
   @override
   void dispose() {
+    _emailController.removeListener(_onEmailChanged);
     _emailController.dispose();
-    _passwordController.dispose();
     super.dispose();
   }
 
-  void _submit() {
+  void _sendMagicLink() {
     if (_formKey.currentState?.validate() ?? false) {
-      context.read<AuthCubit>().login(
-            _emailController.text.trim(),
-            _passwordController.text,
-          );
+      // Light haptic confirms the tap registered before the network round
+      // trip — important because the result lands in the user's inbox,
+      // not on this screen.
+      HapticFeedback.lightImpact();
+      context.read<AuthCubit>().sendMagicLink(_emailController.text.trim());
     }
   }
 
@@ -59,11 +73,15 @@ class _LoginViewState extends State<_LoginView> {
         listener: (context, state) {
           if (state is AuthAuthenticated) {
             context.go('/home');
+          } else if (state is AuthEmailUnverified) {
+            context.go('/verify-email?email=${Uri.encodeComponent(state.email)}');
           }
         },
         builder: (context, state) {
           final isLoading = state is AuthLoading;
           final errorMessage = state is AuthError ? state.message : null;
+          final magicLinkEmail =
+              state is AuthMagicLinkSent ? state.email : null;
 
           return Container(
             decoration: const BoxDecoration(
@@ -87,85 +105,73 @@ class _LoginViewState extends State<_LoginView> {
                       children: [
                         const SizedBox(height: 40),
 
-                        // Logo
-                        Container(
-                          width: 72,
-                          height: 72,
+                        // Logo — real app icon, iOS-style squircle. Reusing
+                        // the same artwork the user sees on their home
+                        // screen reinforces "this is the same app".
+                        DecoratedBox(
                           decoration: BoxDecoration(
-                            color: AppColors.accent,
-                            shape: BoxShape.circle,
+                            borderRadius: BorderRadius.circular(16),
                             boxShadow: [
                               BoxShadow(
                                 color:
-                                    AppColors.accent.withValues(alpha: 0.3),
-                                blurRadius: 24,
-                                offset: const Offset(0, 8),
+                                    AppColors.accent.withValues(alpha: 0.20),
+                                blurRadius: 28,
+                                offset: const Offset(0, 12),
                               ),
                             ],
                           ),
-                          child: const Center(
-                            child: Text(
-                              'T',
-                              style: TextStyle(
-                                color: Colors.white,
-                                fontSize: 32,
-                                fontWeight: FontWeight.w700,
-                              ),
+                          child: ClipRRect(
+                            borderRadius: BorderRadius.circular(16),
+                            child: Image.asset(
+                              'assets/icon/turnly-customer-1024.png',
+                              width: 72,
+                              height: 72,
+                              fit: BoxFit.cover,
+                              filterQuality: FilterQuality.medium,
+                              semanticLabel: 'Logo de Turnly',
                             ),
                           ),
                         )
                             .animate()
-                            .fadeIn(duration: 600.ms)
+                            .fadeIn(duration: 500.ms)
+                            // Strong ease-out without a bounce overshoot;
+                            // bouncy entrance reads as toy-like for an auth
+                            // surface where confidence matters.
                             .scale(
-                              begin: const Offset(0.8, 0.8),
+                              begin: const Offset(0.92, 0.92),
                               end: const Offset(1.0, 1.0),
-                              duration: 600.ms,
-                              curve: Curves.easeOutBack,
+                              duration: 500.ms,
+                              curve: Curves.easeOutCubic,
                             ),
 
-                        const SizedBox(height: 16),
+                        const SizedBox(height: 28),
 
-                        // Brand
+                        // Title — brand identity is already carried by the
+                        // avatar above and the brand name in this heading;
+                        // no need for a separate "Turnly" wordmark.
                         Text(
-                          'Turnly',
-                          style: theme.textTheme.headlineLarge?.copyWith(
-                            color: AppColors.accent,
-                            fontWeight: FontWeight.w800,
-                          ),
-                        )
-                            .animate()
-                            .fadeIn(duration: 500.ms, delay: 150.ms),
-
-                        const SizedBox(height: 40),
-
-                        // Title
-                        Text(
-                          'Iniciar Sesion',
+                          'Entra a Turnly',
                           style: theme.textTheme.headlineMedium,
                         )
                             .animate()
-                            .fadeIn(duration: 500.ms, delay: 250.ms)
+                            .fadeIn(duration: 500.ms, delay: 200.ms)
                             .slideY(
-                              begin: 0.15,
+                              begin: 0.12,
                               end: 0,
                               duration: 500.ms,
-                              delay: 250.ms,
+                              delay: 200.ms,
                             ),
 
-                        const SizedBox(height: 8),
+                        const SizedBox(height: 28),
 
-                        Text(
-                          'Ingresa tus credenciales para continuar',
-                          style: theme.textTheme.bodyMedium,
-                        )
-                            .animate()
-                            .fadeIn(duration: 500.ms, delay: 300.ms),
-
-                        const SizedBox(height: 32),
-
-                        // Error
+                        // Error — wrapped in a live region so screen
+                        // readers announce it the moment it appears,
+                        // without the user having to refocus.
                         if (errorMessage != null)
-                          Container(
+                          Semantics(
+                            liveRegion: true,
+                            container: true,
+                            child: Container(
                             width: double.infinity,
                             margin: const EdgeInsets.only(bottom: 16),
                             padding: const EdgeInsets.symmetric(
@@ -205,95 +211,27 @@ class _LoginViewState extends State<_LoginView> {
                                 amount: 4,
                                 duration: 400.ms,
                               ),
-
-                        // Email field
-                        AppTextField(
-                          label: 'Correo electronico',
-                          hint: 'tu@email.com',
-                          controller: _emailController,
-                          keyboardType: TextInputType.emailAddress,
-                          prefixIcon:
-                              const Icon(Icons.email_outlined, size: 20),
-                          validator: (value) {
-                            if (value == null || value.isEmpty) {
-                              return 'Ingresa tu correo';
-                            }
-                            if (!value.contains('@')) {
-                              return 'Correo invalido';
-                            }
-                            return null;
-                          },
-                        )
-                            .animate()
-                            .fadeIn(duration: 500.ms, delay: 350.ms)
-                            .slideY(
-                              begin: 0.1,
-                              end: 0,
-                              duration: 500.ms,
-                              delay: 350.ms,
-                            ),
-
-                        const SizedBox(height: 16),
-
-                        // Password field
-                        AppTextField(
-                          label: 'Contrasena',
-                          hint: 'Tu contrasena',
-                          controller: _passwordController,
-                          obscureText: _obscurePassword,
-                          prefixIcon:
-                              const Icon(Icons.lock_outline_rounded, size: 20),
-                          suffixIcon: IconButton(
-                            icon: Icon(
-                              _obscurePassword
-                                  ? Icons.visibility_off_outlined
-                                  : Icons.visibility_outlined,
-                              size: 20,
-                              color: AppColors.textTertiary,
-                            ),
-                            onPressed: () => setState(
-                              () => _obscurePassword = !_obscurePassword,
-                            ),
                           ),
-                          validator: (value) {
-                            if (value == null || value.isEmpty) {
-                              return 'Ingresa tu contrasena';
-                            }
-                            if (value.length < 6) {
-                              return 'Minimo 6 caracteres';
-                            }
-                            return null;
+
+                        // Google Sign-In (primary)
+                        GoogleSignInButton(
+                          isLoading: state is AuthLoading,
+                          onPressed: () {
+                            context.read<AuthCubit>().loginWithGoogle();
                           },
                         )
                             .animate()
-                            .fadeIn(duration: 500.ms, delay: 400.ms)
+                            .fadeIn(duration: 500.ms, delay: 320.ms)
                             .slideY(
                               begin: 0.1,
                               end: 0,
                               duration: 500.ms,
-                              delay: 400.ms,
-                            ),
-
-                        const SizedBox(height: 28),
-
-                        // Login button
-                        AppButton(
-                          label: 'Iniciar Sesion',
-                          isLoading: isLoading,
-                          onPressed: _submit,
-                        )
-                            .animate()
-                            .fadeIn(duration: 500.ms, delay: 450.ms)
-                            .slideY(
-                              begin: 0.1,
-                              end: 0,
-                              duration: 500.ms,
-                              delay: 450.ms,
+                              delay: 320.ms,
                             ),
 
                         const SizedBox(height: 20),
 
-                        // Divider
+                        // Divider — "or"
                         Row(
                           children: [
                             Expanded(child: Divider(color: Colors.grey.shade300)),
@@ -313,41 +251,130 @@ class _LoginViewState extends State<_LoginView> {
 
                         const SizedBox(height: 20),
 
-                        // Google Sign-In button
-                        GoogleSignInButton(
-                          isLoading: state is AuthLoading,
-                          onPressed: () {
-                            context.read<AuthCubit>().loginWithGoogle();
+                        // Email field — IME "send" action submits the
+                        // form straight from the keyboard, so the user
+                        // never has to dismiss the keyboard before tapping
+                        // the CTA.
+                        AppTextField(
+                          label: 'Correo electrónico',
+                          hint: 'tu@email.com',
+                          controller: _emailController,
+                          keyboardType: TextInputType.emailAddress,
+                          textInputAction: TextInputAction.send,
+                          textCapitalization: TextCapitalization.none,
+                          onFieldSubmitted: (_) {
+                            if (_emailValid) _sendMagicLink();
                           },
-                        ),
+                          prefixIcon:
+                              const Icon(Icons.email_outlined, size: 20),
+                          validator: (value) {
+                            final v = value?.trim() ?? '';
+                            if (v.isEmpty) return 'Ingresa tu correo';
+                            if (!_emailRegex.hasMatch(v)) {
+                              return 'Correo inválido';
+                            }
+                            return null;
+                          },
+                        )
+                            .animate()
+                            .fadeIn(duration: 500.ms, delay: 400.ms)
+                            .slideY(
+                              begin: 0.1,
+                              end: 0,
+                              duration: 500.ms,
+                              delay: 400.ms,
+                            ),
 
                         const SizedBox(height: 24),
 
-                        // Register link
-                        Row(
-                          mainAxisAlignment: MainAxisAlignment.center,
-                          children: [
-                            Text(
-                              'No tienes cuenta? ',
-                              style: theme.textTheme.bodyMedium,
+                        // Magic-link confirmation banner — live region so
+                        // VoiceOver/TalkBack announces "Te enviamos un
+                        // link…" without the user having to refocus.
+                        if (magicLinkEmail != null)
+                          Semantics(
+                            liveRegion: true,
+                            container: true,
+                            child: Container(
+                            width: double.infinity,
+                            margin: const EdgeInsets.only(bottom: 16),
+                            padding: const EdgeInsets.symmetric(
+                              horizontal: 16,
+                              vertical: 14,
                             ),
-                            GestureDetector(
-                              onTap: () => context.go('/register'),
-                              child: Text(
-                                'Registrarte',
-                                style: TextStyle(
-                                  color: AppColors.accent,
-                                  fontWeight: FontWeight.w600,
-                                  fontSize: 14,
-                                ),
+                            decoration: BoxDecoration(
+                              color: AppColors.accent.withValues(alpha: 0.08),
+                              borderRadius: BorderRadius.circular(12),
+                              border: Border.all(
+                                color:
+                                    AppColors.accent.withValues(alpha: 0.25),
                               ),
                             ),
-                          ],
+                            child: Row(
+                              children: [
+                                Icon(
+                                  Icons.mark_email_read_outlined,
+                                  color: AppColors.accent,
+                                  size: 22,
+                                ),
+                                const SizedBox(width: 12),
+                                Expanded(
+                                  child: Column(
+                                    crossAxisAlignment:
+                                        CrossAxisAlignment.start,
+                                    children: [
+                                      const Text(
+                                        'Te enviamos un link',
+                                        style: TextStyle(
+                                          fontWeight: FontWeight.w600,
+                                          fontSize: 13.5,
+                                        ),
+                                      ),
+                                      const SizedBox(height: 2),
+                                      Text(
+                                        'Abre el correo en $magicLinkEmail y toca el link para entrar.',
+                                        style: TextStyle(
+                                          color: AppColors.textSecondary,
+                                          fontSize: 12.5,
+                                        ),
+                                      ),
+                                    ],
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ).animate().fadeIn(duration: 300.ms),
+                          ),
+
+                        // Primary CTA: send magic link. Disabled until the
+                        // email is well-formed so the tap does not bounce
+                        // the user back with an inline error.
+                        AppButton(
+                          label: 'Enviarme link al email',
+                          isLoading: isLoading,
+                          onPressed: _emailValid ? _sendMagicLink : null,
                         )
                             .animate()
-                            .fadeIn(duration: 500.ms, delay: 500.ms),
+                            .fadeIn(duration: 500.ms, delay: 450.ms)
+                            .slideY(
+                              begin: 0.1,
+                              end: 0,
+                              duration: 500.ms,
+                              delay: 450.ms,
+                            ),
 
-                        const SizedBox(height: 40),
+                        const SizedBox(height: 8),
+
+                        Text(
+                          'Sin contraseñas. Te mandamos un link y entras con un toque.',
+                          textAlign: TextAlign.center,
+                          style: theme.textTheme.bodySmall?.copyWith(
+                            // textTertiary fails WCAG AA against the gradient
+                            // background; textSecondary lands at ~7:1.
+                            color: AppColors.textSecondary,
+                          ),
+                        ).animate().fadeIn(duration: 500.ms, delay: 480.ms),
+
+                        const SizedBox(height: 32),
                       ],
                     ),
                   ),

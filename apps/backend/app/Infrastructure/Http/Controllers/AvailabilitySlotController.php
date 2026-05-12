@@ -29,8 +29,8 @@ class AvailabilitySlotController extends Controller
         $tenantId = app('current_tenant_id');
 
         // Delete all existing slots for this tenant and recreate
-        AvailabilitySlotModel::withoutGlobalScopes()
-            ->where('tenant_id', $tenantId)
+        AvailabilitySlotModel::query()
+            ->forTenant($tenantId)
             ->delete();
 
         foreach ($validated['slots'] as $slotData) {

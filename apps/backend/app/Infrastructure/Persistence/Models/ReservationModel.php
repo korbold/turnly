@@ -2,7 +2,7 @@
 
 namespace App\Infrastructure\Persistence\Models;
 
-use App\Infrastructure\Persistence\Scopes\TenantScope;
+use App\Infrastructure\Persistence\Concerns\BelongsToTenant;
 use Illuminate\Database\Eloquent\Concerns\HasUuids;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
@@ -10,7 +10,7 @@ use Illuminate\Database\Eloquent\SoftDeletes;
 
 class ReservationModel extends Model
 {
-    use HasUuids, HasFactory, SoftDeletes;
+    use HasUuids, HasFactory, SoftDeletes, BelongsToTenant;
 
     protected $table = 'reservations';
 
@@ -27,11 +27,6 @@ class ReservationModel extends Model
             'estimated_end' => 'datetime',
             'cancelled_at' => 'datetime',
         ];
-    }
-
-    protected static function booted(): void
-    {
-        static::addGlobalScope(new TenantScope());
     }
 
     public function tenant()

@@ -4,7 +4,6 @@ import 'package:go_router/go_router.dart';
 import '../core/storage/secure_storage.dart';
 import '../features/onboarding/presentation/screens/onboarding_screen.dart';
 import '../features/auth/presentation/screens/login_screen.dart';
-import '../features/auth/presentation/screens/register_screen.dart';
 import '../features/home/presentation/screens/main_shell.dart';
 import '../features/explore/presentation/screens/explore_screen.dart';
 import '../features/business/presentation/screens/business_detail_screen.dart';
@@ -21,23 +20,80 @@ import '../features/explore/presentation/screens/category_screen.dart';
 import '../features/favorites/presentation/screens/favorites_screen.dart';
 import '../features/notifications/presentation/screens/notifications_screen.dart';
 import '../features/legal/presentation/screens/legal_screen.dart';
+import '../features/shared/presentation/screens/not_found_screen.dart';
 
-final _rootNavigatorKey = GlobalKey<NavigatorState>();
+final rootNavigatorKey = GlobalKey<NavigatorState>();
 final _shellNavigatorKey = GlobalKey<NavigatorState>();
 
+// Web-only paths that must never be interpreted as a tenant slug. Mirrors
+// the equivalent set in DeepLinkHandler so both code paths agree.
+const _reservedWebPaths = <String>{
+  'login',
+  'register',
+  'verify-email',
+  'forgot-password',
+  'dashboard',
+  'reservations',
+  'service-logs',
+  'clients',
+  'services',
+  'team',
+  'reports',
+  'plan',
+  'settings',
+  'super-admin',
+  'explorar',
+  'terms',
+  'privacy',
+  'api',
+  '_next',
+  '.well-known',
+  'm',
+};
+
 final appRouter = GoRouter(
-  navigatorKey: _rootNavigatorKey,
+  navigatorKey: rootNavigatorKey,
   initialLocation: '/login',
+  errorBuilder: (context, state) => NotFoundScreen(
+    attemptedUri: state.uri,
+  ),
   redirect: (context, state) async {
+    // Android App Links and iOS Universal Links can deliver a full
+    // `https://dev.goturnly.com/<slug>` URL directly to go_router before
+    // DeepLinkHandler ever sees it. Translate those into in-app routes
+    // here so the user never lands on a "no routes for location" page.
+    final loc = state.uri.toString();
+    if (loc.startsWith('http://') || loc.startsWith('https://')) {
+      final segments =
+          state.uri.pathSegments.where((s) => s.isNotEmpty).toList();
+      if (segments.isEmpty) {
+        return '/home';
+      }
+      // Magic link path: AuthCubit consumes the token via
+      // DeepLinkHandler; meanwhile, send the user to /login so they see
+      // a stable surface while sign-in completes.
+      if (segments.first == 'm' &&
+          segments.length == 2 &&
+          segments[1].length == 64) {
+        return '/login';
+      }
+      if (_reservedWebPaths.contains(segments.first)) {
+        return '/home';
+      }
+      return '/business/${segments.first}';
+    }
+
     final token = await SecureStorage.getToken();
     final isAuthenticated = token != null;
     final isAuthRoute = state.matchedLocation == '/login' ||
         state.matchedLocation == '/register' ||
         state.matchedLocation == '/onboarding';
 
-    if (!isAuthenticated && !isAuthRoute) return '/login';
-    if (isAuthenticated && isAuthRoute) return '/home';
-    return null;
+    String? decision;
+    if (!isAuthenticated && !isAuthRoute) decision = '/login';
+    if (isAuthenticated && isAuthRoute) decision = '/home';
+    print('[Router] -> ${state.matchedLocation} auth=$isAuthenticated authRoute=$isAuthRoute decision=${decision ?? "allow"}');
+    return decision;
   },
   routes: [
     GoRoute(
@@ -50,7 +106,15 @@ final appRouter = GoRouter(
     ),
     GoRoute(
       path: '/register',
-      builder: (context, state) => const RegisterScreen(),
+      // Passwordless: there's no separate register form anymore. The
+      // login screen's magic link covers both new and returning users.
+      redirect: (_, __) => '/login',
+    ),
+    GoRoute(
+      // Legacy: kept so any in-flight deep links don't 404. Magic link
+      // is the new verification surface; bounce to /login.
+      path: '/verify-email',
+      redirect: (_, __) => '/login',
     ),
 
     // Main app shell with bottom nav

@@ -56,6 +56,18 @@ return [
 
     /*
     |--------------------------------------------------------------------------
+    | Frontend Host
+    |--------------------------------------------------------------------------
+    |
+    | Public-facing host used to build user-clickable links (magic-link
+    | emails, share URLs). Should NOT include the protocol or trailing slash.
+    | dev: dev.goturnly.com  |  prod: goturnly.com
+    */
+
+    'frontend_host' => env('FRONTEND_HOST', 'goturnly.com'),
+
+    /*
+    |--------------------------------------------------------------------------
     | Application Timezone
     |--------------------------------------------------------------------------
     |

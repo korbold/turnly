@@ -6,26 +6,39 @@ export interface TenantPalette {
   accent: string;
 }
 
+/**
+ * Curated tenant palettes. Coral is the Turnly brand default; others give
+ * tenants a recognizable accent without breaking the cool-zinc neutral
+ * system around them. All hues are saturated enough to read as identity,
+ * muted variants are tinted to read as soft brand wash.
+ */
 export const TENANT_PALETTES: TenantPalette[] = [
   {
-    name: 'Indigo',
-    primary: '#4F46E5',
-    primaryHover: '#4338CA',
-    primaryMuted: '#EEF2FF',
-    accent: '#818CF8',
+    name: 'Coral',
+    primary: '#F2693A',
+    primaryHover: '#D9501F',
+    primaryMuted: '#FDEEE6',
+    accent: '#F5A073',
   },
   {
     name: 'Emerald',
-    primary: '#059669',
-    primaryHover: '#047857',
-    primaryMuted: '#D1FAE5',
+    primary: '#0F9D58',
+    primaryHover: '#0B7A44',
+    primaryMuted: '#E8F8F0',
     accent: '#34D399',
+  },
+  {
+    name: 'Amber',
+    primary: '#E89320',
+    primaryHover: '#B47114',
+    primaryMuted: '#FFF6E0',
+    accent: '#F5BD5C',
   },
   {
     name: 'Rose',
     primary: '#E11D48',
     primaryHover: '#BE123C',
-    primaryMuted: '#FFE4E6',
+    primaryMuted: '#FCE9EB',
     accent: '#FB7185',
   },
   {
@@ -36,11 +49,25 @@ export const TENANT_PALETTES: TenantPalette[] = [
     accent: '#A78BFA',
   },
   {
-    name: 'Orange',
-    primary: '#EA580C',
-    primaryHover: '#C2410C',
-    primaryMuted: '#FFF7ED',
-    accent: '#FB923C',
+    name: 'Slate',
+    primary: '#475569',
+    primaryHover: '#334155',
+    primaryMuted: '#F1F5F9',
+    accent: '#94A3B8',
+  },
+  {
+    name: 'Sky',
+    primary: '#0EA5E9',
+    primaryHover: '#0284C7',
+    primaryMuted: '#E0F2FE',
+    accent: '#38BDF8',
+  },
+  {
+    name: 'Indigo',
+    primary: '#4F46E5',
+    primaryHover: '#3730A3',
+    primaryMuted: '#EEF2FF',
+    accent: '#818CF8',
   },
   {
     name: 'Teal',
@@ -50,45 +77,24 @@ export const TENANT_PALETTES: TenantPalette[] = [
     accent: '#2DD4BF',
   },
   {
-    name: 'Pink',
-    primary: '#DB2777',
-    primaryHover: '#BE185D',
-    primaryMuted: '#FCE7F3',
-    accent: '#F472B6',
+    name: 'Fuchsia',
+    primary: '#C026D3',
+    primaryHover: '#A21CAF',
+    primaryMuted: '#FAE8FF',
+    accent: '#E879F9',
   },
   {
-    name: 'Sky',
-    primary: '#0284C7',
-    primaryHover: '#0369A1',
-    primaryMuted: '#E0F2FE',
-    accent: '#38BDF8',
-  },
-  {
-    name: 'Amber',
-    primary: '#D97706',
-    primaryHover: '#B45309',
+    name: 'Bronze',
+    primary: '#A16207',
+    primaryHover: '#854D0E',
     primaryMuted: '#FEF3C7',
-    accent: '#FBBF24',
+    accent: '#CA8A04',
   },
   {
-    name: 'Cyan',
-    primary: '#0891B2',
-    primaryHover: '#0E7490',
-    primaryMuted: '#CFFAFE',
-    accent: '#22D3EE',
-  },
-  {
-    name: 'Lime',
-    primary: '#65A30D',
-    primaryHover: '#4D7C0F',
-    primaryMuted: '#ECFCCB',
-    accent: '#A3E635',
-  },
-  {
-    name: 'Slate',
-    primary: '#475569',
-    primaryHover: '#334155',
-    primaryMuted: '#F1F5F9',
-    accent: '#94A3B8',
+    name: 'Forest',
+    primary: '#166534',
+    primaryHover: '#14532D',
+    primaryMuted: '#DCFCE7',
+    accent: '#22C55E',
   },
 ];

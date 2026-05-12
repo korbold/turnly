@@ -1,4 +1,5 @@
 // lib/features/business/presentation/widgets/service_card.dart
+import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_animate/flutter_animate.dart';
 import 'package:intl/intl.dart';
@@ -27,6 +28,8 @@ class ServiceCard extends StatelessWidget {
       symbol: '\$',
       decimalDigits: 2,
     );
+    final hasImage =
+        service.imageUrl != null && service.imageUrl!.isNotEmpty;
 
     return Container(
       margin: const EdgeInsets.only(bottom: 12),
@@ -44,19 +47,30 @@ class ServiceCard extends StatelessWidget {
       ),
       child: Row(
         children: [
-          // Service icon
+          // Service thumbnail (image or icon fallback)
           Container(
-            width: 48,
-            height: 48,
+            width: 56,
+            height: 56,
             decoration: BoxDecoration(
               color: tenantTheme.secondary,
               borderRadius: BorderRadius.circular(14),
             ),
-            child: Icon(
-              Icons.miscellaneous_services_rounded,
-              color: tenantTheme.primary,
-              size: 22,
-            ),
+            clipBehavior: Clip.antiAlias,
+            child: hasImage
+                ? CachedNetworkImage(
+                    imageUrl: service.imageUrl!,
+                    fit: BoxFit.cover,
+                    errorWidget: (_, __, ___) => Icon(
+                      Icons.miscellaneous_services_rounded,
+                      color: tenantTheme.primary,
+                      size: 22,
+                    ),
+                  )
+                : Icon(
+                    Icons.miscellaneous_services_rounded,
+                    color: tenantTheme.primary,
+                    size: 22,
+                  ),
           ),
           const SizedBox(width: 14),
 

@@ -2,13 +2,13 @@
 
 namespace App\Infrastructure\Persistence\Models;
 
-use App\Infrastructure\Persistence\Scopes\TenantScope;
+use App\Infrastructure\Persistence\Concerns\BelongsToTenant;
 use Illuminate\Database\Eloquent\Concerns\HasUuids;
 use Illuminate\Database\Eloquent\Model;
 
 class AvailabilityBlockModel extends Model
 {
-    use HasUuids;
+    use HasUuids, BelongsToTenant;
 
     protected $table = 'availability_blocks';
 
@@ -27,8 +27,4 @@ class AvailabilityBlockModel extends Model
         ];
     }
 
-    protected static function booted(): void
-    {
-        static::addGlobalScope(new TenantScope());
-    }
 }

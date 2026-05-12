@@ -167,22 +167,30 @@ export function ReservationFilters({
               : null;
 
           return (
-            <Button
+            <button
               key={tab.value}
-              variant={active ? 'default' : 'outline'}
-              size="sm"
+              type="button"
+              aria-pressed={active}
               className={cn(
-                'h-8 text-xs',
-                active && cfg && `${cfg.bgColor} ${cfg.color} hover:${cfg.bgColor}`,
-                active && !cfg && ''
+                'inline-flex h-8 items-center gap-1.5 rounded-full border px-3 text-[12.5px] font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-1',
+                active
+                  ? cfg
+                    ? `border-transparent ${cfg.bgColor} ${cfg.color}`
+                    : 'border-transparent bg-[var(--ink-700)] text-[var(--bg-surface)]'
+                  : 'border-[var(--border)] bg-[var(--bg-surface)] text-[var(--fg)] hover:border-[var(--border-strong)]'
               )}
               onClick={() => setStatusFilter(tab.value)}
             >
               {tab.label}
-              <span className="ml-1.5 rounded-full bg-white/20 px-1.5 text-[10px]">
+              <span
+                className={cn(
+                  'rounded-full px-1.5 text-[11px] font-semibold tabular-nums',
+                  active ? 'bg-white/20' : 'bg-[var(--bg-sunken)] text-[var(--fg-secondary)]'
+                )}
+              >
                 {count}
               </span>
-            </Button>
+            </button>
           );
         })}
       </div>

@@ -122,14 +122,14 @@ class PublicController extends Controller
             ], 404);
         }
 
-        $services = ServiceModel::withoutGlobalScopes()
-            ->where('tenant_id', $tenant->id)
+        $services = ServiceModel::query()
+            ->forTenant($tenant->id)
             ->where('is_active', true)
             ->orderBy('sort_order')
             ->get(['id', 'name', 'description', 'price', 'image_url']);
 
-        $availability = AvailabilitySlotModel::withoutGlobalScopes()
-            ->where('tenant_id', $tenant->id)
+        $availability = AvailabilitySlotModel::query()
+            ->forTenant($tenant->id)
             ->where('is_active', true)
             ->orderBy('day_of_week')
             ->get(['day_of_week', 'start_time', 'end_time']);
@@ -177,8 +177,8 @@ class PublicController extends Controller
         $dayOfWeek = (int) $date->format('N') - 1;
         $durationMinutes = $tenant->settings['slot_duration_minutes'] ?? 30;
 
-        $availabilitySlots = AvailabilitySlotModel::withoutGlobalScopes()
-            ->where('tenant_id', $tenant->id)
+        $availabilitySlots = AvailabilitySlotModel::query()
+            ->forTenant($tenant->id)
             ->where('day_of_week', $dayOfWeek)
             ->where('is_active', true)
             ->get();
@@ -187,8 +187,8 @@ class PublicController extends Controller
             return response()->json(['data' => []]);
         }
 
-        $existingReservations = ReservationModel::withoutGlobalScopes()
-            ->where('tenant_id', $tenant->id)
+        $existingReservations = ReservationModel::query()
+            ->forTenant($tenant->id)
             ->whereDate('scheduled_at', $request->date)
             ->whereNotIn('status', ['cancelled', 'no_show'])
             ->get();
@@ -239,8 +239,8 @@ class PublicController extends Controller
             abort(404);
         }
 
-        $resources = ClientResourceModel::withoutGlobalScopes()
-            ->where('tenant_id', $tenant->id)
+        $resources = ClientResourceModel::query()
+            ->forTenant($tenant->id)
             ->where('client_id', $user->id)
             ->orderBy('created_at', 'desc')
             ->get();

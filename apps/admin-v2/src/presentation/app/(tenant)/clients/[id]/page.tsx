@@ -4,10 +4,16 @@ import { useState, Suspense } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import { format, formatDistanceToNow } from 'date-fns';
 import { es } from 'date-fns/locale';
-import { ArrowLeft, Pencil, Car, User, CalendarDays, DollarSign, Hash } from 'lucide-react';
+import {
+  ArrowLeft,
+  Pencil,
+  CalendarDays,
+  Activity,
+  ClipboardList,
+  Calendar,
+} from 'lucide-react';
 import { Button } from '@/presentation/components/ui/button';
-import { Card, CardContent } from '@/presentation/components/ui/card';
-import { Badge } from '@/presentation/components/ui/badge';
+import { Avatar, AvatarFallback } from '@/presentation/components/ui/avatar';
 import { Skeleton } from '@/presentation/components/ui/skeleton';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/presentation/components/ui/tabs';
 import { useClient, useClientHistory } from '@/presentation/hooks/use-clients';
@@ -16,11 +22,27 @@ import { ClientForm } from '@/presentation/components/features/clients/client-fo
 import { cn } from '@/shared/utils/cn';
 
 const fmt = (v: number) =>
-  new Intl.NumberFormat('es-CO', {
+  new Intl.NumberFormat('es-EC', {
     style: 'currency',
-    currency: 'COP',
+    currency: 'USD',
     minimumFractionDigits: 0,
+    maximumFractionDigits: 0,
   }).format(v);
+
+function getInitials(text: string | null | undefined): string {
+  if (!text) return '?';
+  return text
+    .split(/\s+/)
+    .map((n) => n[0])
+    .filter(Boolean)
+    .slice(0, 2)
+    .join('')
+    .toUpperCase();
+}
+
+function isSyntheticEmail(email: string | undefined | null): boolean {
+  return !!email && /@client\.local$/i.test(email);
+}
 
 function ClientDetailContent() {
   const params = useParams();
@@ -45,7 +67,6 @@ function ClientDetailContent() {
   const serviceHistory = historyItems.filter((h) => h.type === 'service');
   const reservationHistory = historyItems.filter((h) => h.type === 'reservation');
 
-  // Stats from data field
   const clientData = (client?.data as Record<string, unknown> | null) ?? {};
   const totalVisits = (clientData.totalVisits as number) ?? serviceHistory.length;
   const totalSpent = (clientData.totalSpent as number) ?? 0;
@@ -54,9 +75,16 @@ function ClientDetailContent() {
   if (isLoading) {
     return (
       <div className="space-y-4">
-        <Skeleton className="h-8 w-32" />
-        <Skeleton className="h-40 w-full rounded-lg" />
-        <Skeleton className="h-64 w-full rounded-lg" />
+        <Skeleton className="h-9 w-32" />
+        <Skeleton className="h-40 w-full rounded-xl" />
+        <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+          <Skeleton className="h-28 rounded-xl" />
+          <div className="grid grid-cols-2 gap-3">
+            <Skeleton className="h-28 rounded-xl" />
+            <Skeleton className="h-28 rounded-xl" />
+          </div>
+        </div>
+        <Skeleton className="h-64 w-full rounded-xl" />
       </div>
     );
   }
@@ -64,7 +92,7 @@ function ClientDetailContent() {
   if (!client) {
     return (
       <div className="flex flex-col items-center py-16 text-center">
-        <p className="text-sm text-muted-foreground">Cliente no encontrado</p>
+        <p className="text-sm text-[var(--fg-secondary)]">Cliente no encontrado</p>
         <Button variant="link" onClick={() => router.push('/clients')}>
           Volver a clientes
         </Button>
@@ -73,195 +101,278 @@ function ClientDetailContent() {
   }
 
   const hasPlate = !!client.plate;
+  const clientName = client.client?.name ?? null;
+  const primary = hasPlate ? client.plate! : clientName ?? client.label ?? 'Sin identificar';
+  const realEmail = !isSyntheticEmail(client.client?.email) ? client.client?.email : null;
+  const vehicleChips = [client.brand, client.model, client.color, client.type].filter(Boolean);
 
   return (
     <div className="space-y-4">
       {/* Back + Edit */}
       <div className="flex items-center justify-between">
         <Button variant="ghost" size="sm" onClick={() => router.push('/clients')}>
-          <ArrowLeft className="mr-1 h-4 w-4" />
+          <ArrowLeft className="mr-1.5 h-4 w-4" aria-hidden="true" />
           Clientes
         </Button>
         <Button variant="outline" size="sm" onClick={() => setEditOpen(true)}>
-          <Pencil className="mr-1 h-4 w-4" />
+          <Pencil className="mr-1.5 h-4 w-4" aria-hidden="true" />
           Editar
         </Button>
       </div>
 
-      {/* Client info */}
-      <Card>
-        <CardContent className="p-5">
-          <div className="flex items-start gap-4">
-            <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-full bg-indigo-50">
-              {hasPlate ? (
-                <Car className="h-6 w-6 text-indigo-600" />
-              ) : (
-                <User className="h-6 w-6 text-indigo-600" />
-              )}
-            </div>
-            <div className="min-w-0 flex-1">
-              <h2 className="text-lg font-semibold">
-                {client.client?.name ?? 'Sin nombre'}
-              </h2>
-              {client.client?.email && (
-                <p className="text-sm text-muted-foreground">{client.client.email}</p>
-              )}
-              {hasPlate && (
-                <p className="mt-1 text-sm font-medium text-indigo-600">{client.plate}</p>
-              )}
-              <div className="mt-2 flex flex-wrap gap-2 text-xs text-muted-foreground">
-                {client.brand && <Badge variant="secondary">{client.brand}</Badge>}
-                {client.model && <Badge variant="secondary">{client.model}</Badge>}
-                {client.color && <Badge variant="secondary">{client.color}</Badge>}
-                {client.type && <Badge variant="secondary">{client.type}</Badge>}
+      {/* Client info card */}
+      <section
+        aria-label="Información del cliente"
+        className="rounded-xl border border-[var(--border)] bg-[var(--bg-surface)] p-5 sm:p-6"
+      >
+        <div className="flex items-start gap-4">
+          <Avatar className="h-14 w-14 shrink-0">
+            <AvatarFallback className="bg-[var(--ink-75)] text-[16px] font-semibold text-[var(--fg-strong)]">
+              {getInitials(clientName ?? primary)}
+            </AvatarFallback>
+          </Avatar>
+
+          <div className="min-w-0 flex-1">
+            <h2
+              className="text-[24px] font-bold leading-tight text-[var(--fg-strong)]"
+              style={{ fontFamily: 'var(--font-display)', fontStretch: '90%', letterSpacing: '-0.01em' }}
+            >
+              {clientName ?? primary}
+            </h2>
+            {hasPlate && clientName && (
+              <p
+                className="mt-1 text-[14px] font-semibold tabular-nums text-[var(--fg-secondary)]"
+                style={{ fontFamily: 'var(--font-mono)' }}
+              >
+                {client.plate}
+              </p>
+            )}
+            {realEmail && (
+              <p className="mt-1 text-[13px] text-[var(--fg-secondary)]">{realEmail}</p>
+            )}
+
+            {vehicleChips.length > 0 && (
+              <div className="mt-3 flex flex-wrap gap-1.5">
+                {vehicleChips.map((c) => (
+                  <span
+                    key={c as string}
+                    className="rounded-full border border-[var(--border)] bg-[var(--bg-sunken)] px-2.5 py-0.5 text-[11px] font-semibold tracking-[0.02em] text-[var(--fg)]"
+                  >
+                    {c as string}
+                  </span>
+                ))}
               </div>
+            )}
 
-              {/* Custom fields display */}
-              {customFields.length > 0 && client.data && (
-                <div className="mt-3 grid grid-cols-2 gap-x-4 gap-y-1 text-sm">
-                  {customFields.map((cf) => {
-                    const val = (client.data as Record<string, unknown>)?.[cf.key];
-                    if (val == null || val === '') return null;
-                    return (
-                      <div key={cf.key}>
-                        <span className="text-muted-foreground">{cf.label}: </span>
-                        <span className="font-medium">{String(val)}</span>
-                      </div>
-                    );
-                  })}
-                </div>
-              )}
-            </div>
+            {customFields.length > 0 && client.data && (
+              <dl className="mt-4 grid grid-cols-1 gap-x-6 gap-y-2 text-[13px] sm:grid-cols-2">
+                {customFields.map((cf) => {
+                  const val = (client.data as Record<string, unknown>)?.[cf.key];
+                  if (val == null || val === '') return null;
+                  return (
+                    <div key={cf.key} className="flex flex-col gap-0.5">
+                      <dt className="text-[11px] font-semibold uppercase tracking-[0.04em] text-[var(--fg-muted)]">
+                        {cf.label}
+                      </dt>
+                      <dd className="font-medium text-[var(--fg-strong)]">{String(val)}</dd>
+                    </div>
+                  );
+                })}
+              </dl>
+            )}
           </div>
-        </CardContent>
-      </Card>
+        </div>
+      </section>
 
-      {/* Stats */}
-      <div className="grid grid-cols-3 gap-3">
-        <Card>
-          <CardContent className="flex items-center gap-3 p-4">
-            <div className="rounded-lg bg-indigo-50 p-2">
-              <Hash className="h-4 w-4 text-indigo-600" />
-            </div>
-            <div>
-              <p className="text-xs text-muted-foreground">Total visitas</p>
-              <p className="text-lg font-semibold">{totalVisits}</p>
-            </div>
-          </CardContent>
-        </Card>
-        <Card>
-          <CardContent className="flex items-center gap-3 p-4">
-            <div className="rounded-lg bg-emerald-50 p-2">
-              <DollarSign className="h-4 w-4 text-emerald-600" />
-            </div>
-            <div>
-              <p className="text-xs text-muted-foreground">Total gastado</p>
-              <p className="text-lg font-semibold">{fmt(totalSpent)}</p>
-            </div>
-          </CardContent>
-        </Card>
-        <Card>
-          <CardContent className="flex items-center gap-3 p-4">
-            <div className="rounded-lg bg-sky-50 p-2">
-              <CalendarDays className="h-4 w-4 text-sky-600" />
-            </div>
-            <div>
-              <p className="text-xs text-muted-foreground">Ultima visita</p>
-              <p className="text-sm font-semibold">
-                {lastVisit
-                  ? formatDistanceToNow(new Date(lastVisit), { addSuffix: true, locale: es })
-                  : 'N/A'}
+      {/* Stats: hero + split */}
+      <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+        <section
+          aria-label="Total gastado"
+          className="rounded-xl border border-[var(--border)] bg-[var(--bg-surface)] p-5"
+        >
+          <p className="text-[11px] font-semibold uppercase tracking-[0.04em] text-[var(--fg-muted)]">
+            Total gastado
+          </p>
+          <p
+            className="mt-2 text-[34px] font-bold leading-none tabular-nums text-[var(--fg-strong)]"
+            style={{ fontFamily: 'var(--font-mono)' }}
+          >
+            {fmt(totalSpent)}
+          </p>
+          <p className="mt-2 text-[13px] text-[var(--fg-secondary)]">
+            {totalVisits === 0
+              ? 'Sin servicios todavía'
+              : `${totalVisits} ${totalVisits === 1 ? 'servicio' : 'servicios'} registrados`}
+          </p>
+        </section>
+
+        <div className="grid grid-cols-2 gap-3">
+          <section
+            aria-label="Total de visitas"
+            className="flex flex-col justify-between rounded-xl border border-[var(--border)] bg-[var(--bg-surface)] p-4"
+          >
+            <div className="flex items-center gap-2">
+              <span className="grid h-8 w-8 place-items-center rounded-lg bg-[var(--bg-sunken)]">
+                <Activity className="h-4 w-4 text-[var(--fg-secondary)]" aria-hidden="true" />
+              </span>
+              <p className="text-[11px] font-semibold uppercase tracking-[0.04em] text-[var(--fg-muted)]">
+                Visitas
               </p>
             </div>
-          </CardContent>
-        </Card>
+            <p
+              className="mt-3 text-[22px] font-bold leading-none tabular-nums text-[var(--fg-strong)]"
+              style={{ fontFamily: 'var(--font-mono)' }}
+            >
+              {totalVisits}
+            </p>
+          </section>
+
+          <section
+            aria-label="Última visita"
+            className="flex flex-col justify-between rounded-xl border border-[var(--border)] bg-[var(--bg-surface)] p-4"
+          >
+            <div className="flex items-center gap-2">
+              <span className="grid h-8 w-8 place-items-center rounded-lg bg-[var(--bg-sunken)]">
+                <CalendarDays className="h-4 w-4 text-[var(--fg-secondary)]" aria-hidden="true" />
+              </span>
+              <p className="text-[11px] font-semibold uppercase tracking-[0.04em] text-[var(--fg-muted)]">
+                Última visita
+              </p>
+            </div>
+            <p
+              className={cn(
+                'mt-3 text-[15px] font-semibold leading-tight',
+                lastVisit ? 'text-[var(--fg-strong)]' : 'text-[var(--fg-muted)]'
+              )}
+            >
+              {lastVisit
+                ? formatDistanceToNow(new Date(lastVisit), { addSuffix: true, locale: es })
+                : 'Sin visitas'}
+            </p>
+          </section>
+        </div>
       </div>
 
       {/* History tabs */}
       <Tabs defaultValue="services">
         <TabsList>
           <TabsTrigger value="services">
-            Servicios ({serviceHistory.length})
+            Servicios{' '}
+            <span className="ml-1.5 rounded-full bg-[var(--bg-sunken)] px-1.5 text-[11px] font-semibold tabular-nums text-[var(--fg-secondary)]">
+              {serviceHistory.length}
+            </span>
           </TabsTrigger>
           <TabsTrigger value="reservations">
-            Reservas ({reservationHistory.length})
+            Reservas{' '}
+            <span className="ml-1.5 rounded-full bg-[var(--bg-sunken)] px-1.5 text-[11px] font-semibold tabular-nums text-[var(--fg-secondary)]">
+              {reservationHistory.length}
+            </span>
           </TabsTrigger>
         </TabsList>
 
         <TabsContent value="services" className="mt-3">
           {serviceHistory.length === 0 ? (
-            <div className="rounded-lg border bg-white py-12 text-center">
-              <p className="text-sm text-muted-foreground">Sin servicios registrados</p>
-            </div>
+            <EmptyHistory
+              icon={ClipboardList}
+              title="Sin servicios registrados"
+              subtitle="Cuando registres un servicio para este cliente, aparecerá aquí."
+            />
           ) : (
-            <div className="space-y-2">
+            <ul role="list" className="space-y-2">
               {serviceHistory.map((item) => (
-                <div
+                <li
                   key={item.id}
-                  className="flex items-center justify-between rounded-lg border bg-white p-3"
+                  className="flex items-center justify-between rounded-lg border border-[var(--border)] bg-[var(--bg-surface)] p-3"
                 >
-                  <div>
-                    <p className="text-sm font-medium">{item.serviceName ?? 'Servicio'}</p>
-                    <p className="text-xs text-muted-foreground">
-                      {format(new Date(item.date), "d MMM yyyy, HH:mm", { locale: es })}
+                  <div className="min-w-0 flex-1">
+                    <p className="truncate text-[14px] font-semibold text-[var(--fg-strong)]">
+                      {item.serviceName ?? 'Servicio'}
+                    </p>
+                    <p className="text-[12.5px] text-[var(--fg-secondary)]">
+                      {format(new Date(item.date), "d 'de' MMMM yyyy · HH:mm", { locale: es })}
                     </p>
                   </div>
-                  <div className="text-right">
+                  <div className="flex shrink-0 items-center gap-3">
                     {item.amount != null && (
-                      <p className="text-sm font-semibold">{fmt(item.amount)}</p>
+                      <span
+                        className="text-[14px] font-bold tabular-nums text-[var(--fg-strong)]"
+                        style={{ fontFamily: 'var(--font-mono)' }}
+                      >
+                        {fmt(item.amount)}
+                      </span>
                     )}
                     {item.status && (
-                      <Badge
-                        variant="secondary"
+                      <span
                         className={cn(
-                          'text-[10px]',
+                          'whitespace-nowrap rounded-full px-2 py-0.5 text-[11px] font-semibold tracking-[0.02em]',
                           item.status === 'completed'
-                            ? 'bg-emerald-50 text-emerald-600'
-                            : 'bg-indigo-50 text-indigo-600'
+                            ? 'bg-[var(--status-completed-bg)] text-[var(--status-completed-fg)]'
+                            : 'bg-[var(--status-progress-bg)] text-[var(--status-progress-fg)]'
                         )}
                       >
                         {item.status === 'completed' ? 'Completado' : 'En progreso'}
-                      </Badge>
+                      </span>
                     )}
                   </div>
-                </div>
+                </li>
               ))}
-            </div>
+            </ul>
           )}
         </TabsContent>
 
         <TabsContent value="reservations" className="mt-3">
           {reservationHistory.length === 0 ? (
-            <div className="rounded-lg border bg-white py-12 text-center">
-              <p className="text-sm text-muted-foreground">Sin reservas registradas</p>
-            </div>
+            <EmptyHistory
+              icon={Calendar}
+              title="Sin reservas registradas"
+              subtitle="Las próximas reservas que cree este cliente aparecerán aquí."
+            />
           ) : (
-            <div className="space-y-2">
+            <ul role="list" className="space-y-2">
               {reservationHistory.map((item) => (
-                <div
+                <li
                   key={item.id}
-                  className="flex items-center justify-between rounded-lg border bg-white p-3"
+                  className="flex items-center justify-between rounded-lg border border-[var(--border)] bg-[var(--bg-surface)] p-3"
                 >
-                  <div>
-                    <p className="text-sm font-medium">{item.serviceName ?? 'Reserva'}</p>
-                    <p className="text-xs text-muted-foreground">
-                      {format(new Date(item.date), "d MMM yyyy, HH:mm", { locale: es })}
+                  <div className="min-w-0 flex-1">
+                    <p className="truncate text-[14px] font-semibold text-[var(--fg-strong)]">
+                      {item.serviceName ?? 'Reserva'}
+                    </p>
+                    <p className="text-[12.5px] text-[var(--fg-secondary)]">
+                      {format(new Date(item.date), "d 'de' MMMM yyyy · HH:mm", { locale: es })}
                     </p>
                   </div>
                   {item.status && (
-                    <Badge variant="secondary" className="text-[10px]">
+                    <span className="whitespace-nowrap rounded-full bg-[var(--bg-sunken)] px-2 py-0.5 text-[11px] font-semibold tracking-[0.02em] text-[var(--fg-secondary)]">
                       {item.status}
-                    </Badge>
+                    </span>
                   )}
-                </div>
+                </li>
               ))}
-            </div>
+            </ul>
           )}
         </TabsContent>
       </Tabs>
 
-      {/* Edit form */}
       <ClientForm open={editOpen} onClose={() => setEditOpen(false)} client={client} />
+    </div>
+  );
+}
+
+interface EmptyHistoryProps {
+  icon: React.ElementType;
+  title: string;
+  subtitle: string;
+}
+
+function EmptyHistory({ icon: Icon, title, subtitle }: EmptyHistoryProps) {
+  return (
+    <div className="flex flex-col items-center justify-center rounded-xl border border-dashed border-[var(--border-strong)] bg-[var(--bg-surface)] px-6 py-12 text-center">
+      <div className="mb-3 grid h-12 w-12 place-items-center rounded-full bg-[var(--bg-sunken)]">
+        <Icon className="h-5 w-5 text-[var(--fg-secondary)]" aria-hidden="true" />
+      </div>
+      <p className="text-[15px] font-semibold text-[var(--fg-strong)]">{title}</p>
+      <p className="mt-1 max-w-xs text-[13px] text-[var(--fg-secondary)]">{subtitle}</p>
     </div>
   );
 }
@@ -271,9 +382,9 @@ export default function ClientDetailPage() {
     <Suspense
       fallback={
         <div className="space-y-4">
-          <Skeleton className="h-8 w-32" />
-          <Skeleton className="h-40 w-full rounded-lg" />
-          <Skeleton className="h-64 w-full rounded-lg" />
+          <Skeleton className="h-9 w-32" />
+          <Skeleton className="h-40 w-full rounded-xl" />
+          <Skeleton className="h-64 w-full rounded-xl" />
         </div>
       }
     >

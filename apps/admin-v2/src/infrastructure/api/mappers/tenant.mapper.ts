@@ -34,7 +34,7 @@ export function mapTenantSettings(raw: Record<string, unknown>): TenantSettings 
     phone: (raw.phone as string) ?? null,
     logoUrl: (raw.logo_url as string) ?? null,
     coverUrl: (raw.cover_url as string) ?? null,
-    themeColor: (raw.theme_color as string) ?? null,
+    themeColor: (raw.brand_theme as string) ?? (raw.theme_color as string) ?? null,
     slotDuration: (raw.slot_duration as number) ?? 30,
     cancellationHours: (raw.cancellation_hours as number) ?? 2,
     socialLinks: {

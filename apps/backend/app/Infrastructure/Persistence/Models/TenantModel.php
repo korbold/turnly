@@ -19,6 +19,9 @@ class TenantModel extends Model
         'trial_ends_at', 'settings', 'onboarding_step', 'activated_at',
         'business_type', 'custom_fields', 'description', 'address',
         'logo_url', 'cover_url', 'social_links', 'brand_theme',
+        'tax_id_type', 'tax_id', 'legal_name',
+        'billing_email', 'billing_address', 'billing_phone',
+        'billing_verified', 'billing_verified_at',
     ];
 
     protected function casts(): array
@@ -31,6 +34,8 @@ class TenantModel extends Model
             'custom_fields' => 'array',
             'social_links' => 'array',
             'is_trial' => 'boolean',
+            'billing_verified' => 'boolean',
+            'billing_verified_at' => 'datetime',
         ];
     }
 

@@ -1,23 +1,31 @@
 // lib/app/theme/app_colors.dart
+// Source of truth: Turnly Design System (Coral brand + zinc-cool neutrals).
 import 'package:flutter/material.dart';
 
 class AppColors {
-  // Base neutral palette
-  static const background = Color(0xFFF8F9FB);
+  // ─── Surfaces ───
+  static const background = Color(0xFFFAFAFB);
   static const surface = Color(0xFFFFFFFF);
-  static const textPrimary = Color(0xFF1A1D26);
-  static const textSecondary = Color(0xFF6B7280);
-  static const textTertiary = Color(0xFF9CA3AF);
-  static const border = Color(0xFFE5E7EB);
-  static const divider = Color(0xFFF3F4F6);
+  static const surfaceSunken = Color(0xFFF4F5F7);
 
-  // Status colors
-  static const success = Color(0xFF10B981);
-  static const warning = Color(0xFFF59E0B);
-  static const error = Color(0xFFEF4444);
-  static const info = Color(0xFF3B82F6);
+  // ─── Text (zinc-cool) ───
+  static const textPrimary = Color(0xFF1A1F2B);
+  static const textSecondary = Color(0xFF4B5462);
+  static const textTertiary = Color(0xFF8B92A0);
 
-  // Default accent (used when no tenant theme)
-  static const accent = Color(0xFF6366F1);
-  static const accentLight = Color(0xFFEEF2FF);
+  // ─── Borders / dividers ───
+  static const border = Color(0xFFE4E7EC);
+  static const borderStrong = Color(0xFFD6DAE0);
+  static const divider = Color(0xFFEEF0F3);
+
+  // ─── Status ───
+  static const success = Color(0xFF0F9D58);
+  static const warning = Color(0xFFE89320);
+  static const error = Color(0xFFDC2A3A);
+  static const info = Color(0xFF1E88F5);
+
+  // ─── Brand (Coral) — default accent ───
+  static const accent = Color(0xFFF2693A);
+  static const accentHover = Color(0xFFD9501F);
+  static const accentLight = Color(0xFFFDEEE6);
 }

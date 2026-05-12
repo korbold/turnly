@@ -2,8 +2,10 @@ export type PaymentMethod = 'cash' | 'card' | 'transfer' | 'other';
 export type ServiceLogStatus = 'in_progress' | 'completed';
 
 export interface ServiceLogClientResource {
-  plate: string;
+  label?: string | null;
+  plate: string | null;
   brand: string | null;
+  client?: { name: string; email?: string };
 }
 
 export interface ServiceLogService {

@@ -25,7 +25,7 @@ interface BookingFlowProps {
 
 type Step = 1 | 2 | 3 | 4;
 
-export function BookingFlow({ slug, tenant, initialServiceId, primaryColor = '#4F46E5' }: BookingFlowProps) {
+export function BookingFlow({ slug, tenant, initialServiceId, primaryColor = '#F2693A' }: BookingFlowProps) {
   const repo = useRepository('public');
   const [step, setStep] = useState<Step>(initialServiceId ? 2 : 1);
   const [serviceId, setServiceId] = useState(initialServiceId ?? '');
@@ -94,7 +94,7 @@ export function BookingFlow({ slug, tenant, initialServiceId, primaryColor = '#4
             >
               {step > s ? <Check className="h-3.5 w-3.5" /> : s}
             </div>
-            {s < 4 && <div className={cn('h-0.5 w-6', step > s ? 'bg-indigo-600' : 'bg-zinc-200')} style={step > s ? { backgroundColor: primaryColor } : {}} />}
+            {s < 4 && <div className={cn('h-0.5 w-6', step > s ? 'bg-[var(--color-primary)]' : 'bg-zinc-200')} style={step > s ? { backgroundColor: primaryColor } : {}} />}
           </div>
         ))}
       </div>
@@ -164,7 +164,7 @@ export function BookingFlow({ slug, tenant, initialServiceId, primaryColor = '#4
                         onClick={() => handleSelectSlot(slotStr)}
                         className={cn(
                           'rounded-lg border px-3 py-2 text-sm font-medium transition-all',
-                          isSelected ? 'text-white' : 'hover:border-indigo-300'
+                          isSelected ? 'text-white' : 'hover:border-[var(--color-primary)]/40'
                         )}
                         style={isSelected ? { backgroundColor: primaryColor, borderColor: primaryColor } : {}}
                       >
@@ -189,8 +189,8 @@ export function BookingFlow({ slug, tenant, initialServiceId, primaryColor = '#4
               <Input value={name} onChange={(e) => setName(e.target.value)} placeholder="Tu nombre completo" />
             </div>
             <div className="space-y-1.5">
-              <Label>Telefono</Label>
-              <Input value={phone} onChange={(e) => setPhone(e.target.value)} placeholder="+57 300 1234567" />
+              <Label>Teléfono</Label>
+              <Input value={phone} onChange={(e) => setPhone(e.target.value)} placeholder="+593 99 123 4567" />
             </div>
 
             {/* Custom fields */}

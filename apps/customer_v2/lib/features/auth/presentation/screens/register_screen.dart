@@ -68,8 +68,13 @@ class _RegisterViewState extends State<_RegisterView> {
     return Scaffold(
       body: BlocConsumer<AuthCubit, AuthState>(
         listener: (context, state) {
+          print('[RegisterScreen] state=${state.runtimeType}');
           if (state is AuthAuthenticated) {
+            print('[RegisterScreen] -> /home');
             context.go('/home');
+          } else if (state is AuthEmailUnverified) {
+            print('[RegisterScreen] -> /verify-email email=${state.email}');
+            context.go('/verify-email?email=${Uri.encodeComponent(state.email)}');
           }
         },
         builder: (context, state) {
@@ -184,14 +189,14 @@ class _RegisterViewState extends State<_RegisterView> {
 
                         const SizedBox(height: 20),
 
-                        // Divider
+                        // Divider — "or continue with email"
                         Row(
                           children: [
                             Expanded(child: Divider(color: Colors.grey.shade300)),
                             Padding(
                               padding: const EdgeInsets.symmetric(horizontal: 16),
                               child: Text(
-                                'o',
+                                'o continúa con email',
                                 style: TextStyle(
                                   color: Colors.grey.shade500,
                                   fontSize: 13,

@@ -3,7 +3,7 @@
 import { usePathname, useRouter } from 'next/navigation';
 import { LogOut, User } from 'lucide-react';
 import { NotificationBell } from '@/presentation/components/features/notifications/notification-bell';
-import { Button } from '@/presentation/components/ui/button';
+import { ShareBusinessButton } from '@/presentation/components/layout/share-business-button';
 import { Avatar, AvatarFallback } from '@/presentation/components/ui/avatar';
 import {
   DropdownMenu,
@@ -22,6 +22,7 @@ const PAGE_TITLES: Record<string, string> = {
   '/services': 'Servicios',
   '/team': 'Equipo',
   '/reports': 'Reportes',
+  '/plan': 'Mi Plan',
   '/settings': 'Configuración',
 };
 
@@ -56,22 +57,39 @@ export function Topbar() {
     });
   };
 
+  const today = new Intl.DateTimeFormat('es-EC', {
+    weekday: 'long',
+    day: 'numeric',
+    month: 'long',
+    year: 'numeric',
+  }).format(new Date());
+
   return (
-    <header className="flex h-16 shrink-0 items-center justify-between border-b border-zinc-200 bg-white px-4 lg:px-6">
-      {/* Left: Breadcrumb / Page title */}
-      <div className="flex items-center">
-        <h1 className="text-lg font-semibold text-zinc-900">{title}</h1>
+    <header className="sticky top-0 z-30 flex h-14 shrink-0 items-center justify-between border-b border-[var(--border)] bg-[var(--bg-surface)] px-6">
+      {/* Left: Title + date */}
+      <div className="flex items-center gap-3.5">
+        <h1
+          className="text-[17px] font-bold text-[var(--fg-strong)]"
+          style={{ fontFamily: 'var(--font-display)', letterSpacing: '-0.01em' }}
+        >
+          {title}
+        </h1>
+        <span className="hidden h-[18px] w-px bg-[var(--border)] sm:block" />
+        <span className="hidden text-[12.5px] text-[var(--fg-secondary)] sm:block">
+          {today.charAt(0).toUpperCase() + today.slice(1)}
+        </span>
       </div>
 
-      {/* Right: Notifications + Avatar */}
+      {/* Right: Share + Notifications + Avatar */}
       <div className="flex items-center gap-2">
+        <ShareBusinessButton />
         <NotificationBell />
 
         <DropdownMenu>
           <DropdownMenuTrigger asChild>
             <button className="flex items-center gap-2 rounded-lg p-1 hover:bg-zinc-100 transition-colors">
               <Avatar className="h-8 w-8">
-                <AvatarFallback className="text-xs bg-indigo-100 text-indigo-700">
+                <AvatarFallback className="text-xs bg-[var(--color-primary-muted)] text-[var(--color-primary-hover)]">
                   {userInitials}
                 </AvatarFallback>
               </Avatar>

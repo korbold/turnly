@@ -2,6 +2,7 @@
 
 use App\Infrastructure\Http\Controllers\Auth\AuthController;
 use App\Infrastructure\Http\Controllers\Auth\GoogleAuthController;
+use App\Infrastructure\Http\Controllers\Auth\MagicLinkController;
 use App\Infrastructure\Http\Controllers\Auth\OnboardingController;
 use App\Infrastructure\Http\Controllers\Tenant\TenantSettingsController;
 use App\Infrastructure\Http\Controllers\Tenant\TenantImageController;
@@ -25,21 +26,36 @@ Route::prefix('v1/public')->group(function () {
     Route::get('tenants/{slug}', [PublicController::class, 'getTenant']);
     Route::get('tenants/{slug}/available-slots', [PublicController::class, 'getAvailableSlots']);
     Route::get('tenants/{slug}/my-resources', [PublicController::class, 'myResources'])->middleware('auth:sanctum');
-    Route::post('tenants/{slug}/book', [PublicController::class, 'book']);
+    Route::post('tenants/{slug}/book', [PublicController::class, 'book'])
+        ->middleware('throttle:public-book');
 });
 
 Route::prefix('v1')->group(function () {
 
     // Public auth
-    Route::post('auth/register', [AuthController::class, 'register']);
-    Route::post('auth/login', [AuthController::class, 'login']);
-    Route::post('auth/google', [GoogleAuthController::class, 'login']);
+    Route::post('auth/register', [AuthController::class, 'register'])
+        ->middleware('throttle:5,60');
+    Route::post('auth/login', [AuthController::class, 'login'])
+        ->middleware('throttle:login');
+    Route::post('auth/google', [GoogleAuthController::class, 'login'])
+        ->middleware('throttle:google-auth');
+    Route::post('auth/magic-link/request', [MagicLinkController::class, 'request'])
+        ->middleware(['throttle:magic-link-email', 'throttle:magic-link-global']);
+    Route::post('auth/magic-link/verify', [MagicLinkController::class, 'verify'])
+        ->middleware('throttle:10,60');
+    Route::post('auth/verify-email', [AuthController::class, 'verifyEmail'])
+        ->middleware('throttle:10,60');
+    Route::post('auth/verify-email/resend', [AuthController::class, 'resendVerification'])
+        ->middleware('throttle:5,60');
 
     // Public onboarding
     Route::prefix('onboarding')->group(function () {
-        Route::post('register', [OnboardingController::class, 'register']);
-        Route::post('verify', [OnboardingController::class, 'verify']);
-        Route::get('check-slug', [OnboardingController::class, 'checkSlug']);
+        Route::post('register', [OnboardingController::class, 'register'])
+            ->middleware('throttle:onboarding-register');
+        Route::post('verify', [OnboardingController::class, 'verify'])
+            ->middleware('throttle:10,60');
+        Route::get('check-slug', [OnboardingController::class, 'checkSlug'])
+            ->middleware('throttle:30,1');
     });
 
     // Authenticated routes
@@ -47,24 +63,27 @@ Route::prefix('v1')->group(function () {
         Route::post('auth/logout', [AuthController::class, 'logout']);
 
         // Authenticated onboarding (no tenant middleware — tenant resolved from user)
-        Route::post('onboarding/business-type', [OnboardingController::class, 'setBusinessType']);
+        Route::post('onboarding/business-type', [OnboardingController::class, 'setBusinessType'])
+            ->middleware('verified.email');
 
         // Client-facing routes (no tenant middleware — returns data across all tenants for the authenticated user)
         Route::get('client/reservations', [ReservationController::class, 'myReservations']);
         Route::get('client/reservations/{id}', [ReservationController::class, 'myReservationShow']);
         Route::patch('client/reservations/{id}/cancel', [ReservationController::class, 'myReservationCancel']);
 
-        // Device tokens (no tenant middleware — tokens can be registered from client app)
-        Route::post('device-tokens', [\App\Infrastructure\Http\Controllers\Notification\DeviceTokenController::class, 'store']);
-        Route::delete('device-tokens/{token}', [\App\Infrastructure\Http\Controllers\Notification\DeviceTokenController::class, 'destroy']);
+        // Device tokens (tenant middleware tolerates no-slug for client app)
+        Route::middleware('tenant')->group(function () {
+            Route::post('device-tokens', [\App\Infrastructure\Http\Controllers\Notification\DeviceTokenController::class, 'store']);
+            Route::delete('device-tokens/{token}', [\App\Infrastructure\Http\Controllers\Notification\DeviceTokenController::class, 'destroy']);
+        });
 
         // Notifications inbox
         Route::get('notifications', [\App\Infrastructure\Http\Controllers\Notification\NotificationController::class, 'index']);
         Route::post('notifications/read-all', [\App\Infrastructure\Http\Controllers\Notification\NotificationController::class, 'markAllAsRead']);
         Route::post('notifications/{id}/read', [\App\Infrastructure\Http\Controllers\Notification\NotificationController::class, 'markAsRead']);
 
-        // Tenant-scoped routes
-        Route::middleware('tenant')->group(function () {
+        // Tenant-scoped routes (require verified email)
+        Route::middleware(['verified.email', 'tenant'])->group(function () {
             // Auth
             Route::get('auth/me', [AuthController::class, 'me']);
 
@@ -74,6 +93,11 @@ Route::prefix('v1')->group(function () {
 
             // Tenant plan + usage
             Route::get('tenant/plan', [\App\Infrastructure\Http\Controllers\Tenant\TenantPlanController::class, 'show']);
+
+            // Tenant billing profile
+            Route::get('tenant/billing-profile', [\App\Infrastructure\Http\Controllers\Tenant\BillingProfileController::class, 'show']);
+            Route::patch('tenant/billing-profile', [\App\Infrastructure\Http\Controllers\Tenant\BillingProfileController::class, 'update']);
+            Route::get('tenant/billing-profile/lookup', [\App\Infrastructure\Http\Controllers\Tenant\BillingProfileController::class, 'lookup']);
 
             // Reservations
             Route::get('reservations/available-slots', [ReservationController::class, 'availableSlots']);
@@ -161,6 +185,7 @@ Route::prefix('v1')->group(function () {
 
             // Assign plan to tenant
             Route::post('tenants/{id}/assign-plan', [SuperAdminController::class, 'assignPlan']);
+            Route::post('tenants/{id}/impersonate', [SuperAdminController::class, 'impersonate']);
         });
     });
 });

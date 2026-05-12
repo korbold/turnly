@@ -7,6 +7,7 @@ export function mapClientResource(raw: Record<string, unknown>): ClientResource 
     id: raw.id as string,
     tenantId: raw.tenant_id as string,
     clientId: raw.client_id as string,
+    label: (raw.label as string) ?? null,
     data: (raw.data as Record<string, unknown>) ?? null,
     plate: (raw.plate as string) ?? null,
     brand: (raw.brand as string) ?? null,

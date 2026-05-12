@@ -10,7 +10,7 @@ const MAX_VISIBLE = 3;
 const MINI_CARD_STYLES: Record<string, string> = {
   pending: 'border-l-amber-500 bg-amber-50',
   confirmed: 'border-l-sky-500 bg-sky-50',
-  in_progress: 'border-l-indigo-500 bg-indigo-50',
+  in_progress: 'border-l-indigo-500 bg-[var(--color-primary-muted)]',
   completed: 'border-l-emerald-500 bg-emerald-50',
   cancelled: 'border-l-rose-500 bg-rose-50',
   no_show: 'border-l-slate-500 bg-slate-50',
@@ -55,8 +55,8 @@ export function CalendarDayCell({
       <button
         onClick={() => onSelectDay(date)}
         className={cn(
-          'mb-1 flex h-7 w-7 items-center justify-center rounded-full text-xs font-medium hover:bg-indigo-50',
-          isToday(date) && 'bg-indigo-600 text-white hover:bg-indigo-700',
+          'mb-1 flex h-7 w-7 items-center justify-center rounded-full text-xs font-medium hover:bg-[var(--color-primary-muted)]',
+          isToday(date) && 'bg-[var(--color-primary)] text-white hover:bg-[var(--color-primary-hover)]',
           !isCurrentMonth && 'text-zinc-400'
         )}
       >
@@ -85,7 +85,7 @@ export function CalendarDayCell({
         {overflow > 0 && (
           <button
             onClick={() => onSelectReservation(reservations[MAX_VISIBLE])}
-            className="w-full rounded px-1 py-0.5 text-left text-[11px] text-indigo-600 hover:bg-indigo-50"
+            className="w-full rounded px-1 py-0.5 text-left text-[11px] text-[var(--color-primary)] hover:bg-[var(--color-primary-muted)]"
           >
             +{overflow} más
           </button>

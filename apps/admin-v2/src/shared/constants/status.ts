@@ -16,39 +16,39 @@ export interface StatusConfig {
 export const RESERVATION_STATUS_CONFIG: Record<ReservationStatus, StatusConfig> = {
   pending: {
     label: 'Pendiente',
-    color: 'text-amber-600',
-    bgColor: 'bg-amber-50',
-    dotColor: 'bg-amber-500',
+    color: 'text-[var(--status-pending-fg)]',
+    bgColor: 'bg-[var(--status-pending-bg)]',
+    dotColor: 'bg-[var(--status-pending-fg)]',
   },
   confirmed: {
     label: 'Confirmada',
-    color: 'text-sky-600',
-    bgColor: 'bg-sky-50',
-    dotColor: 'bg-sky-500',
+    color: 'text-[var(--status-confirmed-fg)]',
+    bgColor: 'bg-[var(--status-confirmed-bg)]',
+    dotColor: 'bg-[var(--status-confirmed-fg)]',
   },
   in_progress: {
-    label: 'En Progreso',
-    color: 'text-indigo-600',
-    bgColor: 'bg-indigo-50',
-    dotColor: 'bg-indigo-500',
+    label: 'En progreso',
+    color: 'text-[var(--status-progress-fg)]',
+    bgColor: 'bg-[var(--status-progress-bg)]',
+    dotColor: 'bg-[var(--status-progress-fg)]',
   },
   completed: {
     label: 'Completada',
-    color: 'text-emerald-600',
-    bgColor: 'bg-emerald-50',
-    dotColor: 'bg-emerald-500',
+    color: 'text-[var(--status-completed-fg)]',
+    bgColor: 'bg-[var(--status-completed-bg)]',
+    dotColor: 'bg-[var(--status-completed-fg)]',
   },
   cancelled: {
     label: 'Cancelada',
-    color: 'text-rose-600',
-    bgColor: 'bg-rose-50',
-    dotColor: 'bg-rose-500',
+    color: 'text-[var(--status-cancelled-fg)]',
+    bgColor: 'bg-[var(--status-cancelled-bg)]',
+    dotColor: 'bg-[var(--status-cancelled-fg)]',
   },
   no_show: {
     label: 'Ausente',
-    color: 'text-slate-600',
-    bgColor: 'bg-slate-100',
-    dotColor: 'bg-slate-500',
+    color: 'text-[var(--status-noshow-fg)]',
+    bgColor: 'bg-[var(--status-noshow-bg)]',
+    dotColor: 'bg-[var(--status-noshow-fg)]',
   },
 };
 
@@ -60,8 +60,8 @@ export interface PaymentMethodConfig {
 }
 
 export const PAYMENT_METHOD_CONFIG: Record<PaymentMethod, PaymentMethodConfig> = {
-  cash: { label: 'Efectivo', icon: '\uD83D\uDCB5' },
-  card: { label: 'Tarjeta', icon: '\uD83D\uDCB3' },
-  transfer: { label: 'Transferencia', icon: '\uD83D\uDD04' },
-  other: { label: 'Otro', icon: '\uD83D\uDCCB' },
+  cash: { label: 'Efectivo', icon: '💵' },
+  card: { label: 'Tarjeta', icon: '💳' },
+  transfer: { label: 'Transferencia', icon: '🔄' },
+  other: { label: 'Otro', icon: '📋' },
 };

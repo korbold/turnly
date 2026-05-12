@@ -75,6 +75,48 @@ class SuperAdminController extends Controller
         ]);
     }
 
+    public function impersonate(string $id): JsonResponse
+    {
+        $tenant = TenantModel::findOrFail($id);
+
+        $user = UserModel::whereHas('tenants', function ($q) use ($id) {
+            $q->where('tenants.id', $id)->where('role', 'owner');
+        })->first();
+
+        if (! $user) {
+            $user = UserModel::whereHas('tenants', function ($q) use ($id) {
+                $q->where('tenants.id', $id);
+            })->first();
+        }
+
+        if (! $user) {
+            return response()->json(['error' => ['message' => 'No users found for this tenant']], 404);
+        }
+
+        $user->tokens()->where('name', 'impersonate')->delete();
+        $token = $user->createToken('impersonate')->plainTextToken;
+
+        return response()->json([
+            'data' => [
+                'user' => [
+                    'id' => $user->id,
+                    'name' => $user->name,
+                    'email' => $user->email,
+                    'is_super_admin' => false,
+                    'email_verified' => $user->email_verified_at !== null,
+                ],
+                'token' => $token,
+                'tenant' => [
+                    'id' => $tenant->id,
+                    'slug' => $tenant->slug,
+                    'name' => $tenant->name,
+                    'status' => $tenant->status,
+                ],
+            ],
+            'meta' => ['timestamp' => now()->toIso8601String()],
+        ]);
+    }
+
     public function assignPlan(Request $request, string $id): JsonResponse
     {
         $request->validate([

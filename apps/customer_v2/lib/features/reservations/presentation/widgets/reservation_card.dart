@@ -77,17 +77,17 @@ class ReservationCard extends StatelessWidget {
                     ),
                     const SizedBox(height: 6),
                     Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 2),
+                      padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
                       decoration: BoxDecoration(
-                        color: statusColor,
-                        borderRadius: BorderRadius.circular(6),
+                        color: reservation.status.backgroundColor,
+                        borderRadius: BorderRadius.circular(999),
                       ),
                       child: Text(
                         reservation.status.label,
-                        style: const TextStyle(
-                          fontSize: 8,
+                        style: TextStyle(
+                          fontSize: 9,
                           fontWeight: FontWeight.w700,
-                          color: Colors.white,
+                          color: statusColor,
                         ),
                         maxLines: 1,
                         overflow: TextOverflow.visible,

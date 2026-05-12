@@ -19,10 +19,10 @@ interface RangeSelectorProps {
 
 const PRESETS: { key: Preset; label: string }[] = [
   { key: 'today', label: 'Hoy' },
-  { key: 'week', label: 'Esta Semana' },
-  { key: 'month', label: 'Este Mes' },
-  { key: 'last_month', label: 'Mes Pasado' },
-  { key: 'custom', label: 'Custom' },
+  { key: 'week', label: 'Esta semana' },
+  { key: 'month', label: 'Este mes' },
+  { key: 'last_month', label: 'Mes pasado' },
+  { key: 'custom', label: 'Personalizado' },
 ];
 
 function getPresetRange(preset: Exclude<Preset, 'custom'>): { from: string; to: string } {
@@ -75,49 +75,55 @@ export function RangeSelector({ from, to, onChange }: RangeSelectorProps) {
 
   return (
     <div className="flex flex-wrap items-center gap-2">
-      {PRESETS.map(({ key, label }) =>
-        key === 'custom' ? (
-          <Popover key={key} open={customOpen} onOpenChange={setCustomOpen}>
-            <PopoverTrigger asChild>
-              <Button
-                variant={activePreset === 'custom' ? 'default' : 'outline'}
-                size="sm"
-                className={cn(activePreset === 'custom' && 'bg-indigo-600 hover:bg-indigo-700')}
-              >
-                <CalendarDays className="mr-1.5 h-3.5 w-3.5" />
-                {activePreset === 'custom' ? `${from} — ${to}` : label}
-              </Button>
-            </PopoverTrigger>
-            <PopoverContent className="w-auto p-4" align="end">
-              <div className="flex gap-4">
-                <div>
-                  <p className="mb-1 text-xs font-medium text-muted-foreground">Desde</p>
-                  <Calendar mode="single" selected={customFrom} onSelect={setCustomFrom} locale={es} />
+      {PRESETS.map(({ key, label }) => {
+        const active = activePreset === key;
+        const baseCls = cn(
+          'inline-flex h-9 items-center gap-1.5 rounded-full border px-3.5 text-[12.5px] font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-1',
+          active
+            ? 'border-transparent bg-[var(--ink-700)] text-[var(--bg-surface)]'
+            : 'border-[var(--border)] bg-[var(--bg-surface)] text-[var(--fg)] hover:border-[var(--border-strong)]'
+        );
+        if (key === 'custom') {
+          return (
+            <Popover key={key} open={customOpen} onOpenChange={setCustomOpen}>
+              <PopoverTrigger asChild>
+                <button type="button" aria-pressed={active} className={baseCls}>
+                  <CalendarDays className="h-3.5 w-3.5" aria-hidden="true" />
+                  {active ? `${from} — ${to}` : label}
+                </button>
+              </PopoverTrigger>
+              <PopoverContent className="w-auto p-4" align="end">
+                <div className="flex gap-4">
+                  <div>
+                    <p className="mb-1 text-xs font-medium text-muted-foreground">Desde</p>
+                    <Calendar mode="single" selected={customFrom} onSelect={setCustomFrom} locale={es} />
+                  </div>
+                  <div>
+                    <p className="mb-1 text-xs font-medium text-muted-foreground">Hasta</p>
+                    <Calendar mode="single" selected={customTo} onSelect={setCustomTo} locale={es} />
+                  </div>
                 </div>
-                <div>
-                  <p className="mb-1 text-xs font-medium text-muted-foreground">Hasta</p>
-                  <Calendar mode="single" selected={customTo} onSelect={setCustomTo} locale={es} />
+                <div className="mt-3 flex justify-end">
+                  <Button size="sm" onClick={applyCustom} disabled={!customFrom || !customTo}>
+                    Aplicar
+                  </Button>
                 </div>
-              </div>
-              <div className="mt-3 flex justify-end">
-                <Button size="sm" onClick={applyCustom} disabled={!customFrom || !customTo}>
-                  Aplicar
-                </Button>
-              </div>
-            </PopoverContent>
-          </Popover>
-        ) : (
-          <Button
+              </PopoverContent>
+            </Popover>
+          );
+        }
+        return (
+          <button
             key={key}
-            variant={activePreset === key ? 'default' : 'outline'}
-            size="sm"
-            className={cn(activePreset === key && 'bg-indigo-600 hover:bg-indigo-700')}
+            type="button"
+            aria-pressed={active}
+            className={baseCls}
             onClick={() => handlePreset(key)}
           >
             {label}
-          </Button>
-        )
-      )}
+          </button>
+        );
+      })}
     </div>
   );
 }

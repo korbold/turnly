@@ -64,7 +64,7 @@ export default function UsersPage() {
               <TableRow>
                 <TableHead>Nombre</TableHead>
                 <TableHead>Email</TableHead>
-                <TableHead>Telefono</TableHead>
+                <TableHead>Teléfono</TableHead>
                 <TableHead>Rol</TableHead>
                 <TableHead>Creado</TableHead>
               </TableRow>

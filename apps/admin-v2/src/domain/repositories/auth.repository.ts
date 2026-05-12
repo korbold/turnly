@@ -7,9 +7,21 @@ export interface LoginResult {
   tenant: Tenant | null;
 }
 
+export interface RegisterResult extends LoginResult {
+  emailVerified: boolean;
+}
+
 export interface AuthRepository {
   login(email: string, password: string): Promise<LoginResult>;
-  register(data: { name: string; email: string; password: string }): Promise<LoginResult>;
+  register(data: {
+    name: string;
+    email: string;
+    password: string;
+    businessName?: string;
+    businessType?: string;
+  }): Promise<RegisterResult>;
+  verifyEmail(email: string, code: string): Promise<LoginResult>;
+  resendVerification(email: string): Promise<void>;
   logout(): Promise<void>;
   me(): Promise<{ user: User; tenant: Tenant | null }>;
 }

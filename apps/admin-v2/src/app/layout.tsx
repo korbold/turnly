@@ -4,4 +4,4 @@
  * Actual implementation lives in src/presentation/app/.
  */
 export { default } from "@/presentation/app/layout";
-export { metadata } from "@/presentation/app/layout";
+export { metadata, viewport } from "@/presentation/app/layout";

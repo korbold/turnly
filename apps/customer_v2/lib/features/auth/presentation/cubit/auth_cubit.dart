@@ -2,6 +2,7 @@
 import 'dart:convert';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import '../../../../core/di/injection.dart';
+import '../../../../core/error/failures.dart';
 import '../../../../core/push/push_notification_service.dart';
 import '../../../../core/storage/secure_storage.dart';
 import '../../data/dtos/auth_dto.dart';
@@ -17,10 +18,20 @@ class AuthCubit extends Cubit<AuthState> {
     emit(const AuthLoading());
     final result = await _repository.login(email, password);
     result.fold(
-      (failure) => emit(AuthError(failure.message)),
+      (failure) {
+        if (failure is EmailUnverifiedFailure) {
+          emit(AuthEmailUnverified(failure.email));
+        } else {
+          emit(AuthError(failure.message));
+        }
+      },
       (data) {
-        emit(AuthAuthenticated(data.user));
-        getIt<PushNotificationService>().init();
+        if (!data.user.emailVerified) {
+          emit(AuthEmailUnverified(data.user.email));
+        } else {
+          emit(AuthAuthenticated(data.user));
+          getIt<PushNotificationService>().init();
+        }
       },
     );
   }
@@ -32,11 +43,47 @@ class AuthCubit extends Cubit<AuthState> {
     String? phone,
   }) async {
     emit(const AuthLoading());
+    print('[AuthCubit] register start email=$email');
     final result = await _repository.register(
       name: name,
       email: email,
       password: password,
       phone: phone,
+    );
+    result.fold(
+      (failure) {
+        print('[AuthCubit] register FAIL: ${failure.message}');
+        emit(AuthError(failure.message));
+      },
+      (data) {
+        print('[AuthCubit] register OK email=${data.user.email} verified=${data.user.emailVerified} -> emitting AuthEmailUnverified');
+        emit(AuthEmailUnverified(data.user.email));
+      },
+    );
+  }
+
+  /// Email magic link: send the link to the user's inbox. UI should
+  /// transition to a "check your email" state on success.
+  Future<void> sendMagicLink(String email) async {
+    emit(const AuthLoading());
+    final result = await _repository.sendMagicLink(email);
+    result.fold(
+      (failure) => emit(AuthError(failure.message)),
+      (_) => emit(AuthMagicLinkSent(email)),
+    );
+  }
+
+  /// Complete sign-in with the link the user tapped from email.
+  /// [email] must match the one that requested the link (Firebase
+  /// requirement for security).
+  Future<void> signInWithEmailLink({
+    required String email,
+    required String link,
+  }) async {
+    emit(const AuthLoading());
+    final result = await _repository.signInWithEmailLink(
+      email: email,
+      link: link,
     );
     result.fold(
       (failure) => emit(AuthError(failure.message)),
@@ -70,7 +117,13 @@ class AuthCubit extends Cubit<AuthState> {
     final result = await _repository.getMe();
     result.fold(
       (failure) => emit(const AuthUnauthenticated()),
-      (user) => emit(AuthAuthenticated(user)),
+      (user) {
+        if (!user.emailVerified) {
+          emit(AuthEmailUnverified(user.email));
+        } else {
+          emit(AuthAuthenticated(user));
+        }
+      },
     );
   }
 
@@ -85,8 +138,12 @@ class AuthCubit extends Cubit<AuthState> {
       final userData = await SecureStorage.getUserData();
       if (userData != null) {
         final user = UserDto.fromJson(jsonDecode(userData) as Map<String, dynamic>).toEntity();
-        emit(AuthAuthenticated(user));
-        getIt<PushNotificationService>().init();
+        if (!user.emailVerified) {
+          emit(AuthEmailUnverified(user.email));
+        } else {
+          emit(AuthAuthenticated(user));
+          getIt<PushNotificationService>().init();
+        }
       } else {
         await getMe();
       }

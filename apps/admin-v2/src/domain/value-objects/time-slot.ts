@@ -7,7 +7,7 @@ export class TimeSlot {
 
   formatRange(): string {
     const fmt = (d: Date) =>
-      d.toLocaleTimeString('es-CO', { hour: '2-digit', minute: '2-digit', hour12: false });
+      d.toLocaleTimeString('es-EC', { hour: '2-digit', minute: '2-digit', hour12: false });
     return `${fmt(this.start)} - ${fmt(this.end)}`;
   }
 }

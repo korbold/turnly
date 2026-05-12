@@ -1,0 +1,53 @@
+name: Deploy Dev (backend)
+
+on:
+  push:
+    branches: [develop]
+    paths:
+      - 'apps/backend/**'
+      - '.github/workflows/deploy-dev.yml'
+  workflow_dispatch:
+
+concurrency:
+  group: deploy-dev
+  cancel-in-progress: false
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Setup SSH
+        run: |
+          mkdir -p ~/.ssh
+          echo "${{ secrets.DEPLOY_SSH_KEY }}" > ~/.ssh/deploy_key
+          chmod 600 ~/.ssh/deploy_key
+          ssh-keyscan -H ${{ secrets.DEPLOY_HOST }} >> ~/.ssh/known_hosts
+
+      - name: Deploy backend to turnly-dev
+        run: |
+          ssh -i ~/.ssh/deploy_key ${{ secrets.DEPLOY_USER }}@${{ secrets.DEPLOY_HOST }} bash <<'ENDSSH'
+            set -euo pipefail
+            cd ${{ secrets.DEPLOY_PATH }}
+            git fetch --all --prune
+            git reset --hard origin/develop
+
+            cd apps/backend
+            composer install --no-dev --prefer-dist --optimize-autoloader --no-interaction
+            php artisan migrate --force
+            php artisan config:cache
+            php artisan route:cache
+            php artisan view:cache
+
+            # PHP-FPM runs as www-data and needs to read .env. Without this,
+            # Laravel silently falls back to config defaults (sqlite/database)
+            # and HTTP requests 500 while CLI keeps working.
+            if [ -f .env ]; then
+              chgrp www-data .env
+              chmod 640 .env
+            fi
+
+            sudo /usr/bin/systemctl reload php8.3-fpm
+            sudo /usr/bin/systemctl restart turnly-queue
+
+            echo "Deploy OK at $(date)"
+          ENDSSH

@@ -1,4 +1,4 @@
-// Firebase Messaging Service Worker
+// Firebase Messaging Service Worker - v2
 // Config is automatically provided by the Firebase SDK when the service worker
 // is registered via getToken(). No manual firebase.initializeApp() needed
 // when using the modular SDK's getToken with vapidKey.
@@ -29,11 +29,31 @@ messaging.onBackgroundMessage((payload) => {
   const title = payload.notification?.title || 'Turnly';
   const options = {
     body: payload.notification?.body || '',
-    icon: '/icon-192x192.png',
+    icon: '/icons/icon-192.png',
+    badge: '/icons/icon-192.png',
     data: payload.data,
   };
 
   self.registration.showNotification(title, options);
+});
+
+// iOS 16.4+ PWA: handle raw Web Push events (Firebase compat doesn't cover iOS)
+self.addEventListener('push', (event) => {
+  if (!event.data) return;
+
+  let payload = {};
+  try { payload = event.data.json(); } catch { return; }
+
+  const notification = payload.notification || {};
+  const title = notification.title || 'Turnly';
+  const options = {
+    body: notification.body || '',
+    icon: '/icons/icon-192.png',
+    badge: '/icons/icon-192.png',
+    data: payload.data || {},
+  };
+
+  event.waitUntil(self.registration.showNotification(title, options));
 });
 
 self.addEventListener('notificationclick', (event) => {

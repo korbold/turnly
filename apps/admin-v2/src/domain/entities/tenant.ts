@@ -58,3 +58,34 @@ export interface TenantImage {
   url: string;
   sortOrder: number;
 }
+
+export type TaxIdType = 'ruc' | 'cedula' | 'pasaporte';
+
+export interface BillingProfile {
+  taxIdType: TaxIdType | null;
+  taxId: string | null;
+  legalName: string | null;
+  billingEmail: string | null;
+  billingAddress: string | null;
+  billingPhone: string | null;
+  billingVerified: boolean;
+  billingVerifiedAt: Date | null;
+}
+
+export interface BillingProfileInput {
+  taxIdType: TaxIdType;
+  taxId: string;
+  legalName: string;
+  billingEmail: string;
+  billingAddress: string;
+  billingPhone?: string | null;
+}
+
+export interface SriLookupResult {
+  formatValid: boolean;
+  lookup: {
+    razonSocial: string;
+    estado: string;
+    tipoIdentificacion: string;
+  } | null;
+}

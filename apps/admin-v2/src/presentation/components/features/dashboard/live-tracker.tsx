@@ -2,52 +2,22 @@
 
 import { useMemo } from 'react';
 import { format } from 'date-fns';
-import { Timer, CheckCircle2, Droplets } from 'lucide-react';
-import { Card, CardContent, CardHeader, CardTitle } from '@/presentation/components/ui/card';
+import { CheckCircle2 } from 'lucide-react';
+import { Card } from '@/presentation/components/ui/card';
 import { Button } from '@/presentation/components/ui/button';
 import { Skeleton } from '@/presentation/components/ui/skeleton';
 import { useServiceLogs, useCompleteServiceLog } from '@/presentation/hooks/use-service-logs';
 import { toast } from 'sonner';
 import type { ServiceLog } from '@/domain/entities/service-log';
 
-function ElapsedTime({ startedAt }: { startedAt: Date }) {
-  const elapsed = useMemo(() => {
-    const diffMs = Date.now() - new Date(startedAt).getTime();
-    return Math.max(0, Math.floor(diffMs / 60000));
-  }, [startedAt]);
+const ESTIMATED_MIN = 30;
 
-  return (
-    <span className="inline-flex items-center gap-1 text-xs font-medium text-muted-foreground">
-      <Timer className="h-3 w-3" />
-      {elapsed}min
-    </span>
-  );
+function elapsedMinutes(startedAt: Date | string): number {
+  const diffMs = Date.now() - new Date(startedAt).getTime();
+  return Math.max(0, Math.floor(diffMs / 60000));
 }
 
-function ProgressBar({
-  startedAt,
-  estimatedMinutes,
-}: {
-  startedAt: Date;
-  estimatedMinutes: number;
-}) {
-  const pct = useMemo(() => {
-    const diffMs = Date.now() - new Date(startedAt).getTime();
-    const elapsed = diffMs / 60000;
-    return Math.min(100, Math.round((elapsed / estimatedMinutes) * 100));
-  }, [startedAt, estimatedMinutes]);
-
-  return (
-    <div className="mt-2 h-1.5 w-full overflow-hidden rounded-full bg-zinc-100">
-      <div
-        className="h-full rounded-full bg-indigo-500 transition-all"
-        style={{ width: `${pct}%` }}
-      />
-    </div>
-  );
-}
-
-function TrackerCard({
+function StationCard({
   log,
   onComplete,
   isCompleting,
@@ -56,30 +26,57 @@ function TrackerCard({
   onComplete: () => void;
   isCompleting: boolean;
 }) {
+  const elapsed = elapsedMinutes(log.startedAt);
+  const remaining = Math.max(0, ESTIMATED_MIN - elapsed);
+  const pct = Math.min(100, Math.round((elapsed / ESTIMATED_MIN) * 100));
+  const startedHHMM = format(new Date(log.startedAt), 'HH:mm');
+
   return (
-    <div className="flex items-center justify-between rounded-lg border bg-white p-3">
-      <div className="min-w-0 flex-1">
-        <div className="flex items-center gap-2">
-          <p className="truncate text-sm font-medium">
+    <div className="flex min-w-[200px] flex-1 flex-col gap-2 rounded-[10px] border border-[var(--border)] bg-white p-3">
+      <div className="flex items-center justify-between">
+        <div className="flex items-center gap-1.5">
+          <span className="h-[7px] w-[7px] rounded-full bg-[var(--brand-500)]" />
+          <span className="text-[11.5px] font-semibold text-[var(--fg)]">
             {log.clientResource?.plate ?? 'Sin placa'}
-          </p>
-          <ElapsedTime startedAt={log.startedAt} />
+          </span>
         </div>
-        <p className="truncate text-xs text-muted-foreground">
-          {log.service?.name ?? 'Servicio'}
-          {log.attendant?.name ? ` - ${log.attendant.name}` : ''}
-        </p>
-        {/* Rough 30-minute default estimate if no duration configured */}
-        <ProgressBar startedAt={log.startedAt} estimatedMinutes={30} />
+        <span
+          className="text-[10.5px] text-[var(--fg-muted)]"
+          style={{ fontFamily: 'var(--font-mono)' }}
+        >
+          {remaining} min restantes
+        </span>
+      </div>
+      <div className="text-[13px] font-semibold text-[var(--fg-strong)]">
+        {log.service?.name ?? 'Servicio'}
+      </div>
+      {log.attendant?.name && (
+        <div className="text-[11.5px] text-[var(--fg-secondary)]">
+          {log.attendant.name}
+        </div>
+      )}
+      <div className="mt-1 flex items-center gap-1.5">
+        <div className="h-1 flex-1 overflow-hidden rounded-full bg-[var(--ink-100)]">
+          <div
+            className="h-full rounded-full bg-[var(--brand-500)] transition-all"
+            style={{ width: `${pct}%` }}
+          />
+        </div>
+        <span
+          className="text-[10px] text-[var(--fg-muted)]"
+          style={{ fontFamily: 'var(--font-mono)' }}
+        >
+          {startedHHMM}
+        </span>
       </div>
       <Button
         size="sm"
         variant="ghost"
-        className="ml-3 shrink-0 text-emerald-600 hover:bg-emerald-50 hover:text-emerald-700"
+        className="mt-1 h-7 justify-start px-2 text-[11.5px] text-[var(--success-700)] hover:bg-[var(--success-50)]"
         onClick={onComplete}
         disabled={isCompleting}
       >
-        <CheckCircle2 className="mr-1 h-4 w-4" />
+        <CheckCircle2 className="mr-1 h-3 w-3" />
         Completar
       </Button>
     </div>
@@ -103,55 +100,44 @@ export function LiveTracker() {
     });
   }
 
-  if (isLoading) {
-    return (
-      <Card>
-        <CardHeader className="pb-3">
-          <CardTitle className="text-base">En Progreso</CardTitle>
-        </CardHeader>
-        <CardContent className="space-y-3">
-          {Array.from({ length: 2 }).map((_, i) => (
-            <Skeleton key={i} className="h-20 w-full rounded-lg" />
-          ))}
-        </CardContent>
-      </Card>
-    );
-  }
-
   return (
-    <Card>
-      <CardHeader className="pb-3">
-        <CardTitle className="flex items-center gap-2 text-base">
-          <Droplets className="h-4 w-4 text-indigo-500" />
-          En Progreso
-          {inProgress.length > 0 && (
-            <span className="rounded-full bg-indigo-50 px-2 py-0.5 text-xs font-medium text-indigo-600">
-              {inProgress.length}
-            </span>
-          )}
-        </CardTitle>
-      </CardHeader>
-      <CardContent>
-        {inProgress.length === 0 ? (
-          <div className="flex flex-col items-center justify-center py-8 text-center">
-            <Droplets className="mb-2 h-10 w-10 text-zinc-300" />
-            <p className="text-sm text-muted-foreground">
-              Sin servicios en progreso
-            </p>
+    <Card className="p-0">
+      <div className="flex items-center justify-between border-b border-[var(--border)] px-4 py-3.5">
+        <div>
+          <div className="text-[13px] font-semibold text-[var(--fg-strong)]">
+            Estaciones en tiempo real
+          </div>
+          <div className="text-[11.5px] text-[var(--fg-secondary)]">
+            {isLoading
+              ? 'Cargando…'
+              : `${inProgress.length} ocupadas`}
+          </div>
+        </div>
+        <div className="flex items-center gap-1.5 text-[11px] font-semibold text-[var(--success-700)]">
+          <span className="h-1.5 w-1.5 animate-pulse rounded-full bg-[var(--success-500)]" />
+          EN VIVO
+        </div>
+      </div>
+      <div className="flex flex-wrap gap-2.5 p-3.5">
+        {isLoading ? (
+          Array.from({ length: 3 }).map((_, i) => (
+            <Skeleton key={i} className="h-32 min-w-[200px] flex-1 rounded-[10px]" />
+          ))
+        ) : inProgress.length === 0 ? (
+          <div className="flex w-full items-center justify-center py-6 text-[13px] text-[var(--fg-muted)]">
+            Sin servicios en progreso
           </div>
         ) : (
-          <div className="space-y-3">
-            {inProgress.map((log) => (
-              <TrackerCard
-                key={log.id}
-                log={log}
-                onComplete={() => handleComplete(log.id)}
-                isCompleting={completeMutation.isPending}
-              />
-            ))}
-          </div>
+          inProgress.map((log) => (
+            <StationCard
+              key={log.id}
+              log={log}
+              onComplete={() => handleComplete(log.id)}
+              isCompleting={completeMutation.isPending}
+            />
+          ))
         )}
-      </CardContent>
+      </div>
     </Card>
   );
 }

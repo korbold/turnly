@@ -158,7 +158,7 @@ export function DetailPanel({ reservation, open, onClose }: DetailPanelProps) {
                 <>
                   <Button
                     size="sm"
-                    className="bg-indigo-500 hover:bg-indigo-600"
+                    className="bg-[var(--color-primary)] hover:bg-[var(--color-primary)]"
                     onClick={() => handleTransition('start')}
                     disabled={transition.isPending}
                   >
@@ -304,7 +304,7 @@ export function DetailPanel({ reservation, open, onClose }: DetailPanelProps) {
               onClick={handleCancel}
               disabled={!cancelReason.trim() || cancel.isPending}
             >
-              Confirmar Cancelacion
+              Confirmar Cancelación
             </Button>
           </DialogFooter>
         </DialogContent>

@@ -76,12 +76,12 @@ export function BusinessTypePrompt() {
               className={cn(
                 'flex flex-col items-center gap-2 rounded-lg border-2 p-4 transition-all hover:shadow-md',
                 selected === value
-                  ? 'border-indigo-600 bg-indigo-50'
-                  : 'border-zinc-200 hover:border-indigo-300'
+                  ? 'border-[var(--color-primary)] bg-[var(--color-primary-muted)]'
+                  : 'border-zinc-200 hover:border-[var(--color-primary)]/40'
               )}
             >
-              <Icon className={cn('h-8 w-8', selected === value ? 'text-indigo-600' : 'text-zinc-500')} />
-              <span className={cn('text-sm font-medium', selected === value ? 'text-indigo-700' : 'text-zinc-700')}>
+              <Icon className={cn('h-8 w-8', selected === value ? 'text-[var(--color-primary)]' : 'text-zinc-500')} />
+              <span className={cn('text-sm font-medium', selected === value ? 'text-[var(--color-primary-hover)]' : 'text-zinc-700')}>
                 {label}
               </span>
             </button>

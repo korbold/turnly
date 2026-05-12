@@ -141,7 +141,7 @@ export default function CategoriesPage() {
               className="h-9 w-12 cursor-pointer rounded border"
             />
             <Input
-              placeholder="Descripcion corta"
+              placeholder="Descripción corta"
               value={newForm.description}
               onChange={(e) => setNewForm({ ...newForm, description: e.target.value })}
             />
@@ -172,7 +172,7 @@ export default function CategoriesPage() {
                 <TableHead className="w-12">#</TableHead>
                 <TableHead className="w-16">Emoji</TableHead>
                 <TableHead>Nombre</TableHead>
-                <TableHead>Descripcion</TableHead>
+                <TableHead>Descripción</TableHead>
                 <TableHead className="w-16">Color</TableHead>
                 <TableHead>Slug</TableHead>
                 <TableHead>Estado</TableHead>

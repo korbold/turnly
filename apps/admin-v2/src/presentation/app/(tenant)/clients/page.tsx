@@ -1,11 +1,12 @@
 'use client';
 
 import { useState, useEffect, Suspense } from 'react';
-import { Plus, Search } from 'lucide-react';
+import { Plus, Search, Users } from 'lucide-react';
 import { Button } from '@/presentation/components/ui/button';
 import { Input } from '@/presentation/components/ui/input';
 import { Skeleton } from '@/presentation/components/ui/skeleton';
 import { useClients } from '@/presentation/hooks/use-clients';
+import { useSettings } from '@/presentation/hooks/use-settings';
 import { ClientCard } from '@/presentation/components/features/clients/client-card';
 import { ClientForm } from '@/presentation/components/features/clients/client-form';
 
@@ -22,49 +23,68 @@ function ClientsContent() {
   }, [search]);
 
   const { data, isLoading } = useClients(page, debouncedSearch || undefined);
+  const { data: settings } = useSettings();
   const clients = data?.data ?? [];
   const meta = data?.meta;
+  const firstField = settings?.customFields?.[0]?.label?.toLowerCase();
+  const placeholder = firstField
+    ? `Buscar por ${firstField}, email…`
+    : 'Buscar cliente o email…';
+  const hasSearch = debouncedSearch.trim().length > 0;
 
   return (
     <div className="space-y-4">
-      {/* Header */}
+      {/* Toolbar: search + primary CTA */}
       <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-        <h1 className="text-xl font-semibold">Clientes</h1>
-        <Button size="sm" onClick={() => setCreateOpen(true)}>
-          <Plus className="mr-1 h-4 w-4" />
-          Nuevo
+        <div className="relative w-full sm:max-w-md">
+          <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-[var(--fg-muted)]" />
+          <Input
+            className="pl-9"
+            placeholder={placeholder}
+            value={search}
+            onChange={(e) => {
+              setSearch(e.target.value);
+              setPage(1);
+            }}
+          />
+        </div>
+        <Button onClick={() => setCreateOpen(true)} className="sm:self-auto">
+          <Plus className="mr-1.5 h-4 w-4" aria-hidden="true" />
+          Nuevo cliente
         </Button>
       </div>
 
-      {/* Search */}
-      <div className="relative max-w-sm">
-        <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
-        <Input
-          className="pl-9"
-          placeholder="Buscar por placa, nombre, email..."
-          value={search}
-          onChange={(e) => {
-            setSearch(e.target.value);
-            setPage(1);
-          }}
-        />
-      </div>
-
-      {/* Grid */}
+      {/* List */}
       {isLoading ? (
-        <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3">
+        <div className="space-y-2">
           {Array.from({ length: 6 }).map((_, i) => (
-            <Skeleton key={i} className="h-28 rounded-lg" />
+            <Skeleton key={i} className="h-[68px] w-full rounded-lg" />
           ))}
         </div>
       ) : clients.length === 0 ? (
-        <div className="flex flex-col items-center justify-center rounded-lg border bg-white py-16 text-center">
-          <p className="text-sm text-muted-foreground">No se encontraron clientes</p>
+        <div className="flex flex-col items-center justify-center rounded-xl border border-dashed border-[var(--border-strong)] bg-[var(--bg-surface)] px-6 py-12 text-center">
+          <div className="mb-3 grid h-12 w-12 place-items-center rounded-full bg-[var(--bg-sunken)]">
+            <Users className="h-5 w-5 text-[var(--fg-secondary)]" aria-hidden="true" />
+          </div>
+          <p className="text-[15px] font-semibold text-[var(--fg-strong)]">
+            {hasSearch ? 'Sin coincidencias' : 'Aún no tienes clientes'}
+          </p>
+          <p className="mt-1 max-w-xs text-[13px] text-[var(--fg-secondary)]">
+            {hasSearch
+              ? 'Prueba con otro término o limpia la búsqueda.'
+              : 'Cada vez que registres un servicio, el cliente aparecerá acá.'}
+          </p>
+          {!hasSearch && (
+            <Button onClick={() => setCreateOpen(true)} className="mt-5">
+              <Plus className="mr-1.5 h-4 w-4" aria-hidden="true" />
+              Crear primer cliente
+            </Button>
+          )}
         </div>
       ) : (
-        <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3">
-          {clients.map((c) => (
-            <ClientCard key={c.id} client={c} />
+        <div className="space-y-2">
+          {clients.map((c, i) => (
+            <ClientCard key={c.id} client={c} index={i} />
           ))}
         </div>
       )}
@@ -80,7 +100,10 @@ function ClientsContent() {
           >
             Anterior
           </Button>
-          <span className="text-sm text-muted-foreground">
+          <span
+            className="text-[13px] tabular-nums text-[var(--fg-secondary)]"
+            style={{ fontFamily: 'var(--font-mono)' }}
+          >
             {meta.currentPage} / {meta.lastPage}
           </span>
           <Button
@@ -105,11 +128,13 @@ export default function ClientsPage() {
     <Suspense
       fallback={
         <div className="space-y-4">
-          <Skeleton className="h-8 w-48" />
-          <Skeleton className="h-10 w-full max-w-sm" />
-          <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3">
+          <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+            <Skeleton className="h-10 w-full sm:max-w-md" />
+            <Skeleton className="h-10 w-32" />
+          </div>
+          <div className="space-y-2">
             {Array.from({ length: 6 }).map((_, i) => (
-              <Skeleton key={i} className="h-28 rounded-lg" />
+              <Skeleton key={i} className="h-[68px] w-full rounded-lg" />
             ))}
           </div>
         </div>

@@ -108,14 +108,13 @@ function ReservationsContent() {
     <div className="space-y-4">
       {/* Header */}
       <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-        <h1 className="text-xl font-semibold">Reservas</h1>
         <div className="flex items-center gap-2">
           {/* View toggle */}
           <div className="flex rounded-lg border bg-white p-0.5">
             <button
               className={`rounded-md px-2.5 py-1.5 text-xs font-medium transition-colors ${
                 view === 'timeline'
-                  ? 'bg-indigo-50 text-indigo-700'
+                  ? 'bg-[var(--color-primary-muted)] text-[var(--color-primary-hover)]'
                   : 'text-muted-foreground hover:text-foreground'
               }`}
               onClick={() => setView('timeline')}
@@ -126,7 +125,7 @@ function ReservationsContent() {
             <button
               className={`rounded-md px-2.5 py-1.5 text-xs font-medium transition-colors ${
                 view === 'calendar'
-                  ? 'bg-indigo-50 text-indigo-700'
+                  ? 'bg-[var(--color-primary-muted)] text-[var(--color-primary-hover)]'
                   : 'text-muted-foreground hover:text-foreground'
               }`}
               onClick={() => setView('calendar')}

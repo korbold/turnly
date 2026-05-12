@@ -34,7 +34,9 @@ class UpdateServiceLogUseCase
         }
 
         if (!empty($updates)) {
-            ServiceLogModel::withoutGlobalScopes()->where('id', $dto->id)->update($updates);
+            // Keep the global TenantScope on so a stray cross-tenant id
+            // can never be updated even if the prior findById is bypassed.
+            ServiceLogModel::where('id', $dto->id)->update($updates);
         }
 
         return $this->serviceLogRepository->findById($dto->id);

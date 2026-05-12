@@ -1,4 +1,9 @@
 // lib/app/theme/app_theme.dart
+// Light theme aligned with Turnly Design System.
+// - Coral brand
+// - Hairline-bordered cards (1px, no shadow)
+// - Pill primary CTA (mobile rule: pill kept for mobile primary buttons only)
+// - 12px radii on inputs/cards (matches design system radius-xl)
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'app_colors.dart';
@@ -22,6 +27,7 @@ class AppTheme {
         backgroundColor: AppColors.surface,
         foregroundColor: AppColors.textPrimary,
         elevation: 0,
+        scrolledUnderElevation: 0,
         centerTitle: false,
         systemOverlayStyle: SystemUiOverlayStyle.dark,
       ),
@@ -61,9 +67,26 @@ class AppTheme {
           elevation: 0,
           padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 14),
           shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(24),
+            borderRadius: BorderRadius.circular(99),
           ),
           textStyle: const TextStyle(fontSize: 16, fontWeight: FontWeight.w600),
+        ),
+      ),
+      outlinedButtonTheme: OutlinedButtonThemeData(
+        style: OutlinedButton.styleFrom(
+          foregroundColor: AppColors.accent,
+          side: const BorderSide(color: AppColors.accent, width: 1.5),
+          padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 14),
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(99),
+          ),
+          textStyle: const TextStyle(fontSize: 16, fontWeight: FontWeight.w600),
+        ),
+      ),
+      textButtonTheme: TextButtonThemeData(
+        style: TextButton.styleFrom(
+          foregroundColor: AppColors.accent,
+          textStyle: const TextStyle(fontSize: 14, fontWeight: FontWeight.w600),
         ),
       ),
       bottomNavigationBarTheme: const BottomNavigationBarThemeData(
@@ -72,6 +95,11 @@ class AppTheme {
         unselectedItemColor: AppColors.textTertiary,
         type: BottomNavigationBarType.fixed,
         elevation: 0,
+      ),
+      dividerTheme: const DividerThemeData(
+        color: AppColors.divider,
+        thickness: 1,
+        space: 1,
       ),
     );
   }

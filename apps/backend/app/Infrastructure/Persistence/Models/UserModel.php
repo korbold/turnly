@@ -14,8 +14,12 @@ class UserModel extends Authenticatable
 
     protected $table = 'users';
 
+    // is_super_admin is intentionally NOT in $fillable so a stray
+    // mass-assign (e.g. update($request->validated())) cannot escalate a
+    // regular user to super-admin. EloquentUserRepository::save uses
+    // forceFill() when a legitimate code path needs to set it.
     protected $fillable = [
-        'name', 'email', 'password', 'phone', 'is_super_admin',
+        'name', 'email', 'password', 'phone',
     ];
 
     protected $hidden = [

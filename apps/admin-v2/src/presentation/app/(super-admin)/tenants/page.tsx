@@ -28,6 +28,8 @@ import {
   useActivateTenant,
 } from '@/presentation/hooks/use-super-admin';
 import { usePlans, useAssignPlan } from '@/presentation/hooks/use-plans';
+import { useImpersonate } from '@/presentation/hooks/use-auth';
+import { useRouter } from 'next/navigation';
 import type { TenantStatus, BusinessType } from '@/domain/entities/tenant';
 
 const BUSINESS_TYPE_LABELS: Record<BusinessType, string> = {
@@ -63,6 +65,7 @@ const STATUS_LABELS: Record<TenantStatus, string> = {
 };
 
 export default function TenantsPage() {
+  const router = useRouter();
   const [search, setSearch] = useState('');
   const [statusFilter, setStatusFilter] = useState<TenantStatus | ''>('');
   const [typeFilter, setTypeFilter] = useState<BusinessType | ''>('');
@@ -72,6 +75,7 @@ export default function TenantsPage() {
   const activateTenant = useActivateTenant();
   const { data: plans } = usePlans();
   const assignPlan = useAssignPlan();
+  const impersonate = useImpersonate();
 
   const tenants = data?.data ?? [];
   const meta = data?.meta;
@@ -107,6 +111,15 @@ export default function TenantsPage() {
       toast.success('Plan asignado');
     } catch {
       toast.error('Error al asignar plan');
+    }
+  }
+
+  async function handleImpersonate(tenantId: string) {
+    try {
+      await impersonate.mutateAsync(tenantId);
+      router.push('/dashboard');
+    } catch {
+      toast.error('Error al entrar como tenant');
     }
   }
 
@@ -246,7 +259,7 @@ export default function TenantsPage() {
                               Activar
                             </DropdownMenuItem>
                           )}
-                          <DropdownMenuItem onClick={() => console.log('Enter tenant:', tenant.slug)}>
+                          <DropdownMenuItem onClick={() => handleImpersonate(tenant.id)}>
                             <LogIn className="mr-2 h-4 w-4" />
                             Entrar como tenant
                           </DropdownMenuItem>

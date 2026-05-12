@@ -39,7 +39,7 @@ class RegisterTenantUseCase
             planId: null,
             isTrial: true,
             status: 'pending',
-            trialEndsAt: new \DateTimeImmutable('+14 days'),
+            trialEndsAt: new \DateTimeImmutable('+30 days'),
             settings: null,
             onboardingStep: 0,
             activatedAt: null,

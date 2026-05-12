@@ -1,0 +1,156 @@
+<?php
+
+declare(strict_types=1);
+
+namespace App\Infrastructure\Http\Controllers\Auth;
+
+use App\Infrastructure\Http\Controllers\Controller;
+use App\Infrastructure\Mail\MagicLinkMail;
+use App\Infrastructure\Persistence\Models\TenantUserModel;
+use App\Infrastructure\Persistence\Models\UserModel;
+use Illuminate\Http\JsonResponse;
+use Illuminate\Http\Request;
+use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Hash;
+use Illuminate\Support\Facades\Mail;
+use Illuminate\Support\Str;
+
+class MagicLinkController extends Controller
+{
+    private const TTL_MINUTES = 15;
+
+    public function request(Request $request): JsonResponse
+    {
+        $request->validate([
+            'email' => 'required|email|max:255',
+        ]);
+
+        $email = strtolower(trim((string) $request->input('email')));
+
+        $token = bin2hex(random_bytes(32)); // 64-char URL-safe token
+        $tokenHash = hash('sha256', $token);
+        $expiresAt = now()->addMinutes(self::TTL_MINUTES);
+
+        // Single-use: invalidate any previous live tokens for this email so
+        // an old link can't be reused after a new one is requested.
+        DB::table('magic_link_tokens')
+            ->where('email', $email)
+            ->whereNull('used_at')
+            ->update(['used_at' => now()]);
+
+        DB::table('magic_link_tokens')->insert([
+            'email' => $email,
+            'token_hash' => $tokenHash,
+            'expires_at' => $expiresAt,
+            'request_ip' => $request->ip(),
+            'request_user_agent' => substr((string) $request->userAgent(), 0, 255),
+            'created_at' => now(),
+            'updated_at' => now(),
+        ]);
+
+        $magicUrl = $this->buildMagicUrl($token);
+
+        Mail::to($email)->send(new MagicLinkMail(
+            email: $email,
+            magicUrl: $magicUrl,
+            ttlMinutes: self::TTL_MINUTES,
+        ));
+
+        return response()->json([
+            'data' => [
+                'sent_to' => $email,
+                'expires_at' => $expiresAt->toIso8601String(),
+            ],
+        ]);
+    }
+
+    public function verify(Request $request): JsonResponse
+    {
+        $request->validate([
+            'token' => 'required|string|size:64',
+        ]);
+
+        $token = (string) $request->input('token');
+        $tokenHash = hash('sha256', $token);
+
+        $row = DB::table('magic_link_tokens')
+            ->where('token_hash', $tokenHash)
+            ->first();
+
+        if (!$row) {
+            return $this->reject('INVALID_LINK', 'Link inválido o expirado.');
+        }
+        if ($row->used_at !== null) {
+            return $this->reject('LINK_USED', 'Este link ya se usó. Pide uno nuevo.');
+        }
+        if (now()->greaterThan($row->expires_at)) {
+            return $this->reject('LINK_EXPIRED', 'Link expirado. Pide uno nuevo.');
+        }
+
+        DB::table('magic_link_tokens')
+            ->where('id', $row->id)
+            ->update(['used_at' => now()]);
+
+        $email = $row->email;
+        $user = UserModel::where('email', $email)->first();
+
+        if (!$user) {
+            $user = UserModel::create([
+                'name' => Str::before($email, '@'),
+                'email' => $email,
+                'password' => Hash::make(Str::random(32)),
+                'email_verified_at' => now(),
+            ]);
+        } elseif ($user->email_verified_at === null) {
+            $user->forceFill(['email_verified_at' => now()])->save();
+        }
+
+        $tenantUser = TenantUserModel::where('user_id', $user->id)
+            ->where('is_active', true)
+            ->with('tenant')
+            ->first();
+        $tenant = $tenantUser?->tenant;
+
+        if ($tenant && $tenant->status === 'suspended' && !$user->is_super_admin) {
+            return response()->json([
+                'error' => [
+                    'code' => 'TENANT_SUSPENDED',
+                    'message' => 'Este negocio está suspendido. Contacta soporte.',
+                ],
+            ], 403);
+        }
+
+        $sanctumToken = $user->createToken('auth_token')->plainTextToken;
+
+        return response()->json([
+            'data' => [
+                'user' => [
+                    'id' => $user->id,
+                    'name' => $user->name,
+                    'email' => $user->email,
+                    'is_super_admin' => $user->is_super_admin,
+                ],
+                'token' => $sanctumToken,
+                'tenant' => $tenant ? [
+                    'id' => $tenant->id,
+                    'slug' => $tenant->slug,
+                    'name' => $tenant->name,
+                    'status' => $tenant->status,
+                ] : null,
+            ],
+        ]);
+    }
+
+    private function buildMagicUrl(string $token): string
+    {
+        $host = config('app.frontend_host', 'goturnly.com');
+        return "https://{$host}/m/{$token}";
+    }
+
+    private function reject(string $code, string $message): JsonResponse
+    {
+        return response()->json([
+            'error' => ['code' => $code, 'message' => $message],
+        ], 401);
+    }
+}

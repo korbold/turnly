@@ -66,5 +66,26 @@
 		<string>UIInterfaceOrientationLandscapeLeft</string>
 		<string>UIInterfaceOrientationLandscapeRight</string>
 	</array>
+	<!--
+		Google Sign-In OAuth redirect URL schemes. iOS won't auto-pick the
+		REVERSED_CLIENT_ID from the runtime GoogleService-Info.plist, so we
+		register both flavors' schemes here and the Google Sign-In SDK uses
+		whichever matches the active CLIENT_ID. Add the prod scheme once
+		Google Sign-In is enabled in turnly-services-prod.
+	-->
+	<key>CFBundleURLTypes</key>
+	<array>
+		<dict>
+			<key>CFBundleTypeRole</key>
+			<string>Editor</string>
+			<key>CFBundleURLSchemes</key>
+			<array>
+				<!-- dev (turnly-services) -->
+				<string>com.googleusercontent.apps.624883049252-4i0r3tk9bjm2ft3odvckitmf39ugr4b9</string>
+				<!-- prod (turnly-services-prod) -->
+				<string>com.googleusercontent.apps.703054651952-d3bdgit0fa30rmmfoc0l8678e369qa64</string>
+			</array>
+		</dict>
+	</array>
 </dict>
 </plist>

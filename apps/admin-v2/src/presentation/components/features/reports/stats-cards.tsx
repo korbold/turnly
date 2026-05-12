@@ -1,25 +1,9 @@
 'use client';
 
-import { Activity, DollarSign, CalendarCheck, TrendingUp } from 'lucide-react';
-import { Card, CardContent } from '@/presentation/components/ui/card';
+import { Activity, CalendarCheck, TrendingUp } from 'lucide-react';
 import { Skeleton } from '@/presentation/components/ui/skeleton';
 import type { ReportStats } from '@/domain/repositories/report.repository';
-
-function formatCOP(amount: number): string {
-  return new Intl.NumberFormat('es-CO', {
-    style: 'currency',
-    currency: 'COP',
-    minimumFractionDigits: 0,
-    maximumFractionDigits: 0,
-  }).format(amount);
-}
-
-const CARDS = [
-  { key: 'totalServices' as const, label: 'Total Servicios', icon: Activity, format: (v: number) => v.toLocaleString() },
-  { key: 'totalRevenue' as const, label: 'Ingresos', icon: DollarSign, format: formatCOP },
-  { key: 'totalReservations' as const, label: 'Reservaciones', icon: CalendarCheck, format: (v: number) => v.toLocaleString() },
-  { key: 'averageDailyRevenue' as const, label: 'Promedio Diario', icon: TrendingUp, format: formatCOP },
-];
+import { formatCurrency } from '@/shared/utils/format';
 
 interface StatsCardsProps {
   stats?: ReportStats;
@@ -29,38 +13,93 @@ interface StatsCardsProps {
 export function StatsCards({ stats, isLoading }: StatsCardsProps) {
   if (isLoading) {
     return (
-      <div className="grid grid-cols-2 gap-4 lg:grid-cols-4">
-        {CARDS.map((c) => (
-          <Card key={c.key}>
-            <CardContent className="p-4">
-              <Skeleton className="mb-2 h-4 w-20" />
-              <Skeleton className="h-7 w-28" />
-            </CardContent>
-          </Card>
-        ))}
+      <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+        <Skeleton className="h-32 rounded-xl" />
+        <div className="grid grid-cols-3 gap-3">
+          <Skeleton className="h-32 rounded-xl" />
+          <Skeleton className="h-32 rounded-xl" />
+          <Skeleton className="h-32 rounded-xl" />
+        </div>
       </div>
     );
   }
 
+  const totalRevenue = stats?.totalRevenue ?? 0;
+  const totalServices = stats?.totalServices ?? 0;
+  const totalReservations = stats?.totalReservations ?? 0;
+  const averageDaily = stats?.averageDailyRevenue ?? 0;
+
   return (
-    <div className="grid grid-cols-2 gap-4 lg:grid-cols-4">
-      {CARDS.map((card) => {
-        const Icon = card.icon;
-        const value = stats?.[card.key] ?? 0;
-        return (
-          <Card key={card.key}>
-            <CardContent className="p-4">
-              <div className="mb-1 flex items-center gap-2">
-                <div className="rounded-md bg-indigo-50 p-1.5">
-                  <Icon className="h-4 w-4 text-indigo-600" />
-                </div>
-                <span className="text-xs font-medium text-muted-foreground">{card.label}</span>
-              </div>
-              <p className="text-xl font-semibold text-zinc-900">{card.format(value)}</p>
-            </CardContent>
-          </Card>
-        );
-      })}
+    <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+      {/* Hero: Ingresos */}
+      <section
+        aria-label="Ingresos del rango"
+        className="rounded-xl border border-[var(--border)] bg-[var(--bg-surface)] p-5"
+      >
+        <p className="text-[11px] font-semibold uppercase tracking-[0.04em] text-[var(--fg-muted)]">
+          Ingresos
+        </p>
+        <p
+          className="mt-2 text-[34px] font-bold leading-none tabular-nums text-[var(--fg-strong)]"
+          style={{ fontFamily: 'var(--font-mono)' }}
+        >
+          {formatCurrency(totalRevenue)}
+        </p>
+        <p className="mt-2 text-[13px] text-[var(--fg-secondary)]">
+          {totalServices === 0
+            ? 'Sin servicios en este rango'
+            : `${totalServices} ${totalServices === 1 ? 'servicio' : 'servicios'} registrados`}
+        </p>
+      </section>
+
+      {/* Secondary metrics */}
+      <div className="grid grid-cols-3 gap-3">
+        <SecondaryCard
+          icon={Activity}
+          label="Servicios"
+          value={totalServices.toLocaleString('es-EC')}
+        />
+        <SecondaryCard
+          icon={CalendarCheck}
+          label="Reservas"
+          value={totalReservations.toLocaleString('es-EC')}
+        />
+        <SecondaryCard
+          icon={TrendingUp}
+          label="Promedio diario"
+          value={formatCurrency(averageDaily)}
+        />
+      </div>
     </div>
+  );
+}
+
+interface SecondaryCardProps {
+  icon: React.ElementType;
+  label: string;
+  value: string;
+}
+
+function SecondaryCard({ icon: Icon, label, value }: SecondaryCardProps) {
+  return (
+    <section
+      aria-label={label}
+      className="flex flex-col justify-between rounded-xl border border-[var(--border)] bg-[var(--bg-surface)] p-4"
+    >
+      <div className="flex items-center gap-2">
+        <span className="grid h-8 w-8 place-items-center rounded-lg bg-[var(--bg-sunken)]">
+          <Icon className="h-4 w-4 text-[var(--fg-secondary)]" aria-hidden="true" />
+        </span>
+        <p className="text-[11px] font-semibold uppercase tracking-[0.04em] text-[var(--fg-muted)]">
+          {label}
+        </p>
+      </div>
+      <p
+        className="mt-3 truncate text-[20px] font-bold leading-none tabular-nums text-[var(--fg-strong)]"
+        style={{ fontFamily: 'var(--font-mono)' }}
+      >
+        {value}
+      </p>
+    </section>
   );
 }

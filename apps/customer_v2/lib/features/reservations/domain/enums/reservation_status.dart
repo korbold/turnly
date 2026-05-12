@@ -30,13 +30,24 @@ enum ReservationStatus {
     ReservationStatus.noShow => 'No asistio',
   };
 
+  /// Foreground color (text + dot) — Turnly Design System status palette.
   Color get color => switch (this) {
-    ReservationStatus.pending => const Color(0xFFF59E0B),
-    ReservationStatus.confirmed => const Color(0xFF3B82F6),
-    ReservationStatus.inProgress => const Color(0xFF8B5CF6),
-    ReservationStatus.completed => const Color(0xFF10B981),
-    ReservationStatus.cancelled => const Color(0xFFEF4444),
-    ReservationStatus.noShow => const Color(0xFF6B7280),
+    ReservationStatus.pending => const Color(0xFFB47114),
+    ReservationStatus.confirmed => const Color(0xFF1666BF),
+    ReservationStatus.inProgress => const Color(0xFF1A56D6),
+    ReservationStatus.completed => const Color(0xFF0B7A44),
+    ReservationStatus.cancelled => const Color(0xFFA91D2C),
+    ReservationStatus.noShow => const Color(0xFF4B5462),
+  };
+
+  /// Soft background color for pills.
+  Color get backgroundColor => switch (this) {
+    ReservationStatus.pending => const Color(0xFFFFF6E0),
+    ReservationStatus.confirmed => const Color(0xFFE4F1FE),
+    ReservationStatus.inProgress => const Color(0xFFDCE8FF),
+    ReservationStatus.completed => const Color(0xFFE8F8F0),
+    ReservationStatus.cancelled => const Color(0xFFFCE9EB),
+    ReservationStatus.noShow => const Color(0xFFEEF0F3),
   };
 
   bool get isUpcoming => this == pending || this == confirmed || this == inProgress;

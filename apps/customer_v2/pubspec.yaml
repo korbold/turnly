@@ -24,6 +24,9 @@ dependencies:
   # Network
   dio: ^5.7.0
 
+  # Config
+  flutter_dotenv: ^5.2.1
+
   # Functional
   fpdart: ^1.1.0
 
@@ -36,6 +39,7 @@ dependencies:
   # Firebase / Push notifications
   firebase_core: ^3.8.1
   firebase_messaging: ^15.1.6
+  firebase_auth: ^5.3.4
   flutter_local_notifications: ^18.0.0
 
   # UI
@@ -49,12 +53,31 @@ dependencies:
   url_launcher: ^6.3.2
   flutter_markdown: ^0.7.7+1
 
+  # Deep links / App Links
+  app_links: ^6.3.2
+
 dev_dependencies:
   flutter_test:
     sdk: flutter
   flutter_lints: ^5.0.0
   injectable_generator: ^2.6.0
   build_runner: ^2.4.0
+  flutter_launcher_icons: ^0.14.1
 
 flutter:
   uses-material-design: true
+  assets:
+    - .env.dev
+    - .env.prod
+    - assets/icon/turnly-customer-mark.svg
+    - assets/icon/turnly-customer-1024.png
+    - assets/icon/turnly-customer-adaptive-fg-432.png
+
+flutter_launcher_icons:
+  android: true
+  ios: true
+  image_path: assets/icon/turnly-customer-1024.png
+  remove_alpha_ios: true
+  adaptive_icon_background: "#F2693A"
+  adaptive_icon_foreground: assets/icon/turnly-customer-adaptive-fg-432.png
+  min_sdk_android: 21

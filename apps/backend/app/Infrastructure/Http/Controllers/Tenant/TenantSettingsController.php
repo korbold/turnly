@@ -29,7 +29,7 @@ class TenantSettingsController extends Controller
             'custom_fields.*.type' => 'required_with:custom_fields|string',
             'custom_fields.*.required' => 'required_with:custom_fields|boolean',
             'social_links' => 'sometimes|nullable|array',
-            'brand_theme' => 'sometimes|string|in:blue,green,red,purple,orange,teal,pink,gray',
+            'brand_theme' => ['sometimes', 'string', 'max:20', 'regex:/^(#[A-Fa-f0-9]{6}|blue|green|red|purple|orange|teal|pink|gray|coral|emerald|amber|rose|violet|slate)$/'],
             'settings' => 'sometimes|nullable|array',
             'onboarding_step' => 'sometimes|nullable|integer|min:0',
             'logo_url' => 'nullable|string|max:500',

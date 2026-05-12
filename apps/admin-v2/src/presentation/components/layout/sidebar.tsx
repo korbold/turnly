@@ -58,8 +58,18 @@ interface SidebarProps {
 }
 
 interface TenantPlanData {
-  current: { id: string; name: string; price: number } | null;
+  current: {
+    id: string;
+    name: string;
+    price: number;
+    max_reservations_per_month: number | null;
+  } | null;
   is_trial: boolean;
+  usage: {
+    services: number;
+    reservations_this_month: number;
+    employees: number;
+  };
 }
 
 export function Sidebar({ collapsed = false, onToggle }: SidebarProps) {
@@ -97,10 +107,14 @@ export function Sidebar({ collapsed = false, onToggle }: SidebarProps) {
       >
         {/* Logo + Tenant */}
         <div className="border-b border-zinc-200">
-          <div className="flex h-16 items-center gap-3 px-4">
-            <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-indigo-600 text-sm font-bold text-white">
-              T
-            </div>
+          <div className="flex items-center gap-2.5 px-4 pt-4 pb-3">
+            <img
+              src="/turnly-mark.svg"
+              alt="Turnly"
+              width={32}
+              height={32}
+              className="h-8 w-8 shrink-0 rounded-lg"
+            />
             {!collapsed && (
               <motion.div
                 initial={{ opacity: 0 }}
@@ -108,11 +122,14 @@ export function Sidebar({ collapsed = false, onToggle }: SidebarProps) {
                 exit={{ opacity: 0 }}
                 className="min-w-0"
               >
-                <p className="text-sm font-semibold text-zinc-900 truncate">
+                <p
+                  className="truncate text-[15px] font-bold text-[var(--fg-strong)]"
+                  style={{ fontFamily: 'var(--font-display)', fontStretch: '90%', letterSpacing: '-0.01em' }}
+                >
                   Turnly
                 </p>
                 {me?.tenant?.name && (
-                  <p className="text-xs text-zinc-500 truncate">
+                  <p className="truncate text-[11.5px] text-[var(--fg-secondary)]">
                     {me.tenant.name}
                   </p>
                 )}
@@ -121,20 +138,22 @@ export function Sidebar({ collapsed = false, onToggle }: SidebarProps) {
           </div>
           {!collapsed && planData?.current && (
             <div className="px-4 pb-3">
-              <div className="flex items-center justify-between gap-2 rounded-md bg-indigo-50 px-2.5 py-1.5">
-                <div className="min-w-0">
-                  <p className="text-[10px] uppercase tracking-wide text-indigo-500">
-                    {planData.is_trial ? 'Prueba' : 'Plan'}
+              <div className="flex items-center gap-2 rounded-lg border border-[var(--brand-100)] bg-[var(--brand-50)] px-2.5 py-2">
+                <div className="min-w-0 flex-1">
+                  <p className="text-[9.5px] font-bold uppercase tracking-wider text-[var(--brand-600)]">
+                    {planData.is_trial ? 'Prueba' : `Plan ${planData.current.name}`}
                   </p>
-                  <p className="truncate text-xs font-semibold text-indigo-900">
-                    {planData.current.name}
+                  <p className="truncate text-[11.5px] font-semibold text-[var(--brand-700)]">
+                    {planData.current.max_reservations_per_month === null
+                      ? `${planData.usage.reservations_this_month} reservas`
+                      : `${planData.usage.reservations_this_month} / ${planData.current.max_reservations_per_month} reservas`}
                   </p>
                 </div>
                 <Link
                   href="/plan"
-                  className="shrink-0 rounded bg-indigo-600 px-2 py-1 text-[10px] font-medium text-white hover:bg-indigo-700 transition-colors"
+                  className="shrink-0 rounded-md bg-[var(--brand-500)] px-2 py-1 text-[11px] font-medium text-white hover:bg-[var(--brand-600)] transition-colors"
                 >
-                  Actualizar
+                  Subir
                 </Link>
               </div>
             </div>
@@ -174,7 +193,7 @@ export function Sidebar({ collapsed = false, onToggle }: SidebarProps) {
             )}
           >
             <Avatar className="h-7 w-7 shrink-0">
-              <AvatarFallback className="text-xs bg-indigo-100 text-indigo-700">
+              <AvatarFallback className="text-xs bg-[var(--color-primary-muted)] text-[var(--color-primary-hover)]">
                 {userInitials}
               </AvatarFallback>
             </Avatar>
@@ -230,19 +249,19 @@ function NavLink({
     <Link
       href={item.href}
       className={cn(
-        'flex items-center gap-3 rounded-lg px-3 py-2 text-sm font-medium transition-colors',
+        'flex items-center gap-2.5 rounded-lg px-2.5 py-2 text-[13px] transition-colors',
         active
-          ? 'bg-indigo-50 border-l-2 border-indigo-600 text-indigo-600'
-          : 'text-zinc-600 hover:bg-zinc-100 hover:text-zinc-900',
+          ? 'bg-[var(--brand-50)] font-semibold text-[var(--brand-600)]'
+          : 'font-medium text-[var(--fg)] hover:bg-[var(--bg-hover)] hover:text-[var(--fg-strong)]',
         collapsed && 'justify-center px-0'
       )}
     >
-      <Icon className="h-5 w-5 shrink-0" />
+      <Icon className="h-4 w-4 shrink-0" />
       {!collapsed && (
         <>
           <span className="truncate">{item.label}</span>
           {item.badge != null && item.badge > 0 && (
-            <span className="ml-auto inline-flex h-5 min-w-5 items-center justify-center rounded-full bg-indigo-600 px-1.5 text-xs font-medium text-white">
+            <span className="ml-auto inline-flex h-[18px] min-w-[18px] items-center justify-center rounded-full bg-[var(--brand-500)] px-1.5 text-[10px] font-bold text-white">
               {item.badge}
             </span>
           )}

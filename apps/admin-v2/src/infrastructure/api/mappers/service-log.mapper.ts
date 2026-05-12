@@ -25,8 +25,17 @@ export function mapServiceLog(raw: Record<string, unknown>): ServiceLog {
     createdAt: new Date(raw.created_at as string),
     clientResource: clientResource
       ? {
-          plate: clientResource.plate as string,
+          label: (clientResource.label as string) ?? null,
+          plate: (clientResource.plate as string) ?? null,
           brand: (clientResource.brand as string) ?? null,
+          client: clientResource.client
+            ? {
+                name: (clientResource.client as Record<string, unknown>).name as string,
+                email: (clientResource.client as Record<string, unknown>).email as
+                  | string
+                  | undefined,
+              }
+            : undefined,
         }
       : undefined,
     service: service ? { name: service.name as string } : undefined,

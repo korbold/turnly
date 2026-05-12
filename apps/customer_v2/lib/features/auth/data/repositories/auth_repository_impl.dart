@@ -2,6 +2,7 @@
 import 'dart:convert';
 import 'package:dio/dio.dart';
 import 'package:fpdart/fpdart.dart';
+import 'package:firebase_auth/firebase_auth.dart' hide User;
 import 'package:google_sign_in/google_sign_in.dart';
 import '../../../../core/error/failures.dart';
 import '../../../../core/network/api_client.dart';
@@ -33,6 +34,15 @@ class AuthRepositoryImpl implements AuthRepository {
       if (e.response?.statusCode == 401) {
         return const Left(AuthFailure('Email o contrasena incorrectos'));
       }
+      if (e.response?.statusCode == 403 &&
+          e.response?.data is Map &&
+          (e.response?.data['error']?['code'] == 'EMAIL_NOT_VERIFIED')) {
+        final body = e.response!.data['error'] as Map;
+        return Left(EmailUnverifiedFailure(
+          (body['email'] ?? email).toString(),
+          body['message']?.toString(),
+        ));
+      }
       return Left(_extractError(e, 'Error al iniciar sesion'));
     } catch (e) {
       return Left(ServerFailure(e.toString()));
@@ -54,15 +64,19 @@ class AuthRepositoryImpl implements AuthRepository {
         'password_confirmation': password,
         if (phone != null) 'phone': phone,
       });
+      print('[AuthRepo] register status=${response.statusCode} body=${response.data}');
       final dto = AuthResponseDto.fromJson(
         response.data['data'] as Map<String, dynamic>,
       );
       await SecureStorage.saveToken(dto.token);
       await SecureStorage.saveUserData(jsonEncode(dto.user.toJson()));
+      print('[AuthRepo] register parsed user.email=${dto.user.email} verified=${dto.user.emailVerified}');
       return Right((user: dto.user.toEntity(), token: dto.token));
     } on DioException catch (e) {
+      print('[AuthRepo] register DIO err status=${e.response?.statusCode} body=${e.response?.data}');
       return Left(_extractError(e, 'Error al registrarse'));
     } catch (e) {
+      print('[AuthRepo] register catch: $e');
       return Left(ServerFailure(e.toString()));
     }
   }
@@ -107,26 +121,35 @@ class AuthRepositoryImpl implements AuthRepository {
   @override
   Future<Either<Failure, ({User user, String token})>> loginWithGoogle() async {
     try {
-      final googleSignIn = GoogleSignIn(
-        scopes: ['email', 'profile'],
-        serverClientId: '177358786679-hb3nt7ekc905br0vs98sobt4brqgsdka.apps.googleusercontent.com',
-      );
+      // 1. Get a Google credential via google_sign_in.
+      final googleSignIn = GoogleSignIn(scopes: ['email', 'profile']);
       final account = await googleSignIn.signIn();
-
       if (account == null) {
         return const Left(ServerFailure('Inicio de sesión cancelado'));
       }
-
       final auth = await account.authentication;
-      final idToken = auth.idToken;
-
-      if (idToken == null) {
+      if (auth.idToken == null) {
         return const Left(ServerFailure('Error al obtener token de Google'));
+      }
+
+      // 2. Exchange the Google credential for a Firebase ID token. The
+      //    backend validates Firebase ID tokens via the Firebase Admin SDK
+      //    — that's what makes per-env Firebase projects (dev/prod) isolate
+      //    cleanly without an audience headache.
+      final credential = GoogleAuthProvider.credential(
+        accessToken: auth.accessToken,
+        idToken: auth.idToken,
+      );
+      final userCredential =
+          await FirebaseAuth.instance.signInWithCredential(credential);
+      final firebaseIdToken = await userCredential.user?.getIdToken();
+      if (firebaseIdToken == null) {
+        return const Left(ServerFailure('Error al obtener token de Firebase'));
       }
 
       final response = await _dio.post(
         '/auth/google',
-        data: {'id_token': idToken},
+        data: {'id_token': firebaseIdToken},
       );
 
       final dto = AuthResponseDto.fromJson(
@@ -142,8 +165,92 @@ class AuthRepositoryImpl implements AuthRepository {
         return Left(ServerFailure(msg.toString()));
       }
       return Left(_extractError(e, 'Error al iniciar con Google'));
+    } catch (e, st) {
+      // Log original error so the cause shows in `flutter run` output.
+      // ignore: avoid_print
+      print('[GoogleSignIn] error: $e\n$st');
+      return Left(ServerFailure('Error al iniciar con Google: $e'));
+    }
+  }
+
+  @override
+  Future<Either<Failure, Unit>> verifyEmail({
+    required String email,
+    required String code,
+  }) async {
+    try {
+      await _dio.post('/auth/verify-email', data: {
+        'email': email,
+        'code': code,
+      });
+      return const Right(unit);
+    } on DioException catch (e) {
+      return Left(_extractError(e, 'Código inválido'));
     } catch (e) {
-      return Left(ServerFailure('Error al iniciar con Google'));
+      return Left(ServerFailure(e.toString()));
+    }
+  }
+
+  @override
+  Future<Either<Failure, Unit>> resendVerification({required String email}) async {
+    try {
+      await _dio.post('/auth/verify-email/resend', data: {'email': email});
+      return const Right(unit);
+    } on DioException catch (e) {
+      return Left(_extractError(e, 'No se pudo reenviar el código'));
+    } catch (e) {
+      return Left(ServerFailure(e.toString()));
+    }
+  }
+
+  @override
+  Future<Either<Failure, Unit>> sendMagicLink(String email) async {
+    try {
+      await _dio.post('/auth/magic-link/request', data: {'email': email});
+      return const Right(unit);
+    } on DioException catch (e) {
+      return Left(_extractError(e, 'No se pudo enviar el link'));
+    } catch (e) {
+      return Left(ServerFailure(e.toString()));
+    }
+  }
+
+  @override
+  Future<Either<Failure, ({User user, String token})>> signInWithEmailLink({
+    required String email,
+    required String link,
+  }) async {
+    // Backend flow: tap-link path is /m/<token>. Email param is unused
+    // here because the token alone identifies the email server-side.
+    try {
+      final uri = Uri.parse(link);
+      String? magicToken;
+      // Accept either a full /m/<token> URL or a bare 64-char token.
+      final segments = uri.pathSegments.where((s) => s.isNotEmpty).toList();
+      final mIdx = segments.indexOf('m');
+      if (mIdx != -1 && mIdx + 1 < segments.length) {
+        magicToken = segments[mIdx + 1];
+      } else if (link.length == 64 && RegExp(r'^[a-f0-9]+$').hasMatch(link)) {
+        magicToken = link;
+      }
+      if (magicToken == null || magicToken.length != 64) {
+        return const Left(ServerFailure('Link inválido'));
+      }
+
+      final response = await _dio.post(
+        '/auth/magic-link/verify',
+        data: {'token': magicToken},
+      );
+      final dto = AuthResponseDto.fromJson(
+        response.data['data'] as Map<String, dynamic>,
+      );
+      await SecureStorage.saveToken(dto.token);
+      await SecureStorage.saveUserData(jsonEncode(dto.user.toJson()));
+      return Right((user: dto.user.toEntity(), token: dto.token));
+    } on DioException catch (e) {
+      return Left(_extractError(e, 'Link inválido o expirado'));
+    } catch (e) {
+      return Left(ServerFailure(e.toString()));
     }
   }
 

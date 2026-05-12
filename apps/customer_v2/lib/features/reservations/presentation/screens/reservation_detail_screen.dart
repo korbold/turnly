@@ -283,17 +283,31 @@ class _ReservationDetailContent extends StatelessWidget {
                 Container(
                   padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 6),
                   decoration: BoxDecoration(
-                    color: statusColor.withValues(alpha: 0.12),
-                    borderRadius: BorderRadius.circular(20),
+                    color: reservation.status.backgroundColor,
+                    borderRadius: BorderRadius.circular(999),
                   ),
-                  child: Text(
-                    reservation.status.label,
-                    style: TextStyle(
-                      fontSize: 12,
-                      fontWeight: FontWeight.w700,
-                      color: statusColor,
-                      letterSpacing: 0.5,
-                    ),
+                  child: Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Container(
+                        width: 6,
+                        height: 6,
+                        decoration: BoxDecoration(
+                          color: statusColor,
+                          shape: BoxShape.circle,
+                        ),
+                      ),
+                      const SizedBox(width: 8),
+                      Text(
+                        reservation.status.label,
+                        style: TextStyle(
+                          fontSize: 12,
+                          fontWeight: FontWeight.w700,
+                          color: statusColor,
+                          letterSpacing: 0.3,
+                        ),
+                      ),
+                    ],
                   ),
                 ),
                 const SizedBox(height: 20),

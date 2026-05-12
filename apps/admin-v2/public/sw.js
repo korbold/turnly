@@ -1,10 +1,6 @@
-const CACHE_NAME = 'turnly-v1';
-const PRECACHE_URLS = ['/dashboard', '/login'];
+const CACHE_NAME = 'turnly-v2';
 
-self.addEventListener('install', (event) => {
-  event.waitUntil(
-    caches.open(CACHE_NAME).then((cache) => cache.addAll(PRECACHE_URLS))
-  );
+self.addEventListener('install', () => {
   self.skipWaiting();
 });
 
@@ -17,17 +13,30 @@ self.addEventListener('activate', (event) => {
   self.clients.claim();
 });
 
-self.addEventListener('fetch', (event) => {
-  // Network-first for API calls
-  if (event.request.url.includes('/api/')) return;
+// Handle push events here too in case Firebase subscription was attached
+// to this SW instead of firebase-messaging-sw.js (root scope race).
+self.addEventListener('push', (event) => {
+  if (!event.data) return;
 
-  event.respondWith(
-    fetch(event.request)
-      .then((response) => {
-        const clone = response.clone();
-        caches.open(CACHE_NAME).then((cache) => cache.put(event.request, clone));
-        return response;
-      })
-      .catch(() => caches.match(event.request))
-  );
+  let payload = {};
+  try { payload = event.data.json(); } catch { return; }
+
+  const notification = payload.notification || {};
+  const title = notification.title || 'Turnly';
+  const options = {
+    body: notification.body || '',
+    icon: '/icons/icon-192.png',
+    badge: '/icons/icon-192.png',
+    data: payload.data || {},
+  };
+
+  event.waitUntil(self.registration.showNotification(title, options));
+});
+
+self.addEventListener('notificationclick', (event) => {
+  event.notification.close();
+  const data = event.notification.data || {};
+  let url = '/dashboard';
+  if (data.action_type === 'reservation_detail') url = '/reservations';
+  event.waitUntil(clients.openWindow(url));
 });

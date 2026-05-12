@@ -8,7 +8,10 @@ import { GetImagesUseCase } from '@/application/use-cases/settings/get-images.us
 import { AddImageUseCase } from '@/application/use-cases/settings/add-image.use-case';
 import { DeleteImageUseCase } from '@/application/use-cases/settings/delete-image.use-case';
 import { ReorderImagesUseCase } from '@/application/use-cases/settings/reorder-images.use-case';
-import type { TenantSettings } from '@/domain/entities/tenant';
+import { GetBillingProfileUseCase } from '@/application/use-cases/settings/get-billing-profile.use-case';
+import { UpdateBillingProfileUseCase } from '@/application/use-cases/settings/update-billing-profile.use-case';
+import { LookupTaxIdUseCase } from '@/application/use-cases/settings/lookup-tax-id.use-case';
+import type { TenantSettings, BillingProfileInput, TaxIdType } from '@/domain/entities/tenant';
 
 export function useSettings() {
   const repo = useRepository('tenant');
@@ -68,5 +71,36 @@ export function useReorderImages() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['settings', 'images'] });
     },
+  });
+}
+
+export function useBillingProfile() {
+  const repo = useRepository('tenant');
+  return useQuery({
+    queryKey: ['billing-profile'],
+    queryFn: () => new GetBillingProfileUseCase(repo).execute(),
+  });
+}
+
+export function useUpdateBillingProfile() {
+  const repo = useRepository('tenant');
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (input: BillingProfileInput) =>
+      new UpdateBillingProfileUseCase(repo).execute(input),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['billing-profile'] });
+    },
+  });
+}
+
+export function useLookupTaxId(type: TaxIdType | null, taxId: string, enabled: boolean) {
+  const repo = useRepository('tenant');
+  return useQuery({
+    queryKey: ['billing-profile', 'lookup', type, taxId],
+    queryFn: () => new LookupTaxIdUseCase(repo).execute(type as TaxIdType, taxId),
+    enabled: enabled && type !== null && taxId.length > 0,
+    staleTime: 60 * 1000,
+    retry: false,
   });
 }

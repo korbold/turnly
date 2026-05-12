@@ -32,3 +32,12 @@ class NotFoundFailure extends Failure {
 class CacheFailure extends Failure {
   const CacheFailure([super.message = 'Error de almacenamiento local']);
 }
+
+class EmailUnverifiedFailure extends Failure {
+  const EmailUnverifiedFailure(this.email, [String? message])
+      : super(message ?? 'Verifica tu email para continuar');
+  final String email;
+
+  @override
+  List<Object?> get props => [message, email];
+}

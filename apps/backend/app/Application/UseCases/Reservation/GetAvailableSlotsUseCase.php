@@ -23,8 +23,8 @@ class GetAvailableSlotsUseCase
         $durationMinutes = $tenant?->settings['slot_duration_minutes'] ?? 30;
 
         // Get availability slots for this day
-        $availabilitySlots = AvailabilitySlotModel::withoutGlobalScopes()
-            ->where('tenant_id', $dto->tenantId)
+        $availabilitySlots = AvailabilitySlotModel::query()
+            ->forTenant($dto->tenantId)
             ->where('day_of_week', $dayOfWeek)
             ->where('is_active', true)
             ->get();

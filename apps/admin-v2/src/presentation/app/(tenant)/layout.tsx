@@ -25,7 +25,7 @@ export default function TenantLayout({
   if (!isReady) {
     return (
       <div className="flex h-screen items-center justify-center bg-zinc-50">
-        <div className="h-8 w-8 animate-spin rounded-full border-2 border-indigo-600 border-t-transparent" />
+        <div className="h-8 w-8 animate-spin rounded-full border-2 border-[var(--color-primary)] border-t-transparent" />
       </div>
     );
   }

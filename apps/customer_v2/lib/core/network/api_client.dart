@@ -1,12 +1,15 @@
 // lib/core/network/api_client.dart
 import 'package:dio/dio.dart';
+import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'auth_interceptor.dart';
+import 'email_verification_interceptor.dart';
 import 'tenant_interceptor.dart';
 
 class ApiClient {
   static Dio? _instance;
 
-  static const String baseUrl = 'http://192.168.1.7:8000/api/v1';
+  static String get baseUrl =>
+      dotenv.env['API_BASE_URL'] ?? 'https://api.dev.goturnly.com/api/v1';
 
   static Dio get instance {
     _instance ??= _createDio();
@@ -27,6 +30,7 @@ class ApiClient {
     dio.interceptors.addAll([
       AuthInterceptor(),
       TenantInterceptor(),
+      EmailVerificationInterceptor(),
     ]);
 
     return dio;

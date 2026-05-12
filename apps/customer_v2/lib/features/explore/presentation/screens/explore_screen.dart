@@ -98,17 +98,18 @@ class _ExploreView extends StatelessWidget {
                     Text(
                       greeting,
                       style: const TextStyle(
-                        fontSize: 28,
+                        fontSize: 26,
                         fontWeight: FontWeight.w700,
                         color: AppColors.textPrimary,
-                        height: 1.2,
+                        height: 1.15,
+                        letterSpacing: -0.5,
                       ),
                     ),
                     const SizedBox(height: 4),
                     Text(
-                      'Encuentra tu proximo turno',
+                      'Encuentra tu próximo turno',
                       style: TextStyle(
-                        fontSize: 15,
+                        fontSize: 14,
                         color: AppColors.textSecondary,
                       ),
                     ),

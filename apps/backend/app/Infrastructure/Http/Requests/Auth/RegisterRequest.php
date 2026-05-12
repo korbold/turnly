@@ -14,10 +14,13 @@ class RegisterRequest extends FormRequest
     public function rules(): array
     {
         return [
-            'name'     => ['required', 'string', 'max:255'],
-            'email'    => ['required', 'email', 'unique:users'],
-            'password' => ['required', 'string', 'min:8', 'confirmed'],
-            'phone'    => ['nullable', 'string', 'max:20'],
+            'name'          => ['required', 'string', 'max:255'],
+            'business_name' => ['nullable', 'string', 'max:255'],
+            'business_type' => ['nullable', 'string', 'max:50', 'exists:business_categories,slug'],
+            'email'         => ['required', 'email', 'unique:users'],
+            'password'      => ['required', 'string', 'min:8'],
+            'phone'         => ['nullable', 'string', 'max:20'],
+            'website'       => ['prohibited'],
         ];
     }
 
@@ -30,7 +33,7 @@ class RegisterRequest extends FormRequest
             'email.unique' => 'Este email ya está registrado.',
             'password.required' => 'La contraseña es obligatoria.',
             'password.min' => 'La contraseña debe tener al menos 8 caracteres.',
-            'password.confirmed' => 'Las contraseñas no coinciden.',
+            'business_type.exists' => 'El tipo de negocio no es válido.',
         ];
     }
 }
