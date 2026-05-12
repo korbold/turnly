@@ -46,5 +46,5 @@ jobs:
           echo "url=$url" >> "$GITHUB_OUTPUT"
           echo "Deployed: $url"
 
-      - name: Alias app.goturnly.com
-        run: vercel alias set "${{ steps.deploy.outputs.url }}" app.goturnly.com --token=$VERCEL_TOKEN
+      - name: Alias goturnly.com
+        run: vercel alias set "${{ steps.deploy.outputs.url }}" goturnly.com --token=$VERCEL_TOKEN
