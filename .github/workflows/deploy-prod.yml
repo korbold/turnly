@@ -1,0 +1,67 @@
+name: Deploy Prod (backend)
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'apps/backend/**'
+      - '.github/workflows/deploy-prod.yml'
+  workflow_dispatch:
+
+concurrency:
+  group: deploy-prod
+  cancel-in-progress: false
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    environment: production
+    steps:
+      - name: Setup SSH
+        run: |
+          mkdir -p ~/.ssh
+          echo "${{ secrets.PROD_DEPLOY_SSH_KEY }}" > ~/.ssh/deploy_key
+          chmod 600 ~/.ssh/deploy_key
+          ssh-keyscan -H ${{ secrets.PROD_DEPLOY_HOST }} >> ~/.ssh/known_hosts
+
+      - name: Deploy backend to turnly-prod
+        run: |
+          ssh -i ~/.ssh/deploy_key ${{ secrets.PROD_DEPLOY_USER }}@${{ secrets.PROD_DEPLOY_HOST }} bash <<'ENDSSH'
+            set -euo pipefail
+            cd ${{ secrets.PROD_DEPLOY_PATH }}
+
+            # Backup DB before migrate (prod safety net)
+            STAMP=$(date +%Y%m%d-%H%M%S)
+            mkdir -p ~/backups
+            mysqldump --single-transaction --quick \
+              -u "$(grep ^DB_USERNAME apps/backend/.env | cut -d= -f2)" \
+              -p"$(grep ^DB_PASSWORD apps/backend/.env | cut -d= -f2)" \
+              "$(grep ^DB_DATABASE apps/backend/.env | cut -d= -f2)" \
+              | gzip > ~/backups/db-$STAMP.sql.gz
+
+            git fetch --all --prune
+            git reset --hard origin/main
+
+            cd apps/backend
+            composer install --no-dev --prefer-dist --optimize-autoloader --no-interaction
+            php artisan down --render="errors::503" --retry=15 || true
+            php artisan migrate --force
+            php artisan config:cache
+            php artisan route:cache
+            php artisan view:cache
+            php artisan event:cache
+            php artisan up
+
+            if [ -f .env ]; then
+              chgrp www-data .env
+              chmod 640 .env
+            fi
+
+            sudo /usr/bin/systemctl reload php8.3-fpm
+            sudo /usr/bin/systemctl restart turnly-queue
+
+            # Rotate DB backups: keep last 14
+            ls -1t ~/backups/db-*.sql.gz | tail -n +15 | xargs -r rm --
+
+            echo "Prod deploy OK at $(date)"
+          ENDSSH
