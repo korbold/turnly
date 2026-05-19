@@ -78,6 +78,7 @@ jobs:
           export GOOGLE_APPLICATION_CREDENTIALS=service_account.json
           firebase appdistribution:distribute apps/customer_v2/build/ios/ipa-dev/*.ipa \
             --app "$FIREBASE_APP_ID" \
+            --groups "test" \
             --release-notes "Branch: ${{ github.ref_name }} | Commit: ${{ github.sha }}"
 
       - name: Cleanup
