@@ -1,6 +1,6 @@
 # customer_v2
 
-A new Flutter project.
+Turnly Customer Flutter app.
 
 ## Getting Started
 
