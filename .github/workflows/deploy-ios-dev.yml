@@ -63,7 +63,7 @@ jobs:
         working-directory: apps/customer_v2
         run: |
           xcodebuild -exportArchive \
-            -archivePath build/ios/archive/Runner-dev.xcarchive \
+            -archivePath build/ios/archive/Runner.xcarchive \
             -exportOptionsPlist ios/ExportOptions-dev.plist \
             -exportPath build/ios/ipa-dev \
             -allowProvisioningUpdates
