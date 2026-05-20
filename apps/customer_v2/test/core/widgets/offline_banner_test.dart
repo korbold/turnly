@@ -65,4 +65,17 @@ void main() {
     expect(find.text('Sin conexión a internet'), findsNothing);
     cubit.close();
   });
+
+  testWidgets('banner appears when going offline from initial online state', (tester) async {
+    final cubit = _FakeConnectivityCubit(ConnectivityOnline());
+    await tester.pumpWidget(_wrap(const OfflineBanner(), cubit));
+    await tester.pump();
+    // Initially online — banner not in tree
+    expect(find.text('Sin conexión a internet'), findsNothing);
+    // Go offline
+    cubit.emit(ConnectivityOffline());
+    await tester.pumpAndSettle();
+    expect(find.text('Sin conexión a internet'), findsOneWidget);
+    cubit.close();
+  });
 }

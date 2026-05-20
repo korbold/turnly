@@ -45,28 +45,30 @@ class _OfflineBannerState extends State<OfflineBanner> {
         _isRestored = true;
       });
     } else if (state is ConnectivityOnline) {
+      final reduceMotion = MediaQuery.of(context).disableAnimations;
+      final exitMs = reduceMotion ? 150 : 160;
       setState(() {
         _visible = false;
         _isRestored = false;
       });
       // Keep _shouldRender = true during the exit animation, then clear.
-      Future.delayed(const Duration(milliseconds: 220), () {
+      Future.delayed(Duration(milliseconds: exitMs), () {
         if (mounted) setState(() => _shouldRender = false);
       });
     }
   }
 
   void _dismiss() {
+    final reduceMotion = MediaQuery.of(context).disableAnimations;
+    final exitMs = reduceMotion ? 150 : 160;
     setState(() => _visible = false);
-    Future.delayed(const Duration(milliseconds: 220), () {
+    Future.delayed(Duration(milliseconds: exitMs), () {
       if (mounted) setState(() => _shouldRender = false);
     });
   }
 
   @override
   Widget build(BuildContext context) {
-    if (!_shouldRender) return const SizedBox.shrink();
-
     final reduceMotion = MediaQuery.of(context).disableAnimations;
     final enterMs = reduceMotion ? 150 : 220;
     final exitMs = reduceMotion ? 150 : 160;
@@ -74,20 +76,22 @@ class _OfflineBannerState extends State<OfflineBanner> {
 
     return BlocListener<ConnectivityCubit, ConnectivityState>(
       listener: (_, state) => _handleState(state),
-      child: AnimatedSlide(
-        offset: _visible ? Offset.zero : const Offset(0, -1),
-        duration: duration,
-        curve: Curves.easeOut,
-        child: AnimatedOpacity(
-          opacity: _visible ? 1.0 : 0.0,
-          duration: duration,
-          curve: Curves.easeOut,
-          child: _BannerContent(
-            isRestored: _isRestored,
-            onDismiss: _dismiss,
-          ),
-        ),
-      ),
+      child: !_shouldRender
+          ? const SizedBox.shrink()
+          : AnimatedSlide(
+              offset: _visible ? Offset.zero : const Offset(0, -1),
+              duration: duration,
+              curve: Curves.easeOut,
+              child: AnimatedOpacity(
+                opacity: _visible ? 1.0 : 0.0,
+                duration: duration,
+                curve: Curves.easeOut,
+                child: _BannerContent(
+                  isRestored: _isRestored,
+                  onDismiss: _dismiss,
+                ),
+              ),
+            ),
     );
   }
 }
@@ -132,7 +136,7 @@ class _BannerContent extends StatelessWidget {
                     ),
                   ),
                   Semantics(
-                    label: 'Cerrar aviso de sin conexión',
+                    label: isRestored ? 'Cerrar aviso de conexión' : 'Cerrar aviso de sin conexión',
                     child: GestureDetector(
                       onTap: onDismiss,
                       behavior: HitTestBehavior.opaque,
