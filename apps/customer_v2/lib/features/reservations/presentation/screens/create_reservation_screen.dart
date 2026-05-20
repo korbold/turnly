@@ -23,6 +23,7 @@ import '../cubit/create_reservation_cubit.dart';
 import '../cubit/create_reservation_state.dart';
 import '../widgets/slot_chip.dart';
 import '../widgets/step_indicator.dart';
+import '../../../../core/widgets/offline_action_gate.dart';
 
 class CreateReservationScreen extends StatelessWidget {
   final String tenantSlug;
@@ -1026,11 +1027,14 @@ class _Step3Confirm extends StatelessWidget {
 
           BlocBuilder<CreateReservationCubit, CreateReservationState>(
             builder: (context, state) {
-              return AppButton(
-                label: 'Confirmar Reserva',
-                onPressed: onSubmit,
-                isLoading: state is CreateReservationSubmitting,
-                icon: Icons.check_rounded,
+              return OfflineActionGate(
+                reason: 'para confirmar esta reserva',
+                child: AppButton(
+                  label: 'Confirmar Reserva',
+                  onPressed: onSubmit,
+                  isLoading: state is CreateReservationSubmitting,
+                  icon: Icons.check_rounded,
+                ),
               );
             },
           ).animate().fadeIn(duration: 400.ms, delay: 300.ms),
