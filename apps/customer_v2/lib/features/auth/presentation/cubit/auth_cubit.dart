@@ -19,7 +19,7 @@ class AuthCubit extends Cubit<AuthState> {
         super(const AuthInitial());
 
   Future<void> _callInitPush() =>
-      _initPush != null ? _initPush!() : getIt<PushNotificationService>().init();
+      _initPush != null ? _initPush() : getIt<PushNotificationService>().init();
 
   Future<void> login(String email, String password) async {
     emit(const AuthLoading());
