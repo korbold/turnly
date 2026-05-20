@@ -11,8 +11,15 @@ import 'auth_state.dart';
 
 class AuthCubit extends Cubit<AuthState> {
   final AuthRepository _repository;
+  // Overrideable for testing; production code resolves from GetIt.
+  final Future<void> Function()? _initPush;
 
-  AuthCubit(this._repository) : super(const AuthInitial());
+  AuthCubit(this._repository, {Future<void> Function()? initPush})
+      : _initPush = initPush,
+        super(const AuthInitial());
+
+  Future<void> _callInitPush() =>
+      _initPush != null ? _initPush!() : getIt<PushNotificationService>().init();
 
   Future<void> login(String email, String password) async {
     emit(const AuthLoading());
@@ -30,7 +37,7 @@ class AuthCubit extends Cubit<AuthState> {
           emit(AuthEmailUnverified(data.user.email));
         } else {
           emit(AuthAuthenticated(data.user));
-          getIt<PushNotificationService>().init();
+          _callInitPush();
         }
       },
     );
@@ -88,8 +95,12 @@ class AuthCubit extends Cubit<AuthState> {
     result.fold(
       (failure) => emit(AuthError(failure.message)),
       (data) {
-        emit(AuthAuthenticated(data.user));
-        getIt<PushNotificationService>().init();
+        if (data.user.termsAcceptedAt == null) {
+          emit(const AuthTermsPending());
+        } else {
+          emit(AuthAuthenticated(data.user));
+          _callInitPush();
+        }
       },
     );
   }
@@ -106,8 +117,12 @@ class AuthCubit extends Cubit<AuthState> {
         }
       },
       (data) {
-        emit(AuthAuthenticated(data.user));
-        getIt<PushNotificationService>().init();
+        if (data.user.termsAcceptedAt == null) {
+          emit(const AuthTermsPending());
+        } else {
+          emit(AuthAuthenticated(data.user));
+          _callInitPush();
+        }
       },
     );
   }
@@ -142,7 +157,7 @@ class AuthCubit extends Cubit<AuthState> {
           emit(AuthEmailUnverified(user.email));
         } else {
           emit(AuthAuthenticated(user));
-          getIt<PushNotificationService>().init();
+          _callInitPush();
         }
       } else {
         await getMe();
