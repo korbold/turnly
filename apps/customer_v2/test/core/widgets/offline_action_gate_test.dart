@@ -61,7 +61,8 @@ void main() {
       ),
       cubit,
     ));
-    await tester.tap(find.text('Acción'));
+    // Tap at the button's position — the overlay GestureDetector intercepts it.
+    await tester.tap(find.text('Acción'), warnIfMissed: false);
     await tester.pumpAndSettle();
     expect(pressed, isFalse);
     expect(find.text('Sin conexión'), findsOneWidget);
@@ -80,7 +81,8 @@ void main() {
       ),
       cubit,
     ));
-    await tester.tap(find.text('Reservar'));
+    // Tap at the button's position — the overlay GestureDetector intercepts it.
+    await tester.tap(find.text('Reservar'), warnIfMissed: false);
     await tester.pumpAndSettle();
     expect(find.text('Necesitas internet para crear esta reserva.'), findsOneWidget);
     cubit.close();
