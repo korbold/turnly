@@ -2,6 +2,7 @@
 import 'package:dio/dio.dart';
 import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'auth_interceptor.dart';
+import 'crashlytics_interceptor.dart';
 import 'email_verification_interceptor.dart';
 import 'tenant_interceptor.dart';
 
@@ -31,6 +32,7 @@ class ApiClient {
       AuthInterceptor(),
       TenantInterceptor(),
       EmailVerificationInterceptor(),
+      CrashlyticsInterceptor(),
     ]);
 
     return dio;
