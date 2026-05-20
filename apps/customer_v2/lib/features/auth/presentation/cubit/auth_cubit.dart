@@ -11,8 +11,15 @@ import 'auth_state.dart';
 
 class AuthCubit extends Cubit<AuthState> {
   final AuthRepository _repository;
+  // Overrideable for testing; production code resolves from GetIt.
+  final Future<void> Function()? _initPush;
 
-  AuthCubit(this._repository) : super(const AuthInitial());
+  AuthCubit(this._repository, {Future<void> Function()? initPush})
+      : _initPush = initPush,
+        super(const AuthInitial());
+
+  Future<void> _callInitPush() =>
+      _initPush != null ? _initPush() : getIt<PushNotificationService>().init();
 
   Future<void> login(String email, String password) async {
     emit(const AuthLoading());
@@ -30,7 +37,7 @@ class AuthCubit extends Cubit<AuthState> {
           emit(AuthEmailUnverified(data.user.email));
         } else {
           emit(AuthAuthenticated(data.user));
-          getIt<PushNotificationService>().init();
+          _callInitPush();
         }
       },
     );
@@ -85,11 +92,16 @@ class AuthCubit extends Cubit<AuthState> {
       email: email,
       link: link,
     );
-    result.fold(
-      (failure) => emit(AuthError(failure.message)),
-      (data) {
-        emit(AuthAuthenticated(data.user));
-        getIt<PushNotificationService>().init();
+    await result.fold(
+      (failure) async => emit(AuthError(failure.message)),
+      (data) async {
+        if (data.user.termsAcceptedAt == null) {
+          emit(const AuthTermsPending());
+        } else {
+          await SecureStorage.setTermsAccepted(true);
+          emit(AuthAuthenticated(data.user));
+          await _callInitPush();
+        }
       },
     );
   }
@@ -97,17 +109,22 @@ class AuthCubit extends Cubit<AuthState> {
   Future<void> loginWithGoogle() async {
     emit(const AuthLoading());
     final result = await _repository.loginWithGoogle();
-    result.fold(
-      (failure) {
+    await result.fold(
+      (failure) async {
         if (failure.message == 'Inicio de sesión cancelado') {
           emit(const AuthInitial());
         } else {
           emit(AuthError(failure.message));
         }
       },
-      (data) {
-        emit(AuthAuthenticated(data.user));
-        getIt<PushNotificationService>().init();
+      (data) async {
+        if (data.user.termsAcceptedAt == null) {
+          emit(const AuthTermsPending());
+        } else {
+          await SecureStorage.setTermsAccepted(true);
+          emit(AuthAuthenticated(data.user));
+          await _callInitPush();
+        }
       },
     );
   }
@@ -140,9 +157,12 @@ class AuthCubit extends Cubit<AuthState> {
         final user = UserDto.fromJson(jsonDecode(userData) as Map<String, dynamic>).toEntity();
         if (!user.emailVerified) {
           emit(AuthEmailUnverified(user.email));
+        } else if (user.termsAcceptedAt == null) {
+          emit(const AuthTermsPending());
         } else {
+          await SecureStorage.setTermsAccepted(true);
           emit(AuthAuthenticated(user));
-          getIt<PushNotificationService>().init();
+          await _callInitPush();
         }
       } else {
         await getMe();

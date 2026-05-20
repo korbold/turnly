@@ -21,6 +21,7 @@ import '../features/favorites/presentation/screens/favorites_screen.dart';
 import '../features/notifications/presentation/screens/notifications_screen.dart';
 import '../features/legal/presentation/screens/legal_screen.dart';
 import '../features/shared/presentation/screens/not_found_screen.dart';
+import '../features/terms/presentation/screens/terms_acceptance_screen.dart';
 
 final rootNavigatorKey = GlobalKey<NavigatorState>();
 final _shellNavigatorKey = GlobalKey<NavigatorState>();
@@ -49,6 +50,7 @@ const _reservedWebPaths = <String>{
   '_next',
   '.well-known',
   'm',
+  'accept-terms',
 };
 
 final appRouter = GoRouter(
@@ -84,15 +86,21 @@ final appRouter = GoRouter(
     }
 
     final token = await SecureStorage.getToken();
+    final termsAccepted = await SecureStorage.getTermsAccepted();
     final isAuthenticated = token != null;
     final isAuthRoute = state.matchedLocation == '/login' ||
         state.matchedLocation == '/register' ||
         state.matchedLocation == '/onboarding';
 
     String? decision;
-    if (!isAuthenticated && !isAuthRoute) decision = '/login';
-    if (isAuthenticated && isAuthRoute) decision = '/home';
-    print('[Router] -> ${state.matchedLocation} auth=$isAuthenticated authRoute=$isAuthRoute decision=${decision ?? "allow"}');
+    if (!isAuthenticated && !isAuthRoute) {
+      decision = '/login';
+    } else if (isAuthenticated && !termsAccepted &&
+        state.matchedLocation != '/accept-terms') {
+      decision = '/accept-terms';
+    } else if (isAuthenticated && termsAccepted && isAuthRoute) {
+      decision = '/home';
+    }
     return decision;
   },
   routes: [
@@ -115,6 +123,29 @@ final appRouter = GoRouter(
       // is the new verification surface; bounce to /login.
       path: '/verify-email',
       redirect: (_, __) => '/login',
+    ),
+    GoRoute(
+      path: '/accept-terms',
+      pageBuilder: (context, state) => CustomTransitionPage(
+        child: const TermsAcceptanceScreen(),
+        transitionsBuilder: (context, animation, secondaryAnimation, child) {
+          final reducedMotion = MediaQuery.of(context).disableAnimations;
+          if (reducedMotion) {
+            return FadeTransition(opacity: animation, child: child);
+          }
+          return SlideTransition(
+            position: Tween<Offset>(
+              begin: const Offset(0, 1),
+              end: Offset.zero,
+            ).animate(CurvedAnimation(
+              parent: animation,
+              curve: const Cubic(0.32, 0.72, 0, 1),
+            )),
+            child: child,
+          );
+        },
+        transitionDuration: const Duration(milliseconds: 320),
+      ),
     ),
 
     // Main app shell with bottom nav

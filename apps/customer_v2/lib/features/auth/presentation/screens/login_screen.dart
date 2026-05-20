@@ -10,6 +10,7 @@ import '../../../../shared/widgets/app_text_field.dart';
 import '../cubit/auth_cubit.dart';
 import '../cubit/auth_state.dart';
 import '../widgets/google_sign_in_button.dart';
+import '../../../../core/widgets/offline_action_gate.dart';
 
 class LoginScreen extends StatelessWidget {
   const LoginScreen({super.key});
@@ -73,6 +74,8 @@ class _LoginViewState extends State<_LoginView> {
         listener: (context, state) {
           if (state is AuthAuthenticated) {
             context.go('/home');
+          } else if (state is AuthTermsPending) {
+            context.go('/accept-terms');
           } else if (state is AuthEmailUnverified) {
             context.go('/verify-email?email=${Uri.encodeComponent(state.email)}');
           }
@@ -214,11 +217,14 @@ class _LoginViewState extends State<_LoginView> {
                           ),
 
                         // Google Sign-In (primary)
-                        GoogleSignInButton(
-                          isLoading: state is AuthLoading,
-                          onPressed: () {
-                            context.read<AuthCubit>().loginWithGoogle();
-                          },
+                        OfflineActionGate(
+                          reason: 'para iniciar sesión con Google',
+                          child: GoogleSignInButton(
+                            isLoading: state is AuthLoading,
+                            onPressed: () {
+                              context.read<AuthCubit>().loginWithGoogle();
+                            },
+                          ),
                         )
                             .animate()
                             .fadeIn(duration: 500.ms, delay: 320.ms)
@@ -348,10 +354,13 @@ class _LoginViewState extends State<_LoginView> {
                         // Primary CTA: send magic link. Disabled until the
                         // email is well-formed so the tap does not bounce
                         // the user back with an inline error.
-                        AppButton(
-                          label: 'Enviarme link al email',
-                          isLoading: isLoading,
-                          onPressed: _emailValid ? _sendMagicLink : null,
+                        OfflineActionGate(
+                          reason: 'para iniciar sesión',
+                          child: AppButton(
+                            label: 'Enviarme link al email',
+                            isLoading: isLoading,
+                            onPressed: _emailValid ? _sendMagicLink : null,
+                          ),
                         )
                             .animate()
                             .fadeIn(duration: 500.ms, delay: 450.ms)

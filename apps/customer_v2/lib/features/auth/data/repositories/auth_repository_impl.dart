@@ -254,6 +254,18 @@ class AuthRepositoryImpl implements AuthRepository {
     }
   }
 
+  @override
+  Future<Either<Failure, Unit>> acceptTerms({required String version}) async {
+    try {
+      await _dio.post('/auth/accept-terms', data: {'version': version});
+      return const Right(unit);
+    } on DioException catch (e) {
+      return Left(_extractError(e, 'No se pudo registrar la aceptación'));
+    } catch (e) {
+      return Left(ServerFailure(e.toString()));
+    }
+  }
+
   ServerFailure _extractError(DioException e, String fallback) {
     final data = e.response?.data;
     if (data is Map) {

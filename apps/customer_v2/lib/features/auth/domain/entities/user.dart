@@ -8,6 +8,7 @@ class User extends Equatable {
   final String? phone;
   final bool isSuperAdmin;
   final bool emailVerified;
+  final DateTime? termsAcceptedAt;
 
   const User({
     required this.id,
@@ -16,9 +17,10 @@ class User extends Equatable {
     this.phone,
     this.isSuperAdmin = false,
     this.emailVerified = true,
+    this.termsAcceptedAt,
   });
 
   @override
   List<Object?> get props =>
-      [id, name, email, phone, isSuperAdmin, emailVerified];
+      [id, name, email, phone, isSuperAdmin, emailVerified, termsAcceptedAt];
 }

@@ -38,13 +38,17 @@ return new class extends Migration
             ]));
         }
 
-        // Change business_type from enum to varchar
-        DB::statement("ALTER TABLE tenants MODIFY business_type VARCHAR(50) NULL");
+        // Change business_type from enum to varchar (MySQL only; SQLite stores all as text)
+        if (DB::getDriverName() === 'mysql') {
+            DB::statement("ALTER TABLE tenants MODIFY business_type VARCHAR(50) NULL");
+        }
     }
 
     public function down(): void
     {
-        DB::statement("ALTER TABLE tenants MODIFY business_type ENUM('car_wash','barbershop','medical','spa','gym','other') NULL");
+        if (DB::getDriverName() === 'mysql') {
+            DB::statement("ALTER TABLE tenants MODIFY business_type ENUM('car_wash','barbershop','medical','spa','gym','other') NULL");
+        }
         Schema::dropIfExists('business_categories');
     }
 };

@@ -56,3 +56,9 @@ class AuthMagicLinkSent extends AuthState {
   @override
   List<Object?> get props => [email];
 }
+
+/// Emitted when the user has authenticated but has not yet accepted the
+/// Terms & Conditions. UI should navigate to the T&C acceptance screen.
+class AuthTermsPending extends AuthState {
+  const AuthTermsPending();
+}

@@ -82,6 +82,7 @@ class AuthController extends Controller
                     'name' => $result['user']->name,
                     'email' => $result['user']->email,
                     'email_verified' => false,
+                    'terms_accepted_at' => $result['user']->terms_accepted_at?->toIso8601String(),
                 ],
                 'tenant' => $result['tenant'] ? [
                     'id' => $result['tenant']->id,
@@ -143,6 +144,7 @@ class AuthController extends Controller
                     'email' => $user->email,
                     'is_super_admin' => $user->is_super_admin,
                     'email_verified' => $user->email_verified_at !== null,
+                    'terms_accepted_at' => $user->terms_accepted_at?->toIso8601String(),
                 ],
                 'token' => $token,
                 'tenant' => $tenant ? [
@@ -220,16 +222,19 @@ class AuthController extends Controller
             ->first();
         $tenant = $tenantUserActive?->tenant;
 
+        $freshUser = $user->fresh();
+
         return response()->json([
             'data' => [
                 'message' => 'Email verificado',
-                'email_verified_at' => $user->fresh()->email_verified_at?->toIso8601String(),
+                'email_verified_at' => $freshUser->email_verified_at?->toIso8601String(),
                 'token' => $token,
                 'user' => [
                     'id' => $user->id,
                     'name' => $user->name,
                     'email' => $user->email,
                     'is_super_admin' => (bool) $user->is_super_admin,
+                    'terms_accepted_at' => $freshUser->terms_accepted_at?->toIso8601String(),
                 ],
                 'tenant' => $tenant ? [
                     'id' => $tenant->id,
@@ -301,6 +306,7 @@ class AuthController extends Controller
                     'is_super_admin' => $user->is_super_admin,
                     'role' => $tenantUser?->role,
                     'email_verified' => $user->email_verified_at !== null,
+                    'terms_accepted_at' => $user->terms_accepted_at?->toIso8601String(),
                 ],
                 'tenant' => $tenant ? [
                     'id' => $tenant->id,
@@ -309,6 +315,28 @@ class AuthController extends Controller
                     'status' => $tenant->status,
                 ] : null,
             ],
+        ]);
+    }
+
+    public function acceptTerms(Request $request): JsonResponse
+    {
+        $request->validate([
+            'version' => ['required', 'string', 'max:10'],
+        ]);
+
+        $request->user()->update([
+            'terms_accepted_at' => now(),
+            'terms_version_accepted' => $request->string('version')->toString(),
+        ]);
+
+        $user = $request->user()->fresh();
+
+        return response()->json([
+            'data' => [
+                'terms_accepted_at' => $user->terms_accepted_at?->toIso8601String(),
+                'terms_version_accepted' => $user->terms_version_accepted,
+            ],
+            'meta' => ['timestamp' => now()->toIso8601String()],
         ]);
     }
 }

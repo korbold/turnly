@@ -22,6 +22,7 @@ class UserDto {
   final String? phone;
   final bool isSuperAdmin;
   final bool emailVerified;
+  final DateTime? termsAcceptedAt;
 
   UserDto({
     required this.id,
@@ -30,9 +31,11 @@ class UserDto {
     this.phone,
     this.isSuperAdmin = false,
     this.emailVerified = true,
+    this.termsAcceptedAt,
   });
 
   factory UserDto.fromJson(Map<String, dynamic> json) {
+    final rawTerms = json['terms_accepted_at'];
     return UserDto(
       id: json['id'] as String,
       name: json['name'] as String,
@@ -40,6 +43,7 @@ class UserDto {
       phone: json['phone'] as String?,
       isSuperAdmin: json['is_super_admin'] as bool? ?? false,
       emailVerified: json['email_verified'] as bool? ?? true,
+      termsAcceptedAt: rawTerms is String ? DateTime.tryParse(rawTerms) : null,
     );
   }
 
@@ -50,6 +54,7 @@ class UserDto {
     'phone': phone,
     'is_super_admin': isSuperAdmin,
     'email_verified': emailVerified,
+    'terms_accepted_at': termsAcceptedAt?.toIso8601String(),
   };
 
   User toEntity() => User(
@@ -59,5 +64,6 @@ class UserDto {
     phone: phone,
     isSuperAdmin: isSuperAdmin,
     emailVerified: emailVerified,
+    termsAcceptedAt: termsAcceptedAt,
   );
 }
