@@ -71,7 +71,7 @@ void main() {
     test('accept() emits Loading then Success on success', () async {
       final cubit = TermsAcceptanceCubit(_MockAuthRepository());
 
-      expectLater(
+      final expectation = expectLater(
         cubit.stream,
         emitsInOrder([
           isA<TermsAcceptanceLoading>(),
@@ -80,6 +80,7 @@ void main() {
       );
 
       await cubit.accept();
+      await expectation;
     });
 
     test('accept() emits Loading then Error on failure', () async {

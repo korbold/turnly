@@ -12,12 +12,12 @@ class TermsAcceptanceCubit extends Cubit<TermsAcceptanceState> {
   Future<void> accept() async {
     emit(const TermsAcceptanceLoading());
     final result = await _repository.acceptTerms(version: '1.0');
-    if (result.isLeft()) {
-      final failure = result.getLeft().toNullable()!;
-      emit(TermsAcceptanceError(failure.message));
-    } else {
-      await SecureStorage.setTermsAccepted(true);
-      emit(const TermsAcceptanceSuccess());
-    }
+    await result.fold(
+      (failure) async => emit(TermsAcceptanceError(failure.message)),
+      (_) async {
+        await SecureStorage.setTermsAccepted(true);
+        emit(const TermsAcceptanceSuccess());
+      },
+    );
   }
 }
