@@ -3,6 +3,7 @@ import 'package:customer_v2/features/auth/domain/entities/user.dart';
 import 'package:customer_v2/features/auth/domain/repositories/auth_repository.dart';
 import 'package:customer_v2/features/auth/presentation/cubit/auth_cubit.dart';
 import 'package:customer_v2/features/auth/presentation/cubit/auth_state.dart';
+import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:fpdart/fpdart.dart';
 
@@ -59,6 +60,11 @@ class _FakeAuthRepository extends AuthRepository {
 Future<void> _noOpPush() async {}
 
 void main() {
+  setUpAll(() {
+    TestWidgetsFlutterBinding.ensureInitialized();
+    FlutterSecureStorage.setMockInitialValues({});
+  });
+
   group('AuthCubit — terms pending', () {
     test('loginWithGoogle emits AuthTermsPending when termsAcceptedAt is null', () async {
       const user = User(

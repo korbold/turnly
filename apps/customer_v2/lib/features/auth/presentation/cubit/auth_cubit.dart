@@ -92,14 +92,15 @@ class AuthCubit extends Cubit<AuthState> {
       email: email,
       link: link,
     );
-    result.fold(
-      (failure) => emit(AuthError(failure.message)),
-      (data) {
+    await result.fold(
+      (failure) async => emit(AuthError(failure.message)),
+      (data) async {
         if (data.user.termsAcceptedAt == null) {
           emit(const AuthTermsPending());
         } else {
+          await SecureStorage.setTermsAccepted(true);
           emit(AuthAuthenticated(data.user));
-          _callInitPush();
+          await _callInitPush();
         }
       },
     );
@@ -108,20 +109,21 @@ class AuthCubit extends Cubit<AuthState> {
   Future<void> loginWithGoogle() async {
     emit(const AuthLoading());
     final result = await _repository.loginWithGoogle();
-    result.fold(
-      (failure) {
+    await result.fold(
+      (failure) async {
         if (failure.message == 'Inicio de sesión cancelado') {
           emit(const AuthInitial());
         } else {
           emit(AuthError(failure.message));
         }
       },
-      (data) {
+      (data) async {
         if (data.user.termsAcceptedAt == null) {
           emit(const AuthTermsPending());
         } else {
+          await SecureStorage.setTermsAccepted(true);
           emit(AuthAuthenticated(data.user));
-          _callInitPush();
+          await _callInitPush();
         }
       },
     );
@@ -155,9 +157,12 @@ class AuthCubit extends Cubit<AuthState> {
         final user = UserDto.fromJson(jsonDecode(userData) as Map<String, dynamic>).toEntity();
         if (!user.emailVerified) {
           emit(AuthEmailUnverified(user.email));
+        } else if (user.termsAcceptedAt == null) {
+          emit(const AuthTermsPending());
         } else {
+          await SecureStorage.setTermsAccepted(true);
           emit(AuthAuthenticated(user));
-          _callInitPush();
+          await _callInitPush();
         }
       } else {
         await getMe();
