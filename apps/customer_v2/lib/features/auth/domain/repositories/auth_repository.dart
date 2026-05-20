@@ -30,4 +30,6 @@ abstract class AuthRepository {
     required String email,
     required String link,
   });
+
+  Future<Either<Failure, Unit>> acceptTerms({required String version});
 }
