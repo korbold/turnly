@@ -1,0 +1,16 @@
+{
+  "projectId": "prj_BzCexq0lgtrLWrhZrMkxoezTUjOt",
+  "orgId": "team_e4IYZQjvoLzs4Tzakrnmf79S",
+  "projectName": "turnly-admin",
+  "settings": {
+    "createdAt": 1777481216563,
+    "framework": "nextjs",
+    "devCommand": null,
+    "installCommand": null,
+    "buildCommand": null,
+    "outputDirectory": null,
+    "rootDirectory": "apps/admin-v2",
+    "directoryListing": false,
+    "nodeVersion": "24.x"
+  }
+}
