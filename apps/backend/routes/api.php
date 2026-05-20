@@ -61,6 +61,7 @@ Route::prefix('v1')->group(function () {
     // Authenticated routes
     Route::middleware('auth:sanctum')->group(function () {
         Route::post('auth/logout', [AuthController::class, 'logout']);
+        Route::post('auth/accept-terms', [AuthController::class, 'acceptTerms']);
 
         // Authenticated onboarding (no tenant middleware — tenant resolved from user)
         Route::post('onboarding/business-type', [OnboardingController::class, 'setBusinessType'])

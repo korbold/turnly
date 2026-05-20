@@ -317,4 +317,26 @@ class AuthController extends Controller
             ],
         ]);
     }
+
+    public function acceptTerms(Request $request): JsonResponse
+    {
+        $request->validate([
+            'version' => ['required', 'string', 'max:10'],
+        ]);
+
+        $request->user()->update([
+            'terms_accepted_at' => now(),
+            'terms_version_accepted' => $request->string('version')->toString(),
+        ]);
+
+        $user = $request->user()->fresh();
+
+        return response()->json([
+            'data' => [
+                'terms_accepted_at' => $user->terms_accepted_at?->toIso8601String(),
+                'terms_version_accepted' => $user->terms_version_accepted,
+            ],
+            'meta' => ['timestamp' => now()->toIso8601String()],
+        ]);
+    }
 }
