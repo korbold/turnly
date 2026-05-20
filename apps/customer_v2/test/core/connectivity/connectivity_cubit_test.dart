@@ -36,7 +36,7 @@ void main() {
 
     setUp(() {
       service = _MockConnectivityService();
-      cubit = ConnectivityCubit(service);
+      cubit = ConnectivityCubit(service, restoredDuration: const Duration(milliseconds: 10));
     });
 
     tearDown(() {
@@ -57,13 +57,16 @@ void main() {
     });
 
     test('emits ConnectivityRestored then ConnectivityOnline when reconnected', () async {
-      await Future.delayed(const Duration(milliseconds: 50));
+      await Future.delayed(const Duration(milliseconds: 20));
       service.emitOffline();
-      await Future.delayed(const Duration(milliseconds: 50));
+      await Future.delayed(const Duration(milliseconds: 20));
       service.emitOnline();
-      await Future.delayed(const Duration(milliseconds: 50));
+      // yield to the event loop so the stream callback fires and emits ConnectivityRestored,
+      // but before the 10ms timer fires
+      await Future.microtask(() {});
+      await Future.delayed(const Duration(milliseconds: 5));
       expect(cubit.state, isA<ConnectivityRestored>());
-      await Future.delayed(const Duration(milliseconds: 1600));
+      await Future.delayed(const Duration(milliseconds: 50)); // 10ms duration + buffer
       expect(cubit.state, isA<ConnectivityOnline>());
     });
 
