@@ -27,6 +27,16 @@ void main() {
       expect(dto.toEntity().termsAcceptedAt, isNull);
     });
 
+    test('absent terms_accepted_at key defaults to null', () {
+      final dto = UserDto.fromJson({
+        'id': '1',
+        'name': 'Ana',
+        'email': 'ana@test.com',
+        'email_verified': true,
+      });
+      expect(dto.termsAcceptedAt, isNull);
+    });
+
     test('round-trips through toJson/fromJson', () {
       final original = UserDto(
         id: '1',
