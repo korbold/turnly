@@ -93,11 +93,14 @@ final appRouter = GoRouter(
         state.matchedLocation == '/onboarding';
 
     String? decision;
-    if (!isAuthenticated && !isAuthRoute) decision = '/login';
-    if (isAuthenticated && !termsAccepted &&
-        state.matchedLocation != '/accept-terms') decision = '/accept-terms';
-    if (isAuthenticated && termsAccepted && isAuthRoute) decision = '/home';
-    print('[Router] -> ${state.matchedLocation} auth=$isAuthenticated authRoute=$isAuthRoute decision=${decision ?? "allow"}');
+    if (!isAuthenticated && !isAuthRoute) {
+      decision = '/login';
+    } else if (isAuthenticated && !termsAccepted &&
+        state.matchedLocation != '/accept-terms') {
+      decision = '/accept-terms';
+    } else if (isAuthenticated && termsAccepted && isAuthRoute) {
+      decision = '/home';
+    }
     return decision;
   },
   routes: [
