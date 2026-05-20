@@ -19,15 +19,18 @@ class OfflineActionGate extends StatelessWidget {
   Widget build(BuildContext context) {
     return BlocBuilder<ConnectivityCubit, ConnectivityState>(
       builder: (context, state) {
-        if (state is! ConnectivityOffline) return child;
+        if (state is ConnectivityOnline) return child;
         return Stack(
           children: [
             child,
             Positioned.fill(
-              child: GestureDetector(
-                onTap: () => _showOfflineModal(context),
-                behavior: HitTestBehavior.opaque,
-                child: const ColoredBox(color: Colors.transparent),
+              child: Semantics(
+                label: 'Sin conexión. Toca para más información.',
+                child: GestureDetector(
+                  onTap: () => _showOfflineModal(context),
+                  behavior: HitTestBehavior.opaque,
+                  child: const ColoredBox(color: Colors.transparent),
+                ),
               ),
             ),
           ],
