@@ -1,4 +1,5 @@
 // lib/features/terms/presentation/screens/terms_acceptance_screen.dart
+import 'dart:async' show unawaited;
 import 'package:flutter/material.dart';
 import 'package:flutter_animate/flutter_animate.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
@@ -43,8 +44,8 @@ class _TermsAcceptanceBodyState extends State<TermsAcceptanceBody> {
       shape: const RoundedRectangleBorder(
         borderRadius: BorderRadius.vertical(top: Radius.circular(16)),
       ),
-      builder: (_) => SizedBox(
-        height: MediaQuery.of(context).size.height * 0.9,
+      builder: (sheetContext) => SizedBox(
+        height: MediaQuery.of(sheetContext).size.height * 0.9,
         child: LegalScreen(type: type),
       ),
     );
@@ -62,7 +63,7 @@ class _TermsAcceptanceBodyState extends State<TermsAcceptanceBody> {
       body: BlocConsumer<TermsAcceptanceCubit, TermsAcceptanceState>(
         listener: (context, state) {
           if (state is TermsAcceptanceSuccess) {
-            getIt<PushNotificationService>().init();
+            unawaited(getIt<PushNotificationService>().init());
             context.go('/home');
           }
         },
