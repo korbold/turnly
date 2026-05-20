@@ -129,6 +129,7 @@ class MagicLinkController extends Controller
                     'name' => $user->name,
                     'email' => $user->email,
                     'is_super_admin' => $user->is_super_admin,
+                    'terms_accepted_at' => $user->terms_accepted_at?->toIso8601String(),
                 ],
                 'token' => $sanctumToken,
                 'tenant' => $tenant ? [

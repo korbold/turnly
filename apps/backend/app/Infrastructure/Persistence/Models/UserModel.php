@@ -20,6 +20,7 @@ class UserModel extends Authenticatable
     // forceFill() when a legitimate code path needs to set it.
     protected $fillable = [
         'name', 'email', 'password', 'phone',
+        'terms_accepted_at', 'terms_version_accepted',
     ];
 
     protected $hidden = [
@@ -30,6 +31,7 @@ class UserModel extends Authenticatable
     {
         return [
             'email_verified_at' => 'datetime',
+            'terms_accepted_at' => 'datetime',
             'password' => 'hashed',
             'is_super_admin' => 'boolean',
         ];
