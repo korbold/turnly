@@ -32,4 +32,6 @@ abstract class AuthRepository {
   });
 
   Future<Either<Failure, Unit>> acceptTerms({required String version});
+
+  Future<Either<Failure, Unit>> requestAccountDeletion();
 }
