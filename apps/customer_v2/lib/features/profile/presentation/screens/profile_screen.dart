@@ -295,6 +295,36 @@ class ProfileScreen extends StatelessWidget {
                 ),
               ),
 
+              const SliverToBoxAdapter(child: SizedBox(height: 16)),
+
+              // Danger zone
+              SliverToBoxAdapter(
+                child: Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: 20),
+                  child: Container(
+                    decoration: BoxDecoration(
+                      color: AppColors.surface,
+                      borderRadius: BorderRadius.circular(20),
+                      boxShadow: [
+                        BoxShadow(
+                          color: Colors.black.withValues(alpha: 0.06),
+                          blurRadius: 16,
+                          offset: const Offset(0, 4),
+                        ),
+                      ],
+                    ),
+                    child: _ProfileMenuItem(
+                      icon: Icons.delete_outline_rounded,
+                      label: 'Eliminar cuenta',
+                      iconColor: AppColors.error,
+                      textColor: AppColors.error,
+                      showChevron: false,
+                      onTap: () => _confirmDeleteAccount(context),
+                    ),
+                  ).animate().fadeIn(duration: 400.ms, delay: 300.ms),
+                ),
+              ),
+
               const SliverToBoxAdapter(child: SizedBox(height: 32)),
 
               // Version
@@ -379,4 +409,51 @@ class _ProfileMenuItem extends StatelessWidget {
       ),
     );
   }
+}
+
+void _confirmDeleteAccount(BuildContext context) {
+  final deletesAt = DateTime.now().add(const Duration(days: 30));
+  final formatted =
+      '${deletesAt.day.toString().padLeft(2, '0')}/${deletesAt.month.toString().padLeft(2, '0')}/${deletesAt.year}';
+
+  showDialog<bool>(
+    context: context,
+    builder: (ctx) => AlertDialog(
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+      title: const Text(
+        'Eliminar cuenta',
+        style: TextStyle(
+          fontSize: 18,
+          fontWeight: FontWeight.w700,
+          color: AppColors.textPrimary,
+        ),
+      ),
+      content: Text(
+        'Tu cuenta y datos se eliminarán permanentemente el $formatted. '
+        'Puedes cancelar iniciando sesión antes de esa fecha.',
+        style: const TextStyle(
+          fontSize: 14,
+          color: AppColors.textSecondary,
+        ),
+      ),
+      actions: [
+        TextButton(
+          onPressed: () => Navigator.pop(ctx, false),
+          child: const Text('Cancelar'),
+        ),
+        TextButton(
+          onPressed: () => Navigator.pop(ctx, true),
+          style: TextButton.styleFrom(foregroundColor: AppColors.error),
+          child: const Text('Eliminar mi cuenta'),
+        ),
+      ],
+    ),
+  ).then((confirmed) async {
+    if (confirmed == true && context.mounted) {
+      await context.read<AuthCubit>().requestAccountDeletion();
+      if (context.mounted) {
+        context.go('/login');
+      }
+    }
+  });
 }
