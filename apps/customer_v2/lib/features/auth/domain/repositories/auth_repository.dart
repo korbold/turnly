@@ -18,10 +18,11 @@ abstract class AuthRepository {
   Future<Either<Failure, Unit>> verifyEmail({required String email, required String code});
   Future<Either<Failure, Unit>> resendVerification({required String email});
 
-  /// Send a Firebase magic link to the email. Returns Unit on success;
-  /// the user finishes the flow by tapping the link, which deep-links
-  /// back into the app and triggers [signInWithEmailLink].
-  Future<Either<Failure, Unit>> sendMagicLink(String email);
+  /// Send a magic link to the email. Returns null on success (normal flow);
+  /// returns a non-null token string when the backend issues a demo bypass
+  /// (e.g. demo@turnly.app for App Store review) — caller should
+  /// immediately invoke [signInWithEmailLink] with that token.
+  Future<Either<Failure, String?>> sendMagicLink(String email);
 
   /// Complete sign-in with the link the user tapped from their email
   /// (deep-linked into the app). Returns the auth tuple just like the

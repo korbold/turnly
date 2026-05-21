@@ -48,13 +48,16 @@ class _FakeRepo extends AuthRepository {
   Future<Either<Failure, Unit>> resendVerification({required String email}) =>
       throw UnimplementedError();
   @override
-  Future<Either<Failure, Unit>> sendMagicLink(String email) =>
+  Future<Either<Failure, String?>> sendMagicLink(String email) =>
       throw UnimplementedError();
   @override
   Future<Either<Failure, ({User user, String token})>> signInWithEmailLink({
     required String email,
     required String link,
   }) =>
+      throw UnimplementedError();
+  @override
+  Future<Either<Failure, Unit>> requestAccountDeletion() =>
       throw UnimplementedError();
 }
 
