@@ -120,6 +120,13 @@ class MagicLinkController extends Controller
             ], 403);
         }
 
+        // Auto-restore: logging in via magic link during grace period cancels deletion.
+        $accountRestored = false;
+        if ($user->deletion_requested_at !== null) {
+            $user->update(['deletion_requested_at' => null]);
+            $accountRestored = true;
+        }
+
         $sanctumToken = $user->createToken('auth_token')->plainTextToken;
 
         return response()->json([
@@ -132,6 +139,7 @@ class MagicLinkController extends Controller
                     'terms_accepted_at' => $user->terms_accepted_at?->toIso8601String(),
                 ],
                 'token' => $sanctumToken,
+                'account_restored' => $accountRestored,
                 'tenant' => $tenant ? [
                     'id' => $tenant->id,
                     'slug' => $tenant->slug,

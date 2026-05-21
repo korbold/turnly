@@ -7,6 +7,7 @@ use App\Infrastructure\Http\Controllers\Controller;
 use App\Infrastructure\Http\Requests\Auth\LoginRequest;
 use App\Infrastructure\Http\Requests\Auth\RegisterRequest;
 use App\Infrastructure\Http\Requests\Auth\VerifyEmailRequest;
+use App\Infrastructure\Mail\AccountDeletionRequestedMail;
 use App\Infrastructure\Persistence\Models\PlanModel;
 use App\Infrastructure\Persistence\Models\TenantModel;
 use App\Infrastructure\Persistence\Models\TenantUserModel;
@@ -15,6 +16,7 @@ use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Hash;
+use Illuminate\Support\Facades\Mail;
 use Illuminate\Support\Facades\RateLimiter;
 use Illuminate\Support\Str;
 
@@ -335,6 +337,29 @@ class AuthController extends Controller
             'data' => [
                 'terms_accepted_at' => $user->terms_accepted_at?->toIso8601String(),
                 'terms_version_accepted' => $user->terms_version_accepted,
+            ],
+            'meta' => ['timestamp' => now()->toIso8601String()],
+        ]);
+    }
+
+    public function requestDeletion(Request $request): JsonResponse
+    {
+        $user = $request->user();
+        $deletesAt = now()->addDays(30);
+
+        $user->update(['deletion_requested_at' => now()]);
+        $user->tokens()->delete();
+
+        Mail::to($user->email)->queue(
+            new AccountDeletionRequestedMail(
+                name: $user->name,
+                deletesAt: $deletesAt->format('d/m/Y'),
+            )
+        );
+
+        return response()->json([
+            'data' => [
+                'deletes_at' => $deletesAt->toIso8601String(),
             ],
             'meta' => ['timestamp' => now()->toIso8601String()],
         ]);

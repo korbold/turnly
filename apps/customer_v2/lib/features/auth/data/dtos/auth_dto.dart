@@ -4,13 +4,19 @@ import '../../domain/entities/user.dart';
 class AuthResponseDto {
   final UserDto user;
   final String token;
+  final bool accountRestored;
 
-  AuthResponseDto({required this.user, required this.token});
+  AuthResponseDto({
+    required this.user,
+    required this.token,
+    this.accountRestored = false,
+  });
 
   factory AuthResponseDto.fromJson(Map<String, dynamic> json) {
     return AuthResponseDto(
       user: UserDto.fromJson(json['user'] as Map<String, dynamic>),
       token: json['token'] as String,
+      accountRestored: json['account_restored'] as bool? ?? false,
     );
   }
 }
@@ -23,6 +29,7 @@ class UserDto {
   final bool isSuperAdmin;
   final bool emailVerified;
   final DateTime? termsAcceptedAt;
+  final DateTime? deletionRequestedAt;
 
   UserDto({
     required this.id,
@@ -32,10 +39,12 @@ class UserDto {
     this.isSuperAdmin = false,
     this.emailVerified = true,
     this.termsAcceptedAt,
+    this.deletionRequestedAt,
   });
 
   factory UserDto.fromJson(Map<String, dynamic> json) {
     final rawTerms = json['terms_accepted_at'];
+    final rawDeletion = json['deletion_requested_at'];
     return UserDto(
       id: json['id'] as String,
       name: json['name'] as String,
@@ -44,6 +53,7 @@ class UserDto {
       isSuperAdmin: json['is_super_admin'] as bool? ?? false,
       emailVerified: json['email_verified'] as bool? ?? true,
       termsAcceptedAt: rawTerms is String ? DateTime.tryParse(rawTerms) : null,
+      deletionRequestedAt: rawDeletion is String ? DateTime.tryParse(rawDeletion) : null,
     );
   }
 
@@ -55,6 +65,7 @@ class UserDto {
     'is_super_admin': isSuperAdmin,
     'email_verified': emailVerified,
     'terms_accepted_at': termsAcceptedAt?.toIso8601String(),
+    'deletion_requested_at': deletionRequestedAt?.toIso8601String(),
   };
 
   User toEntity() => User(
@@ -65,5 +76,6 @@ class UserDto {
     isSuperAdmin: isSuperAdmin,
     emailVerified: emailVerified,
     termsAcceptedAt: termsAcceptedAt,
+    deletionRequestedAt: deletionRequestedAt,
   );
 }
