@@ -15,6 +15,7 @@ use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Hash;
+use Illuminate\Support\Facades\Mail;
 use Illuminate\Support\Facades\RateLimiter;
 use Illuminate\Support\Str;
 
@@ -335,6 +336,29 @@ class AuthController extends Controller
             'data' => [
                 'terms_accepted_at' => $user->terms_accepted_at?->toIso8601String(),
                 'terms_version_accepted' => $user->terms_version_accepted,
+            ],
+            'meta' => ['timestamp' => now()->toIso8601String()],
+        ]);
+    }
+
+    public function requestDeletion(Request $request): JsonResponse
+    {
+        $user = $request->user();
+        $deletesAt = now()->addDays(30);
+
+        $user->update(['deletion_requested_at' => now()]);
+        $user->tokens()->delete();
+
+        Mail::to($user->email)->queue(
+            new \App\Infrastructure\Mail\AccountDeletionRequestedMail(
+                name: $user->name,
+                deletesAt: $deletesAt->format('d/m/Y'),
+            )
+        );
+
+        return response()->json([
+            'data' => [
+                'deletes_at' => $deletesAt->toIso8601String(),
             ],
             'meta' => ['timestamp' => now()->toIso8601String()],
         ]);
