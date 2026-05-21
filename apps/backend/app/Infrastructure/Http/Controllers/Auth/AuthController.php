@@ -7,6 +7,7 @@ use App\Infrastructure\Http\Controllers\Controller;
 use App\Infrastructure\Http\Requests\Auth\LoginRequest;
 use App\Infrastructure\Http\Requests\Auth\RegisterRequest;
 use App\Infrastructure\Http\Requests\Auth\VerifyEmailRequest;
+use App\Infrastructure\Mail\AccountDeletionRequestedMail;
 use App\Infrastructure\Persistence\Models\PlanModel;
 use App\Infrastructure\Persistence\Models\TenantModel;
 use App\Infrastructure\Persistence\Models\TenantUserModel;
@@ -350,7 +351,7 @@ class AuthController extends Controller
         $user->tokens()->delete();
 
         Mail::to($user->email)->queue(
-            new \App\Infrastructure\Mail\AccountDeletionRequestedMail(
+            new AccountDeletionRequestedMail(
                 name: $user->name,
                 deletesAt: $deletesAt->format('d/m/Y'),
             )

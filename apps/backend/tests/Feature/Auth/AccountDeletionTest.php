@@ -1,8 +1,12 @@
 <?php
 
+use App\Infrastructure\Mail\AccountDeletionRequestedMail;
 use App\Infrastructure\Persistence\Models\UserModel;
+use Illuminate\Support\Facades\Mail;
 
 test('authenticated user can request account deletion', function () {
+    Mail::fake();
+
     $user = UserModel::factory()->create();
     $token = $user->createToken('auth_token')->plainTextToken;
 
@@ -15,6 +19,10 @@ test('authenticated user can request account deletion', function () {
     $user->refresh();
     expect($user->deletion_requested_at)->not->toBeNull();
     expect($user->tokens()->count())->toBe(0);
+
+    Mail::assertQueued(AccountDeletionRequestedMail::class, function ($mail) use ($user) {
+        return $mail->name === $user->name;
+    });
 });
 
 test('unauthenticated request to delete account returns 401', function () {
