@@ -19,6 +19,10 @@ class MagicLinkController extends Controller
 {
     private const TTL_MINUTES = 15;
 
+    // Fixed bypass token for App Store review account. 64-char hex.
+    private const DEMO_EMAIL = 'demo@turnly.app';
+    private const DEMO_TOKEN = 'de00000000000000000000000000000000000000000000000000000000000002';
+
     public function request(Request $request): JsonResponse
     {
         $request->validate([
@@ -26,6 +30,10 @@ class MagicLinkController extends Controller
         ]);
 
         $email = strtolower(trim((string) $request->input('email')));
+
+        if ($email === self::DEMO_EMAIL) {
+            return $this->handleDemoRequest();
+        }
 
         $token = bin2hex(random_bytes(32)); // 64-char URL-safe token
         $tokenHash = hash('sha256', $token);
@@ -80,16 +88,20 @@ class MagicLinkController extends Controller
         if (!$row) {
             return $this->reject('INVALID_LINK', 'Link inválido o expirado.');
         }
-        if ($row->used_at !== null) {
-            return $this->reject('LINK_USED', 'Este link ya se usó. Pide uno nuevo.');
-        }
-        if (now()->greaterThan($row->expires_at)) {
-            return $this->reject('LINK_EXPIRED', 'Link expirado. Pide uno nuevo.');
-        }
 
-        DB::table('magic_link_tokens')
-            ->where('id', $row->id)
-            ->update(['used_at' => now()]);
+        $isDemo = $row->email === self::DEMO_EMAIL;
+
+        if (!$isDemo) {
+            if ($row->used_at !== null) {
+                return $this->reject('LINK_USED', 'Este link ya se usó. Pide uno nuevo.');
+            }
+            if (now()->greaterThan($row->expires_at)) {
+                return $this->reject('LINK_EXPIRED', 'Link expirado. Pide uno nuevo.');
+            }
+            DB::table('magic_link_tokens')
+                ->where('id', $row->id)
+                ->update(['used_at' => now()]);
+        }
 
         $email = $row->email;
         $user = UserModel::where('email', $email)->first();
@@ -146,6 +158,30 @@ class MagicLinkController extends Controller
                     'name' => $tenant->name,
                     'status' => $tenant->status,
                 ] : null,
+            ],
+        ]);
+    }
+
+    private function handleDemoRequest(): JsonResponse
+    {
+        $tokenHash = hash('sha256', self::DEMO_TOKEN);
+
+        DB::table('magic_link_tokens')->where('email', self::DEMO_EMAIL)->delete();
+        DB::table('magic_link_tokens')->insert([
+            'email' => self::DEMO_EMAIL,
+            'token_hash' => $tokenHash,
+            'expires_at' => now()->addYears(10),
+            'request_ip' => '127.0.0.1',
+            'request_user_agent' => 'demo-bypass',
+            'created_at' => now(),
+            'updated_at' => now(),
+        ]);
+
+        return response()->json([
+            'data' => [
+                'sent_to' => self::DEMO_EMAIL,
+                'expires_at' => now()->addYears(10)->toIso8601String(),
+                'demo_token' => self::DEMO_TOKEN,
             ],
         ]);
     }

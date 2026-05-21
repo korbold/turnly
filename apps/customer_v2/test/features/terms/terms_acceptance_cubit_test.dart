@@ -46,7 +46,7 @@ class _MockAuthRepository extends AuthRepository {
   Future<Either<Failure, Unit>> resendVerification({required String email}) =>
       throw UnimplementedError();
   @override
-  Future<Either<Failure, Unit>> sendMagicLink(String email) =>
+  Future<Either<Failure, String?>> sendMagicLink(String email) =>
       throw UnimplementedError();
   @override
   Future<Either<Failure, ({User user, String token})>> signInWithEmailLink({

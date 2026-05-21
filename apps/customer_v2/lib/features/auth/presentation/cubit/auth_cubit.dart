@@ -71,12 +71,20 @@ class AuthCubit extends Cubit<AuthState> {
 
   /// Email magic link: send the link to the user's inbox. UI should
   /// transition to a "check your email" state on success.
+  /// If the backend returns a demo token (App Store review bypass), the
+  /// cubit auto-verifies and emits [AuthAuthenticated] directly.
   Future<void> sendMagicLink(String email) async {
     emit(const AuthLoading());
     final result = await _repository.sendMagicLink(email);
-    result.fold(
-      (failure) => emit(AuthError(failure.message)),
-      (_) => emit(AuthMagicLinkSent(email)),
+    await result.fold(
+      (failure) async => emit(AuthError(failure.message)),
+      (demoToken) async {
+        if (demoToken != null) {
+          await signInWithEmailLink(email: email, link: demoToken);
+        } else {
+          emit(AuthMagicLinkSent(email));
+        }
+      },
     );
   }
 

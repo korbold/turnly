@@ -204,10 +204,11 @@ class AuthRepositoryImpl implements AuthRepository {
   }
 
   @override
-  Future<Either<Failure, Unit>> sendMagicLink(String email) async {
+  Future<Either<Failure, String?>> sendMagicLink(String email) async {
     try {
-      await _dio.post('/auth/magic-link/request', data: {'email': email});
-      return const Right(unit);
+      final response = await _dio.post('/auth/magic-link/request', data: {'email': email});
+      final demoToken = response.data['data']?['demo_token'] as String?;
+      return Right(demoToken);
     } on DioException catch (e) {
       return Left(_extractError(e, 'No se pudo enviar el link'));
     } catch (e) {
