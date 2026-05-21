@@ -54,6 +54,9 @@ class _FakeAuthRepository extends AuthRepository {
   @override
   Future<Either<Failure, Unit>> acceptTerms({required String version}) =>
       throw UnimplementedError();
+  @override
+  Future<Either<Failure, Unit>> requestAccountDeletion() =>
+      throw UnimplementedError();
 }
 
 /// No-op push init — avoids FirebaseMessaging/platform calls in unit tests.

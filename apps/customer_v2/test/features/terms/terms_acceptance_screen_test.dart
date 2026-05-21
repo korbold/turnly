@@ -56,6 +56,9 @@ class _FakeRepo extends AuthRepository {
     required String link,
   }) =>
       throw UnimplementedError();
+  @override
+  Future<Either<Failure, Unit>> requestAccountDeletion() =>
+      throw UnimplementedError();
 }
 
 Widget _buildScreen({AuthRepository? repo}) => MaterialApp(
