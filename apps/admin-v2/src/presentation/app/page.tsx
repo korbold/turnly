@@ -537,6 +537,9 @@ export default async function LandingPage() {
             <Link href="/privacy" className="transition-colors duration-150 hover:text-[var(--ink-900)]">
               Privacidad
             </Link>
+            <Link href="/support" className="transition-colors duration-150 hover:text-[var(--ink-900)]">
+              Soporte
+            </Link>
             <Link href="/login" className="transition-colors duration-150 hover:text-[var(--ink-900)]">
               Iniciar sesión
             </Link>
