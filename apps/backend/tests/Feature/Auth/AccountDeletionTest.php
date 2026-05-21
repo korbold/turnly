@@ -73,3 +73,21 @@ test('magic link login with no pending deletion has account_restored false', fun
     $response->assertOk()
         ->assertJsonPath('data.account_restored', false);
 });
+
+test('purge command deletes users with deletion_requested_at older than 30 days', function () {
+    $old = UserModel::factory()->create([
+        'deletion_requested_at' => now()->subDays(31),
+    ]);
+    $recent = UserModel::factory()->create([
+        'deletion_requested_at' => now()->subDays(5),
+    ]);
+    $normal = UserModel::factory()->create([
+        'deletion_requested_at' => null,
+    ]);
+
+    $this->artisan('accounts:purge-deletions')->assertSuccessful();
+
+    expect(UserModel::find($old->id))->toBeNull();
+    expect(UserModel::find($recent->id))->not->toBeNull();
+    expect(UserModel::find($normal->id))->not->toBeNull();
+});
