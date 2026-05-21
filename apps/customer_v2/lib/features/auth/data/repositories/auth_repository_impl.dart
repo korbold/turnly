@@ -246,6 +246,9 @@ class AuthRepositoryImpl implements AuthRepository {
       );
       await SecureStorage.saveToken(dto.token);
       await SecureStorage.saveUserData(jsonEncode(dto.user.toJson()));
+      if (dto.accountRestored) {
+        await SecureStorage.setAccountRestored(true);
+      }
       return Right((user: dto.user.toEntity(), token: dto.token));
     } on DioException catch (e) {
       return Left(_extractError(e, 'Link inválido o expirado'));
@@ -261,6 +264,20 @@ class AuthRepositoryImpl implements AuthRepository {
       return const Right(unit);
     } on DioException catch (e) {
       return Left(_extractError(e, 'No se pudo registrar la aceptación'));
+    } catch (e) {
+      return Left(ServerFailure(e.toString()));
+    }
+  }
+
+  @override
+  Future<Either<Failure, Unit>> requestAccountDeletion() async {
+    try {
+      await _dio.delete('/auth/account');
+      await SecureStorage.clear();
+      ApiClient.reset();
+      return const Right(unit);
+    } on DioException catch (e) {
+      return Left(_extractError(e, 'No se pudo solicitar la eliminación'));
     } catch (e) {
       return Left(ServerFailure(e.toString()));
     }

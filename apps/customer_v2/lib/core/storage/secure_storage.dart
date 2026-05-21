@@ -39,6 +39,24 @@ class SecureStorage {
     return value == 'true';
   }
 
+  // Account restored flag (set after magic-link verify auto-restores a deletion)
+  static const _accountRestoredKey = 'account_restored';
+
+  static Future<void> setAccountRestored(bool value) async {
+    const storage = FlutterSecureStorage();
+    await storage.write(key: _accountRestoredKey, value: value ? '1' : '0');
+  }
+
+  static Future<bool> getAndClearAccountRestored() async {
+    const storage = FlutterSecureStorage();
+    final val = await storage.read(key: _accountRestoredKey);
+    if (val == '1') {
+      await storage.delete(key: _accountRestoredKey);
+      return true;
+    }
+    return false;
+  }
+
   // Clear all
   static Future<void> clear() => _storage.deleteAll();
 }

@@ -149,6 +149,15 @@ class AuthCubit extends Cubit<AuthState> {
     emit(const AuthUnauthenticated());
   }
 
+  Future<void> requestAccountDeletion() async {
+    emit(const AuthLoading());
+    final result = await _repository.requestAccountDeletion();
+    result.fold(
+      (failure) => emit(AuthError(failure.message)),
+      (_) => emit(const AuthUnauthenticated()),
+    );
+  }
+
   Future<void> checkAuth() async {
     final isAuth = await _repository.isAuthenticated();
     if (isAuth) {
