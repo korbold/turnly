@@ -82,7 +82,11 @@ export default function SupportPage() {
           </p>
 
           <h2>Eliminar mi cuenta</h2>
-          <p>Puedes eliminar tu cuenta directamente desde la app:</p>
+          <p>
+            Puedes eliminar tu cuenta directamente desde la app. Tu cuenta entra en un período de
+            gracia de <strong>30 días</strong>; si inicias sesión antes de que termine ese plazo,
+            la eliminación se cancela automáticamente.
+          </p>
           <ol>
             <li>
               Ve a <strong>Perfil</strong> en la barra inferior.
@@ -97,8 +101,8 @@ export default function SupportPage() {
           <p>
             Si no puedes acceder a la app, escríbenos a{' '}
             <a href="mailto:soporte@turnly.app">soporte@turnly.app</a> desde el correo registrado con el
-            asunto <strong>&ldquo;Eliminar cuenta&rdquo;</strong>. Procesamos la solicitud en 7 días
-            hábiles.
+            asunto <strong>&ldquo;Eliminar cuenta&rdquo;</strong>. Tu cuenta quedará eliminada en un
+            plazo máximo de <strong>30 días</strong>.
           </p>
 
           <h3>¿Qué datos se eliminan?</h3>
