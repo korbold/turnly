@@ -19,7 +19,7 @@ class UserModel extends Authenticatable
     // regular user to super-admin. EloquentUserRepository::save uses
     // forceFill() when a legitimate code path needs to set it.
     protected $fillable = [
-        'name', 'email', 'password', 'phone',
+        'name', 'email', 'username', 'password', 'phone',
         'terms_accepted_at', 'terms_version_accepted',
         'deletion_requested_at',
     ];

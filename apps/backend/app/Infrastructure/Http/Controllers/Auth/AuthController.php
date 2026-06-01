@@ -109,13 +109,16 @@ class AuthController extends Controller
 
     public function login(LoginRequest $request): JsonResponse
     {
-        $user = UserModel::where('email', $request->email)->first();
+        $identifier = strtolower(trim($request->identifier()));
+        $column = str_contains($identifier, '@') ? 'email' : 'username';
+
+        $user = UserModel::where($column, $identifier)->first();
 
         if (!$user || !Hash::check($request->password, $user->password)) {
             return response()->json([
                 'error' => [
                     'code' => 'INVALID_CREDENTIALS',
-                    'message' => 'Invalid email or password',
+                    'message' => 'Usuario o contraseña incorrectos',
                 ],
             ], 401);
         }
@@ -144,6 +147,7 @@ class AuthController extends Controller
                     'id' => $user->id,
                     'name' => $user->name,
                     'email' => $user->email,
+                    'username' => $user->username,
                     'is_super_admin' => $user->is_super_admin,
                     'email_verified' => $user->email_verified_at !== null,
                     'terms_accepted_at' => $user->terms_accepted_at?->toIso8601String(),
@@ -305,6 +309,7 @@ class AuthController extends Controller
                     'id' => $user->id,
                     'name' => $user->name,
                     'email' => $user->email,
+                    'username' => $user->username,
                     'is_super_admin' => $user->is_super_admin,
                     'role' => $tenantUser?->role,
                     'email_verified' => $user->email_verified_at !== null,

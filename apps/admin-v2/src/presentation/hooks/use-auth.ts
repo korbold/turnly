@@ -24,8 +24,8 @@ export function useLogin() {
   const repo = useRepository('auth');
   const queryClient = useQueryClient();
   return useMutation({
-    mutationFn: ({ email, password }: { email: string; password: string }) =>
-      new LoginUseCase(repo).execute(email, password),
+    mutationFn: ({ identifier, password }: { identifier: string; password: string }) =>
+      new LoginUseCase(repo).execute(identifier, password),
     onSuccess: (result) => {
       authStorage.setToken(result.token);
       if (result.tenant) {

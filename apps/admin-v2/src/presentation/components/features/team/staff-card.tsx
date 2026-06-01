@@ -2,7 +2,7 @@
 
 import { useState } from 'react';
 import { toast } from 'sonner';
-import { Mail, Phone } from 'lucide-react';
+import { AtSign, Mail, Phone, MoreVertical, KeyRound, Copy, Check, RefreshCw, Eye, EyeOff } from 'lucide-react';
 import { Avatar, AvatarFallback } from '@/presentation/components/ui/avatar';
 import {
   Select,
@@ -19,9 +19,17 @@ import {
   DialogHeader,
   DialogTitle,
 } from '@/presentation/components/ui/dialog';
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from '@/presentation/components/ui/dropdown-menu';
 import { Button } from '@/presentation/components/ui/button';
+import { Input } from '@/presentation/components/ui/input';
+import { Label } from '@/presentation/components/ui/label';
 import { cn } from '@/shared/utils/cn';
-import { useChangeRole } from '@/presentation/hooks/use-team';
+import { useChangeRole, useResetPassword } from '@/presentation/hooks/use-team';
 import { useSettings } from '@/presentation/hooks/use-settings';
 import type { User, UserRole } from '@/domain/entities/user';
 import type { BusinessType } from '@/domain/entities/tenant';
@@ -79,18 +87,38 @@ function getRoleConfig(role: UserRole, businessType: BusinessType | null): RoleC
   return base;
 }
 
+function generatePassword(length = 8): string {
+  const chars = 'abcdefghjkmnpqrstuvwxyzABCDEFGHJKMNPQRSTUVWXYZ23456789';
+  let out = '';
+  const cryptoObj = typeof window !== 'undefined' ? window.crypto : undefined;
+  if (cryptoObj) {
+    const buf = new Uint32Array(length);
+    cryptoObj.getRandomValues(buf);
+    for (let i = 0; i < length; i++) out += chars[buf[i] % chars.length];
+  } else {
+    for (let i = 0; i < length; i++) out += chars[Math.floor(Math.random() * chars.length)];
+  }
+  return out;
+}
+
 interface StaffCardProps {
   user: User;
 }
 
 export function StaffCard({ user }: StaffCardProps) {
   const changeRoleMutation = useChangeRole();
+  const resetPasswordMutation = useResetPassword();
   const { data: settings } = useSettings();
   const businessType = settings?.businessType ?? null;
   const role = user.role ?? 'client';
   const roleCfg = getRoleConfig(role, businessType);
 
   const [pendingRole, setPendingRole] = useState<UserRole | null>(null);
+  const [resetOpen, setResetOpen] = useState(false);
+  const [resetPassword, setResetPassword] = useState(() => generatePassword());
+  const [resetDone, setResetDone] = useState<string | null>(null);
+  const [showPassword, setShowPassword] = useState(false);
+  const [copied, setCopied] = useState(false);
 
   const initials = user.name
     .split(' ')
@@ -115,6 +143,46 @@ export function StaffCard({ user }: StaffCardProps) {
         },
       }
     );
+  }
+
+  function openReset() {
+    setResetPassword(generatePassword());
+    setResetDone(null);
+    setShowPassword(false);
+    setCopied(false);
+    setResetOpen(true);
+  }
+
+  function confirmReset() {
+    if (!resetPassword || resetPassword.length < 6) {
+      toast.error('Mínimo 6 caracteres');
+      return;
+    }
+    resetPasswordMutation.mutate(
+      { id: user.id, password: resetPassword },
+      {
+        onSuccess: () => {
+          toast.success('Contraseña actualizada');
+          setResetDone(resetPassword);
+        },
+        onError: (err: unknown) => {
+          const e = err as { message?: string };
+          toast.error(e?.message ?? 'No se pudo actualizar');
+        },
+      }
+    );
+  }
+
+  async function copyCreds() {
+    if (!resetDone) return;
+    const text = `Turnly\nUsuario: ${user.username ?? user.email ?? ''}\nContraseña: ${resetDone}`;
+    try {
+      await navigator.clipboard.writeText(text);
+      setCopied(true);
+      setTimeout(() => setCopied(false), 1500);
+    } catch {
+      toast.error('No se pudo copiar');
+    }
   }
 
   return (
@@ -142,6 +210,12 @@ export function StaffCard({ user }: StaffCardProps) {
         </div>
 
         <div className="mt-1 flex flex-wrap items-center gap-x-3 gap-y-0.5 text-[12.5px] text-[var(--fg-secondary)]">
+          {user.username && (
+            <span className="inline-flex items-center gap-1">
+              <AtSign className="h-3 w-3" aria-hidden="true" />
+              <span className="truncate font-mono">{user.username}</span>
+            </span>
+          )}
           {user.email && (
             <span className="inline-flex items-center gap-1">
               <Mail className="h-3 w-3" aria-hidden="true" />
@@ -160,24 +234,42 @@ export function StaffCard({ user }: StaffCardProps) {
         </div>
       </div>
 
-      <Select
-        value={role}
-        onValueChange={(v) => {
-          if (v !== role) setPendingRole(v as UserRole);
-        }}
-        disabled={role === 'owner' || changeRoleMutation.isPending}
-      >
-        <SelectTrigger className="h-9 w-full text-[13px] sm:w-44">
-          <SelectValue />
-        </SelectTrigger>
-        <SelectContent>
-          {ROLES.map((r) => (
-            <SelectItem key={r} value={r}>
-              {getRoleConfig(r, businessType).label}
-            </SelectItem>
-          ))}
-        </SelectContent>
-      </Select>
+      <div className="flex items-center gap-2">
+        <Select
+          value={role}
+          onValueChange={(v) => {
+            if (v !== role) setPendingRole(v as UserRole);
+          }}
+          disabled={role === 'owner' || changeRoleMutation.isPending}
+        >
+          <SelectTrigger className="h-9 w-full text-[13px] sm:w-44">
+            <SelectValue />
+          </SelectTrigger>
+          <SelectContent>
+            {ROLES.map((r) => (
+              <SelectItem key={r} value={r}>
+                {getRoleConfig(r, businessType).label}
+              </SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
+
+        {role !== 'client' && role !== 'owner' && (
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <Button variant="ghost" size="icon" className="h-9 w-9 shrink-0" aria-label="Más acciones">
+                <MoreVertical className="h-4 w-4" />
+              </Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="end">
+              <DropdownMenuItem onClick={openReset}>
+                <KeyRound className="mr-2 h-4 w-4" />
+                Resetear contraseña
+              </DropdownMenuItem>
+            </DropdownMenuContent>
+          </DropdownMenu>
+        )}
+      </div>
 
       <Dialog open={!!pendingRole} onOpenChange={(o) => !o && setPendingRole(null)}>
         <DialogContent className="sm:max-w-md">
@@ -207,6 +299,85 @@ export function StaffCard({ user }: StaffCardProps) {
               Sí, cambiar
             </Button>
           </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      <Dialog open={resetOpen} onOpenChange={(o) => !o && setResetOpen(false)}>
+        <DialogContent className="sm:max-w-md">
+          {resetDone ? (
+            <>
+              <DialogHeader>
+                <DialogTitle>Contraseña actualizada</DialogTitle>
+                <DialogDescription>
+                  Entrega esta nueva contraseña a {user.name}. Sus sesiones activas se cerraron.
+                </DialogDescription>
+              </DialogHeader>
+              <div className="space-y-3 rounded-lg border bg-muted/30 p-4">
+                <div>
+                  <div className="text-xs font-medium text-muted-foreground">Usuario</div>
+                  <div className="font-mono text-base">{user.username ?? user.email}</div>
+                </div>
+                <div>
+                  <div className="text-xs font-medium text-muted-foreground">Contraseña</div>
+                  <div className="font-mono text-base">{resetDone}</div>
+                </div>
+              </div>
+              <DialogFooter className="gap-2 sm:gap-2">
+                <Button variant="outline" onClick={copyCreds}>
+                  {copied ? <Check className="size-4" /> : <Copy className="size-4" />}
+                  {copied ? 'Copiado' : 'Copiar'}
+                </Button>
+                <Button onClick={() => setResetOpen(false)}>Listo</Button>
+              </DialogFooter>
+            </>
+          ) : (
+            <>
+              <DialogHeader>
+                <DialogTitle>Resetear contraseña</DialogTitle>
+                <DialogDescription>
+                  Define una nueva contraseña para {user.name}. Se cerrarán sus sesiones activas.
+                </DialogDescription>
+              </DialogHeader>
+              <div className="space-y-2">
+                <Label>Nueva contraseña</Label>
+                <div className="flex gap-2">
+                  <div className="relative flex-1">
+                    <Input
+                      type={showPassword ? 'text' : 'password'}
+                      value={resetPassword}
+                      onChange={(e) => setResetPassword(e.target.value)}
+                      className="pr-10 font-mono"
+                    />
+                    <button
+                      type="button"
+                      onClick={() => setShowPassword((v) => !v)}
+                      className="absolute inset-y-0 right-0 flex items-center px-3 text-muted-foreground hover:text-foreground"
+                      aria-label={showPassword ? 'Ocultar' : 'Mostrar'}
+                    >
+                      {showPassword ? <EyeOff className="size-4" /> : <Eye className="size-4" />}
+                    </button>
+                  </div>
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="icon"
+                    onClick={() => setResetPassword(generatePassword())}
+                    title="Generar nueva"
+                  >
+                    <RefreshCw className="size-4" />
+                  </Button>
+                </div>
+              </div>
+              <DialogFooter>
+                <Button variant="outline" onClick={() => setResetOpen(false)}>
+                  Cancelar
+                </Button>
+                <Button onClick={confirmReset} disabled={resetPasswordMutation.isPending}>
+                  Actualizar
+                </Button>
+              </DialogFooter>
+            </>
+          )}
         </DialogContent>
       </Dialog>
     </article>

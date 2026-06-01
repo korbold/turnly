@@ -140,6 +140,7 @@ Route::prefix('v1')->group(function () {
             Route::post('users/invite', [UserController::class, 'store']);
             Route::get('users/{id}', [UserController::class, 'show']);
             Route::patch('users/{id}/role', [UserController::class, 'updateRole']);
+            Route::patch('users/{id}/password', [UserController::class, 'resetPassword']);
 
             // Reports
             Route::get('reports/daily', [ReportController::class, 'daily']);

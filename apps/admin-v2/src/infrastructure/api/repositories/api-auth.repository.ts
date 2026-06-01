@@ -8,8 +8,13 @@ import { mapUser } from '../mappers/user.mapper';
 import { mapTenant } from '../mappers/tenant.mapper';
 
 export class ApiAuthRepository implements AuthRepository {
-  async login(email: string, password: string): Promise<LoginResult> {
-    const { data: res } = await api.post('/auth/login', { email, password });
+  async login(identifier: string, password: string): Promise<LoginResult> {
+    const trimmed = identifier.trim();
+    const isEmail = trimmed.includes('@');
+    const payload = isEmail
+      ? { email: trimmed, password }
+      : { identifier: trimmed, password };
+    const { data: res } = await api.post('/auth/login', payload);
     const d = res.data;
     return {
       user: mapUser(d.user),

@@ -1,4 +1,4 @@
-import type { UserRepository } from '@/domain/repositories/user.repository';
+import type { CreateMemberInput, UserRepository } from '@/domain/repositories/user.repository';
 import type { User, UserRole } from '@/domain/entities/user';
 import type { PaginatedResult } from '@/shared/types/api';
 import api from '../client';
@@ -20,13 +20,25 @@ export class ApiUserRepository implements UserRepository {
     return mapUser(res.data);
   }
 
-  async invite(email: string, role: UserRole): Promise<User> {
-    const { data: res } = await api.post('/users/invite', { email, role });
-    return mapUser(res.data);
+  async invite(input: CreateMemberInput): Promise<User> {
+    const payload = {
+      name: input.name,
+      username: input.username,
+      password: input.password,
+      email: input.email || undefined,
+      phone: input.phone || undefined,
+      role: input.role,
+    };
+    const { data: res } = await api.post('/users/invite', payload);
+    return mapUser(res.data.user ?? res.data);
   }
 
   async changeRole(id: string, role: UserRole): Promise<User> {
     const { data: res } = await api.patch(`/users/${id}/role`, { role });
     return mapUser(res.data);
+  }
+
+  async resetPassword(id: string, password: string): Promise<void> {
+    await api.patch(`/users/${id}/password`, { password });
   }
 }
