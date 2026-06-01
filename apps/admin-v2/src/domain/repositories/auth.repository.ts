@@ -12,7 +12,7 @@ export interface RegisterResult extends LoginResult {
 }
 
 export interface AuthRepository {
-  login(email: string, password: string): Promise<LoginResult>;
+  login(identifier: string, password: string): Promise<LoginResult>;
   register(data: {
     name: string;
     email: string;

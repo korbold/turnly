@@ -19,7 +19,7 @@ function TeamContent() {
     const q = search.trim().toLowerCase();
     if (!q) return members;
     return members.filter((m) =>
-      [m.name, m.email, m.phone]
+      [m.name, m.email, m.username, m.phone]
         .filter(Boolean)
         .some((v) => v!.toLowerCase().includes(q))
     );
@@ -34,14 +34,14 @@ function TeamContent() {
           <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-[var(--fg-muted)]" />
           <Input
             className="pl-9"
-            placeholder="Buscar por nombre, email…"
+            placeholder="Buscar por nombre, usuario…"
             value={search}
             onChange={(e) => setSearch(e.target.value)}
           />
         </div>
         <Button onClick={() => setInviteOpen(true)} className="sm:self-auto">
           <Plus className="mr-1.5 h-4 w-4" aria-hidden="true" />
-          Invitar miembro
+          Agregar miembro
         </Button>
       </div>
 
@@ -67,7 +67,7 @@ function TeamContent() {
           {!hasSearch && (
             <Button onClick={() => setInviteOpen(true)} className="mt-5">
               <Plus className="mr-1.5 h-4 w-4" aria-hidden="true" />
-              Invitar primer miembro
+              Agregar primer miembro
             </Button>
           )}
         </div>

@@ -29,7 +29,8 @@ export default function UsersPage() {
     (u) =>
       !search ||
       u.name.toLowerCase().includes(search.toLowerCase()) ||
-      u.email.toLowerCase().includes(search.toLowerCase())
+      (u.email?.toLowerCase().includes(search.toLowerCase()) ?? false) ||
+      (u.username?.toLowerCase().includes(search.toLowerCase()) ?? false)
   );
 
   return (

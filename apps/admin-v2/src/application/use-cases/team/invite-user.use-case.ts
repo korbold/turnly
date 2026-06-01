@@ -1,10 +1,9 @@
-import type { UserRepository } from '@/domain/repositories/user.repository';
-import type { UserRole } from '@/domain/entities/user';
+import type { CreateMemberInput, UserRepository } from '@/domain/repositories/user.repository';
 
 export class InviteUserUseCase {
   constructor(private repo: UserRepository) {}
 
-  execute(email: string, role: UserRole) {
-    return this.repo.invite(email, role);
+  execute(input: CreateMemberInput) {
+    return this.repo.invite(input);
   }
 }

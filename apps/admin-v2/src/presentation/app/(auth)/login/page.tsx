@@ -14,7 +14,10 @@ import { useLogin } from '@/presentation/hooks/use-auth';
 import { authStorage } from '@/infrastructure/storage/auth-storage';
 
 const loginSchema = z.object({
-  email: z.string().min(1, 'El email es requerido').email('Email inválido'),
+  identifier: z
+    .string()
+    .min(1, 'Ingresa tu usuario o correo')
+    .max(255, 'Demasiado largo'),
   password: z
     .string()
     .min(1, 'La contraseña es requerida')
@@ -35,7 +38,7 @@ export default function LoginPage() {
     formState: { errors },
   } = useForm<LoginFormValues>({
     resolver: zodResolver(loginSchema),
-    defaultValues: { email: '', password: '' },
+    defaultValues: { identifier: '', password: '' },
   });
 
   const onSubmit = (data: LoginFormValues) => {
@@ -46,8 +49,8 @@ export default function LoginPage() {
         router.push(isSuperAdmin ? '/super-admin' : '/dashboard');
       },
       onError: (error: { message?: string; code?: string }) => {
-        if (error.code === 'EMAIL_NOT_VERIFIED') {
-          sessionStorage.setItem('pendingVerifyEmail', data.email);
+        if (error.code === 'EMAIL_NOT_VERIFIED' && data.identifier.includes('@')) {
+          sessionStorage.setItem('pendingVerifyEmail', data.identifier);
           router.push('/verify-email');
           return;
         }
@@ -81,17 +84,17 @@ export default function LoginPage() {
         )}
 
         <div className="space-y-1.5">
-          <Label htmlFor="email">Email</Label>
+          <Label htmlFor="identifier">Usuario o correo</Label>
           <Input
-            id="email"
-            type="email"
-            placeholder="tu@email.com"
-            autoComplete="email"
-            aria-invalid={!!errors.email}
-            {...register('email')}
+            id="identifier"
+            type="text"
+            placeholder="juan o juan@correo.com"
+            autoComplete="username"
+            aria-invalid={!!errors.identifier}
+            {...register('identifier')}
           />
-          {errors.email && (
-            <p className="text-xs text-[var(--danger-500)]">{errors.email.message}</p>
+          {errors.identifier && (
+            <p className="text-xs text-[var(--danger-500)]">{errors.identifier.message}</p>
           )}
         </div>
 
