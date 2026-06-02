@@ -6,13 +6,16 @@ use App\Application\Services\PlanLimitsService;
 use App\Infrastructure\Persistence\Models\AvailabilitySlotModel;
 use App\Infrastructure\Persistence\Models\ClientResourceModel;
 use App\Infrastructure\Persistence\Models\PlanModel;
+use App\Infrastructure\Persistence\Models\ReservationItemModel;
 use App\Infrastructure\Persistence\Models\ReservationModel;
 use App\Infrastructure\Persistence\Models\ServiceModel;
+use App\Infrastructure\Persistence\Models\ServiceVariantModel;
 use App\Infrastructure\Persistence\Models\TenantModel;
 use App\Infrastructure\Persistence\Models\TenantUserModel;
 use App\Infrastructure\Persistence\Models\UserModel;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Str;
 
 class PublicController extends Controller
@@ -163,8 +166,13 @@ class PublicController extends Controller
     public function getAvailableSlots(string $slug, Request $request): JsonResponse
     {
         $request->validate([
-            'service_id' => 'required|uuid',
-            'date' => 'required|date|after_or_equal:today',
+            'service_id'   => 'nullable|uuid',
+            'date'         => 'required|date|after_or_equal:today',
+            // Pass an explicit duration when booking multiple services
+            // (sum of the chosen variants' durations).
+            'duration_min' => 'nullable|integer|min:1|max:480',
+            'variant_ids'  => 'nullable|array',
+            'variant_ids.*' => 'uuid',
         ]);
 
         $tenant = TenantModel::where('slug', $slug)->where('status', 'active')->firstOrFail();
@@ -175,7 +183,18 @@ class PublicController extends Controller
 
         $date = new \DateTimeImmutable($request->date);
         $dayOfWeek = (int) $date->format('N') - 1;
-        $durationMinutes = $tenant->settings['slot_duration_minutes'] ?? 30;
+        $tenantSlot = (int) ($tenant->settings['slot_duration_minutes'] ?? 30);
+        // Effective slot length: explicit > sum of variants > tenant default.
+        $durationMinutes = $request->integer('duration_min');
+        if (!$durationMinutes && !empty($request->variant_ids)) {
+            $durationMinutes = (int) ServiceVariantModel::withoutGlobalScopes()
+                ->whereIn('id', $request->variant_ids)
+                ->where('tenant_id', $tenant->id)
+                ->sum('duration_min');
+        }
+        if (!$durationMinutes) {
+            $durationMinutes = $tenantSlot;
+        }
 
         $availabilitySlots = AvailabilitySlotModel::query()
             ->forTenant($tenant->id)
@@ -199,6 +218,10 @@ class PublicController extends Controller
             $startTime = new \DateTimeImmutable($request->date . ' ' . $availability->start_time);
             $endTime = new \DateTimeImmutable($request->date . ' ' . $availability->end_time);
             $maxConcurrent = $availability->max_concurrent;
+            // Advance the pointer by the tenant's base slot so the picker
+            // still shows 30/45/etc. start options, even if the service
+            // duration spans several slots.
+            $stepMinutes = $tenantSlot;
             $current = $startTime;
 
             while ($current->modify("+{$durationMinutes} minutes") <= $endTime) {
@@ -219,7 +242,7 @@ class PublicController extends Controller
                     'available' => max(0, $maxConcurrent - $overlapping),
                 ];
 
-                $current = $current->modify("+{$durationMinutes} minutes");
+                $current = $current->modify("+{$stepMinutes} minutes");
             }
         }
 
@@ -261,50 +284,62 @@ class PublicController extends Controller
 
     public function book(string $slug, Request $request): JsonResponse
     {
-        // If user is authenticated, use their data; otherwise require name/email
+        // Multi-service booking: clients send `items[]` (each one a
+        // service_variant_id + qty). The legacy single `service_id` is
+        // still accepted so the older Flutter build keeps working until
+        // every client is updated.
         $authenticatedUser = $request->user('sanctum');
 
-        if ($authenticatedUser) {
-            $request->validate([
-                'service_id' => 'required|uuid',
-                'scheduled_at' => 'required|date|after:now',
-                'notes' => 'nullable|string|max:500',
-                'client_resource_id' => 'nullable|uuid',
-                'client_resource_data' => 'nullable|array',
-            ]);
-        } else {
-            $request->validate([
-                'service_id' => 'required|uuid',
-                'scheduled_at' => 'required|date|after:now',
-                'client_name' => 'required|string|max:255',
+        $baseRules = [
+            'scheduled_at'         => 'required|date|after:now',
+            'notes'                => 'nullable|string|max:500',
+            'client_resource_id'   => 'nullable|uuid',
+            'client_resource_data' => 'nullable|array',
+            'service_id'           => 'nullable|uuid',
+            'items'                => 'nullable|array|min:1|max:10',
+            'items.*.service_variant_id' => 'required_with:items|uuid',
+            'items.*.qty'                => 'nullable|integer|min:1|max:10',
+        ];
+
+        if (!$authenticatedUser) {
+            $baseRules = array_merge($baseRules, [
+                'client_name'  => 'required|string|max:255',
                 'client_email' => 'required|email|max:255',
                 'client_phone' => 'nullable|string|max:20',
-                'notes' => 'nullable|string|max:500',
-                'client_resource_data' => 'nullable|array',
             ]);
+        }
+
+        $request->validate($baseRules);
+
+        if (empty($request->items) && !$request->service_id) {
+            return response()->json([
+                'error' => ['code' => 'NO_ITEMS', 'message' => 'Selecciona al menos un servicio.'],
+            ], 422);
         }
 
         $tenant = TenantModel::where('slug', $slug)->where('status', 'active')->firstOrFail();
+        if (!$this->hasCustomPage($tenant->id)) abort(404);
 
-        if (!$this->hasCustomPage($tenant->id)) {
-            abort(404);
+        // Resolve variants up front so we can validate tenancy + total duration.
+        [$resolvedItems, $totalDurationMin, $firstServiceId, $firstVariantId] =
+            $this->resolveBookingItems($tenant->id, $request);
+
+        if ($resolvedItems === null) {
+            return response()->json([
+                'error' => ['code' => 'INVALID_ITEMS', 'message' => 'Items inválidos para este negocio.'],
+            ], 422);
         }
 
-        if ($authenticatedUser) {
-            $client = $authenticatedUser;
-        } else {
-            $client = UserModel::firstOrCreate(
-                ['email' => $request->client_email],
-                [
-                    'name' => $request->client_name,
-                    'phone' => $request->client_phone,
-                    'password' => bcrypt(Str::random(16)),
-                    'is_super_admin' => false,
-                ]
-            );
-        }
+        $client = $authenticatedUser ?: UserModel::firstOrCreate(
+            ['email' => $request->client_email],
+            [
+                'name' => $request->client_name,
+                'phone' => $request->client_phone,
+                'password' => bcrypt(Str::random(16)),
+                'is_super_admin' => false,
+            ]
+        );
 
-        // Ensure client is linked to tenant with client role
         TenantUserModel::firstOrCreate(
             ['tenant_id' => $tenant->id, 'user_id' => $client->id],
             ['role' => 'client', 'is_active' => true]
@@ -327,29 +362,167 @@ class PublicController extends Controller
         }
 
         $scheduledAt = new \DateTimeImmutable($request->scheduled_at);
-        $slotDuration = $tenant->settings['slot_duration_minutes'] ?? 30;
-        $estimatedEnd = $scheduledAt->modify("+{$slotDuration} minutes");
+        $estimatedEnd = $scheduledAt->modify("+{$totalDurationMin} minutes");
 
-        $reservation = ReservationModel::withoutGlobalScopes()->create([
-            'id' => (string) Str::uuid(),
-            'tenant_id' => $tenant->id,
-            'client_id' => $client->id,
-            'client_resource_id' => $clientResourceId,
-            'service_id' => $request->service_id,
-            'scheduled_at' => $scheduledAt->format('Y-m-d H:i:s'),
-            'estimated_end' => $estimatedEnd->format('Y-m-d H:i:s'),
-            'status' => 'pending',
-            'notes' => $request->notes,
-            'created_by' => $client->id,
-        ]);
+        $reservation = DB::transaction(function () use ($tenant, $client, $clientResourceId, $resolvedItems, $firstServiceId, $firstVariantId, $scheduledAt, $estimatedEnd, $request) {
+            $r = ReservationModel::withoutGlobalScopes()->create([
+                'id' => (string) Str::uuid(),
+                'tenant_id' => $tenant->id,
+                'client_id' => $client->id,
+                'client_resource_id' => $clientResourceId,
+                // Legacy single-service pointer kept for older listings;
+                // the canonical source of truth is reservation_items.
+                'service_id' => $firstServiceId,
+                'service_variant_id' => $firstVariantId,
+                'scheduled_at' => $scheduledAt->format('Y-m-d H:i:s'),
+                'estimated_end' => $estimatedEnd->format('Y-m-d H:i:s'),
+                'status' => 'pending',
+                'notes' => $request->notes,
+                'created_by' => $client->id,
+            ]);
+
+            $sort = 0;
+            foreach ($resolvedItems as $it) {
+                ReservationItemModel::create([
+                    'tenant_id'      => $tenant->id,
+                    'reservation_id' => $r->id,
+                    'item_type'      => 'service_variant',
+                    'ref_id'         => $it['variant_id'],
+                    'label'          => $it['label'],
+                    'qty'            => $it['qty'],
+                    'unit_price'     => $it['price'],
+                    'line_total'     => $it['price'] * $it['qty'],
+                    'sort_order'     => $sort++,
+                ]);
+            }
+
+            return $r;
+        });
+
+        $total = array_reduce(
+            $resolvedItems,
+            fn ($acc, $i) => $acc + ($i['price'] * $i['qty']),
+            0.0
+        );
 
         return response()->json([
             'data' => [
                 'reservation_id' => $reservation->id,
                 'status' => 'pending',
                 'scheduled_at' => $reservation->scheduled_at,
+                'estimated_end' => $reservation->estimated_end,
+                'duration_min' => $totalDurationMin,
+                'total' => round($total, 2),
+                'items' => array_map(
+                    fn ($i) => [
+                        'service_variant_id' => $i['variant_id'],
+                        'service_id'         => $i['service_id'],
+                        'label'              => $i['label'],
+                        'qty'                => $i['qty'],
+                        'unit_price'         => $i['price'],
+                        'line_total'         => round($i['price'] * $i['qty'], 2),
+                        'duration_min'       => $i['duration_min'],
+                    ],
+                    $resolvedItems
+                ),
                 'message' => 'Reserva creada exitosamente',
             ],
         ], 201);
+    }
+
+    /**
+     * Resolves the incoming items (new shape) or the legacy `service_id`
+     * payload into a normalized list of [variant_id, service_id, label,
+     * qty, price, duration_min]. Returns the total duration plus the
+     * first (service_id, variant_id) for the legacy columns on the
+     * reservation row.
+     *
+     * @return array{0: array<int, array{variant_id:string,service_id:string,label:string,qty:int,price:float,duration_min:int}>|null, 1: int, 2: ?string, 3: ?string}
+     */
+    private function resolveBookingItems(string $tenantId, Request $request): array
+    {
+        $tenantSlotMinutes = (int) (TenantModel::find($tenantId)?->settings['slot_duration_minutes'] ?? 30);
+
+        if (!empty($request->items)) {
+            $variantIds = collect($request->items)->pluck('service_variant_id')->all();
+            $variants = ServiceVariantModel::withoutGlobalScopes()
+                ->whereIn('id', $variantIds)
+                ->where('tenant_id', $tenantId)
+                ->where('is_active', true)
+                ->with('service')
+                ->get()
+                ->keyBy('id');
+
+            $resolved = [];
+            $total = 0;
+            $firstService = null;
+            $firstVariant = null;
+
+            foreach ($request->items as $row) {
+                $variant = $variants->get($row['service_variant_id']);
+                if (!$variant) {
+                    return [null, 0, null, null];
+                }
+                $qty = (int) ($row['qty'] ?? 1);
+                $duration = max(1, (int) $variant->duration_min) * $qty;
+                $total += $duration;
+
+                if (!$firstService) $firstService = $variant->service_id;
+                if (!$firstVariant) $firstVariant = $variant->id;
+
+                $serviceName = $variant->service?->name ?? 'Servicio';
+
+                $resolved[] = [
+                    'variant_id'   => $variant->id,
+                    'service_id'   => $variant->service_id,
+                    'label'        => "{$serviceName} · {$variant->label}",
+                    'qty'          => $qty,
+                    'price'        => (float) $variant->price,
+                    'duration_min' => (int) $variant->duration_min * $qty,
+                ];
+            }
+
+            return [$resolved, $total, $firstService, $firstVariant];
+        }
+
+        // Legacy single-service path: synthesize one item from the
+        // default variant (or pick the first active one).
+        $serviceId = $request->service_id;
+        $variant = ServiceVariantModel::withoutGlobalScopes()
+            ->where('tenant_id', $tenantId)
+            ->where('service_id', $serviceId)
+            ->where('is_active', true)
+            ->orderByRaw("CASE WHEN label = 'Default' THEN 0 ELSE 1 END")
+            ->orderBy('sort_order')
+            ->with('service')
+            ->first();
+
+        if (!$variant) {
+            // Service exists but has no variants yet — keep the
+            // reservation but skip line items. ConsumptionEngine still
+            // picks the right variant at `complete` via the service_id.
+            $service = ServiceModel::withoutGlobalScopes()->find($serviceId);
+            if (!$service || $service->tenant_id !== $tenantId) {
+                return [null, 0, null, null];
+            }
+            return [[], $tenantSlotMinutes, $service->id, null];
+        }
+
+        $serviceName = $variant->service?->name ?? 'Servicio';
+        $duration = max(1, (int) $variant->duration_min);
+
+        return [
+            [[
+                'variant_id'   => $variant->id,
+                'service_id'   => $variant->service_id,
+                'label'        => "{$serviceName} · {$variant->label}",
+                'qty'          => 1,
+                'price'        => (float) $variant->price,
+                'duration_min' => $duration,
+            ]],
+            $duration,
+            $variant->service_id,
+            $variant->id,
+        ];
     }
 }
