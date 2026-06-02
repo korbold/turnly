@@ -128,8 +128,37 @@ class PublicController extends Controller
         $services = ServiceModel::query()
             ->forTenant($tenant->id)
             ->where('is_active', true)
+            ->with(['variants' => function ($q) {
+                $q->where('is_active', true)
+                  ->orderBy('sort_order')
+                  ->orderBy('price');
+            }])
             ->orderBy('sort_order')
-            ->get(['id', 'name', 'description', 'price', 'image_url']);
+            ->get(['id', 'name', 'description', 'price', 'image_url'])
+            ->map(function ($svc) {
+                return [
+                    'id' => $svc->id,
+                    'name' => $svc->name,
+                    'description' => $svc->description,
+                    'price' => $svc->price,
+                    'image_url' => $svc->image_url,
+                    // Surface active variants to the customer so the app can
+                    // show "Desde $X" + open the size picker. The "Default"
+                    // backfill variant is hidden so it doesn't clutter the
+                    // picker; the customer either sees real variants or a
+                    // single flat price.
+                    'variants' => $svc->variants
+                        ->where('label', '!=', 'Default')
+                        ->values()
+                        ->map(fn ($v) => [
+                            'id' => $v->id,
+                            'label' => $v->label,
+                            'price' => (float) $v->price,
+                            'duration_min' => (int) $v->duration_min,
+                            'sort_order' => (int) $v->sort_order,
+                        ])->all(),
+                ];
+            });
 
         $availability = AvailabilitySlotModel::query()
             ->forTenant($tenant->id)
