@@ -105,7 +105,9 @@ class ServiceCard extends StatelessWidget {
                 Row(
                   children: [
                     Text(
-                      priceFormat.format(service.price),
+                      service.hasVariants
+                          ? 'Desde ${priceFormat.format(service.displayPrice)}'
+                          : priceFormat.format(service.price),
                       style: TextStyle(
                         fontSize: 15,
                         fontWeight: FontWeight.w700,

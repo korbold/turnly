@@ -198,6 +198,7 @@ final appRouter = GoRouter(
         return CreateReservationScreen(
           tenantSlug: extra?['tenantSlug'] as String? ?? '',
           serviceId: extra?['serviceId'] as String?,
+          serviceVariantId: extra?['serviceVariantId'] as String?,
           services: services,
           customFields: customFields,
           businessType: extra?['businessType'] as String?,

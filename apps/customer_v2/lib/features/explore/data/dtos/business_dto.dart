@@ -46,6 +46,28 @@ class BusinessDto {
         ? rawPrice.toDouble()
         : double.tryParse(rawPrice?.toString() ?? '0') ?? 0.0;
 
+    // variants[] arrives from the public endpoint with explicit size/type
+    // options (Pequeño/Mediano/Grande/Camioneta, etc.). Empty when the
+    // tenant hasn't defined any beyond the hidden "Default" backfill.
+    final rawVariants = (json['variants'] as List<dynamic>?) ?? const [];
+    final variants = rawVariants
+        .whereType<Map<String, dynamic>>()
+        .map((v) {
+          final p = v['price'];
+          final parsed = p is num
+              ? p.toDouble()
+              : double.tryParse(p?.toString() ?? '0') ?? 0.0;
+          return ServiceVariantOption(
+            id: v['id'] as String? ?? '',
+            label: v['label'] as String? ?? '',
+            price: parsed,
+            durationMin: (v['duration_min'] as num?)?.toInt() ?? tenantSlotDuration,
+            sortOrder: (v['sort_order'] as num?)?.toInt() ?? 0,
+          );
+        })
+        .toList()
+      ..sort((a, b) => a.sortOrder.compareTo(b.sortOrder));
+
     return Service(
       id: json['id'] as String? ?? '',
       name: json['name'] as String? ?? '',
@@ -53,6 +75,7 @@ class BusinessDto {
       price: price,
       durationMinutes: json['duration_minutes'] as int? ?? tenantSlotDuration,
       imageUrl: json['image_url'] as String?,
+      variants: variants,
     );
   }
 

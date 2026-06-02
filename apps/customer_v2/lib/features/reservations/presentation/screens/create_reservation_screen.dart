@@ -29,6 +29,7 @@ import '../../../../core/widgets/offline_action_gate.dart';
 class CreateReservationScreen extends StatelessWidget {
   final String tenantSlug;
   final String? serviceId;
+  final String? serviceVariantId;
   final List<explore.Service> services;
   final List<Map<String, dynamic>> customFields;
   final String? businessType;
@@ -37,6 +38,7 @@ class CreateReservationScreen extends StatelessWidget {
     super.key,
     required this.tenantSlug,
     this.serviceId,
+    this.serviceVariantId,
     this.services = const [],
     this.customFields = const [],
     this.businessType,
@@ -68,6 +70,7 @@ class CreateReservationScreen extends StatelessWidget {
             child: _CreateReservationView(
               tenantSlug: tenantSlug,
               serviceId: serviceId,
+              serviceVariantId: serviceVariantId,
               services: services,
               customFields: customFields,
               businessType: businessType,
@@ -82,6 +85,7 @@ class CreateReservationScreen extends StatelessWidget {
 class _CreateReservationView extends StatefulWidget {
   final String tenantSlug;
   final String? serviceId;
+  final String? serviceVariantId;
   final List<explore.Service> services;
   final List<Map<String, dynamic>> customFields;
   final String? businessType;
@@ -89,6 +93,7 @@ class _CreateReservationView extends StatefulWidget {
   const _CreateReservationView({
     required this.tenantSlug,
     this.serviceId,
+    this.serviceVariantId,
     this.services = const [],
     this.customFields = const [],
     this.businessType,
@@ -134,19 +139,28 @@ class _CreateReservationViewState extends State<_CreateReservationView> {
     }
 
     // Seed the cubit's cart with the initially-tapped service so the
-    // multi-item endpoint sees at least one row. Extra services added
-    // later go through the cubit's addToCart().
+    // multi-item endpoint sees at least one row. If a variant was
+    // picked up-stream (size/type selector before this screen), the
+    // BookingItem carries its label + price + duration so totals match
+    // exactly what the customer saw.
     if (_selectedService != null) {
       WidgetsBinding.instance.addPostFrameCallback((_) {
         if (!mounted) return;
         final svc = _selectedService!;
+        final variant = widget.serviceVariantId == null
+            ? null
+            : svc.variants
+                .where((v) => v.id == widget.serviceVariantId)
+                .cast<explore.ServiceVariantOption?>()
+                .firstWhere((v) => v != null, orElse: () => null);
+
         context.read<CreateReservationCubit>().seedCart([
           BookingItem(
             serviceId: svc.id,
-            serviceVariantId: null,
-            label: svc.name,
-            price: svc.price,
-            durationMin: svc.durationMinutes,
+            serviceVariantId: variant?.id,
+            label: variant == null ? svc.name : '${svc.name} · ${variant.label}',
+            price: variant?.price ?? svc.price,
+            durationMin: variant?.durationMin ?? svc.durationMinutes,
           ),
         ]);
       });
@@ -956,6 +970,56 @@ class _Step3Confirm extends StatelessWidget {
     required this.availableServices,
   });
 
+  Future<explore.ServiceVariantOption?> _pickVariantInline(
+    BuildContext context,
+    explore.Service service,
+  ) {
+    final primary = Theme.of(context).colorScheme.primary;
+    return showModalBottomSheet<explore.ServiceVariantOption>(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: AppColors.surface,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+      ),
+      builder: (sheetCtx) {
+        return SafeArea(
+          child: Padding(
+            padding: const EdgeInsets.all(20),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  service.name,
+                  style: const TextStyle(fontSize: 18, fontWeight: FontWeight.w700),
+                ),
+                const SizedBox(height: 4),
+                const Text(
+                  'Elige una opción',
+                  style: TextStyle(fontSize: 13, color: AppColors.textSecondary),
+                ),
+                const SizedBox(height: 12),
+                ...service.variants.map(
+                  (v) => ListTile(
+                    contentPadding: EdgeInsets.zero,
+                    title: Text(v.label),
+                    subtitle: Text(
+                      '\$${v.price.toStringAsFixed(2)} · ${v.durationMin} min',
+                      style: const TextStyle(fontSize: 12),
+                    ),
+                    trailing: Icon(Icons.chevron_right_rounded, color: primary),
+                    onTap: () => Navigator.pop(sheetCtx, v),
+                  ),
+                ),
+              ],
+            ),
+          ),
+        );
+      },
+    );
+  }
+
   void _openServicePicker(BuildContext context) {
     showModalBottomSheet(
       context: context,
@@ -987,23 +1051,44 @@ class _Step3Confirm extends StatelessWidget {
                     itemBuilder: (_, i) {
                       final s = availableServices[i];
                       final alreadyInCart = added.contains(s.id);
+                      final priceLabel = s.hasVariants
+                          ? 'Desde \$${s.displayPrice.toStringAsFixed(2)}'
+                          : '\$${s.price.toStringAsFixed(2)}';
                       return ListTile(
                         title: Text(s.name),
                         subtitle: Text(
-                          '\$${s.price.toStringAsFixed(2)} · ${s.durationMinutes} min',
+                          '$priceLabel · ${s.durationMinutes} min',
                           style: const TextStyle(fontSize: 12),
                         ),
                         trailing: alreadyInCart
                             ? const Icon(Icons.check_circle, color: Colors.green, size: 20)
                             : const Icon(Icons.add_circle_outline, size: 20),
-                        onTap: () {
-                          cubit.addToCart(BookingItem(
-                            serviceId: s.id,
-                            label: s.name,
-                            price: s.price,
-                            durationMin: s.durationMinutes,
-                          ));
+                        onTap: () async {
                           Navigator.of(sheetCtx).pop();
+                          if (!context.mounted) return;
+
+                          // Service has size/type variants → ask which
+                          // one before adding so the cart line carries
+                          // a variantId (price + duration of the picked
+                          // option, not the base service.price).
+                          if (s.hasVariants) {
+                            final variant = await _pickVariantInline(context, s);
+                            if (variant == null) return;
+                            cubit.addToCart(BookingItem(
+                              serviceId: s.id,
+                              serviceVariantId: variant.id,
+                              label: '${s.name} · ${variant.label}',
+                              price: variant.price,
+                              durationMin: variant.durationMin,
+                            ));
+                          } else {
+                            cubit.addToCart(BookingItem(
+                              serviceId: s.id,
+                              label: s.name,
+                              price: s.price,
+                              durationMin: s.durationMinutes,
+                            ));
+                          }
                         },
                       );
                     },
