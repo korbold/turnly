@@ -5,6 +5,7 @@ import '../../../../core/error/failures.dart';
 import '../../../../core/network/api_client.dart';
 import '../../domain/entities/reservation.dart';
 import '../../domain/entities/available_slot.dart';
+import '../../domain/entities/booking_item.dart';
 import '../../domain/repositories/reservation_repository.dart';
 import '../dtos/reservation_dto.dart';
 
@@ -85,14 +86,71 @@ class ReservationRepositoryImpl implements ReservationRepository {
   }
 
   @override
+  Future<Either<Failure, Reservation>> createWithItems({
+    required String clientResourceId,
+    required List<BookingItem> items,
+    required String scheduledAt,
+    String? notes,
+  }) async {
+    try {
+      // Map cart items to the backend's items[] payload. When the
+      // selection lacks a variant id (older catalogs) we fall back to
+      // sending service_id alongside, so the server can resolve it.
+      final payloadItems = items
+          .where((i) => i.serviceVariantId != null)
+          .map((i) => {
+                'service_variant_id': i.serviceVariantId,
+                'qty': i.qty,
+              })
+          .toList();
+
+      final body = <String, dynamic>{
+        'client_resource_id': clientResourceId,
+        'scheduled_at': scheduledAt,
+        if (notes != null) 'notes': notes,
+      };
+
+      if (payloadItems.isNotEmpty) {
+        body['items'] = payloadItems;
+      } else if (items.isNotEmpty) {
+        // No variants available — collapse to legacy single-service.
+        body['service_id'] = items.first.serviceId;
+      }
+
+      final response = await _dio.post('/reservations', data: body);
+      return Right(
+        ReservationDto(response.data['data'] as Map<String, dynamic>).toEntity(),
+      );
+    } on DioException catch (e) {
+      if (e.response?.statusCode == 401) return const Left(AuthFailure());
+      return Left(ServerFailure(
+        e.response?.data?['error']?['message'] ?? 'Error al crear reserva',
+      ));
+    } catch (e) {
+      return Left(ServerFailure(e.toString()));
+    }
+  }
+
+  @override
   Future<Either<Failure, List<AvailableSlot>>> getAvailableSlots(
     String date,
-    String serviceId,
-  ) async {
+    String serviceId, {
+    int? durationMin,
+    List<String>? variantIds,
+  }) async {
     try {
+      final queryParams = <String, dynamic>{
+        'date': date,
+        'service_id': serviceId,
+      };
+      if (durationMin != null) queryParams['duration_min'] = durationMin;
+      if (variantIds != null && variantIds.isNotEmpty) {
+        queryParams['variant_ids'] = variantIds;
+      }
+
       final response = await _dio.get(
         '/reservations/available-slots',
-        queryParameters: {'date': date, 'service_id': serviceId},
+        queryParameters: queryParams,
       );
 
       final data = response.data['data'] as List<dynamic>;

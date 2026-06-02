@@ -107,36 +107,148 @@ class ReservationController extends Controller
             ], 403);
         }
 
+        $tenantId = app('current_tenant_id');
+
+        // Resolve items[] (multi-service) to (totalDuration, firstService,
+        // firstVariant, normalized lines) so the existing DTO/Use Case keeps
+        // serving the legacy single-service shape while we persist the
+        // polymorphic items afterwards.
+        [$resolvedItems, $totalDurationMin, $firstServiceId, $firstVariantId] =
+            $this->resolveItems($tenantId, $request);
+
+        if ($resolvedItems === null) {
+            return response()->json([
+                'error' => ['code' => 'INVALID_ITEMS', 'message' => 'Items inválidos para este negocio.'],
+            ], 422);
+        }
+
+        $serviceId = $request->service_id ?? $firstServiceId;
+        $variantId = $request->service_variant_id ?? $firstVariantId;
+
         $dto = new CreateReservationDTO(
-            tenantId: app('current_tenant_id'),
+            tenantId: $tenantId,
             clientId: $request->client_id ?? $request->user()->id,
             clientResourceId: $request->client_resource_id,
-            serviceId: $request->service_id,
+            serviceId: $serviceId,
             scheduledAt: $request->scheduled_at,
             createdBy: $request->user()->id,
             assignedTo: $request->assigned_to,
             notes: $request->notes,
-            serviceVariantId: $request->service_variant_id,
+            serviceVariantId: $variantId,
         );
 
         $reservation = $this->createReservation->execute($dto);
 
-        // Persist the chosen variant on the model. The domain DTO/entity
-        // pipeline doesn't carry it yet; setting it directly on the
-        // Eloquent model is the smallest change that keeps the existing
-        // service_id-based flow intact while letting the BOM/consumption
-        // engine pick up the right recipe on `complete`.
-        if ($request->service_variant_id) {
-            ReservationModel::where('id', $reservation->id)
-                ->update(['service_variant_id' => $request->service_variant_id]);
-        }
+        // Persist variant_id + items in a follow-up step so the domain
+        // pipeline above doesn't have to learn about polymorphic items.
+        \Illuminate\Support\Facades\DB::transaction(function () use ($reservation, $variantId, $resolvedItems, $tenantId, $totalDurationMin, $request) {
+            if ($variantId) {
+                ReservationModel::where('id', $reservation->id)
+                    ->update(['service_variant_id' => $variantId]);
+            }
 
-        // Fetch the model with relationships for the resource
+            if (!empty($resolvedItems)) {
+                $sort = 0;
+                foreach ($resolvedItems as $it) {
+                    \App\Infrastructure\Persistence\Models\ReservationItemModel::create([
+                        'tenant_id'      => $tenantId,
+                        'reservation_id' => $reservation->id,
+                        'item_type'      => 'service_variant',
+                        'ref_id'         => $it['variant_id'],
+                        'label'          => $it['label'],
+                        'qty'            => $it['qty'],
+                        'unit_price'     => $it['price'],
+                        'line_total'     => $it['price'] * $it['qty'],
+                        'sort_order'     => $sort++,
+                    ]);
+                }
+
+                // Stretch estimated_end so multi-service reservations
+                // actually block the right amount of time on the schedule.
+                $start = new \DateTimeImmutable($request->scheduled_at);
+                ReservationModel::where('id', $reservation->id)->update([
+                    'estimated_end' => $start->modify("+{$totalDurationMin} minutes")->format('Y-m-d H:i:s'),
+                ]);
+            }
+        });
+
         $model = ReservationModel::with(['clientResource', 'service', 'client'])->find($reservation->id);
 
         return (new ReservationResource($model))
             ->response()
             ->setStatusCode(201);
+    }
+
+    /**
+     * Normalize the multi-service items[] payload (or the legacy
+     * service_id / service_variant_id shape) into an array of variant
+     * rows + total duration + first identifiers. Returns [null, ...]
+     * when any variant is from another tenant.
+     */
+    private function resolveItems(string $tenantId, CreateReservationRequest $request): array
+    {
+        $tenantSlot = (int) (\App\Infrastructure\Persistence\Models\TenantModel::find($tenantId)?->settings['slot_duration_minutes'] ?? 30);
+
+        if (!empty($request->items)) {
+            $variantIds = collect($request->items)->pluck('service_variant_id')->all();
+            $variants = \App\Infrastructure\Persistence\Models\ServiceVariantModel::withoutGlobalScopes()
+                ->whereIn('id', $variantIds)
+                ->where('tenant_id', $tenantId)
+                ->where('is_active', true)
+                ->with('service')
+                ->get()
+                ->keyBy('id');
+
+            $rows = [];
+            $total = 0;
+            $firstService = null;
+            $firstVariant = null;
+
+            foreach ($request->items as $row) {
+                $variant = $variants->get($row['service_variant_id']);
+                if (!$variant) return [null, 0, null, null];
+                $qty = (int) ($row['qty'] ?? 1);
+                $duration = max(1, (int) $variant->duration_min) * $qty;
+                $total += $duration;
+                $firstService = $firstService ?? $variant->service_id;
+                $firstVariant = $firstVariant ?? $variant->id;
+                $rows[] = [
+                    'variant_id'   => $variant->id,
+                    'service_id'   => $variant->service_id,
+                    'label'        => ($variant->service?->name ?? 'Servicio') . ' · ' . $variant->label,
+                    'qty'          => $qty,
+                    'price'        => (float) $variant->price,
+                    'duration_min' => $duration,
+                ];
+            }
+
+            return [$rows, $total, $firstService, $firstVariant];
+        }
+
+        // Legacy single-service path: optionally synthesize one item from
+        // the explicit variant_id so multi-line + single-line callers end
+        // up with the same shape downstream.
+        if ($request->service_variant_id) {
+            $variant = \App\Infrastructure\Persistence\Models\ServiceVariantModel::withoutGlobalScopes()
+                ->where('tenant_id', $tenantId)
+                ->where('id', $request->service_variant_id)
+                ->with('service')
+                ->first();
+            if (!$variant) return [null, 0, null, null];
+            $rows = [[
+                'variant_id'   => $variant->id,
+                'service_id'   => $variant->service_id,
+                'label'        => ($variant->service?->name ?? 'Servicio') . ' · ' . $variant->label,
+                'qty'          => 1,
+                'price'        => (float) $variant->price,
+                'duration_min' => (int) $variant->duration_min,
+            ]];
+            return [$rows, (int) $variant->duration_min, $variant->service_id, $variant->id];
+        }
+
+        // No variant info: rely on legacy service_id only, skip items
+        // insertion entirely so we don't violate FKs.
+        return [[], $tenantSlot, $request->service_id, null];
     }
 
     public function show(string $id): ReservationResource

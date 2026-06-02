@@ -18,6 +18,7 @@ import '../../../resources/domain/repositories/resource_repository.dart';
 import '../../../resources/presentation/cubit/resources_cubit.dart';
 import '../../../resources/presentation/cubit/resources_state.dart';
 import '../../domain/entities/available_slot.dart';
+import '../../domain/entities/booking_item.dart';
 import '../../domain/repositories/reservation_repository.dart';
 import '../cubit/create_reservation_cubit.dart';
 import '../cubit/create_reservation_state.dart';
@@ -130,6 +131,25 @@ class _CreateReservationViewState extends State<_CreateReservationView> {
     }
     if (_selectedService == null && widget.services.length == 1) {
       _selectedService = widget.services.first;
+    }
+
+    // Seed the cubit's cart with the initially-tapped service so the
+    // multi-item endpoint sees at least one row. Extra services added
+    // later go through the cubit's addToCart().
+    if (_selectedService != null) {
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (!mounted) return;
+        final svc = _selectedService!;
+        context.read<CreateReservationCubit>().seedCart([
+          BookingItem(
+            serviceId: svc.id,
+            serviceVariantId: null,
+            label: svc.name,
+            price: svc.price,
+            durationMin: svc.durationMinutes,
+          ),
+        ]);
+      });
     }
   }
 
@@ -373,6 +393,7 @@ class _CreateReservationViewState extends State<_CreateReservationView> {
                     selectedSlot: _selectedSlot,
                     notesController: _notesController,
                     onSubmit: _submitReservation,
+                    availableServices: widget.services,
                   ),
                 ],
               ),
@@ -923,6 +944,7 @@ class _Step3Confirm extends StatelessWidget {
   final AvailableSlot? selectedSlot;
   final TextEditingController notesController;
   final VoidCallback onSubmit;
+  final List<explore.Service> availableServices;
 
   const _Step3Confirm({
     required this.selectedResource,
@@ -931,14 +953,84 @@ class _Step3Confirm extends StatelessWidget {
     required this.selectedSlot,
     required this.notesController,
     required this.onSubmit,
+    required this.availableServices,
   });
+
+  void _openServicePicker(BuildContext context) {
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: AppColors.surface,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+      ),
+      builder: (sheetCtx) {
+        final cubit = context.read<CreateReservationCubit>();
+        final added = cubit.cart.map((c) => c.serviceId).toSet();
+        return SafeArea(
+          child: Padding(
+            padding: const EdgeInsets.all(20),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                const Text(
+                  'Agregar servicio',
+                  style: TextStyle(fontSize: 18, fontWeight: FontWeight.w700),
+                ),
+                const SizedBox(height: 12),
+                Flexible(
+                  child: ListView.separated(
+                    shrinkWrap: true,
+                    itemCount: availableServices.length,
+                    separatorBuilder: (_, __) => const Divider(height: 1),
+                    itemBuilder: (_, i) {
+                      final s = availableServices[i];
+                      final alreadyInCart = added.contains(s.id);
+                      return ListTile(
+                        title: Text(s.name),
+                        subtitle: Text(
+                          '\$${s.price.toStringAsFixed(2)} · ${s.durationMinutes} min',
+                          style: const TextStyle(fontSize: 12),
+                        ),
+                        trailing: alreadyInCart
+                            ? const Icon(Icons.check_circle, color: Colors.green, size: 20)
+                            : const Icon(Icons.add_circle_outline, size: 20),
+                        onTap: () {
+                          cubit.addToCart(BookingItem(
+                            serviceId: s.id,
+                            label: s.name,
+                            price: s.price,
+                            durationMin: s.durationMinutes,
+                          ));
+                          Navigator.of(sheetCtx).pop();
+                        },
+                      );
+                    },
+                  ),
+                ),
+              ],
+            ),
+          ),
+        );
+      },
+    );
+  }
 
   @override
   Widget build(BuildContext context) {
     final dateFormat = DateFormat("EEEE d 'de' MMMM, yyyy", 'es');
     final timeFormat = DateFormat('HH:mm');
+    final primary = Theme.of(context).colorScheme.primary;
 
-    return SingleChildScrollView(
+    return BlocBuilder<CreateReservationCubit, CreateReservationState>(
+      buildWhen: (_, __) => true,
+      builder: (context, _) {
+        final cubit = context.read<CreateReservationCubit>();
+        final cart = cubit.cart;
+        final hasCart = cart.isNotEmpty;
+
+        return SingleChildScrollView(
       padding: const EdgeInsets.all(20),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -961,7 +1053,139 @@ class _Step3Confirm extends StatelessWidget {
           ).animate().fadeIn(duration: 400.ms, delay: 50.ms),
           const SizedBox(height: 24),
 
-          // Summary card
+          // Services cart
+          Container(
+            width: double.infinity,
+            padding: const EdgeInsets.all(16),
+            decoration: BoxDecoration(
+              color: AppColors.surface,
+              borderRadius: BorderRadius.circular(16),
+              boxShadow: [
+                BoxShadow(
+                  color: Colors.black.withValues(alpha: 0.06),
+                  blurRadius: 16,
+                  offset: const Offset(0, 4),
+                ),
+              ],
+            ),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Row(
+                  children: [
+                    Icon(Icons.miscellaneous_services_rounded,
+                        color: primary, size: 18),
+                    const SizedBox(width: 8),
+                    const Text(
+                      'Servicios',
+                      style: TextStyle(
+                        fontSize: 13,
+                        color: AppColors.textTertiary,
+                        fontWeight: FontWeight.w500,
+                      ),
+                    ),
+                    const Spacer(),
+                    if (hasCart)
+                      Text(
+                        '${cubit.totalDurationMin} min',
+                        style: const TextStyle(
+                          fontSize: 12,
+                          color: AppColors.textTertiary,
+                        ),
+                      ),
+                  ],
+                ),
+                const SizedBox(height: 8),
+                if (!hasCart && selectedService != null)
+                  Padding(
+                    padding: const EdgeInsets.symmetric(vertical: 4),
+                    child: Text(
+                      '${selectedService!.name} · \$${selectedService!.price.toStringAsFixed(2)}',
+                      style: const TextStyle(
+                        fontSize: 14,
+                        color: AppColors.textPrimary,
+                        fontWeight: FontWeight.w600,
+                      ),
+                    ),
+                  ),
+                for (var i = 0; i < cart.length; i++)
+                  Padding(
+                    padding: const EdgeInsets.symmetric(vertical: 4),
+                    child: Row(
+                      children: [
+                        Expanded(
+                          child: Text(
+                            cart[i].qty > 1
+                                ? '${cart[i].label} × ${cart[i].qty}'
+                                : cart[i].label,
+                            style: const TextStyle(
+                              fontSize: 14,
+                              color: AppColors.textPrimary,
+                              fontWeight: FontWeight.w600,
+                            ),
+                          ),
+                        ),
+                        const SizedBox(width: 8),
+                        Text(
+                          '\$${cart[i].lineTotal.toStringAsFixed(2)}',
+                          style: const TextStyle(
+                            fontSize: 14,
+                            fontWeight: FontWeight.w600,
+                          ),
+                        ),
+                        if (cart.length > 1)
+                          IconButton(
+                            icon: const Icon(Icons.close, size: 18),
+                            onPressed: () => cubit.removeFromCart(i),
+                            visualDensity: VisualDensity.compact,
+                          ),
+                      ],
+                    ),
+                  ),
+                if (availableServices.length > 1) ...[
+                  const SizedBox(height: 4),
+                  TextButton.icon(
+                    onPressed: () => _openServicePicker(context),
+                    icon: const Icon(Icons.add, size: 18),
+                    label: const Text('Agregar otro servicio'),
+                    style: TextButton.styleFrom(
+                      foregroundColor: primary,
+                      padding: EdgeInsets.zero,
+                      alignment: Alignment.centerLeft,
+                    ),
+                  ),
+                ],
+                if (hasCart) ...[
+                  const Divider(height: 24),
+                  Row(
+                    children: [
+                      const Text(
+                        'Total',
+                        style: TextStyle(
+                          fontSize: 14,
+                          fontWeight: FontWeight.w700,
+                          color: AppColors.textPrimary,
+                        ),
+                      ),
+                      const Spacer(),
+                      Text(
+                        '\$${cubit.totalPrice.toStringAsFixed(2)}',
+                        style: TextStyle(
+                          fontSize: 18,
+                          fontWeight: FontWeight.w800,
+                          color: primary,
+                        ),
+                      ),
+                    ],
+                  ),
+                ],
+              ],
+            ),
+          ).animate().fadeIn(duration: 300.ms, delay: 80.ms),
+
+          const SizedBox(height: 16),
+
+          // Resource / Date / Time summary
           Container(
             width: double.infinity,
             padding: const EdgeInsets.all(20),
@@ -978,14 +1202,6 @@ class _Step3Confirm extends StatelessWidget {
             ),
             child: Column(
               children: [
-                if (selectedService != null) ...[
-                  _SummaryRow(
-                    icon: Icons.miscellaneous_services_rounded,
-                    label: 'Servicio',
-                    value: '${selectedService!.name} - \$${selectedService!.price.toStringAsFixed(2)}',
-                  ),
-                  const Divider(height: 24),
-                ],
                 if (selectedResource != null) ...[
                   _SummaryRow(
                     icon: Icons.badge_outlined,
@@ -1040,6 +1256,8 @@ class _Step3Confirm extends StatelessWidget {
           ).animate().fadeIn(duration: 400.ms, delay: 300.ms),
         ],
       ),
+    );
+      },
     );
   }
 }
