@@ -4,18 +4,94 @@ namespace App\Domain\Tenant;
 
 class BusinessTypeTemplates
 {
+    /**
+     * Resource custom fields per business type. Surfaces both basic
+     * input fields (placa/marca/etc.) and the segmentation field that
+     * drives variant auto-suggestion when the customer books a service.
+     *
+     * Field shape:
+     *   - key:        snake_case identifier; stored under `resource.data[key]`
+     *   - label:      Spanish UI label
+     *   - type:       'text' | 'textarea' | 'number' | 'select'
+     *   - required:   bool
+     *   - options:    string[] (only for `select`) — human labels
+     *   - capitalize: 'uppercase' | 'capitalize' | 'lowercase' (optional)
+     *   - affects_variant: bool — if true, the value of this field is
+     *                      matched against `variant_map` to pre-select
+     *                      a service variant for the customer
+     *   - variant_map: { string => string[] } — value → keywords searched
+     *                  inside service_variants.label
+     */
     public static function getCustomFields(string $type): array
     {
         return match ($type) {
             'car_wash' => [
-                ['key' => 'plate', 'label' => 'Placa', 'type' => 'text', 'required' => true, 'options' => null],
-                ['key' => 'brand', 'label' => 'Marca', 'type' => 'text', 'required' => false, 'options' => null],
-                ['key' => 'model', 'label' => 'Modelo', 'type' => 'text', 'required' => false, 'options' => null],
-                ['key' => 'color', 'label' => 'Color', 'type' => 'text', 'required' => false, 'options' => null],
+                ['key' => 'plate', 'label' => 'Placa', 'type' => 'text', 'required' => true, 'options' => null, 'capitalize' => 'uppercase'],
+                ['key' => 'brand', 'label' => 'Marca', 'type' => 'text', 'required' => false, 'options' => null, 'capitalize' => 'capitalize'],
+                ['key' => 'model', 'label' => 'Modelo', 'type' => 'text', 'required' => false, 'options' => null, 'capitalize' => 'capitalize'],
+                ['key' => 'color', 'label' => 'Color', 'type' => 'text', 'required' => false, 'options' => null, 'capitalize' => 'capitalize'],
+                [
+                    'key' => 'vehicle_type',
+                    'label' => 'Tipo de vehículo',
+                    'type' => 'select',
+                    'required' => true,
+                    'options' => ['Sedán', 'Hatchback', 'SUV', 'Camioneta', 'Camión / Van'],
+                    'affects_variant' => true,
+                    'variant_map' => [
+                        'Sedán'         => ['pequeño', 'small', 'sedan'],
+                        'Hatchback'     => ['pequeño', 'small', 'hatchback'],
+                        'SUV'           => ['mediano', 'medium', 'suv'],
+                        'Camioneta'     => ['camioneta', 'grande', 'large'],
+                        'Camión / Van'  => ['grande', 'extra', 'large', 'camion', 'van'],
+                    ],
+                ],
+            ],
+            'barbershop' => [
+                [
+                    'key' => 'segment',
+                    'label' => 'Segmento',
+                    'type' => 'select',
+                    'required' => false,
+                    'options' => ['Niño', 'Adulto', 'Adulto mayor'],
+                    'affects_variant' => true,
+                    'variant_map' => [
+                        'Niño'         => ['niño', 'kids', 'infantil'],
+                        'Adulto'       => ['adulto', 'adult'],
+                        'Adulto mayor' => ['adulto mayor', 'senior', 'mayor'],
+                    ],
+                ],
+            ],
+            'spa' => [
+                [
+                    'key' => 'gender',
+                    'label' => 'Género',
+                    'type' => 'select',
+                    'required' => false,
+                    'options' => ['Mujer', 'Hombre', 'Unisex'],
+                    'affects_variant' => true,
+                    'variant_map' => [
+                        'Mujer'   => ['mujer', 'femenino', 'women'],
+                        'Hombre'  => ['hombre', 'masculino', 'men'],
+                        'Unisex'  => ['unisex', 'general'],
+                    ],
+                ],
             ],
             'medical' => [
                 ['key' => 'allergies', 'label' => 'Alergias', 'type' => 'textarea', 'required' => false, 'options' => null],
                 ['key' => 'blood_type', 'label' => 'Tipo de sangre', 'type' => 'text', 'required' => false, 'options' => null],
+                [
+                    'key' => 'patient_segment',
+                    'label' => 'Segmento paciente',
+                    'type' => 'select',
+                    'required' => true,
+                    'options' => ['Pediátrico', 'Adulto', 'Geriátrico'],
+                    'affects_variant' => true,
+                    'variant_map' => [
+                        'Pediátrico' => ['pediátrico', 'niño', 'kids'],
+                        'Adulto'     => ['adulto', 'general'],
+                        'Geriátrico' => ['geriátrico', 'adulto mayor', 'senior'],
+                    ],
+                ],
             ],
             'gym' => [
                 ['key' => 'goal', 'label' => 'Objetivo', 'type' => 'text', 'required' => false, 'options' => null],

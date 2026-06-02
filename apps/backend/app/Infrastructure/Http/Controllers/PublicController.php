@@ -3,6 +3,7 @@
 namespace App\Infrastructure\Http\Controllers;
 
 use App\Application\Services\PlanLimitsService;
+use App\Domain\Reservation\VariantSuggester;
 use App\Infrastructure\Persistence\Models\AvailabilitySlotModel;
 use App\Infrastructure\Persistence\Models\ClientResourceModel;
 use App\Infrastructure\Persistence\Models\PlanModel;
@@ -102,6 +103,54 @@ class PublicController extends Controller
                 'current_page' => $tenants->currentPage(),
                 'last_page' => $tenants->lastPage(),
                 'total' => $tenants->total(),
+            ],
+        ]);
+    }
+
+    /**
+     * Suggests the best variant for a customer's resource on a given
+     * service. Used by the Flutter picker to pre-select an option (e.g.
+     * "Camioneta $55") instead of forcing the customer to guess.
+     */
+    public function suggestVariant(Request $request, string $serviceId): JsonResponse
+    {
+        $request->validate([
+            'resource_id' => 'required|uuid',
+        ]);
+
+        $service = ServiceModel::withoutGlobalScopes()
+            ->with(['variants' => fn ($q) => $q->where('is_active', true)])
+            ->find($serviceId);
+        if (!$service) {
+            return response()->json(['data' => null]);
+        }
+
+        $resource = ClientResourceModel::withoutGlobalScopes()->find($request->resource_id);
+        if (!$resource || $resource->tenant_id !== $service->tenant_id) {
+            return response()->json(['data' => null]);
+        }
+
+        $tenant = TenantModel::find($service->tenant_id);
+        $customFields = $tenant?->custom_fields ?? [];
+        if (!is_array($customFields)) $customFields = (array) $customFields;
+
+        $suggested = app(VariantSuggester::class)->suggest(
+            resource: $resource,
+            variants: $service->variants,
+            customFields: $customFields,
+        );
+
+        if (!$suggested) {
+            return response()->json(['data' => null]);
+        }
+
+        return response()->json([
+            'data' => [
+                'variant_id' => $suggested->id,
+                'label' => $suggested->label,
+                'price' => (float) $suggested->price,
+                'duration_min' => (int) $suggested->duration_min,
+                'reason' => 'Sugerido por tu ' . ($resource->label ?: 'recurso'),
             ],
         ]);
     }

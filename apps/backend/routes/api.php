@@ -33,6 +33,7 @@ Route::prefix('v1/public')->group(function () {
     Route::get('tenants', [PublicController::class, 'listTenants']);
     Route::get('tenants/{slug}', [PublicController::class, 'getTenant']);
     Route::get('tenants/{slug}/available-slots', [PublicController::class, 'getAvailableSlots']);
+    Route::get('services/{id}/suggested-variant', [PublicController::class, 'suggestVariant'])->middleware('auth:sanctum');
     Route::get('tenants/{slug}/my-resources', [PublicController::class, 'myResources'])->middleware('auth:sanctum');
     Route::post('tenants/{slug}/book', [PublicController::class, 'book'])
         ->middleware('throttle:public-book');
