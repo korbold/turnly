@@ -33,6 +33,7 @@ function buildFormFromSettings(settings: TenantSettings | undefined): Partial<Te
     phone: settings.phone,
     slotDuration: settings.slotDuration,
     cancellationHours: settings.cancellationHours,
+    defaultTaxRate: settings.defaultTaxRate,
     socialLinks: settings.socialLinks ?? { instagram: null, facebook: null, whatsapp: null, maps_url: null },
     logoUrl: settings.logoUrl,
     coverUrl: settings.coverUrl,
@@ -126,6 +127,7 @@ export function GeneralTab() {
         ...form,
         slotDuration: form.slotDuration || 30,
         cancellationHours: form.cancellationHours ?? 0,
+        defaultTaxRate: form.defaultTaxRate ?? 15,
       };
       await update.mutateAsync(payload);
       setBaseline(form);
@@ -323,6 +325,27 @@ export function GeneralTab() {
                 />
                 <span className="pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 text-xs text-[var(--fg-muted)]">horas</span>
               </div>
+            </div>
+          </div>
+
+          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+            <div className="space-y-1.5">
+              <Label>IVA por defecto</Label>
+              <div className="relative">
+                <Input
+                  type="number"
+                  min={0}
+                  max={100}
+                  step="0.01"
+                  value={form.defaultTaxRate ?? ''}
+                  onChange={(e) => handleChange('defaultTaxRate', e.target.value === '' ? '' : parseFloat(e.target.value))}
+                  className="pr-10"
+                />
+                <span className="pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 text-xs text-[var(--fg-muted)]">%</span>
+              </div>
+              <p className="text-[11px] text-[var(--fg-muted)]">
+                Se aplica a productos nuevos. Tarifa SRI Ecuador actual: 15%.
+              </p>
             </div>
           </div>
         </CardContent>

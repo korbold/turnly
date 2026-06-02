@@ -57,6 +57,15 @@ class ProductController extends Controller
         $tenantId = app('current_tenant_id');
         $data = $request->validate($this->rules($tenantId));
 
+        // Tax rate falls back to the tenant's configured default when the
+        // caller omits it, so a single business-wide setting drives every
+        // new product without having to retype 15% (or whatever the current
+        // legal rate is) on every form.
+        if (!array_key_exists('tax_rate', $data) || $data['tax_rate'] === null) {
+            $tenant = \App\Infrastructure\Persistence\Models\TenantModel::find($tenantId);
+            $data['tax_rate'] = $tenant?->settings['default_tax_rate'] ?? 15;
+        }
+
         $product = ProductModel::create([
             'tenant_id' => $tenantId,
             ...$data,

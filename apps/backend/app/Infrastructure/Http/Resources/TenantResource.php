@@ -41,6 +41,7 @@ class TenantResource extends JsonResource
             'brand_theme'     => $this->brand_theme,
             'slot_duration'       => $this->settings['slot_duration_minutes'] ?? 30,
             'cancellation_hours'  => $this->settings['cancellation_hours'] ?? 1,
+            'default_tax_rate'    => $this->settings['default_tax_rate'] ?? 15,
         ];
     }
 

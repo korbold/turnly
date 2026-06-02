@@ -22,6 +22,7 @@ import {
   SelectValue,
 } from '@/presentation/components/ui/select';
 import { useCreateProduct, useUpdateProduct } from '@/presentation/hooks/use-products';
+import { useSettings } from '@/presentation/hooks/use-settings';
 import type { Product, ProductType, ProductUnit } from '@/domain/entities/product';
 
 const TYPES: { value: ProductType; label: string; hint: string }[] = [
@@ -48,6 +49,8 @@ export function ProductModal({ open, onClose, product }: Props) {
   const isEdit = Boolean(product);
   const create = useCreateProduct();
   const update = useUpdateProduct();
+  const { data: tenant } = useSettings();
+  const tenantDefaultTax = tenant?.defaultTaxRate ?? 15;
 
   const [name, setName] = useState('');
   const [sku, setSku] = useState('');
@@ -80,11 +83,11 @@ export function ProductModal({ open, onClose, product }: Props) {
       setUnit('u');
       setCost('0');
       setPrice('0');
-      setTaxRate('15');
+      setTaxRate(String(tenantDefaultTax));
       setStockMin('0');
       setIsActive(true);
     }
-  }, [open, product]);
+  }, [open, product, tenantDefaultTax]);
 
   function handleSave() {
     if (!name.trim()) return;

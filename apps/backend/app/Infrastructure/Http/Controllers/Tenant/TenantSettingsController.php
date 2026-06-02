@@ -36,6 +36,7 @@ class TenantSettingsController extends Controller
             'cover_url' => 'nullable|string|max:500',
             'slot_duration' => 'sometimes|integer|min:5|max:480',
             'cancellation_hours' => 'sometimes|integer|min:0|max:72',
+            'default_tax_rate' => 'sometimes|numeric|min:0|max:100',
         ]);
 
         $tenant = TenantModel::findOrFail(app('current_tenant_id'));
@@ -61,6 +62,9 @@ class TenantSettingsController extends Controller
         }
         if ($request->has('cancellation_hours')) {
             $settings['cancellation_hours'] = (int) $request->cancellation_hours;
+        }
+        if ($request->has('default_tax_rate')) {
+            $settings['default_tax_rate'] = (float) $request->default_tax_rate;
         }
         if ($request->has('settings')) {
             $settings = array_merge($settings, $request->settings);

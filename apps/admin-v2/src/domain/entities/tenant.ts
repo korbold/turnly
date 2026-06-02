@@ -34,6 +34,7 @@ export interface TenantSettings {
   themeColor: string | null;
   slotDuration: number;
   cancellationHours: number;
+  defaultTaxRate: number;
   socialLinks: {
     instagram: string | null;
     facebook: string | null;
