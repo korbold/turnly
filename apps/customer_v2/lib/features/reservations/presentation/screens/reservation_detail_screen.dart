@@ -12,6 +12,7 @@ import '../../../../shared/widgets/shimmer_loader.dart';
 import '../../domain/entities/reservation.dart';
 import '../../domain/enums/reservation_status.dart';
 import '../../domain/repositories/reservation_repository.dart';
+import '../widgets/reservation_items_section.dart';
 
 class ReservationDetailScreen extends StatefulWidget {
   final String reservationId;
@@ -430,6 +431,14 @@ class _ReservationDetailContent extends StatelessWidget {
             ).animate().fadeIn(duration: 400.ms, delay: 200.ms),
 
           const SizedBox(height: 16),
+
+          // Items panel (Phase 3.5): listed + editable while pending/confirmed.
+          ReservationItemsSection(
+            reservationId: reservation.id,
+            status: reservation.status,
+            scheduledAt: reservation.scheduledAt,
+            tenantSlug: reservation.tenantSlug,
+          ),
 
           // Price summary
           if (reservation.servicePrice != null) ...[

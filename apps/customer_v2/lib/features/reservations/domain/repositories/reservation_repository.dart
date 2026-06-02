@@ -4,6 +4,7 @@ import '../../../../core/error/failures.dart';
 import '../entities/reservation.dart';
 import '../entities/available_slot.dart';
 import '../entities/booking_item.dart';
+import '../entities/reservation_item.dart';
 
 abstract class ReservationRepository {
   Future<Either<Failure, List<Reservation>>> getAll({String? status});
@@ -35,4 +36,14 @@ abstract class ReservationRepository {
   });
 
   Future<Either<Failure, Unit>> cancel(String id, {String? reason});
+
+  // Phase 3.5 — customer edits items on a pending/confirmed reservation.
+  Future<Either<Failure, List<ReservationItem>>> listItems(String reservationId);
+  Future<Either<Failure, ReservationItem>> addItem(
+    String reservationId, {
+    required String itemType,
+    required String refId,
+    int qty = 1,
+  });
+  Future<Either<Failure, Unit>> removeItem(String itemId);
 }

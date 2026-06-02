@@ -6,6 +6,7 @@ import '../../../../core/network/api_client.dart';
 import '../../domain/entities/reservation.dart';
 import '../../domain/entities/available_slot.dart';
 import '../../domain/entities/booking_item.dart';
+import '../../domain/entities/reservation_item.dart';
 import '../../domain/repositories/reservation_repository.dart';
 import '../dtos/reservation_dto.dart';
 
@@ -167,6 +168,68 @@ class ReservationRepositoryImpl implements ReservationRepository {
       if (e.response?.statusCode == 401) return const Left(AuthFailure());
       return Left(ServerFailure(
         e.response?.data?['error']?['message'] ?? 'Error al obtener horarios',
+      ));
+    } catch (e) {
+      return Left(ServerFailure(e.toString()));
+    }
+  }
+
+  @override
+  Future<Either<Failure, List<ReservationItem>>> listItems(String reservationId) async {
+    try {
+      final response = await _dio.get('/client/reservations/$reservationId/items');
+      final data = response.data['data'] as List<dynamic>;
+      return Right(
+        data.map((e) => ReservationItem.fromJson(e as Map<String, dynamic>)).toList(),
+      );
+    } on DioException catch (e) {
+      if (e.response?.statusCode == 401) return const Left(AuthFailure());
+      return Left(ServerFailure(
+        e.response?.data?['error']?['message'] ?? 'Error al obtener items',
+      ));
+    } catch (e) {
+      return Left(ServerFailure(e.toString()));
+    }
+  }
+
+  @override
+  Future<Either<Failure, ReservationItem>> addItem(
+    String reservationId, {
+    required String itemType,
+    required String refId,
+    int qty = 1,
+  }) async {
+    try {
+      final response = await _dio.post(
+        '/client/reservations/$reservationId/items',
+        data: {
+          'item_type': itemType,
+          'ref_id': refId,
+          'qty': qty,
+        },
+      );
+      return Right(
+        ReservationItem.fromJson(response.data['data'] as Map<String, dynamic>),
+      );
+    } on DioException catch (e) {
+      if (e.response?.statusCode == 401) return const Left(AuthFailure());
+      return Left(ServerFailure(
+        e.response?.data?['error']?['message'] ?? 'No se pudo agregar',
+      ));
+    } catch (e) {
+      return Left(ServerFailure(e.toString()));
+    }
+  }
+
+  @override
+  Future<Either<Failure, Unit>> removeItem(String itemId) async {
+    try {
+      await _dio.delete('/client/reservation-items/$itemId');
+      return const Right(unit);
+    } on DioException catch (e) {
+      if (e.response?.statusCode == 401) return const Left(AuthFailure());
+      return Left(ServerFailure(
+        e.response?.data?['error']?['message'] ?? 'No se pudo eliminar',
       ));
     } catch (e) {
       return Left(ServerFailure(e.toString()));

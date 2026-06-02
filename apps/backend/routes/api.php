@@ -9,6 +9,7 @@ use App\Infrastructure\Http\Controllers\Tenant\TenantImageController;
 use App\Infrastructure\Http\Controllers\Reservation\ReservationController;
 use App\Infrastructure\Http\Controllers\Reservation\ReservationCheckInController;
 use App\Infrastructure\Http\Controllers\Reservation\ReservationItemController;
+use App\Infrastructure\Http\Controllers\Reservation\ClientReservationItemController;
 use App\Infrastructure\Http\Controllers\Billing\UserBillingProfileController;
 use App\Infrastructure\Http\Controllers\ServiceLog\ServiceLogController;
 use App\Infrastructure\Http\Controllers\ClientResource\ClientResourceController;
@@ -79,6 +80,11 @@ Route::prefix('v1')->group(function () {
         Route::get('client/reservations', [ReservationController::class, 'myReservations']);
         Route::get('client/reservations/{id}', [ReservationController::class, 'myReservationShow']);
         Route::patch('client/reservations/{id}/cancel', [ReservationController::class, 'myReservationCancel']);
+
+        // Phase 3.5 — customer can edit pending/confirmed reservations.
+        Route::get('client/reservations/{id}/items', [ClientReservationItemController::class, 'index']);
+        Route::post('client/reservations/{id}/items', [ClientReservationItemController::class, 'store']);
+        Route::delete('client/reservation-items/{id}', [ClientReservationItemController::class, 'destroy']);
 
         // Device tokens (tenant middleware tolerates no-slug for client app)
         Route::middleware('tenant')->group(function () {
