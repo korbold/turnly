@@ -4,6 +4,7 @@ import 'package:dio/dio.dart';
 import 'package:fpdart/fpdart.dart';
 import 'package:firebase_auth/firebase_auth.dart' hide User;
 import 'package:google_sign_in/google_sign_in.dart';
+import 'package:flutter_dotenv/flutter_dotenv.dart';
 import '../../../../core/error/failures.dart';
 import '../../../../core/network/api_client.dart';
 import '../../../../core/storage/secure_storage.dart';
@@ -121,8 +122,10 @@ class AuthRepositoryImpl implements AuthRepository {
   @override
   Future<Either<Failure, ({User user, String token})>> loginWithGoogle() async {
     try {
-      // 1. Get a Google credential via google_sign_in.
-      final googleSignIn = GoogleSignIn(scopes: ['email', 'profile']);
+      final googleSignIn = GoogleSignIn(
+        scopes: ['email', 'profile'],
+        serverClientId: dotenv.env['GOOGLE_WEB_CLIENT_ID'],
+      );
       final account = await googleSignIn.signIn();
       if (account == null) {
         return const Left(ServerFailure('Inicio de sesión cancelado'));

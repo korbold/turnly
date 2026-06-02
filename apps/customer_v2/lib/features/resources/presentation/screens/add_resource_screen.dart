@@ -251,8 +251,28 @@ class _AddResourceViewState extends State<_AddResourceView> {
                   final key = field['key'] as String? ?? '';
                   final fieldLabel = field['label'] as String? ?? key;
                   final isRequired = field['required'] as bool? ?? false;
-                  final capitalize = field['capitalize'] as String?;
+                  final type = field['type'] as String? ?? 'text';
 
+                  // Backend ships size/type/segment as `select` fields
+                  // (Sedán/Camioneta/Niño/etc.). Render a dropdown so
+                  // the customer's choice lands in resource.data exactly
+                  // as the variant_map keys expect.
+                  if (type == 'select') {
+                    final options = ((field['options'] as List?) ?? const [])
+                        .map((o) => o.toString())
+                        .toList();
+                    return Padding(
+                      padding: const EdgeInsets.only(bottom: 16),
+                      child: _DynamicSelectField(
+                        label: '$fieldLabel${isRequired ? ' *' : ''}',
+                        options: options,
+                        controller: _customFieldControllers[key]!,
+                        required: isRequired,
+                      ),
+                    ).animate().fadeIn(duration: 400.ms, delay: (150 + i * 50).ms);
+                  }
+
+                  final capitalize = field['capitalize'] as String?;
                   TextCapitalization textCap = TextCapitalization.none;
                   List<TextInputFormatter>? formatters;
 
@@ -273,6 +293,10 @@ class _AddResourceViewState extends State<_AddResourceView> {
                       controller: _customFieldControllers[key],
                       textCapitalization: textCap,
                       inputFormatters: formatters,
+                      keyboardType: type == 'number'
+                          ? TextInputType.number
+                          : TextInputType.text,
+                      maxLines: type == 'textarea' ? 3 : 1,
                       validator: isRequired
                           ? (value) {
                               if (value == null || value.trim().isEmpty) {
@@ -335,6 +359,93 @@ class _LowerCaseFormatter extends TextInputFormatter {
     return newValue.copyWith(
       text: newValue.text.toLowerCase(),
       selection: newValue.selection,
+    );
+  }
+}
+
+/// Dropdown bound to a TextEditingController so the surrounding
+/// _save() code can read the picked value the same way it reads
+/// text-based fields. Stays inside the parent FormState by using
+/// FormField for validation.
+class _DynamicSelectField extends StatelessWidget {
+  final String label;
+  final List<String> options;
+  final TextEditingController controller;
+  final bool required;
+
+  const _DynamicSelectField({
+    required this.label,
+    required this.options,
+    required this.controller,
+    this.required = false,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return FormField<String>(
+      initialValue: controller.text.isEmpty ? null : controller.text,
+      validator: (value) {
+        if (required && (value == null || value.isEmpty)) {
+          return '$label es requerido';
+        }
+        return null;
+      },
+      builder: (state) {
+        return Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Padding(
+              padding: const EdgeInsets.only(bottom: 6),
+              child: Text(
+                label,
+                style: const TextStyle(
+                  fontSize: 13,
+                  fontWeight: FontWeight.w600,
+                  color: AppColors.textPrimary,
+                ),
+              ),
+            ),
+            Container(
+              decoration: BoxDecoration(
+                color: AppColors.surface,
+                borderRadius: BorderRadius.circular(10),
+                border: Border.all(
+                  color: state.hasError ? AppColors.error : AppColors.border,
+                ),
+              ),
+              padding: const EdgeInsets.symmetric(horizontal: 12),
+              child: DropdownButtonHideUnderline(
+                child: DropdownButton<String>(
+                  isExpanded: true,
+                  value: state.value,
+                  hint: Text(
+                    'Seleccionar',
+                    style: TextStyle(
+                      fontSize: 14,
+                      color: AppColors.textTertiary,
+                    ),
+                  ),
+                  items: options
+                      .map((o) => DropdownMenuItem(value: o, child: Text(o)))
+                      .toList(),
+                  onChanged: (v) {
+                    state.didChange(v);
+                    controller.text = v ?? '';
+                  },
+                ),
+              ),
+            ),
+            if (state.hasError)
+              Padding(
+                padding: const EdgeInsets.only(top: 4, left: 4),
+                child: Text(
+                  state.errorText!,
+                  style: const TextStyle(fontSize: 11, color: AppColors.error),
+                ),
+              ),
+          ],
+        );
+      },
     );
   }
 }

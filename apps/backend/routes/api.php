@@ -10,6 +10,9 @@ use App\Infrastructure\Http\Controllers\Reservation\ReservationController;
 use App\Infrastructure\Http\Controllers\Reservation\ReservationCheckInController;
 use App\Infrastructure\Http\Controllers\Reservation\ReservationItemController;
 use App\Infrastructure\Http\Controllers\Reservation\ClientReservationItemController;
+use App\Infrastructure\Http\Controllers\Client\ClientSearchController;
+use App\Infrastructure\Http\Controllers\Auth\ClaimController;
+use App\Infrastructure\Http\Controllers\ClientResource\ClientResourceLookupController;
 use App\Infrastructure\Http\Controllers\Billing\UserBillingProfileController;
 use App\Infrastructure\Http\Controllers\ServiceLog\ServiceLogController;
 use App\Infrastructure\Http\Controllers\ClientResource\ClientResourceController;
@@ -42,6 +45,11 @@ Route::prefix('v1/public')->group(function () {
 Route::prefix('v1')->group(function () {
 
     // Public auth
+    // Account claim flow (no SMS — magic link + QR/PIN only).
+    Route::post('auth/lookup', [ClaimController::class, 'lookup'])->middleware('throttle:30,1');
+    Route::post('auth/claim/start', [ClaimController::class, 'start'])->middleware('throttle:10,60');
+    Route::post('auth/claim/verify', [ClaimController::class, 'verify'])->middleware('throttle:10,60');
+
     Route::post('auth/register', [AuthController::class, 'register'])
         ->middleware('throttle:5,60');
     Route::post('auth/login', [AuthController::class, 'login'])
@@ -193,6 +201,16 @@ Route::prefix('v1')->group(function () {
             Route::get('users/{id}', [UserController::class, 'show']);
             Route::patch('users/{id}/role', [UserController::class, 'updateRole']);
             Route::patch('users/{id}/password', [UserController::class, 'resetPassword']);
+            Route::patch('clients/{id}', [UserController::class, 'updateClient']);
+
+            // Client search (dedup walk-in) + claim invite.
+            Route::get('clients/search', [ClientSearchController::class, 'search']);
+            Route::post('clients/{id}/link-to-tenant', [ClientSearchController::class, 'linkToTenant']);
+            Route::post('clients/{id}/invite-app', [ClaimController::class, 'inviteToApp']);
+
+            // Dedup placa lookup + transfer.
+            Route::get('client-resources/lookup', [ClientResourceLookupController::class, 'lookup']);
+            Route::post('client-resources/{id}/transfer', [ClientResourceLookupController::class, 'transfer']);
 
             // Reports
             Route::get('reports/daily', [ReportController::class, 'daily']);

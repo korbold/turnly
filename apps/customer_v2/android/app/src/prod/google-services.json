@@ -12,7 +12,36 @@
           "package_name": "com.turnly.customer"
         }
       },
-      "oauth_client": [],
+      "oauth_client": [
+        {
+          "client_id": "703054651952-2dovnjofkfq4hik06r5mrpoaiknt62o9.apps.googleusercontent.com",
+          "client_type": 1,
+          "android_info": {
+            "package_name": "com.turnly.customer",
+            "certificate_hash": "2ce82a74eedbd41a80d49ee3869281f4373584d0"
+          }
+        },
+        {
+          "client_id": "703054651952-fa0p1v6fveovu5as4fje10af4c0b03sb.apps.googleusercontent.com",
+          "client_type": 1,
+          "android_info": {
+            "package_name": "com.turnly.customer",
+            "certificate_hash": "f6ba9b214ae2d588e7d373065718aa91e104e0c2"
+          }
+        },
+        {
+          "client_id": "703054651952-hhq6ihkolnebmpogukelpehc4bo3g1mu.apps.googleusercontent.com",
+          "client_type": 1,
+          "android_info": {
+            "package_name": "com.turnly.customer",
+            "certificate_hash": "b81ae001da169605c249ffe3911fed8d1c23e5a3"
+          }
+        },
+        {
+          "client_id": "703054651952-2ef34lgurrgt8fkv8emi4fdtlckn6lv8.apps.googleusercontent.com",
+          "client_type": 3
+        }
+      ],
       "api_key": [
         {
           "current_key": "AIzaSyAdzMsVn4cXaQmIYDQnXNzUAr40t-TcUgQ"
@@ -20,7 +49,19 @@
       ],
       "services": {
         "appinvite_service": {
-          "other_platform_oauth_client": []
+          "other_platform_oauth_client": [
+            {
+              "client_id": "703054651952-2ef34lgurrgt8fkv8emi4fdtlckn6lv8.apps.googleusercontent.com",
+              "client_type": 3
+            },
+            {
+              "client_id": "703054651952-d3bdgit0fa30rmmfoc0l8678e369qa64.apps.googleusercontent.com",
+              "client_type": 2,
+              "ios_info": {
+                "bundle_id": "com.turnly.customer"
+              }
+            }
+          ]
         }
       }
     }
