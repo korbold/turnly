@@ -10,6 +10,8 @@ use App\Infrastructure\Http\Controllers\Reservation\ReservationController;
 use App\Infrastructure\Http\Controllers\ServiceLog\ServiceLogController;
 use App\Infrastructure\Http\Controllers\ClientResource\ClientResourceController;
 use App\Infrastructure\Http\Controllers\Service\ServiceController;
+use App\Infrastructure\Http\Controllers\Inventory\ProductController;
+use App\Infrastructure\Http\Controllers\Inventory\StockMovementController;
 use App\Infrastructure\Http\Controllers\User\UserController;
 use App\Infrastructure\Http\Controllers\Report\ReportController;
 use App\Infrastructure\Http\Controllers\SuperAdmin\SuperAdminController;
@@ -134,6 +136,15 @@ Route::prefix('v1')->group(function () {
             Route::post('services', [ServiceController::class, 'store']);
             Route::put('services/{id}', [ServiceController::class, 'update']);
             Route::delete('services/{id}', [ServiceController::class, 'destroy']);
+
+            // Inventory: products + kardex + manual movements
+            Route::get('products', [ProductController::class, 'index']);
+            Route::post('products', [ProductController::class, 'store']);
+            Route::get('products/{id}', [ProductController::class, 'show']);
+            Route::patch('products/{id}', [ProductController::class, 'update']);
+            Route::delete('products/{id}', [ProductController::class, 'destroy']);
+            Route::get('products/{id}/movements', [StockMovementController::class, 'index']);
+            Route::post('stock-movements', [StockMovementController::class, 'store']);
 
             // Users
             Route::get('users', [UserController::class, 'index']);

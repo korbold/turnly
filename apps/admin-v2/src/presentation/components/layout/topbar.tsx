@@ -20,6 +20,7 @@ const PAGE_TITLES: Record<string, string> = {
   '/service-logs': 'Registro Diario',
   '/clients': 'Clientes',
   '/services': 'Servicios',
+  '/inventory': 'Inventario',
   '/team': 'Equipo',
   '/reports': 'Reportes',
   '/plan': 'Mi Plan',
