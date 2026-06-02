@@ -121,4 +121,53 @@ final class ConsumptionEngine
             }
         });
     }
+
+    /**
+     * Park BOM consumables in `reserved` ahead of the actual service.
+     * Iterates over every service_variant item on the reservation so
+     * a multi-line reservation reserves the union of their BOMs.
+     */
+    public function reserveForReservation(ReservationModel $reservation): void
+    {
+        $reservation->loadMissing('items');
+
+        foreach ($reservation->items as $item) {
+            if ($item->item_type !== 'service_variant') continue;
+            $this->reserveVariant($item->ref_id);
+        }
+    }
+
+    /**
+     * Mirror of reserveForReservation: drop the hold on cancellation
+     * or when an item is removed from the reservation pre-completion.
+     */
+    public function releaseForReservation(ReservationModel $reservation): void
+    {
+        $reservation->loadMissing('items');
+
+        foreach ($reservation->items as $item) {
+            if ($item->item_type !== 'service_variant') continue;
+            $this->releaseVariant($item->ref_id);
+        }
+    }
+
+    public function reserveVariant(string $variantId): void
+    {
+        $variant = ServiceVariantModel::with('consumption.product')->find($variantId);
+        if (!$variant) return;
+        foreach ($variant->consumption as $line) {
+            if (!$line->product) continue;
+            $this->ledger->reserve($line->product, (float) $line->qty);
+        }
+    }
+
+    public function releaseVariant(string $variantId): void
+    {
+        $variant = ServiceVariantModel::with('consumption.product')->find($variantId);
+        if (!$variant) return;
+        foreach ($variant->consumption as $line) {
+            if (!$line->product) continue;
+            $this->ledger->release($line->product, (float) $line->qty);
+        }
+    }
 }

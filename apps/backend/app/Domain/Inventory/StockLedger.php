@@ -145,4 +145,41 @@ final class StockLedger
             throw new InvalidArgumentException("{$label} must be positive");
         }
     }
+
+    /**
+     * Hold stock for a pending consumption without removing it from
+     * on_hand. Used when a reservation is checked in: the BOM amount
+     * moves into `reserved` so concurrent bookings can't claim the
+     * same units, but the ledger only records actual `out` movements
+     * when the service is completed.
+     */
+    public function reserve(ProductModel $product, float $qty): void
+    {
+        $this->assertPositive($qty, 'reserve qty');
+        DB::transaction(function () use ($product, $qty) {
+            $level = ProductStockLevelModel::query()
+                ->lockForUpdate()
+                ->firstOrCreate(['product_id' => $product->id], ['on_hand' => 0, 'reserved' => 0, 'avg_cost' => 0]);
+            $level->reserved = (float) $level->reserved + $qty;
+            $level->updated_at = now();
+            $level->save();
+        });
+    }
+
+    /**
+     * Mirror of reserve(): drop the hold when a reservation is
+     * cancelled or its items are removed before completion.
+     */
+    public function release(ProductModel $product, float $qty): void
+    {
+        $this->assertPositive($qty, 'release qty');
+        DB::transaction(function () use ($product, $qty) {
+            $level = ProductStockLevelModel::query()
+                ->lockForUpdate()
+                ->firstOrCreate(['product_id' => $product->id], ['on_hand' => 0, 'reserved' => 0, 'avg_cost' => 0]);
+            $level->reserved = max(0.0, (float) $level->reserved - $qty);
+            $level->updated_at = now();
+            $level->save();
+        });
+    }
 }

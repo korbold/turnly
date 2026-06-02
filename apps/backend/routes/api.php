@@ -7,6 +7,9 @@ use App\Infrastructure\Http\Controllers\Auth\OnboardingController;
 use App\Infrastructure\Http\Controllers\Tenant\TenantSettingsController;
 use App\Infrastructure\Http\Controllers\Tenant\TenantImageController;
 use App\Infrastructure\Http\Controllers\Reservation\ReservationController;
+use App\Infrastructure\Http\Controllers\Reservation\ReservationCheckInController;
+use App\Infrastructure\Http\Controllers\Reservation\ReservationItemController;
+use App\Infrastructure\Http\Controllers\Billing\UserBillingProfileController;
 use App\Infrastructure\Http\Controllers\ServiceLog\ServiceLogController;
 use App\Infrastructure\Http\Controllers\ClientResource\ClientResourceController;
 use App\Infrastructure\Http\Controllers\Service\ServiceController;
@@ -83,6 +86,13 @@ Route::prefix('v1')->group(function () {
             Route::delete('device-tokens/{token}', [\App\Infrastructure\Http\Controllers\Notification\DeviceTokenController::class, 'destroy']);
         });
 
+        // Billing profiles (customer-facing, not tenant scoped).
+        Route::get('billing-profiles', [UserBillingProfileController::class, 'index']);
+        Route::post('billing-profiles', [UserBillingProfileController::class, 'store']);
+        Route::patch('billing-profiles/{id}', [UserBillingProfileController::class, 'update']);
+        Route::patch('billing-profiles/{id}/default', [UserBillingProfileController::class, 'setDefault']);
+        Route::delete('billing-profiles/{id}', [UserBillingProfileController::class, 'destroy']);
+
         // Notifications inbox
         Route::get('notifications', [\App\Infrastructure\Http\Controllers\Notification\NotificationController::class, 'index']);
         Route::post('notifications/read-all', [\App\Infrastructure\Http\Controllers\Notification\NotificationController::class, 'markAllAsRead']);
@@ -115,6 +125,17 @@ Route::prefix('v1')->group(function () {
             Route::patch('reservations/{id}/complete', [ReservationController::class, 'complete']);
             Route::patch('reservations/{id}/cancel', [ReservationController::class, 'cancel']);
             Route::patch('reservations/{id}/no_show', [ReservationController::class, 'noShow']);
+
+            // Check-in flow (Phase 3): freeze billing data + reserve BOM consumibles.
+            Route::post('reservations/{id}/check-in', [ReservationCheckInController::class, 'checkIn']);
+            Route::patch('reservations/{id}/billing', [ReservationCheckInController::class, 'updateBilling']);
+
+            // Polymorphic line items + audit log.
+            Route::get('reservations/{id}/items', [ReservationItemController::class, 'index']);
+            Route::post('reservations/{id}/items', [ReservationItemController::class, 'store']);
+            Route::delete('reservation-items/{id}', [ReservationItemController::class, 'destroy']);
+            Route::patch('reservation-items/{id}/price', [ReservationItemController::class, 'overridePrice']);
+            Route::get('reservations/{id}/changes', [ReservationItemController::class, 'changes']);
 
             // Service logs
             Route::get('service-logs/summary', [ServiceLogController::class, 'summary']);
