@@ -12,6 +12,11 @@ class CreateReservationCubit extends Cubit<CreateReservationState> {
   /// service card; "+ Agregar servicio" appends more entries.
   final List<BookingItem> _cart = [];
 
+  /// Bumped on every cart mutation so two `Initial` states aren't equal
+  /// under Equatable; otherwise `emit` would no-op and BlocBuilder
+  /// wouldn't rebuild the summary panel.
+  int _cartVersion = 0;
+
   CreateReservationCubit(this._repository)
       : super(const CreateReservationInitial());
 
@@ -21,11 +26,13 @@ class CreateReservationCubit extends Cubit<CreateReservationState> {
   double get totalPrice =>
       _cart.fold(0, (acc, it) => acc + it.lineTotal);
 
+  void _emitCart() => emit(CreateReservationInitial(version: ++_cartVersion));
+
   void seedCart(List<BookingItem> items) {
     _cart
       ..clear()
       ..addAll(items);
-    emit(const CreateReservationInitial());
+    _emitCart();
   }
 
   void addToCart(BookingItem item) {
@@ -38,13 +45,13 @@ class CreateReservationCubit extends Cubit<CreateReservationState> {
     } else {
       _cart.add(item);
     }
-    emit(const CreateReservationInitial());
+    _emitCart();
   }
 
   void removeFromCart(int index) {
     if (index < 0 || index >= _cart.length) return;
     _cart.removeAt(index);
-    emit(const CreateReservationInitial());
+    _emitCart();
   }
 
   Future<void> loadSlots(String date, String serviceId) async {

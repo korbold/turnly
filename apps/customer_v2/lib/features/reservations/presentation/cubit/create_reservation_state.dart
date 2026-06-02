@@ -10,7 +10,15 @@ sealed class CreateReservationState extends Equatable {
 }
 
 class CreateReservationInitial extends CreateReservationState {
-  const CreateReservationInitial();
+  /// Bumped on every cart mutation so the BlocBuilder reliably
+  /// rebuilds even when the high-level state class doesn't change.
+  /// Equatable would otherwise treat two `Initial` instances as equal
+  /// and the cubit's `emit` would no-op.
+  final int version;
+  const CreateReservationInitial({this.version = 0});
+
+  @override
+  List<Object?> get props => [version];
 }
 
 class CreateReservationLoadingSlots extends CreateReservationState {
