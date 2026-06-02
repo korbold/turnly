@@ -8,7 +8,11 @@ import { CreateReservationUseCase } from '@/application/use-cases/reservations/c
 import { TransitionReservationUseCase } from '@/application/use-cases/reservations/transition-reservation.use-case';
 import { CancelReservationUseCase } from '@/application/use-cases/reservations/cancel-reservation.use-case';
 import type { ReservationFilters, ReservationAction } from '@/domain/entities/reservation';
-import type { CreateReservationData } from '@/domain/repositories/reservation.repository';
+import type {
+  CreateReservationData,
+  AddItemInput,
+  CheckInInput,
+} from '@/domain/repositories/reservation.repository';
 
 export function useReservations(filters: ReservationFilters, enabled = true) {
   const repo = useRepository('reservation');
@@ -60,6 +64,93 @@ export function useCancelReservation() {
       new CancelReservationUseCase(repo).execute(id, reason),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['reservations'] });
+    },
+  });
+}
+
+export function useReservation(id: string | null) {
+  const repo = useRepository('reservation');
+  return useQuery({
+    queryKey: ['reservation', id],
+    queryFn: () => repo.getById(id as string),
+    enabled: Boolean(id),
+  });
+}
+
+export function useReservationItems(id: string | null) {
+  const repo = useRepository('reservation');
+  return useQuery({
+    queryKey: ['reservation-items', id],
+    queryFn: () => repo.listItems(id as string),
+    enabled: Boolean(id),
+  });
+}
+
+export function useReservationChanges(id: string | null) {
+  const repo = useRepository('reservation');
+  return useQuery({
+    queryKey: ['reservation-changes', id],
+    queryFn: () => repo.listChanges(id as string),
+    enabled: Boolean(id),
+  });
+}
+
+export function useCheckInReservation(id: string) {
+  const repo = useRepository('reservation');
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (input: CheckInInput) => repo.checkIn(id, input),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ['reservation', id] });
+      qc.invalidateQueries({ queryKey: ['reservations'] });
+    },
+  });
+}
+
+export function useUpdateReservationBilling(id: string) {
+  const repo = useRepository('reservation');
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (input: CheckInInput) => repo.updateBilling(id, input),
+    onSuccess: () => qc.invalidateQueries({ queryKey: ['reservation', id] }),
+  });
+}
+
+export function useAddReservationItem(id: string) {
+  const repo = useRepository('reservation');
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (input: AddItemInput) => repo.addItem(id, input),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ['reservation-items', id] });
+      qc.invalidateQueries({ queryKey: ['reservation-changes', id] });
+      qc.invalidateQueries({ queryKey: ['reservation', id] });
+    },
+  });
+}
+
+export function useRemoveReservationItem(id: string) {
+  const repo = useRepository('reservation');
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: ({ itemId, reason }: { itemId: string; reason?: string }) =>
+      repo.removeItem(itemId, reason),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ['reservation-items', id] });
+      qc.invalidateQueries({ queryKey: ['reservation-changes', id] });
+    },
+  });
+}
+
+export function useOverrideReservationItemPrice(id: string) {
+  const repo = useRepository('reservation');
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: ({ itemId, unitPrice, reason }: { itemId: string; unitPrice: number; reason: string }) =>
+      repo.overrideItemPrice(itemId, unitPrice, reason),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ['reservation-items', id] });
+      qc.invalidateQueries({ queryKey: ['reservation-changes', id] });
     },
   });
 }

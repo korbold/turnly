@@ -29,6 +29,7 @@ import { Card, CardContent } from '@/presentation/components/ui/card';
 import { Badge } from '@/presentation/components/ui/badge';
 import { cn } from '@/shared/utils/cn';
 import { useServices } from '@/presentation/hooks/use-services';
+import { useServiceVariants } from '@/presentation/hooks/use-service-variants';
 import {
   useAvailableSlots,
   useCreateReservation,
@@ -52,6 +53,7 @@ const STEP_TITLES = [
 export function CreateModal({ open, onClose }: CreateModalProps) {
   const [step, setStep] = useState(0);
   const [selectedService, setSelectedService] = useState<Service | null>(null);
+  const [selectedVariantId, setSelectedVariantId] = useState<string | null>(null);
   const [selectedDate, setSelectedDate] = useState<Date | undefined>(new Date());
   const [selectedSlot, setSelectedSlot] = useState<string | null>(null);
   const [selectedClientResourceId, setSelectedClientResourceId] = useState<
@@ -63,6 +65,7 @@ export function CreateModal({ open, onClose }: CreateModalProps) {
 
   // Data hooks
   const { data: servicesData, isLoading: servicesLoading } = useServices();
+  const { data: variants, isLoading: variantsLoading } = useServiceVariants(selectedService?.id ?? null);
   const dateStr = selectedDate ? format(selectedDate, 'yyyy-MM-dd') : undefined;
   const { data: slotsData, isLoading: slotsLoading } = useAvailableSlots(
     dateStr,
@@ -94,6 +97,7 @@ export function CreateModal({ open, onClose }: CreateModalProps) {
   function handleClose() {
     setStep(0);
     setSelectedService(null);
+    setSelectedVariantId(null);
     setSelectedDate(new Date());
     setSelectedSlot(null);
     setSelectedClientResourceId(null);
@@ -110,6 +114,7 @@ export function CreateModal({ open, onClose }: CreateModalProps) {
       {
         clientResourceId: selectedClientResourceId,
         serviceId: selectedService.id,
+        serviceVariantId: selectedVariantId ?? undefined,
         scheduledAt: selectedSlot,
         assignedTo: assignedTo || undefined,
         notes: notes || undefined,
@@ -130,7 +135,11 @@ export function CreateModal({ open, onClose }: CreateModalProps) {
   const canNext = useMemo(() => {
     switch (step) {
       case 0:
-        return !!selectedService;
+        // If the chosen service exposes variants, force a pick before
+        // moving on. Services without variants still pass through.
+        if (!selectedService) return false;
+        if ((variants?.length ?? 0) > 0 && !selectedVariantId) return false;
+        return true;
       case 1:
         return !!selectedSlot;
       case 2:
@@ -140,7 +149,7 @@ export function CreateModal({ open, onClose }: CreateModalProps) {
       default:
         return false;
     }
-  }, [step, selectedService, selectedSlot, selectedClientResourceId]);
+  }, [step, selectedService, selectedVariantId, variants, selectedSlot, selectedClientResourceId]);
 
   return (
     <Dialog open={open} onOpenChange={(o) => !o && handleClose()}>
@@ -165,45 +174,100 @@ export function CreateModal({ open, onClose }: CreateModalProps) {
           ))}
         </div>
 
-        {/* Step 1: Select service */}
+        {/* Step 1: Select service + variant */}
         {step === 0 && (
-          <div className="grid grid-cols-2 gap-3">
-            {servicesLoading
-              ? Array.from({ length: 4 }).map((_, i) => (
-                  <Skeleton key={i} className="h-20 rounded-lg" />
-                ))
-              : services
-                  .filter((s) => s.isActive)
-                  .map((svc) => (
-                    <Card
-                      key={svc.id}
-                      className={cn(
-                        'cursor-pointer transition-all',
-                        selectedService?.id === svc.id
-                          ? 'border-[var(--color-primary)] ring-2 ring-[var(--color-primary)]/20'
-                          : 'hover:border-zinc-300'
-                      )}
-                      onClick={() => setSelectedService(svc)}
-                    >
-                      <CardContent className="flex items-center gap-2 p-3">
-                        {selectedService?.id === svc.id && (
-                          <Check className="h-4 w-4 shrink-0 text-[var(--color-primary)]" />
-                        )}
-                        <div className="min-w-0">
-                          <p className="truncate text-sm font-medium">
-                            {svc.name}
-                          </p>
-                          <p className="text-xs text-muted-foreground">
-                            {new Intl.NumberFormat('es-EC', {
-                              style: 'currency',
-                              currency: 'USD',
-                              minimumFractionDigits: 0,
-                            }).format(svc.price)}
-                          </p>
-                        </div>
-                      </CardContent>
-                    </Card>
-                  ))}
+          <div className="space-y-4">
+            <div>
+              <p className="mb-2 text-sm font-medium">Servicio</p>
+              <div className="grid grid-cols-2 gap-3">
+                {servicesLoading
+                  ? Array.from({ length: 4 }).map((_, i) => (
+                      <Skeleton key={i} className="h-20 rounded-lg" />
+                    ))
+                  : services
+                      .filter((s) => s.isActive)
+                      .map((svc) => (
+                        <Card
+                          key={svc.id}
+                          className={cn(
+                            'cursor-pointer transition-all',
+                            selectedService?.id === svc.id
+                              ? 'border-[var(--color-primary)] ring-2 ring-[var(--color-primary)]/20'
+                              : 'hover:border-zinc-300'
+                          )}
+                          onClick={() => {
+                            setSelectedService(svc);
+                            setSelectedVariantId(null);
+                          }}
+                        >
+                          <CardContent className="flex items-center gap-2 p-3">
+                            {selectedService?.id === svc.id && (
+                              <Check className="h-4 w-4 shrink-0 text-[var(--color-primary)]" />
+                            )}
+                            <div className="min-w-0">
+                              <p className="truncate text-sm font-medium">
+                                {svc.name}
+                              </p>
+                              <p className="text-xs text-muted-foreground">
+                                {new Intl.NumberFormat('es-EC', {
+                                  style: 'currency',
+                                  currency: 'USD',
+                                  minimumFractionDigits: 0,
+                                }).format(svc.price)}
+                              </p>
+                            </div>
+                          </CardContent>
+                        </Card>
+                      ))}
+              </div>
+            </div>
+
+            {selectedService && (
+              <div>
+                <p className="mb-2 text-sm font-medium">Variante</p>
+                {variantsLoading ? (
+                  <div className="grid grid-cols-2 gap-2 sm:grid-cols-3">
+                    {Array.from({ length: 4 }).map((_, i) => (
+                      <Skeleton key={i} className="h-14 rounded-md" />
+                    ))}
+                  </div>
+                ) : !variants?.length ? (
+                  <p className="text-xs text-muted-foreground">
+                    Este servicio aún no tiene variantes definidas.
+                  </p>
+                ) : (
+                  <div className="grid grid-cols-2 gap-2 sm:grid-cols-3">
+                    {variants
+                      .filter((v) => v.isActive)
+                      .map((v) => {
+                        const isSelected = selectedVariantId === v.id;
+                        return (
+                          <button
+                            key={v.id}
+                            type="button"
+                            onClick={() => setSelectedVariantId(v.id)}
+                            className={cn(
+                              'rounded-md border p-2 text-left text-xs transition-all',
+                              isSelected
+                                ? 'border-[var(--color-primary)] bg-[var(--color-primary)]/5 ring-1 ring-[var(--color-primary)]/20'
+                                : 'border-zinc-200 hover:border-zinc-300'
+                            )}
+                          >
+                            <div className="font-medium">{v.label}</div>
+                            <div className="text-muted-foreground">
+                              {new Intl.NumberFormat('es-EC', {
+                                style: 'currency',
+                                currency: 'USD',
+                              }).format(v.price)}{' '}
+                              · {v.durationMin} min
+                            </div>
+                          </button>
+                        );
+                      })}
+                  </div>
+                )}
+              </div>
+            )}
           </div>
         )}
 

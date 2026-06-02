@@ -13,6 +13,7 @@ import { cn } from '@/shared/utils/cn';
 const CARD_STYLES: Record<ReservationStatus, string> = {
   pending: 'border-l-amber-500 bg-amber-50',
   confirmed: 'border-l-sky-500 bg-sky-50',
+  checked_in: 'border-l-orange-500 bg-orange-50',
   in_progress: 'border-l-indigo-500 bg-[var(--color-primary-muted)]',
   completed: 'border-l-emerald-500 bg-emerald-50',
   cancelled: 'border-l-rose-500 bg-rose-50',

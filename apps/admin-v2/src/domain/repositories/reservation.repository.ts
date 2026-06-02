@@ -1,12 +1,40 @@
-import type { Reservation, ReservationFilters, ReservationAction, AvailableSlot } from '../entities/reservation';
+import type {
+  Reservation,
+  ReservationFilters,
+  ReservationAction,
+  AvailableSlot,
+  ReservationItem,
+  ReservationItemChange,
+  BillingSnapshot,
+} from '../entities/reservation';
 import type { PaginatedResult } from '../../shared/types/api';
 
 export interface CreateReservationData {
   clientResourceId: string;
   serviceId: string;
+  serviceVariantId?: string;
   scheduledAt: string;
   assignedTo?: string;
   notes?: string;
+}
+
+export interface AddItemInput {
+  itemType: 'service_variant' | 'product';
+  refId: string;
+  qty?: number;
+  reason?: string;
+}
+
+export interface CheckInInput {
+  billingProfileId?: string;
+  billing?: Partial<{
+    docType: BillingSnapshot['docType'];
+    docNumber: string;
+    legalName: string;
+    email: string;
+    address: string;
+    phone: string;
+  }>;
 }
 
 export interface ReservationRepository {
@@ -16,4 +44,13 @@ export interface ReservationRepository {
   cancel(id: string, reason: string): Promise<Reservation>;
   transition(id: string, action: ReservationAction): Promise<Reservation>;
   getAvailableSlots(date: string, serviceId: string): Promise<AvailableSlot[]>;
+
+  // Phase 3
+  checkIn(id: string, input: CheckInInput): Promise<Reservation>;
+  updateBilling(id: string, input: CheckInInput): Promise<BillingSnapshot | null>;
+  listItems(id: string): Promise<ReservationItem[]>;
+  addItem(id: string, input: AddItemInput): Promise<ReservationItem>;
+  removeItem(itemId: string, reason?: string): Promise<void>;
+  overrideItemPrice(itemId: string, unitPrice: number, reason: string): Promise<ReservationItem>;
+  listChanges(id: string): Promise<ReservationItemChange[]>;
 }

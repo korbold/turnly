@@ -1,9 +1,43 @@
-import type { ReservationRepository, CreateReservationData } from '@/domain/repositories/reservation.repository';
-import type { Reservation, ReservationFilters, ReservationAction, AvailableSlot } from '@/domain/entities/reservation';
+import type {
+  ReservationRepository,
+  CreateReservationData,
+  AddItemInput,
+  CheckInInput,
+} from '@/domain/repositories/reservation.repository';
+import type {
+  Reservation,
+  ReservationFilters,
+  ReservationAction,
+  AvailableSlot,
+  ReservationItem,
+  ReservationItemChange,
+  BillingSnapshot,
+} from '@/domain/entities/reservation';
 import type { PaginatedResult } from '@/shared/types/api';
 import api from '../client';
-import { mapReservation, mapAvailableSlot } from '../mappers/reservation.mapper';
+import {
+  mapReservation,
+  mapAvailableSlot,
+  mapReservationItem,
+  mapReservationItemChange,
+} from '../mappers/reservation.mapper';
 import { mapPaginatedResponse } from '../mappers/pagination';
+
+function checkInBody(input: CheckInInput): Record<string, unknown> {
+  const body: Record<string, unknown> = {};
+  if (input.billingProfileId) body.billing_profile_id = input.billingProfileId;
+  if (input.billing) {
+    body.billing = {
+      doc_type: input.billing.docType,
+      doc_number: input.billing.docNumber,
+      legal_name: input.billing.legalName,
+      email: input.billing.email,
+      address: input.billing.address,
+      phone: input.billing.phone,
+    };
+  }
+  return body;
+}
 
 export class ApiReservationRepository implements ReservationRepository {
   async getAll(filters: ReservationFilters): Promise<PaginatedResult<Reservation>> {
@@ -27,6 +61,7 @@ export class ApiReservationRepository implements ReservationRepository {
     const { data: res } = await api.post('/reservations', {
       client_resource_id: data.clientResourceId,
       service_id: data.serviceId,
+      service_variant_id: data.serviceVariantId,
       scheduled_at: data.scheduledAt,
       assigned_to: data.assignedTo,
       notes: data.notes,
@@ -49,5 +84,59 @@ export class ApiReservationRepository implements ReservationRepository {
       params: { date, service_id: serviceId },
     });
     return (res.data as Record<string, unknown>[]).map(mapAvailableSlot);
+  }
+
+  // Phase 3
+  async checkIn(id: string, input: CheckInInput): Promise<Reservation> {
+    const { data: res } = await api.post(`/reservations/${id}/check-in`, checkInBody(input));
+    return mapReservation(res.data);
+  }
+
+  async updateBilling(id: string, input: CheckInInput): Promise<BillingSnapshot | null> {
+    const { data: res } = await api.patch(`/reservations/${id}/billing`, checkInBody(input));
+    const snap = res.data?.billing_snapshot;
+    if (!snap) return null;
+    return {
+      docType: snap.doc_type,
+      docNumber: snap.doc_number,
+      legalName: snap.legal_name,
+      email: snap.email,
+      address: snap.address,
+      phone: snap.phone,
+      source: snap.source,
+      capturedAt: snap.captured_at,
+    };
+  }
+
+  async listItems(id: string): Promise<ReservationItem[]> {
+    const { data: res } = await api.get(`/reservations/${id}/items`);
+    return (res.data as Record<string, unknown>[]).map(mapReservationItem);
+  }
+
+  async addItem(id: string, input: AddItemInput): Promise<ReservationItem> {
+    const { data: res } = await api.post(`/reservations/${id}/items`, {
+      item_type: input.itemType,
+      ref_id: input.refId,
+      qty: input.qty,
+      reason: input.reason,
+    });
+    return mapReservationItem(res.data);
+  }
+
+  async removeItem(itemId: string, reason?: string): Promise<void> {
+    await api.delete(`/reservation-items/${itemId}`, { data: { reason } });
+  }
+
+  async overrideItemPrice(itemId: string, unitPrice: number, reason: string): Promise<ReservationItem> {
+    const { data: res } = await api.patch(`/reservation-items/${itemId}/price`, {
+      unit_price: unitPrice,
+      reason,
+    });
+    return mapReservationItem(res.data);
+  }
+
+  async listChanges(id: string): Promise<ReservationItemChange[]> {
+    const { data: res } = await api.get(`/reservations/${id}/changes`);
+    return (res.data as Record<string, unknown>[]).map(mapReservationItemChange);
   }
 }

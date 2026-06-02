@@ -129,6 +129,12 @@ export function DetailPanel({ reservation, open, onClose }: DetailPanelProps) {
             <SheetDescription>
               Detalle de la reserva
             </SheetDescription>
+            <a
+              href={`/reservations/${reservation.id}`}
+              className="mt-2 inline-flex w-fit text-[12px] font-medium text-[var(--brand-700)] hover:underline"
+            >
+              Abrir vista completa →
+            </a>
           </SheetHeader>
 
           <div className="mt-6 space-y-5">
