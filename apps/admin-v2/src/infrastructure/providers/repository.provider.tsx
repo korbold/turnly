@@ -16,6 +16,7 @@ import type { SuperAdminRepository } from '@/domain/repositories/super-admin.rep
 import type { PublicRepository } from '@/domain/repositories/public.repository';
 import type { NotificationRepository } from '@/domain/repositories/notification.repository';
 import type { ProductRepository } from '@/domain/repositories/product.repository';
+import type { ServiceVariantRepository } from '@/domain/repositories/service-variant.repository';
 
 import { ApiAuthRepository } from '../api/repositories/api-auth.repository';
 import { ApiOnboardingRepository } from '../api/repositories/api-onboarding.repository';
@@ -32,6 +33,7 @@ import { ApiSuperAdminRepository } from '../api/repositories/api-super-admin.rep
 import { ApiPublicRepository } from '../api/repositories/api-public.repository';
 import { ApiNotificationRepository } from '../api/repositories/api-notification.repository';
 import { ApiProductRepository } from '../api/repositories/api-product.repository';
+import { ApiServiceVariantRepository } from '../api/repositories/api-service-variant.repository';
 
 interface Repositories {
   auth: AuthRepository;
@@ -49,6 +51,7 @@ interface Repositories {
   public: PublicRepository;
   notification: NotificationRepository;
   product: ProductRepository;
+  serviceVariant: ServiceVariantRepository;
 }
 
 const RepositoryContext = createContext<Repositories | null>(null);
@@ -71,6 +74,7 @@ export function RepositoryProvider({ children }: { children: ReactNode }) {
       public: new ApiPublicRepository(),
       notification: new ApiNotificationRepository(),
       product: new ApiProductRepository(),
+      serviceVariant: new ApiServiceVariantRepository(),
     }),
     [],
   );

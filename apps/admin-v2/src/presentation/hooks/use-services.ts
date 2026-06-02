@@ -16,6 +16,15 @@ export function useServices(page?: number) {
   });
 }
 
+export function useService(id: string | null) {
+  const repo = useRepository('service');
+  return useQuery({
+    queryKey: ['services', id],
+    queryFn: () => repo.getById(id as string),
+    enabled: Boolean(id),
+  });
+}
+
 export function useCreateService() {
   const repo = useRepository('service');
   const queryClient = useQueryClient();

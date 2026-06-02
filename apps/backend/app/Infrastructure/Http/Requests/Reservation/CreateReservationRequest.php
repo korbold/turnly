@@ -16,10 +16,11 @@ class CreateReservationRequest extends FormRequest
         return [
             'client_id'          => ['nullable', 'uuid'],
             'client_resource_id' => ['nullable', 'uuid'],
-            'service_id'   => ['required', 'uuid'],
-            'scheduled_at' => ['required', 'date', 'after:now'],
-            'assigned_to'  => ['nullable', 'uuid'],
-            'notes'        => ['nullable', 'string', 'max:500'],
+            'service_id'         => ['required', 'uuid'],
+            'service_variant_id' => ['nullable', 'uuid'],
+            'scheduled_at'       => ['required', 'date', 'after:now'],
+            'assigned_to'        => ['nullable', 'uuid'],
+            'notes'              => ['nullable', 'string', 'max:500'],
         ];
     }
 

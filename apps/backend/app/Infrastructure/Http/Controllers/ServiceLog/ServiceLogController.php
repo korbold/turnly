@@ -5,6 +5,7 @@ namespace App\Infrastructure\Http\Controllers\ServiceLog;
 use App\Application\DTOs\ServiceLog\CreateServiceLogDTO;
 use App\Application\UseCases\ServiceLog\CreateServiceLogUseCase;
 use App\Application\UseCases\ServiceLog\GetDailyLogUseCase;
+use App\Domain\Inventory\ConsumptionEngine;
 use App\Domain\ServiceLog\Contracts\ServiceLogRepositoryInterface;
 use App\Infrastructure\Http\Controllers\Controller;
 use App\Infrastructure\Http\Requests\ServiceLog\CreateServiceLogRequest;
@@ -19,6 +20,7 @@ class ServiceLogController extends Controller
         private CreateServiceLogUseCase $createServiceLog,
         private GetDailyLogUseCase $getDailyLog,
         private ServiceLogRepositoryInterface $serviceLogRepository,
+        private ConsumptionEngine $consumption,
     ) {}
 
     public function index(Request $request)
@@ -51,6 +53,14 @@ class ServiceLogController extends Controller
         );
 
         $serviceLog = $this->createServiceLog->execute($dto);
+
+        // Variant id rides on the model rather than the DTO to keep the
+        // existing service-log domain pipeline untouched.
+        if ($request->service_variant_id) {
+            ServiceLogModel::where('id', $serviceLog->id)
+                ->update(['service_variant_id' => $request->service_variant_id]);
+        }
+
         $model = ServiceLogModel::with(['clientResource', 'service', 'attendant'])->find($serviceLog->id);
 
         return (new ServiceLogResource($model))
@@ -94,6 +104,13 @@ class ServiceLogController extends Controller
     public function complete(string $id): JsonResponse
     {
         $this->serviceLogRepository->complete($id, new \DateTimeImmutable());
+
+        // Apply BOM consumption now that the service is done. Engine is
+        // idempotent so a manual retry won't double-debit stock.
+        $log = ServiceLogModel::find($id);
+        if ($log) {
+            $this->consumption->applyForServiceLog($log);
+        }
 
         return response()->json([
             'data' => ['message' => 'Service log completed'],

@@ -10,6 +10,8 @@ use App\Infrastructure\Http\Controllers\Reservation\ReservationController;
 use App\Infrastructure\Http\Controllers\ServiceLog\ServiceLogController;
 use App\Infrastructure\Http\Controllers\ClientResource\ClientResourceController;
 use App\Infrastructure\Http\Controllers\Service\ServiceController;
+use App\Infrastructure\Http\Controllers\Service\ServiceVariantController;
+use App\Infrastructure\Http\Controllers\Service\BomController;
 use App\Infrastructure\Http\Controllers\Inventory\ProductController;
 use App\Infrastructure\Http\Controllers\Inventory\StockMovementController;
 use App\Infrastructure\Http\Controllers\User\UserController;
@@ -133,9 +135,20 @@ Route::prefix('v1')->group(function () {
 
             // Services
             Route::get('services', [ServiceController::class, 'index']);
+            Route::get('services/{id}', [ServiceController::class, 'show']);
             Route::post('services', [ServiceController::class, 'store']);
             Route::put('services/{id}', [ServiceController::class, 'update']);
             Route::delete('services/{id}', [ServiceController::class, 'destroy']);
+
+            // Service variants (size / type / duration buckets within a service)
+            Route::get('services/{id}/variants', [ServiceVariantController::class, 'index']);
+            Route::post('services/{id}/variants', [ServiceVariantController::class, 'store']);
+            Route::patch('service-variants/{id}', [ServiceVariantController::class, 'update']);
+            Route::delete('service-variants/{id}', [ServiceVariantController::class, 'destroy']);
+
+            // BOM: products consumed per variant of a service
+            Route::get('service-variants/{id}/consumption', [BomController::class, 'index']);
+            Route::put('service-variants/{id}/consumption', [BomController::class, 'replace']);
 
             // Inventory: products + kardex + manual movements
             Route::get('products', [ProductController::class, 'index']);

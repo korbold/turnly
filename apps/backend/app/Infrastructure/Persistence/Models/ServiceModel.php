@@ -33,6 +33,13 @@ class ServiceModel extends Model
         return $this->belongsTo(TenantModel::class, 'tenant_id');
     }
 
+    public function variants()
+    {
+        return $this->hasMany(ServiceVariantModel::class, 'service_id')
+            ->orderBy('sort_order')
+            ->orderBy('label');
+    }
+
     protected static function newFactory()
     {
         return \Database\Factories\ServiceModelFactory::new();

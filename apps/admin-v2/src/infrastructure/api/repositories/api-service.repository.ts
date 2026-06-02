@@ -11,6 +11,11 @@ export class ApiServiceRepository implements ServiceRepository {
     return mapPaginatedResponse(res, mapService);
   }
 
+  async getById(id: string): Promise<Service> {
+    const { data: res } = await api.get(`/services/${id}`);
+    return mapService(res.data);
+  }
+
   async create(data: CreateServiceData): Promise<Service> {
     const { data: res } = await api.post('/services', {
       name: data.name,

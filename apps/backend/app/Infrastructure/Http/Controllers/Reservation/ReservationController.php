@@ -116,9 +116,20 @@ class ReservationController extends Controller
             createdBy: $request->user()->id,
             assignedTo: $request->assigned_to,
             notes: $request->notes,
+            serviceVariantId: $request->service_variant_id,
         );
 
         $reservation = $this->createReservation->execute($dto);
+
+        // Persist the chosen variant on the model. The domain DTO/entity
+        // pipeline doesn't carry it yet; setting it directly on the
+        // Eloquent model is the smallest change that keeps the existing
+        // service_id-based flow intact while letting the BOM/consumption
+        // engine pick up the right recipe on `complete`.
+        if ($request->service_variant_id) {
+            ReservationModel::where('id', $reservation->id)
+                ->update(['service_variant_id' => $request->service_variant_id]);
+        }
 
         // Fetch the model with relationships for the resource
         $model = ReservationModel::with(['clientResource', 'service', 'client'])->find($reservation->id);

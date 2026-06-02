@@ -13,6 +13,7 @@ final readonly class CreateReservationDTO
         public string $createdBy,
         public ?string $assignedTo = null,
         public ?string $notes = null,
+        public ?string $serviceVariantId = null,
     ) {}
 
     public static function fromArray(array $data): static
@@ -26,6 +27,7 @@ final readonly class CreateReservationDTO
             createdBy: $data['created_by'],
             assignedTo: $data['assigned_to'] ?? null,
             notes: $data['notes'] ?? null,
+            serviceVariantId: $data['service_variant_id'] ?? null,
         );
     }
 }

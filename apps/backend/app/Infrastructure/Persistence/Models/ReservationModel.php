@@ -15,9 +15,10 @@ class ReservationModel extends Model
     protected $table = 'reservations';
 
     protected $fillable = [
-        'tenant_id', 'client_id', 'client_resource_id', 'service_id',
+        'tenant_id', 'client_id', 'client_resource_id', 'service_id', 'service_variant_id',
         'assigned_to', 'scheduled_at', 'estimated_end', 'status',
         'notes', 'cancelled_at', 'cancel_reason', 'created_by',
+        'consumption_applied_at',
     ];
 
     protected function casts(): array
@@ -26,7 +27,13 @@ class ReservationModel extends Model
             'scheduled_at' => 'datetime',
             'estimated_end' => 'datetime',
             'cancelled_at' => 'datetime',
+            'consumption_applied_at' => 'datetime',
         ];
+    }
+
+    public function variant()
+    {
+        return $this->belongsTo(ServiceVariantModel::class, 'service_variant_id');
     }
 
     public function tenant()

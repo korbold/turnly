@@ -18,6 +18,9 @@ class ServiceResource extends JsonResource
             'sort_order'       => $this->sort_order,
             'image_url'        => $this->image_url,
             'created_at'       => $this->created_at?->toIso8601String(),
+            'variants'         => $this->whenLoaded('variants', fn () =>
+                ServiceVariantResource::collection($this->variants)
+            ),
         ];
     }
 

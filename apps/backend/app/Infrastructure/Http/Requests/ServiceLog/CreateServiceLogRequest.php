@@ -15,7 +15,8 @@ class CreateServiceLogRequest extends FormRequest
     {
         return [
             'client_resource_id' => ['required', 'uuid'],
-            'service_id'      => ['required', 'uuid'],
+            'service_id'         => ['required', 'uuid'],
+            'service_variant_id' => ['nullable', 'uuid'],
             'attended_by'     => ['required', 'uuid'],
             'price_charged'   => ['required', 'numeric', 'min:0'],
             'payment_method'  => ['required', 'in:cash,card,transfer,other'],

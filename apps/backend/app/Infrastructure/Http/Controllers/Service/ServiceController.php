@@ -25,6 +25,12 @@ class ServiceController extends Controller
         return ServiceResource::collection($services);
     }
 
+    public function show(string $id): ServiceResource
+    {
+        $service = ServiceModel::with('variants.consumption.product')->findOrFail($id);
+        return new ServiceResource($service);
+    }
+
     public function store(CreateServiceRequest $request): JsonResponse
     {
         if (!$this->planLimits->canCreateService(app('current_tenant_id'))) {
