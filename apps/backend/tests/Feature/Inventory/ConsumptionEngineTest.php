@@ -116,6 +116,53 @@ test('engine falls back to default variant when reservation has no variant_id', 
     expect((float) ProductStockLevelModel::find($shampoo->id)->on_hand)->toBe(975.0);
 });
 
+test('engine debits BOM for every service_variant item on the reservation', function () {
+    $shampoo = seedProduct($this->tenant->id, 'Shampoo');
+    $cera    = seedProduct($this->tenant->id, 'Cera');
+    $aceite  = seedProduct($this->tenant->id, 'Aceite');
+
+    $serviceA = ServiceModel::factory()->create(['tenant_id' => $this->tenant->id]);
+    $variantA = ServiceVariantModel::create([
+        'tenant_id' => $this->tenant->id,
+        'service_id' => $serviceA->id,
+        'label' => 'Mediano', 'price' => 8,
+    ]);
+    ServiceVariantConsumptionModel::create(['service_variant_id' => $variantA->id, 'product_id' => $shampoo->id, 'qty' => 150]);
+    ServiceVariantConsumptionModel::create(['service_variant_id' => $variantA->id, 'product_id' => $cera->id,    'qty' => 60]);
+
+    $serviceB = ServiceModel::factory()->create(['tenant_id' => $this->tenant->id]);
+    $variantB = ServiceVariantModel::create([
+        'tenant_id' => $this->tenant->id,
+        'service_id' => $serviceB->id,
+        'label' => '5W-30', 'price' => 30,
+    ]);
+    ServiceVariantConsumptionModel::create(['service_variant_id' => $variantB->id, 'product_id' => $aceite->id, 'qty' => 4]);
+
+    $reservation = buildReservation($this->tenant->id, $serviceA->id, $variantA->id);
+
+    // Two items in the reservation simulating the multi-service flow.
+    \App\Infrastructure\Persistence\Models\ReservationItemModel::create([
+        'tenant_id' => $this->tenant->id,
+        'reservation_id' => $reservation->id,
+        'item_type' => 'service_variant',
+        'ref_id' => $variantA->id,
+        'label' => 'Mediano', 'qty' => 1, 'unit_price' => 8, 'line_total' => 8,
+    ]);
+    \App\Infrastructure\Persistence\Models\ReservationItemModel::create([
+        'tenant_id' => $this->tenant->id,
+        'reservation_id' => $reservation->id,
+        'item_type' => 'service_variant',
+        'ref_id' => $variantB->id,
+        'label' => '5W-30', 'qty' => 1, 'unit_price' => 30, 'line_total' => 30,
+    ]);
+
+    $this->engine->applyForReservation($reservation->fresh());
+
+    expect((float) ProductStockLevelModel::find($shampoo->id)->on_hand)->toBe(850.0);
+    expect((float) ProductStockLevelModel::find($cera->id)->on_hand)->toBe(940.0);
+    expect((float) ProductStockLevelModel::find($aceite->id)->on_hand)->toBe(996.0);
+});
+
 test('engine marks reservation applied even when variant has no BOM lines', function () {
     $service = ServiceModel::factory()->create(['tenant_id' => $this->tenant->id]);
     $variant = ServiceVariantModel::create([

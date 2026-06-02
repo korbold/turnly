@@ -35,24 +35,46 @@ final class ConsumptionEngine
             return;
         }
 
-        $variant = $this->resolveVariant(
-            $reservation->service_variant_id,
-            $reservation->service_id,
-        );
+        $reservation->loadMissing('items');
+        $userId = $reservation->assigned_to ?? $reservation->created_by;
 
-        if (!$variant) {
-            // No BOM possible without a variant — mark applied so we
-            // don't keep polling this reservation forever.
-            $reservation->update(['consumption_applied_at' => now()]);
-            return;
+        // Multi-item path: iterate every service_variant line so a
+        // booking like (lavada + cambio aceite + aspirado) debits BOM
+        // for all three variants. Also drops the matching `reserved`
+        // hold for each one as the consumption is committed.
+        $hadItems = false;
+        foreach ($reservation->items as $item) {
+            if ($item->item_type !== 'service_variant') continue;
+            $hadItems = true;
+
+            $qty = max(1, (int) $item->qty);
+            for ($i = 0; $i < $qty; $i++) {
+                $this->releaseVariant($item->ref_id);
+                $this->applyVariant(
+                    variantId: $item->ref_id,
+                    refType:   'reservation',
+                    refId:     $reservation->id,
+                    userId:    $userId,
+                );
+            }
         }
 
-        $this->applyVariant(
-            variantId: $variant->id,
-            refType:   'reservation',
-            refId:     $reservation->id,
-            userId:    $reservation->assigned_to ?? $reservation->created_by,
-        );
+        if (!$hadItems) {
+            // Legacy path: no items[] — fall back to the single variant
+            // recorded directly on the reservation.
+            $variant = $this->resolveVariant(
+                $reservation->service_variant_id,
+                $reservation->service_id,
+            );
+            if ($variant) {
+                $this->applyVariant(
+                    variantId: $variant->id,
+                    refType:   'reservation',
+                    refId:     $reservation->id,
+                    userId:    $userId,
+                );
+            }
+        }
 
         $reservation->update(['consumption_applied_at' => now()]);
     }
