@@ -77,13 +77,13 @@ export function CheckInModal({ open, reservationId, defaultEmail, defaultName, o
       { billing },
       {
         onSuccess: () => {
-          toast.success('Check-in registrado');
+          toast.success('Llegada registrada');
           onSuccess();
           onClose();
         },
         onError: (err: unknown) => {
           const e = err as { message?: string };
-          toast.error(e?.message ?? 'No se pudo hacer check-in');
+          toast.error(e?.message ?? 'No se pudo registrar la llegada');
         },
       }
     );
@@ -93,10 +93,10 @@ export function CheckInModal({ open, reservationId, defaultEmail, defaultName, o
     <Dialog open={open} onOpenChange={(o) => !o && onClose()}>
       <DialogContent className="sm:max-w-md">
         <DialogHeader>
-          <DialogTitle>Check-in</DialogTitle>
+          <DialogTitle>Confirmar llegada</DialogTitle>
           <DialogDescription>
             Confirma los datos de facturación. Una vez guardados se reservan los
-            insumos en inventario y la reserva pasa a estado <strong>checked_in</strong>.
+            insumos en inventario y la reserva pasa a estado <strong>en el local</strong>.
           </DialogDescription>
         </DialogHeader>
 

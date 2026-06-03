@@ -38,7 +38,7 @@ function fmt(n: number) {
 const STATUS_LABEL: Record<ReservationStatus, string> = {
   pending: 'Pendiente',
   confirmed: 'Confirmada',
-  checked_in: 'Check-in',
+  checked_in: 'En el local',
   in_progress: 'En curso',
   completed: 'Completada',
   cancelled: 'Cancelada',
@@ -225,7 +225,7 @@ export default function ReservationDetailPage({ params }: { params: Promise<{ id
         <div className="flex flex-wrap gap-2">
           {canCheckIn && (
             <Button onClick={() => setCheckInOpen(true)}>
-              <ScanLine className="mr-1.5 h-4 w-4" /> Check-in
+              <ScanLine className="mr-1.5 h-4 w-4" /> Confirmar llegada
             </Button>
           )}
           {canStart && status === 'checked_in' && (

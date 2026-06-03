@@ -28,7 +28,7 @@ export const RESERVATION_STATUS_CONFIG: Record<ReservationStatus, StatusConfig> 
     dotColor: 'bg-[var(--status-confirmed-fg)]',
   },
   checked_in: {
-    label: 'Check-in',
+    label: 'En el local',
     color: 'text-[var(--warning-700)]',
     bgColor: 'bg-[var(--warning-50)]',
     dotColor: 'bg-[var(--warning-700)]',

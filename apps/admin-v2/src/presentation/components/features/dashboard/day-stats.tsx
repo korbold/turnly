@@ -17,11 +17,11 @@ const EXTRA_ORDER: ReservationStatus[] = ['in_progress', 'no_show'];
 const LABELS: Record<ReservationStatus, string> = {
   confirmed: 'confirmadas',
   pending: 'pendientes',
-  checked_in: 'check-in',
+  checked_in: 'en el local',
   in_progress: 'en progreso',
   completed: 'completadas',
   cancelled: 'canceladas',
-  no_show: 'no-show',
+  no_show: 'ausentes',
 };
 
 const TONES: Record<ReservationStatus, { fg: string; bg: string }> = {

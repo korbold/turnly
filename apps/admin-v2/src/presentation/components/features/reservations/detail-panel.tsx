@@ -170,7 +170,7 @@ export function DetailPanel({ reservation, open, onClose }: DetailPanelProps) {
                       className="bg-sky-500 hover:bg-sky-600"
                       onClick={() => setCheckInOpen(true)}
                     >
-                      Check-in
+                      Confirmar llegada
                     </Button>
                   )}
                   <Button
