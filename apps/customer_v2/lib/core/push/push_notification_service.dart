@@ -72,14 +72,22 @@ class PushNotificationService {
   Future<void> _fetchTokenWhenReady() async {
     try {
       if (Platform.isIOS) {
-        // Single longer wait avoids the looped getAPNSToken() calls that
-        // appear to race with native FCM init.
-        await Future.delayed(const Duration(seconds: 3));
-        final apns = await _messaging.getAPNSToken();
+        // APNs provisioning can take longer than 3s after a fresh install
+        // or the first launch following a capability change. Poll every
+        // 500ms for up to 15s before bailing — the token registration
+        // hook (_onTokenRefreshSub) will still pick it up later if APNs
+        // shows up after this window.
+        String? apns;
+        for (var i = 0; i < 30; i++) {
+          apns = await _messaging.getAPNSToken();
+          if (apns != null) break;
+          await Future.delayed(const Duration(milliseconds: 500));
+        }
         if (apns == null) {
-          _log('APNS token not provisioned yet; will retry on next init().');
+          _log('APNS token still null after 15s; will retry on next init().');
           return;
         }
+        _log('APNS token ready: ${apns.substring(0, 12)}…');
       }
       final token = await _messaging.getToken();
       if (token == null) {
