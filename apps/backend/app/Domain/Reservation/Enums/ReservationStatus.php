@@ -16,7 +16,10 @@ enum ReservationStatus: string
     {
         return match ($this) {
             // Customer has booked; everything from here is downstream.
-            self::Pending     => in_array($next, [self::Confirmed, self::Cancelled]),
+            // CheckedIn is allowed directly so the dashboard's one-click
+            // "Confirmar llegada" can collapse confirm + check-in into a
+            // single staff action when the customer walks in unannounced.
+            self::Pending     => in_array($next, [self::Confirmed, self::CheckedIn, self::Cancelled]),
             // Confirmed by staff; can skip to in_progress for legacy flows
             // or go through the new check_in step for the counter.
             self::Confirmed   => in_array($next, [self::CheckedIn, self::InProgress, self::Cancelled, self::NoShow]),
