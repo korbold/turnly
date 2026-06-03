@@ -50,8 +50,15 @@ export function useTransitionReservation() {
   return useMutation({
     mutationFn: ({ id, action }: { id: string; action: ReservationAction }) =>
       new TransitionReservationUseCase(repo).execute(id, action),
-    onSuccess: () => {
+    onSuccess: (_data, { id }) => {
       queryClient.invalidateQueries({ queryKey: ['reservations'] });
+      // The detail page reads ['reservation', id] separately, so without
+      // these invalidations its status badge + action buttons stay
+      // stale, the user clicks again, and the backend rejects with 422
+      // ("No se pudo iniciar"). Sibling queries follow the same key.
+      queryClient.invalidateQueries({ queryKey: ['reservation', id] });
+      queryClient.invalidateQueries({ queryKey: ['reservation-items', id] });
+      queryClient.invalidateQueries({ queryKey: ['reservation-changes', id] });
     },
   });
 }
@@ -62,8 +69,11 @@ export function useCancelReservation() {
   return useMutation({
     mutationFn: ({ id, reason }: { id: string; reason: string }) =>
       new CancelReservationUseCase(repo).execute(id, reason),
-    onSuccess: () => {
+    onSuccess: (_data, { id }) => {
       queryClient.invalidateQueries({ queryKey: ['reservations'] });
+      queryClient.invalidateQueries({ queryKey: ['reservation', id] });
+      queryClient.invalidateQueries({ queryKey: ['reservation-items', id] });
+      queryClient.invalidateQueries({ queryKey: ['reservation-changes', id] });
     },
   });
 }
