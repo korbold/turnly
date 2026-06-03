@@ -64,6 +64,7 @@ function nextActions(status: Reservation['status']): ReservationAction[] {
     case 'pending':
       return ['confirm', 'cancel'];
     case 'confirmed':
+    case 'checked_in':
       return ['start', 'cancel'];
     case 'in_progress':
       return ['complete'];
