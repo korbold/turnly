@@ -92,6 +92,10 @@ export function ReservationDetailSheet({
   const cancel = useCancelReservation();
   const isDesktop = useIsDesktop();
   const [checkInOpen, setCheckInOpen] = useState(false);
+  // Phase 3 — pulled before the early return so the hooks list keeps
+  // a stable shape across renders. The hook is gated by `enabled`
+  // when the id is null so no extra request fires.
+  const { data: items } = useReservationItems(reservation?.id ?? null);
 
   if (!reservation) return null;
 
@@ -104,10 +108,6 @@ export function ReservationDetailSheet({
     locale: es,
   });
 
-  // Phase 3 — sum every reservation_item to render the real total + line
-  // list. Falls back to the legacy single-service price when the
-  // reservation predates Phase 3 (items endpoint returns empty).
-  const { data: items } = useReservationItems(reservation.id);
   const hasItems = (items?.length ?? 0) > 0;
   const itemsTotal = (items ?? []).reduce((acc, it) => acc + it.lineTotal, 0);
   const legacyPrice = Number(reservation.service?.price ?? 0);
