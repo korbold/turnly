@@ -28,7 +28,7 @@ import 'features/reservations/presentation/cubit/reservations_cubit.dart';
 /// Default entry point. Kept for backward compat with tooling that ignores
 /// `--target`. Reads ENV from --dart-define, defaults to dev.
 void main() async {
-  const env = String.fromEnvironment('ENV', defaultValue: 'dev');
+  const env = String.fromEnvironment('ENV', defaultValue: 'prod');
   await bootstrap(env: env);
 }
 
