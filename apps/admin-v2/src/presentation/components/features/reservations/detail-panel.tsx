@@ -28,6 +28,7 @@ import {
   useCancelReservation,
 } from '@/presentation/hooks/use-reservations';
 import { useSettings } from '@/presentation/hooks/use-settings';
+import { CheckInModal } from '@/presentation/components/features/reservations/check-in-modal';
 import {
   RESERVATION_STATUS_CONFIG,
 } from '@/shared/constants/status';
@@ -56,6 +57,7 @@ export function DetailPanel({ reservation, open, onClose }: DetailPanelProps) {
   const { data: settings } = useSettings();
   const [cancelOpen, setCancelOpen] = useState(false);
   const [cancelReason, setCancelReason] = useState('');
+  const [checkInOpen, setCheckInOpen] = useState(false);
 
   if (!reservation) return null;
 
@@ -145,10 +147,9 @@ export function DetailPanel({ reservation, open, onClose }: DetailPanelProps) {
                   <Button
                     size="sm"
                     className="bg-sky-500 hover:bg-sky-600"
-                    onClick={() => handleTransition('confirm')}
-                    disabled={transition.isPending}
+                    onClick={() => setCheckInOpen(true)}
                   >
-                    Confirmar
+                    Confirmar llegada
                   </Button>
                   <Button
                     size="sm"
@@ -160,7 +161,8 @@ export function DetailPanel({ reservation, open, onClose }: DetailPanelProps) {
                   </Button>
                 </>
               )}
-              {reservation.status === 'confirmed' && (
+              {(reservation.status === 'confirmed' ||
+                reservation.status === 'checked_in') && (
                 <>
                   <Button
                     size="sm"
@@ -285,6 +287,20 @@ export function DetailPanel({ reservation, open, onClose }: DetailPanelProps) {
           </div>
         </SheetContent>
       </Sheet>
+
+      {reservation && (
+        <CheckInModal
+          open={checkInOpen}
+          reservationId={reservation.id}
+          defaultEmail={reservation.client?.email}
+          defaultName={reservation.client?.name}
+          onClose={() => setCheckInOpen(false)}
+          onSuccess={() => {
+            setCheckInOpen(false);
+            onClose();
+          }}
+        />
+      )}
 
       {/* Cancel dialog */}
       <Dialog open={cancelOpen} onOpenChange={setCancelOpen}>
