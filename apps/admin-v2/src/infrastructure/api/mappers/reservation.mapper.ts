@@ -83,6 +83,7 @@ export function mapReservationItem(raw: Record<string, unknown>): ReservationIte
     reservationId: raw.reservation_id as string,
     itemType: raw.item_type as ReservationItem['itemType'],
     refId: raw.ref_id as string,
+    serviceId: (raw.service_id as string | null | undefined) ?? null,
     label: raw.label as string,
     qty: Number(raw.qty ?? 1),
     unitPrice: Number(raw.unit_price ?? 0),

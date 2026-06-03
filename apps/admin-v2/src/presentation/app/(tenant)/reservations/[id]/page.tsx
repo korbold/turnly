@@ -3,7 +3,7 @@
 import { use, useMemo, useState } from 'react';
 import Link from 'next/link';
 import { toast } from 'sonner';
-import { ArrowLeft, Plus, Trash2, Pencil, Receipt, ScanLine, History } from 'lucide-react';
+import { ArrowLeft, Plus, Trash2, Pencil, Receipt, ScanLine, History, Repeat } from 'lucide-react';
 import { Button } from '@/presentation/components/ui/button';
 import { Input } from '@/presentation/components/ui/input';
 import { Label } from '@/presentation/components/ui/label';
@@ -24,7 +24,9 @@ import {
   useRemoveReservationItem,
   useOverrideReservationItemPrice,
   useTransitionReservation,
+  useAddReservationItem,
 } from '@/presentation/hooks/use-reservations';
+import { useServiceVariants } from '@/presentation/hooks/use-service-variants';
 import { CheckInModal } from '@/presentation/components/features/reservations/check-in-modal';
 import { AddItemModal } from '@/presentation/components/features/reservations/add-item-modal';
 import type { ReservationItem, ReservationStatus } from '@/domain/entities/reservation';
@@ -69,6 +71,7 @@ export default function ReservationDetailPage({ params }: { params: Promise<{ id
   const remove = useRemoveReservationItem(id);
   const override = useOverrideReservationItemPrice(id);
   const transition = useTransitionReservation();
+  const addItem = useAddReservationItem(id);
 
   const [checkInOpen, setCheckInOpen] = useState(false);
   const [addOpen, setAddOpen] = useState(false);
@@ -77,6 +80,10 @@ export default function ReservationDetailPage({ params }: { params: Promise<{ id
   const [overrideReason, setOverrideReason] = useState('');
   const [removeTarget, setRemoveTarget] = useState<ReservationItem | null>(null);
   const [removeReason, setRemoveReason] = useState('');
+  const [swapTarget, setSwapTarget] = useState<ReservationItem | null>(null);
+  const { data: swapVariants, isLoading: swapLoading } = useServiceVariants(
+    swapTarget?.serviceId ?? null,
+  );
 
   const total = useMemo(
     () => (items ?? []).reduce((acc, it) => acc + it.lineTotal, 0),
@@ -145,6 +152,24 @@ export default function ReservationDetailPage({ params }: { params: Promise<{ id
         },
       }
     );
+  }
+
+  async function doSwapVariant(newVariantId: string) {
+    if (!swapTarget) return;
+    const qty = Math.max(1, Math.round(swapTarget.qty));
+    try {
+      await remove.mutateAsync({ itemId: swapTarget.id, reason: 'Cambio de variante' });
+      await addItem.mutateAsync({
+        itemType: 'service_variant',
+        refId: newVariantId,
+        qty,
+      });
+      toast.success('Variante cambiada');
+      setSwapTarget(null);
+    } catch (err: unknown) {
+      const e = err as { message?: string };
+      toast.error(e?.message ?? 'No se pudo cambiar la variante');
+    }
   }
 
   function doStart() {
@@ -290,6 +315,17 @@ export default function ReservationDetailPage({ params }: { params: Promise<{ id
                 <div className="w-20 text-right font-mono text-[var(--fg-secondary)]">{fmt(it.unitPrice)}</div>
                 <div className="w-24 text-right font-mono font-semibold text-[var(--fg-strong)]">{fmt(it.lineTotal)}</div>
                 <div className="flex gap-1">
+                  {isEditable && it.itemType === 'service_variant' && it.serviceId && (
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      className="h-7 w-7"
+                      onClick={() => setSwapTarget(it)}
+                      aria-label="Cambiar variante"
+                    >
+                      <Repeat className="h-3.5 w-3.5" />
+                    </Button>
+                  )}
                   {canOverride && (
                     <Button
                       variant="ghost"
@@ -438,6 +474,57 @@ export default function ReservationDetailPage({ params }: { params: Promise<{ id
           <DialogFooter>
             <Button variant="outline" onClick={() => setOverrideTarget(null)}>Cancelar</Button>
             <Button onClick={doOverride} disabled={override.isPending}>Guardar</Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Swap variant — delete the current line + add a sibling variant in
+          one move. Captures the change in the items audit log as a paired
+          remove/add. */}
+      <Dialog
+        open={!!swapTarget}
+        onOpenChange={(o) => !o && setSwapTarget(null)}
+      >
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle>Cambiar variante</DialogTitle>
+            <DialogDescription>
+              {swapTarget?.label
+                ? <>Actualmente: <strong>{swapTarget.label}</strong></>
+                : 'Selecciona otra opción.'}
+            </DialogDescription>
+          </DialogHeader>
+
+          <div className="space-y-1.5">
+            {swapLoading && (
+              <p className="text-[13px] text-[var(--fg-secondary)]">Cargando opciones…</p>
+            )}
+            {!swapLoading && (swapVariants ?? [])
+              .filter((v) => v.isActive)
+              .filter((v) => v.id !== swapTarget?.refId)
+              .map((v) => (
+                <button
+                  key={v.id}
+                  onClick={() => doSwapVariant(v.id)}
+                  disabled={remove.isPending || addItem.isPending}
+                  className="flex w-full items-center justify-between rounded-lg border border-[var(--border)] bg-[var(--bg-surface)] px-3 py-2 text-[13px] transition hover:border-[var(--brand-300)] hover:bg-[var(--brand-50)] disabled:opacity-50"
+                >
+                  <span className="font-medium text-[var(--fg-strong)]">{v.label}</span>
+                  <span className="font-mono text-[var(--fg-secondary)]">
+                    {fmt(Number(v.price))} · {v.durationMin} min
+                  </span>
+                </button>
+              ))}
+            {!swapLoading &&
+              (swapVariants ?? []).filter((v) => v.isActive && v.id !== swapTarget?.refId).length === 0 && (
+                <p className="rounded-lg border border-dashed border-[var(--border-strong)] p-3 text-center text-[12px] text-[var(--fg-secondary)]">
+                  No hay otras variantes activas.
+                </p>
+              )}
+          </div>
+
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setSwapTarget(null)}>Cancelar</Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>

@@ -8,6 +8,8 @@ export interface ReservationItem {
   reservationId: string;
   itemType: ReservationItemType;
   refId: string;
+  /** Parent service for variant items. Empty for product lines. */
+  serviceId?: string | null;
   label: string;
   qty: number;
   unitPrice: number;
