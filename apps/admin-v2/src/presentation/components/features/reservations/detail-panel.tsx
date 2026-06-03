@@ -4,6 +4,7 @@ import { useState } from 'react';
 import { format } from 'date-fns';
 import { es } from 'date-fns/locale';
 import { toast } from 'sonner';
+import { CheckCircle2, MoreHorizontal, Play, Trophy, UserX, X } from 'lucide-react';
 import {
   Sheet,
   SheetContent,
@@ -22,6 +23,13 @@ import {
   DialogDescription,
   DialogFooter,
 } from '@/presentation/components/ui/dialog';
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from '@/presentation/components/ui/dropdown-menu';
 import { Separator } from '@/presentation/components/ui/separator';
 import {
   useTransitionReservation,
@@ -140,77 +148,105 @@ export function DetailPanel({ reservation, open, onClose }: DetailPanelProps) {
           </SheetHeader>
 
           <div className="mt-6 space-y-5">
-            {/* Actions */}
-            <div className="flex flex-wrap gap-2">
-              {reservation.status === 'pending' && (
-                <>
-                  <Button
-                    size="sm"
-                    className="bg-sky-500 hover:bg-sky-600"
-                    onClick={() => setCheckInOpen(true)}
-                  >
-                    Confirmar llegada
-                  </Button>
-                  <Button
-                    size="sm"
-                    variant="outline"
-                    className="border-rose-200 text-rose-600 hover:bg-rose-50"
-                    onClick={() => setCancelOpen(true)}
-                  >
-                    Cancelar
-                  </Button>
-                </>
-              )}
-              {(reservation.status === 'confirmed' ||
-                reservation.status === 'checked_in') && (
-                <>
-                  {reservation.status === 'confirmed' && (
+            {/* Actions — one tap-friendly primary CTA per state; alternative
+                paths sit as outlined secondaries; destructive / no-show land
+                in the overflow menu so they don't compete for attention. */}
+            {reservation.status !== 'completed' &&
+              reservation.status !== 'cancelled' &&
+              reservation.status !== 'no_show' && (
+                <div className="flex items-stretch gap-2">
+                  {reservation.status === 'pending' && (
                     <Button
-                      size="sm"
-                      className="bg-sky-500 hover:bg-sky-600"
+                      className="h-11 flex-1 gap-2 bg-sky-500 text-white shadow-sm hover:bg-sky-600 active:scale-[0.98] transition-all"
                       onClick={() => setCheckInOpen(true)}
                     >
+                      <CheckCircle2 className="h-4 w-4" />
                       Confirmar llegada
                     </Button>
                   )}
-                  <Button
-                    size="sm"
-                    className="bg-[var(--color-primary)] hover:bg-[var(--color-primary)]"
-                    onClick={() => handleTransition('start')}
-                    disabled={transition.isPending}
-                  >
-                    Iniciar
-                  </Button>
-                  <Button
-                    size="sm"
-                    variant="outline"
-                    className="border-rose-200 text-rose-600 hover:bg-rose-50"
-                    onClick={() => setCancelOpen(true)}
-                  >
-                    Cancelar
-                  </Button>
-                  <Button
-                    size="sm"
-                    variant="outline"
-                    className="border-slate-200 text-slate-600 hover:bg-slate-50"
-                    onClick={handleNoShow}
-                    disabled={transition.isPending}
-                  >
-                    Ausente
-                  </Button>
-                </>
+
+                  {reservation.status === 'confirmed' && (
+                    <>
+                      <Button
+                        className="h-11 flex-1 gap-2 bg-sky-500 text-white shadow-sm hover:bg-sky-600 active:scale-[0.98] transition-all"
+                        onClick={() => setCheckInOpen(true)}
+                      >
+                        <CheckCircle2 className="h-4 w-4" />
+                        Confirmar llegada
+                      </Button>
+                      <Button
+                        variant="outline"
+                        className="h-11 gap-2"
+                        onClick={() => handleTransition('start')}
+                        disabled={transition.isPending}
+                        aria-label="Iniciar servicio sin check-in"
+                      >
+                        <Play className="h-4 w-4" />
+                        Iniciar
+                      </Button>
+                    </>
+                  )}
+
+                  {reservation.status === 'checked_in' && (
+                    <Button
+                      className="h-11 flex-1 gap-2 bg-[var(--color-primary)] text-white shadow-sm hover:opacity-90 active:scale-[0.98] transition-all"
+                      onClick={() => handleTransition('start')}
+                      disabled={transition.isPending}
+                    >
+                      <Play className="h-4 w-4" />
+                      Iniciar servicio
+                    </Button>
+                  )}
+
+                  {reservation.status === 'in_progress' && (
+                    <Button
+                      className="h-11 flex-1 gap-2 bg-emerald-500 text-white shadow-sm hover:bg-emerald-600 active:scale-[0.98] transition-all"
+                      onClick={() => handleTransition('complete')}
+                      disabled={transition.isPending}
+                    >
+                      <Trophy className="h-4 w-4" />
+                      Completar
+                    </Button>
+                  )}
+
+                  {reservation.status !== 'in_progress' && (
+                    <DropdownMenu>
+                      <DropdownMenuTrigger asChild>
+                        <Button
+                          variant="outline"
+                          size="icon"
+                          className="h-11 w-11 shrink-0"
+                          aria-label="Más opciones"
+                        >
+                          <MoreHorizontal className="h-4 w-4" />
+                        </Button>
+                      </DropdownMenuTrigger>
+                      <DropdownMenuContent align="end" className="w-48">
+                        {(reservation.status === 'confirmed' ||
+                          reservation.status === 'checked_in') && (
+                          <>
+                            <DropdownMenuItem
+                              onClick={handleNoShow}
+                              disabled={transition.isPending}
+                            >
+                              <UserX className="mr-2 h-4 w-4" />
+                              Marcar ausente
+                            </DropdownMenuItem>
+                            <DropdownMenuSeparator />
+                          </>
+                        )}
+                        <DropdownMenuItem
+                          onClick={() => setCancelOpen(true)}
+                          className="text-rose-600 focus:text-rose-700 focus:bg-rose-50"
+                        >
+                          <X className="mr-2 h-4 w-4" />
+                          Cancelar reserva
+                        </DropdownMenuItem>
+                      </DropdownMenuContent>
+                    </DropdownMenu>
+                  )}
+                </div>
               )}
-              {reservation.status === 'in_progress' && (
-                <Button
-                  size="sm"
-                  className="bg-emerald-500 hover:bg-emerald-600"
-                  onClick={() => handleTransition('complete')}
-                  disabled={transition.isPending}
-                >
-                  Completar
-                </Button>
-              )}
-            </div>
 
             <Separator />
 
