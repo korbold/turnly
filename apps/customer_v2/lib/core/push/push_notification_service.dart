@@ -15,7 +15,14 @@ Future<void> _firebaseMessagingBackgroundHandler(RemoteMessage message) async {
   // Background messages handled by system tray automatically
 }
 
-void _log(String msg) => dev.log(msg, name: 'PushNotificationService');
+void _log(String msg) {
+  // Dual log: dev.log goes to OSLog (Console.app, hidden in plain Xcode
+  // output), print goes straight to the Xcode debug area so we can see
+  // the push handshake during release-mode device debugging.
+  dev.log(msg, name: 'PushNotificationService');
+  // ignore: avoid_print
+  print('[PushNotificationService] $msg');
+}
 
 class PushNotificationService {
   final FirebaseMessaging _messaging = FirebaseMessaging.instance;
