@@ -1,6 +1,7 @@
 // lib/features/reservations/domain/repositories/reservation_repository.dart
 import 'package:fpdart/fpdart.dart';
 import '../../../../core/error/failures.dart';
+import '../../../explore/domain/entities/service.dart';
 import '../entities/reservation.dart';
 import '../entities/available_slot.dart';
 import '../entities/booking_item.dart';
@@ -13,6 +14,7 @@ abstract class ReservationRepository {
   /// Legacy single-service booking. Kept for older entry points;
   /// new flows should use [createWithItems].
   Future<Either<Failure, Reservation>> create({
+    required String tenantSlug,
     required String clientResourceId,
     required String serviceId,
     required String scheduledAt,
@@ -22,6 +24,7 @@ abstract class ReservationRepository {
   /// Multi-service booking. Backend expands each item to a
   /// reservation_items row and sums durations into estimated_end.
   Future<Either<Failure, Reservation>> createWithItems({
+    required String tenantSlug,
     required String clientResourceId,
     required List<BookingItem> items,
     required String scheduledAt,
@@ -46,4 +49,14 @@ abstract class ReservationRepository {
     int qty = 1,
   });
   Future<Either<Failure, Unit>> removeItem(String itemId);
+
+  /// Phase 3.7 — backend picks the variant that fits the client's
+  /// registered resource (vehicle, pet, etc.). Returns null when the
+  /// tenant has no segmentation field, the resource lacks the value,
+  /// or no variant label matches. Customer flow uses this right after
+  /// the resource is selected so the size step can be skipped.
+  Future<Either<Failure, ServiceVariantOption?>> fetchSuggestedVariant({
+    required String serviceId,
+    required String clientResourceId,
+  });
 }

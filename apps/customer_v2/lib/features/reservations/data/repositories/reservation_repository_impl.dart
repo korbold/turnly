@@ -3,6 +3,7 @@ import 'package:dio/dio.dart';
 import 'package:fpdart/fpdart.dart';
 import '../../../../core/error/failures.dart';
 import '../../../../core/network/api_client.dart';
+import '../../../explore/domain/entities/service.dart';
 import '../../domain/entities/reservation.dart';
 import '../../domain/entities/available_slot.dart';
 import '../../domain/entities/booking_item.dart';
@@ -61,26 +62,29 @@ class ReservationRepositoryImpl implements ReservationRepository {
 
   @override
   Future<Either<Failure, Reservation>> create({
+    required String tenantSlug,
     required String clientResourceId,
     required String serviceId,
     required String scheduledAt,
     String? notes,
   }) async {
     try {
-      final response = await _dio.post('/reservations', data: {
-        'client_resource_id': clientResourceId,
-        'service_id': serviceId,
-        'scheduled_at': scheduledAt,
-        if (notes != null) 'notes': notes,
-      });
+      final response = await _dio.post(
+        '/public/tenants/$tenantSlug/book',
+        data: {
+          if (clientResourceId.isNotEmpty)
+            'client_resource_id': clientResourceId,
+          'service_id': serviceId,
+          'scheduled_at': scheduledAt,
+          if (notes != null) 'notes': notes,
+        },
+      );
       return Right(
         ReservationDto(response.data['data'] as Map<String, dynamic>).toEntity(),
       );
     } on DioException catch (e) {
       if (e.response?.statusCode == 401) return const Left(AuthFailure());
-      return Left(ServerFailure(
-        e.response?.data?['error']?['message'] ?? 'Error al crear reserva',
-      ));
+      return Left(ServerFailure(_extractError(e)));
     } catch (e) {
       return Left(ServerFailure(e.toString()));
     }
@@ -88,6 +92,7 @@ class ReservationRepositoryImpl implements ReservationRepository {
 
   @override
   Future<Either<Failure, Reservation>> createWithItems({
+    required String tenantSlug,
     required String clientResourceId,
     required List<BookingItem> items,
     required String scheduledAt,
@@ -98,7 +103,8 @@ class ReservationRepositoryImpl implements ReservationRepository {
       // selection lacks a variant id (older catalogs) we fall back to
       // sending service_id alongside, so the server can resolve it.
       final payloadItems = items
-          .where((i) => i.serviceVariantId != null)
+          .where((i) =>
+              i.serviceVariantId != null && i.serviceVariantId!.isNotEmpty)
           .map((i) => {
                 'service_variant_id': i.serviceVariantId,
                 'qty': i.qty,
@@ -106,7 +112,8 @@ class ReservationRepositoryImpl implements ReservationRepository {
           .toList();
 
       final body = <String, dynamic>{
-        'client_resource_id': clientResourceId,
+        if (clientResourceId.isNotEmpty)
+          'client_resource_id': clientResourceId,
         'scheduled_at': scheduledAt,
         if (notes != null) 'notes': notes,
       };
@@ -118,18 +125,41 @@ class ReservationRepositoryImpl implements ReservationRepository {
         body['service_id'] = items.first.serviceId;
       }
 
-      final response = await _dio.post('/reservations', data: body);
+      final response = await _dio.post(
+        '/public/tenants/$tenantSlug/book',
+        data: body,
+      );
       return Right(
         ReservationDto(response.data['data'] as Map<String, dynamic>).toEntity(),
       );
     } on DioException catch (e) {
       if (e.response?.statusCode == 401) return const Left(AuthFailure());
-      return Left(ServerFailure(
-        e.response?.data?['error']?['message'] ?? 'Error al crear reserva',
-      ));
+      return Left(ServerFailure(_extractError(e)));
     } catch (e) {
       return Left(ServerFailure(e.toString()));
     }
+  }
+
+  /// Pull the most useful message out of a Laravel/Dio error response:
+  /// 1) `error.message` (custom domain errors)
+  /// 2) `errors.<field>[0]` (default 422 validation shape)
+  /// 3) top-level `message`
+  /// 4) generic fallback
+  String _extractError(DioException e) {
+    final data = e.response?.data;
+    if (data is Map) {
+      final err = data['error'];
+      if (err is Map && err['message'] is String) {
+        return err['message'] as String;
+      }
+      final errors = data['errors'];
+      if (errors is Map && errors.isNotEmpty) {
+        final first = errors.values.first;
+        if (first is List && first.isNotEmpty) return first.first.toString();
+      }
+      if (data['message'] is String) return data['message'] as String;
+    }
+    return 'Error al crear reserva';
   }
 
   @override
@@ -233,6 +263,41 @@ class ReservationRepositoryImpl implements ReservationRepository {
       ));
     } catch (e) {
       return Left(ServerFailure(e.toString()));
+    }
+  }
+
+  @override
+  Future<Either<Failure, ServiceVariantOption?>> fetchSuggestedVariant({
+    required String serviceId,
+    required String clientResourceId,
+  }) async {
+    try {
+      final response = await _dio.get(
+        '/public/services/$serviceId/suggested-variant',
+        queryParameters: {'resource_id': clientResourceId},
+      );
+      final raw = response.data['data'];
+      if (raw == null) return const Right(null);
+      final v = raw as Map<String, dynamic>;
+      // Backend exposes the matched variant under `variant_id`; accept
+      // plain `id` too so future API shapes don't break the client.
+      final id = (v['variant_id'] ?? v['id']) as String?;
+      if (id == null || id.isEmpty) return const Right(null);
+      final price = v['price'];
+      return Right(ServiceVariantOption(
+        id: id,
+        label: v['label'] as String? ?? '',
+        price: price is num
+            ? price.toDouble()
+            : double.tryParse(price?.toString() ?? '0') ?? 0.0,
+        durationMin: (v['duration_min'] as num?)?.toInt() ?? 0,
+        sortOrder: (v['sort_order'] as num?)?.toInt() ?? 0,
+      ));
+    } on DioException catch (e) {
+      if (e.response?.statusCode == 401) return const Left(AuthFailure());
+      return const Right(null);
+    } catch (_) {
+      return const Right(null);
     }
   }
 

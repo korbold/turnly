@@ -433,6 +433,7 @@ class _ReservationDetailContent extends StatelessWidget {
           const SizedBox(height: 16),
 
           // Items panel (Phase 3.5): listed + editable while pending/confirmed.
+          // Owns its own Total — no separate price block needed.
           ReservationItemsSection(
             reservationId: reservation.id,
             status: reservation.status,
@@ -440,33 +441,7 @@ class _ReservationDetailContent extends StatelessWidget {
             tenantSlug: reservation.tenantSlug,
           ),
 
-          // Price summary
-          if (reservation.servicePrice != null) ...[
-            const Divider(),
-            const SizedBox(height: 12),
-            Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-              children: [
-                const Text(
-                  'Total',
-                  style: TextStyle(
-                    fontSize: 16,
-                    fontWeight: FontWeight.w500,
-                    color: AppColors.textSecondary,
-                  ),
-                ),
-                Text(
-                  '\$${reservation.servicePrice}',
-                  style: const TextStyle(
-                    fontSize: 24,
-                    fontWeight: FontWeight.w800,
-                    color: AppColors.textPrimary,
-                  ),
-                ),
-              ],
-            ).animate().fadeIn(duration: 400.ms, delay: 250.ms),
-            const SizedBox(height: 24),
-          ],
+          const SizedBox(height: 24),
 
           // Cancellation policy notice
           if (reservation.status == ReservationStatus.pending || reservation.status == ReservationStatus.confirmed) ...[

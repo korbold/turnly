@@ -75,6 +75,7 @@ class CreateReservationCubit extends Cubit<CreateReservationState> {
   }
 
   Future<void> createReservation({
+    required String tenantSlug,
     String? clientResourceId,
     required String serviceId,
     required String scheduledAt,
@@ -85,6 +86,7 @@ class CreateReservationCubit extends Cubit<CreateReservationState> {
     // Prefer the multi-service endpoint whenever the cart has entries.
     if (_cart.isNotEmpty) {
       final result = await _repository.createWithItems(
+        tenantSlug: tenantSlug,
         clientResourceId: clientResourceId ?? '',
         items: _cart,
         scheduledAt: scheduledAt,
@@ -98,6 +100,7 @@ class CreateReservationCubit extends Cubit<CreateReservationState> {
     }
 
     final result = await _repository.create(
+      tenantSlug: tenantSlug,
       clientResourceId: clientResourceId ?? '',
       serviceId: serviceId,
       scheduledAt: scheduledAt,

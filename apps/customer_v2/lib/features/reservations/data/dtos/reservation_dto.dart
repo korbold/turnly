@@ -13,10 +13,22 @@ class ReservationDto {
     final tenant = json['tenant'] as Map<String, dynamic>?;
     final clientResource = json['client_resource'] as Map<String, dynamic>?;
 
+    // Two response shapes share this DTO:
+    //  1) full reservation row (GET /client/reservations/{id}) — uses `id` + `service_id`
+    //  2) booking summary (POST /public/tenants/{slug}/book) — uses
+    //     `reservation_id` and exposes the first picked service via `items[]`.
+    final items = json['items'] as List<dynamic>?;
+    final firstItem = (items != null && items.isNotEmpty)
+        ? items.first as Map<String, dynamic>
+        : null;
+
+    final id = (json['id'] ?? json['reservation_id']) as String;
+    final serviceId = (json['service_id'] ?? firstItem?['service_id']) as String?;
+
     return Reservation(
-      id: json['id'] as String,
+      id: id,
       clientResourceId: json['client_resource_id'] as String?,
-      serviceId: json['service_id'] as String,
+      serviceId: serviceId ?? '',
       assignedTo: json['assigned_to'] as String?,
       scheduledAt: DateTime.parse(json['scheduled_at'] as String).toLocal(),
       estimatedEnd: json['estimated_end'] != null
@@ -26,8 +38,10 @@ class ReservationDto {
       notes: json['notes'] as String?,
       clientResourceLabel: clientResource?['label'] as String? ??
           clientResource?['plate'] as String?,
-      serviceName: service?['name'] as String?,
-      servicePrice: service?['price']?.toString(),
+      serviceName: (service?['name'] as String?) ??
+          (firstItem?['label'] as String?),
+      servicePrice: service?['price']?.toString() ??
+          firstItem?['unit_price']?.toString(),
       clientName: client?['name'] as String?,
       tenantName: tenant?['name'] as String?,
       tenantSlug: tenant?['slug'] as String?,

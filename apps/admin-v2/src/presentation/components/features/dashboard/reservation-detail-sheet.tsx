@@ -13,7 +13,12 @@ import {
 } from '@/presentation/components/ui/sheet';
 import { Button } from '@/presentation/components/ui/button';
 import { Avatar, AvatarFallback } from '@/presentation/components/ui/avatar';
-import { useTransitionReservation, useCancelReservation } from '@/presentation/hooks/use-reservations';
+import {
+  useTransitionReservation,
+  useCancelReservation,
+  useReservationItems,
+} from '@/presentation/hooks/use-reservations';
+import { CheckInModal } from '@/presentation/components/features/reservations/check-in-modal';
 import { useEffect, useState } from 'react';
 
 function useIsDesktop(query = '(min-width: 640px)'): boolean {
@@ -86,6 +91,7 @@ export function ReservationDetailSheet({
   const transition = useTransitionReservation();
   const cancel = useCancelReservation();
   const isDesktop = useIsDesktop();
+  const [checkInOpen, setCheckInOpen] = useState(false);
 
   if (!reservation) return null;
 
@@ -97,7 +103,21 @@ export function ReservationDetailSheet({
   const day = format(new Date(reservation.scheduledAt), "EEEE d 'de' MMMM", {
     locale: es,
   });
-  const price = reservation.service?.price;
+
+  // Phase 3 — sum every reservation_item to render the real total + line
+  // list. Falls back to the legacy single-service price when the
+  // reservation predates Phase 3 (items endpoint returns empty).
+  const { data: items } = useReservationItems(reservation.id);
+  const hasItems = (items?.length ?? 0) > 0;
+  const itemsTotal = (items ?? []).reduce((acc, it) => acc + it.lineTotal, 0);
+  const legacyPrice = Number(reservation.service?.price ?? 0);
+  const totalAmount = hasItems ? itemsTotal : legacyPrice;
+  const totalLabel = totalAmount > 0
+    ? totalAmount.toLocaleString('es-EC', {
+        style: 'currency',
+        currency: 'USD',
+      })
+    : null;
 
   const actions = nextActions(reservation.status);
   const isPending = transition.isPending || cancel.isPending;
@@ -115,6 +135,13 @@ export function ReservationDetailSheet({
           onError: () => toast.error('No se pudo cancelar'),
         }
       );
+      return;
+    }
+    // "Confirmar llegada" now triggers the full Phase 3 check-in: it
+    // collects billing data + reserves BOM consumibles. Skips the
+    // legacy plain `confirm` transition.
+    if (action === 'confirm') {
+      setCheckInOpen(true);
       return;
     }
     transition.mutate(
@@ -193,20 +220,57 @@ export function ReservationDetailSheet({
                 {day}
               </dd>
             </div>
-            {price && (
+            {totalLabel && (
               <div>
                 <dt className="text-[11px] font-semibold uppercase tracking-[0.04em] text-[var(--fg-muted)]">
-                  Precio
+                  Total
                 </dt>
                 <dd
                   className="mt-1 font-semibold tabular-nums text-[var(--fg-strong)]"
                   style={{ fontFamily: 'var(--font-mono)' }}
                 >
-                  {price}
+                  {totalLabel}
                 </dd>
               </div>
             )}
           </dl>
+
+          {hasItems && (
+            <div className="rounded-lg border border-[var(--border)] bg-[var(--bg-surface)] p-3">
+              <p className="mb-2 text-[11px] font-semibold uppercase tracking-[0.04em] text-[var(--fg-muted)]">
+                Servicios ({items!.length})
+              </p>
+              <ul className="space-y-1.5">
+                {items!.map((it) => (
+                  <li
+                    key={it.id}
+                    className="flex items-center gap-2 text-[13px] leading-snug"
+                  >
+                    <span className="flex-1 truncate text-[var(--fg-strong)]">
+                      {it.label}
+                    </span>
+                    {it.qty !== 1 && (
+                      <span
+                        className="font-mono text-[12px] text-[var(--fg-muted)]"
+                        style={{ fontFamily: 'var(--font-mono)' }}
+                      >
+                        x{it.qty}
+                      </span>
+                    )}
+                    <span
+                      className="w-20 text-right font-mono text-[var(--fg-strong)] tabular-nums"
+                      style={{ fontFamily: 'var(--font-mono)' }}
+                    >
+                      {it.lineTotal.toLocaleString('es-EC', {
+                        style: 'currency',
+                        currency: 'USD',
+                      })}
+                    </span>
+                  </li>
+                ))}
+              </ul>
+            </div>
+          )}
 
           {reservation.notes && (
             <div>
@@ -248,6 +312,18 @@ export function ReservationDetailSheet({
           </Button>
         </div>
       </SheetContent>
+
+      <CheckInModal
+        open={checkInOpen}
+        reservationId={reservation.id}
+        defaultEmail={reservation.client?.email}
+        defaultName={reservation.client?.name}
+        onClose={() => setCheckInOpen(false)}
+        onSuccess={() => {
+          setCheckInOpen(false);
+          onOpenChange(false);
+        }}
+      />
     </Sheet>
   );
 }

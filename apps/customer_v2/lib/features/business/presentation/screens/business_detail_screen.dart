@@ -12,7 +12,6 @@ import '../../../../core/storage/secure_storage.dart';
 import '../../../../shared/widgets/empty_state.dart';
 import '../../../../shared/widgets/shimmer_loader.dart';
 import '../../../explore/domain/entities/business.dart';
-import '../../../explore/domain/entities/service.dart';
 import '../../../explore/domain/repositories/explore_repository.dart';
 import '../cubit/business_detail_cubit.dart';
 import '../cubit/business_detail_state.dart';
@@ -239,21 +238,14 @@ class _ServicesTab extends StatelessWidget {
             await SecureStorage.saveTenantSlug(business.slug);
             if (!context.mounted) return;
 
-            // If the service has size/type variants, open the picker
-            // first so the customer (and the backend BOM) know which
-            // variant — Pequeño/Mediano/Grande/Camioneta, etc. — to use.
-            String? chosenVariantId;
-            if (service.hasVariants) {
-              final variant = await _pickVariant(context, service, tenantTheme.primary);
-              if (variant == null) return;
-              chosenVariantId = variant.id;
-            }
-
-            if (!context.mounted) return;
+            // Variant (size/type) is now resolved inside the booking flow:
+            // after the resource is picked, the backend's VariantSuggester
+            // matches it against the customer's vehicle/pet/etc. The user
+            // only sees a manual picker when the suggestion can't decide.
             context.push('/reservations/create', extra: {
               'tenantSlug': business.slug,
               'serviceId': service.id,
-              'serviceVariantId': chosenVariantId,
+              'serviceVariantId': null,
               'services': business.services,
               'customFields': business.customFields,
               'businessType': business.businessType,
@@ -264,55 +256,6 @@ class _ServicesTab extends StatelessWidget {
     );
   }
 
-  Future<ServiceVariantOption?> _pickVariant(
-    BuildContext context,
-    Service service,
-    Color primary,
-  ) {
-    return showModalBottomSheet<ServiceVariantOption>(
-      context: context,
-      isScrollControlled: true,
-      backgroundColor: AppColors.surface,
-      shape: const RoundedRectangleBorder(
-        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
-      ),
-      builder: (sheetCtx) {
-        return SafeArea(
-          child: Padding(
-            padding: const EdgeInsets.all(20),
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  service.name,
-                  style: const TextStyle(fontSize: 18, fontWeight: FontWeight.w700),
-                ),
-                const SizedBox(height: 4),
-                const Text(
-                  'Elige una opción',
-                  style: TextStyle(fontSize: 13, color: AppColors.textSecondary),
-                ),
-                const SizedBox(height: 12),
-                ...service.variants.map(
-                  (v) => ListTile(
-                    contentPadding: EdgeInsets.zero,
-                    title: Text(v.label),
-                    subtitle: Text(
-                      '\$${v.price.toStringAsFixed(2)} · ${v.durationMin} min',
-                      style: const TextStyle(fontSize: 12),
-                    ),
-                    trailing: Icon(Icons.chevron_right_rounded, color: primary),
-                    onTap: () => Navigator.pop(sheetCtx, v),
-                  ),
-                ),
-              ],
-            ),
-          ),
-        );
-      },
-    );
-  }
 }
 
 // Info Tab
