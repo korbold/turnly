@@ -3,7 +3,7 @@
 import { format } from 'date-fns';
 import { es } from 'date-fns/locale';
 import { useRouter } from 'next/navigation';
-import { Calendar, Loader2 } from 'lucide-react';
+import { Calendar, Loader2, Pencil } from 'lucide-react';
 import {
   Sheet,
   SheetContent,
@@ -113,6 +113,12 @@ export function ReservationDetailSheet({
   const itemsTotal = (items ?? []).reduce((acc, it) => acc + it.lineTotal, 0);
   const legacyPrice = Number(reservation.service?.price ?? 0);
   const totalAmount = hasItems ? itemsTotal : legacyPrice;
+
+  // Items remain editable while the reservation hasn't reached a
+  // terminal state. Mirrors the backend rule on POST /items.
+  const isEditable = ['pending', 'confirmed', 'checked_in'].includes(
+    reservation.status
+  );
   const totalLabel = totalAmount > 0
     ? totalAmount.toLocaleString('es-EC', {
         style: 'currency',
@@ -299,6 +305,20 @@ export function ReservationDetailSheet({
               {ACTION_LABELS[action]}
             </Button>
           ))}
+          {isEditable && (
+            <Button
+              size="lg"
+              variant="outline"
+              className="w-full"
+              onClick={() => {
+                onOpenChange(false);
+                router.push(`/reservations/${reservation.id}`);
+              }}
+            >
+              <Pencil className="mr-2 h-4 w-4" aria-hidden="true" />
+              Editar servicios
+            </Button>
+          )}
           <Button
             size="lg"
             variant="ghost"
