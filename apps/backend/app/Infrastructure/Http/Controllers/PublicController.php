@@ -4,6 +4,7 @@ namespace App\Infrastructure\Http\Controllers;
 
 use App\Application\Services\PlanLimitsService;
 use App\Domain\Reservation\VariantSuggester;
+use App\Infrastructure\Notifications\Notifications\NewReservationForAdmin;
 use App\Infrastructure\Persistence\Models\AvailabilitySlotModel;
 use App\Infrastructure\Persistence\Models\ClientResourceModel;
 use App\Infrastructure\Persistence\Models\PlanModel;
@@ -17,6 +18,8 @@ use App\Infrastructure\Persistence\Models\UserModel;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Facades\Notification;
 use Illuminate\Support\Str;
 
 class PublicController extends Controller
@@ -482,6 +485,28 @@ class PublicController extends Controller
             fn ($acc, $i) => $acc + ($i['price'] * $i['qty']),
             0.0
         );
+
+        // Notify the tenant's staff that a customer booked. The legacy
+        // CreateReservationUseCase owns this for tenant-portal bookings;
+        // the public/book endpoint creates rows directly, so the dispatch
+        // needs to live here too. Swallow failures so a broken FCM doesn't
+        // block the 201.
+        try {
+            $modelWithRelations = ReservationModel::with(['service', 'client', 'tenant'])
+                ->find($reservation->id);
+            if ($modelWithRelations) {
+                $admins = $tenant
+                    ->users()
+                    ->wherePivotIn('role', ['owner', 'tenant_admin', 'cashier'])
+                    ->wherePivot('is_active', true)
+                    ->get();
+                if ($admins->isNotEmpty()) {
+                    Notification::send($admins, new NewReservationForAdmin($modelWithRelations));
+                }
+            }
+        } catch (\Throwable $e) {
+            Log::error('Failed to send new reservation notification', ['error' => $e->getMessage()]);
+        }
 
         return response()->json([
             'data' => [
