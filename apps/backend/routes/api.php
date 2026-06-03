@@ -7,9 +7,20 @@ use App\Infrastructure\Http\Controllers\Auth\OnboardingController;
 use App\Infrastructure\Http\Controllers\Tenant\TenantSettingsController;
 use App\Infrastructure\Http\Controllers\Tenant\TenantImageController;
 use App\Infrastructure\Http\Controllers\Reservation\ReservationController;
+use App\Infrastructure\Http\Controllers\Reservation\ReservationCheckInController;
+use App\Infrastructure\Http\Controllers\Reservation\ReservationItemController;
+use App\Infrastructure\Http\Controllers\Reservation\ClientReservationItemController;
+use App\Infrastructure\Http\Controllers\Client\ClientSearchController;
+use App\Infrastructure\Http\Controllers\Auth\ClaimController;
+use App\Infrastructure\Http\Controllers\ClientResource\ClientResourceLookupController;
+use App\Infrastructure\Http\Controllers\Billing\UserBillingProfileController;
 use App\Infrastructure\Http\Controllers\ServiceLog\ServiceLogController;
 use App\Infrastructure\Http\Controllers\ClientResource\ClientResourceController;
 use App\Infrastructure\Http\Controllers\Service\ServiceController;
+use App\Infrastructure\Http\Controllers\Service\ServiceVariantController;
+use App\Infrastructure\Http\Controllers\Service\BomController;
+use App\Infrastructure\Http\Controllers\Inventory\ProductController;
+use App\Infrastructure\Http\Controllers\Inventory\StockMovementController;
 use App\Infrastructure\Http\Controllers\User\UserController;
 use App\Infrastructure\Http\Controllers\Report\ReportController;
 use App\Infrastructure\Http\Controllers\SuperAdmin\SuperAdminController;
@@ -25,6 +36,7 @@ Route::prefix('v1/public')->group(function () {
     Route::get('tenants', [PublicController::class, 'listTenants']);
     Route::get('tenants/{slug}', [PublicController::class, 'getTenant']);
     Route::get('tenants/{slug}/available-slots', [PublicController::class, 'getAvailableSlots']);
+    Route::get('services/{id}/suggested-variant', [PublicController::class, 'suggestVariant'])->middleware('auth:sanctum');
     Route::get('tenants/{slug}/my-resources', [PublicController::class, 'myResources'])->middleware('auth:sanctum');
     Route::post('tenants/{slug}/book', [PublicController::class, 'book'])
         ->middleware('throttle:public-book');
@@ -33,6 +45,11 @@ Route::prefix('v1/public')->group(function () {
 Route::prefix('v1')->group(function () {
 
     // Public auth
+    // Account claim flow (no SMS — magic link + QR/PIN only).
+    Route::post('auth/lookup', [ClaimController::class, 'lookup'])->middleware('throttle:30,1');
+    Route::post('auth/claim/start', [ClaimController::class, 'start'])->middleware('throttle:10,60');
+    Route::post('auth/claim/verify', [ClaimController::class, 'verify'])->middleware('throttle:10,60');
+
     Route::post('auth/register', [AuthController::class, 'register'])
         ->middleware('throttle:5,60');
     Route::post('auth/login', [AuthController::class, 'login'])
@@ -73,11 +90,23 @@ Route::prefix('v1')->group(function () {
         Route::get('client/reservations/{id}', [ReservationController::class, 'myReservationShow']);
         Route::patch('client/reservations/{id}/cancel', [ReservationController::class, 'myReservationCancel']);
 
+        // Phase 3.5 — customer can edit pending/confirmed reservations.
+        Route::get('client/reservations/{id}/items', [ClientReservationItemController::class, 'index']);
+        Route::post('client/reservations/{id}/items', [ClientReservationItemController::class, 'store']);
+        Route::delete('client/reservation-items/{id}', [ClientReservationItemController::class, 'destroy']);
+
         // Device tokens (tenant middleware tolerates no-slug for client app)
         Route::middleware('tenant')->group(function () {
             Route::post('device-tokens', [\App\Infrastructure\Http\Controllers\Notification\DeviceTokenController::class, 'store']);
             Route::delete('device-tokens/{token}', [\App\Infrastructure\Http\Controllers\Notification\DeviceTokenController::class, 'destroy']);
         });
+
+        // Billing profiles (customer-facing, not tenant scoped).
+        Route::get('billing-profiles', [UserBillingProfileController::class, 'index']);
+        Route::post('billing-profiles', [UserBillingProfileController::class, 'store']);
+        Route::patch('billing-profiles/{id}', [UserBillingProfileController::class, 'update']);
+        Route::patch('billing-profiles/{id}/default', [UserBillingProfileController::class, 'setDefault']);
+        Route::delete('billing-profiles/{id}', [UserBillingProfileController::class, 'destroy']);
 
         // Notifications inbox
         Route::get('notifications', [\App\Infrastructure\Http\Controllers\Notification\NotificationController::class, 'index']);
@@ -112,6 +141,17 @@ Route::prefix('v1')->group(function () {
             Route::patch('reservations/{id}/cancel', [ReservationController::class, 'cancel']);
             Route::patch('reservations/{id}/no_show', [ReservationController::class, 'noShow']);
 
+            // Check-in flow (Phase 3): freeze billing data + reserve BOM consumibles.
+            Route::post('reservations/{id}/check-in', [ReservationCheckInController::class, 'checkIn']);
+            Route::patch('reservations/{id}/billing', [ReservationCheckInController::class, 'updateBilling']);
+
+            // Polymorphic line items + audit log.
+            Route::get('reservations/{id}/items', [ReservationItemController::class, 'index']);
+            Route::post('reservations/{id}/items', [ReservationItemController::class, 'store']);
+            Route::delete('reservation-items/{id}', [ReservationItemController::class, 'destroy']);
+            Route::patch('reservation-items/{id}/price', [ReservationItemController::class, 'overridePrice']);
+            Route::get('reservations/{id}/changes', [ReservationItemController::class, 'changes']);
+
             // Service logs
             Route::get('service-logs/summary', [ServiceLogController::class, 'summary']);
             Route::get('service-logs', [ServiceLogController::class, 'index']);
@@ -131,9 +171,29 @@ Route::prefix('v1')->group(function () {
 
             // Services
             Route::get('services', [ServiceController::class, 'index']);
+            Route::get('services/{id}', [ServiceController::class, 'show']);
             Route::post('services', [ServiceController::class, 'store']);
             Route::put('services/{id}', [ServiceController::class, 'update']);
             Route::delete('services/{id}', [ServiceController::class, 'destroy']);
+
+            // Service variants (size / type / duration buckets within a service)
+            Route::get('services/{id}/variants', [ServiceVariantController::class, 'index']);
+            Route::post('services/{id}/variants', [ServiceVariantController::class, 'store']);
+            Route::patch('service-variants/{id}', [ServiceVariantController::class, 'update']);
+            Route::delete('service-variants/{id}', [ServiceVariantController::class, 'destroy']);
+
+            // BOM: products consumed per variant of a service
+            Route::get('service-variants/{id}/consumption', [BomController::class, 'index']);
+            Route::put('service-variants/{id}/consumption', [BomController::class, 'replace']);
+
+            // Inventory: products + kardex + manual movements
+            Route::get('products', [ProductController::class, 'index']);
+            Route::post('products', [ProductController::class, 'store']);
+            Route::get('products/{id}', [ProductController::class, 'show']);
+            Route::patch('products/{id}', [ProductController::class, 'update']);
+            Route::delete('products/{id}', [ProductController::class, 'destroy']);
+            Route::get('products/{id}/movements', [StockMovementController::class, 'index']);
+            Route::post('stock-movements', [StockMovementController::class, 'store']);
 
             // Users
             Route::get('users', [UserController::class, 'index']);
@@ -141,6 +201,16 @@ Route::prefix('v1')->group(function () {
             Route::get('users/{id}', [UserController::class, 'show']);
             Route::patch('users/{id}/role', [UserController::class, 'updateRole']);
             Route::patch('users/{id}/password', [UserController::class, 'resetPassword']);
+            Route::patch('clients/{id}', [UserController::class, 'updateClient']);
+
+            // Client search (dedup walk-in) + claim invite.
+            Route::get('clients/search', [ClientSearchController::class, 'search']);
+            Route::post('clients/{id}/link-to-tenant', [ClientSearchController::class, 'linkToTenant']);
+            Route::post('clients/{id}/invite-app', [ClaimController::class, 'inviteToApp']);
+
+            // Dedup placa lookup + transfer.
+            Route::get('client-resources/lookup', [ClientResourceLookupController::class, 'lookup']);
+            Route::post('client-resources/{id}/transfer', [ClientResourceLookupController::class, 'transfer']);
 
             // Reports
             Route::get('reports/daily', [ReportController::class, 'daily']);
