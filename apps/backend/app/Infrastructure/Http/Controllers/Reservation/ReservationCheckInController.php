@@ -8,11 +8,14 @@ use App\Domain\Inventory\ConsumptionEngine;
 use App\Domain\Reservation\Enums\ReservationStatus;
 use App\Infrastructure\Http\Controllers\Controller;
 use App\Infrastructure\Http\Resources\ReservationResource;
+use App\Infrastructure\Notifications\Notifications\ReservationCheckedIn;
 use App\Infrastructure\Persistence\Models\ReservationModel;
 use App\Infrastructure\Persistence\Models\UserBillingProfileModel;
+use App\Infrastructure\Persistence\Models\UserModel;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Log;
 use Illuminate\Validation\Rule;
 
 /**
@@ -65,8 +68,19 @@ class ReservationCheckInController extends Controller
             $this->consumption->reserveForReservation($reservation->fresh('items'));
         });
 
-        $fresh = ReservationModel::with(['service', 'client', 'clientResource', 'items'])
+        $fresh = ReservationModel::with(['service', 'client', 'clientResource', 'items', 'tenant'])
             ->findOrFail($reservation->id);
+
+        // Let the customer know we received them. Doesn't block the
+        // response if the FCM call fails downstream.
+        try {
+            $client = UserModel::find($fresh->client_id);
+            if ($client) {
+                $client->notify(new ReservationCheckedIn($fresh));
+            }
+        } catch (\Throwable $e) {
+            Log::error('Failed to send reservation checked-in notification', ['error' => $e->getMessage()]);
+        }
 
         return (new ReservationResource($fresh))->response();
     }

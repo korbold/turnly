@@ -7,7 +7,9 @@ use App\Domain\Reservation\Contracts\ReservationRepositoryInterface;
 use App\Domain\Reservation\Enums\ReservationStatus;
 use App\Domain\Reservation\Exceptions\InvalidStatusTransitionException;
 use App\Domain\Reservation\Exceptions\ReservationNotFoundException;
+use App\Infrastructure\Notifications\Notifications\ReservationCompleted;
 use App\Infrastructure\Persistence\Models\ReservationModel;
+use App\Infrastructure\Persistence\Models\UserModel;
 
 class CompleteWashUseCase
 {
@@ -33,9 +35,19 @@ class CompleteWashUseCase
         // Draw BOM-defined consumables now that the service is officially done.
         // The engine is idempotent, so it's safe to re-invoke if the controller
         // is retried.
-        $model = ReservationModel::find($reservationId);
+        $model = ReservationModel::with(['service', 'tenant'])->find($reservationId);
         if ($model) {
             $this->consumption->applyForReservation($model);
+
+            // Tell the customer the service is finished — push + in-app row.
+            try {
+                $client = UserModel::find($model->client_id);
+                if ($client) {
+                    $client->notify(new ReservationCompleted($model));
+                }
+            } catch (\Throwable $e) {
+                \Illuminate\Support\Facades\Log::error('Failed to send reservation completed notification', ['error' => $e->getMessage()]);
+            }
         }
     }
 }
