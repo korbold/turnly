@@ -164,6 +164,15 @@ export function DetailPanel({ reservation, open, onClose }: DetailPanelProps) {
               {(reservation.status === 'confirmed' ||
                 reservation.status === 'checked_in') && (
                 <>
+                  {reservation.status === 'confirmed' && (
+                    <Button
+                      size="sm"
+                      className="bg-sky-500 hover:bg-sky-600"
+                      onClick={() => setCheckInOpen(true)}
+                    >
+                      Check-in
+                    </Button>
+                  )}
                   <Button
                     size="sm"
                     className="bg-[var(--color-primary)] hover:bg-[var(--color-primary)]"
