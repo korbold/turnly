@@ -39,8 +39,8 @@ export function getEcho(): Echo<'reverb'> | null {
     wssPort: port,
     forceTLS: scheme === 'https',
     enabledTransports: ['ws', 'wss'],
-    authorizer: (channel: { name: string }) => ({
-      authorize: (socketId: string, callback: (err: Error | null, data: unknown) => void) => {
+    authorizer: (channel) => ({
+      authorize: (socketId, callback) => {
         const token = authStorage.getToken();
         const tenantSlug = authStorage.getTenantSlug();
         const headers: Record<string, string> = {
