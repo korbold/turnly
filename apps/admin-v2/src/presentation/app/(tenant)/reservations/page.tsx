@@ -1,7 +1,7 @@
 'use client';
 
-import { useState, useMemo, useEffect, Suspense } from 'react';
-import { useSearchParams } from 'next/navigation';
+import { useState, useMemo, useEffect, useRef, Suspense } from 'react';
+import { useSearchParams, useRouter, usePathname } from 'next/navigation';
 import {
   format,
   startOfMonth,
@@ -38,15 +38,36 @@ function ReservationsContent() {
 
   // Check URL for create=true or reservation={id}
   const searchParams = useSearchParams();
+  const router = useRouter();
+  const pathname = usePathname();
+  // Track which reservation we already opened from the URL so we don't
+  // refetch + reopen the panel every time *any* other URL param (date,
+  // status, view) changes. Without this guard the panel re-appears on
+  // every filter tweak because useSearchParams returns a new object.
+  const lastOpenedFromUrlRef = useRef<string | null>(null);
   useEffect(() => {
     if (searchParams.get('create') === 'true') {
       setCreateOpen(true);
     }
     const reservationId = searchParams.get('reservation');
-    if (reservationId) {
+    if (reservationId && reservationId !== lastOpenedFromUrlRef.current) {
+      lastOpenedFromUrlRef.current = reservationId;
       reservationRepo.getById(reservationId).then(setSelectedReservation).catch(() => {});
+    } else if (!reservationId) {
+      lastOpenedFromUrlRef.current = null;
     }
-  }, [searchParams]);
+  }, [searchParams, reservationRepo]);
+
+  function closeDetailPanel() {
+    setSelectedReservation(null);
+    lastOpenedFromUrlRef.current = null;
+    if (searchParams.has('reservation')) {
+      const next = new URLSearchParams(searchParams.toString());
+      next.delete('reservation');
+      const query = next.toString();
+      router.replace(query ? `${pathname}?${query}` : pathname, { scroll: false });
+    }
+  }
 
   // Calendar month date range (full visible grid)
   const calendarRange = useMemo(() => {
@@ -178,7 +199,7 @@ function ReservationsContent() {
       <DetailPanel
         reservation={selectedReservation}
         open={!!selectedReservation}
-        onClose={() => setSelectedReservation(null)}
+        onClose={closeDetailPanel}
       />
 
       {/* Create modal */}
