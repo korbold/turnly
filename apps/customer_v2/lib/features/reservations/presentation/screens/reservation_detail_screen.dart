@@ -232,12 +232,15 @@ class _ReservationDetailScreenState extends State<ReservationDetailScreen> {
 
     if (_reservation == null) return const SizedBox.shrink();
 
-    return _ReservationDetailContent(
-      reservation: _reservation!,
-      cancelling: _cancelling,
-      rescheduling: _rescheduling,
-      onCancel: _cancelReservation,
-      onReschedule: _rescheduleReservation,
+    return RefreshIndicator(
+      onRefresh: _loadReservation,
+      child: _ReservationDetailContent(
+        reservation: _reservation!,
+        cancelling: _cancelling,
+        rescheduling: _rescheduling,
+        onCancel: _cancelReservation,
+        onReschedule: _rescheduleReservation,
+      ),
     );
   }
 
@@ -482,17 +485,11 @@ class _ReservationDetailContent extends StatelessWidget {
 
           const SizedBox(height: 24),
 
-          // Service name
-          Text(
-            reservation.serviceName ?? 'Servicio',
-            style: const TextStyle(
-              fontSize: 20,
-              fontWeight: FontWeight.w700,
-              color: AppColors.textPrimary,
-            ),
-          ).animate().fadeIn(duration: 400.ms, delay: 50.ms),
-
-          const SizedBox(height: 20),
+          // (Standalone service title removed — the
+          // "Servicios incluidos" card below lists every item, and
+          // legacy `serviceName` only ever held the first service so
+          // multi-item bookings used to look like single-service ones.)
+          const SizedBox(height: 0),
 
           // Details list
           _InfoTile(

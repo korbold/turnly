@@ -160,7 +160,7 @@ class ReservationController extends Controller
 
     public function index(Request $request)
     {
-        $query = ReservationModel::with(['clientResource', 'service', 'client']);
+        $query = ReservationModel::with(['clientResource', 'service', 'client', 'items']);
 
         if ($request->has('date_from') && $request->has('date_to')) {
             $query->whereDate('scheduled_at', '>=', $request->date_from)

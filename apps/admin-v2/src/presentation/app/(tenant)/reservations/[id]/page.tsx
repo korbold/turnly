@@ -38,7 +38,7 @@ function fmt(n: number) {
 const STATUS_LABEL: Record<ReservationStatus, string> = {
   pending: 'Pendiente',
   confirmed: 'Confirmada',
-  checked_in: 'En el local',
+  checked_in: 'Revisando',
   in_progress: 'En curso',
   completed: 'Completada',
   cancelled: 'Cancelada',

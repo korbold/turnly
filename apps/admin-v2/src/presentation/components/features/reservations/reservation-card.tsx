@@ -89,7 +89,23 @@ export function ReservationCard({
     : undefined;
   const headline =
     customLabel ?? reservation.clientResource?.plate ?? reservation.client?.name ?? 'Cliente';
-  const subline = reservation.service?.name;
+
+  // Prefer the multi-service summary when the backend ships it.
+  // "Lavada", "Lavada y Aspirado", "Lavada, Aspirado +2 más", etc.
+  const summary = reservation.servicesSummary;
+  let subline: string | undefined;
+  if (summary && summary.count > 0) {
+    const labels = summary.labels;
+    if (summary.count === 1) {
+      subline = labels[0];
+    } else if (summary.count === 2) {
+      subline = `${labels[0]} y ${labels[1]}`;
+    } else {
+      subline = `${labels[0]}, ${labels[1]} +${summary.count - 2} más`;
+    }
+  } else {
+    subline = reservation.service?.name;
+  }
   const timeLabel = `${format(new Date(reservation.scheduledAt), 'HH:mm')} – ${format(
     new Date(reservation.estimatedEnd),
     'HH:mm',

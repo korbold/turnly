@@ -96,7 +96,7 @@ export function CheckInModal({ open, reservationId, defaultEmail, defaultName, o
           <DialogTitle>Confirmar llegada</DialogTitle>
           <DialogDescription>
             Confirma los datos de facturación. Una vez guardados se reservan los
-            insumos en inventario y la reserva pasa a estado <strong>en el local</strong>.
+            insumos en inventario y la reserva pasa a estado <strong>revisando</strong>.
           </DialogDescription>
         </DialogHeader>
 

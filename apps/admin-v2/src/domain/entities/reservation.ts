@@ -81,6 +81,10 @@ export interface Reservation {
   clientResource?: ReservationClientResource;
   service?: ReservationService;
   client?: ReservationClient;
+  /** Compact roll-up of every item label so list views can render
+      "Lavada + Aspirado +1 más" without firing a /items request per
+      row. Backend ships it when `items` is eager-loaded. */
+  servicesSummary?: { count: number; labels: string[] };
 }
 
 export interface AvailableSlot {

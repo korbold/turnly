@@ -35,6 +35,18 @@ class ReservationResource extends JsonResource
                 'price'            => $this->service->price,
             ]),
 
+            // Compact services summary so list views can render the
+            // multi-service label without firing a follow-up /items
+            // request per row. Loaded only when the caller asked for
+            // the items relationship.
+            'services_summary' => $this->whenLoaded('items', fn () => [
+                'count'  => $this->items->count(),
+                'labels' => $this->items
+                    ->map(fn ($it) => preg_replace('/\s·\s.*$/u', '', (string) $it->label))
+                    ->filter()
+                    ->values(),
+            ]),
+
             'client' => $this->whenLoaded('client', fn () => [
                 'name'  => $this->client->name,
                 'email' => $this->client->email,

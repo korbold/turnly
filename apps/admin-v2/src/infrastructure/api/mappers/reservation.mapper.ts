@@ -51,6 +51,12 @@ export function mapReservation(raw: Record<string, unknown>): Reservation {
           email: client.email as string,
         }
       : undefined,
+    servicesSummary: raw.services_summary
+      ? {
+          count: Number((raw.services_summary as Record<string, unknown>).count ?? 0),
+          labels: ((raw.services_summary as Record<string, unknown>).labels as string[]) ?? [],
+        }
+      : undefined,
   };
 }
 
