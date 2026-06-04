@@ -9,10 +9,12 @@ import '../../../../core/di/injection.dart';
 import '../../../../shared/widgets/app_button.dart';
 import '../../../../shared/widgets/empty_state.dart';
 import '../../../../shared/widgets/shimmer_loader.dart';
+import '../../domain/entities/available_slot.dart';
 import '../../domain/entities/reservation.dart';
 import '../../domain/enums/reservation_status.dart';
 import '../../domain/repositories/reservation_repository.dart';
 import '../widgets/reservation_items_section.dart';
+import '../widgets/slot_chip.dart';
 
 class ReservationDetailScreen extends StatefulWidget {
   final String reservationId;
@@ -247,8 +249,17 @@ class _ReservationDetailScreenState extends State<ReservationDetailScreen> {
   Future<void> _rescheduleReservation() async {
     final res = _reservation;
     if (res == null) return;
+    if (res.serviceId.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('No se pudo cargar el horario de este servicio.'),
+          backgroundColor: AppColors.error,
+        ),
+      );
+      return;
+    }
 
-    // Step 1 — date. Allow up to 90 days out to mirror booking limits.
+    // Pick the new date — capped to 90 days out to mirror booking.
     final now = DateTime.now();
     final pickedDate = await showDatePicker(
       context: context,
@@ -259,39 +270,101 @@ class _ReservationDetailScreenState extends State<ReservationDetailScreen> {
     );
     if (pickedDate == null || !mounted) return;
 
-    // Step 2 — time. Keep the current time as the seed so customers
-    // can nudge by minutes if they just want a small shift.
-    final pickedTime = await showTimePicker(
-      context: context,
-      initialTime: TimeOfDay(
-        hour: res.scheduledAt.hour,
-        minute: res.scheduledAt.minute,
-      ),
-      helpText: 'Selecciona nueva hora',
-    );
-    if (pickedTime == null || !mounted) return;
+    // Pull slot list from the same endpoint the booking flow uses, so
+    // the customer only sees options the tenant actually offers (within
+    // business hours, not already taken, etc.). Duration matches the
+    // current reservation so the slot search blocks overlapping rooms.
+    final durationMin = res.estimatedEnd != null
+        ? res.estimatedEnd!.difference(res.scheduledAt).inMinutes
+        : 30;
+    final dateStr = DateFormat('yyyy-MM-dd').format(pickedDate);
+    final repo = getIt<ReservationRepository>();
 
-    final newStart = DateTime(
-      pickedDate.year,
-      pickedDate.month,
-      pickedDate.day,
-      pickedTime.hour,
-      pickedTime.minute,
+    final slotsResult = await repo.getAvailableSlots(
+      dateStr,
+      res.serviceId,
+      durationMin: durationMin > 0 ? durationMin : null,
     );
-    if (!newStart.isAfter(now)) {
+    if (!mounted) return;
+
+    final List<AvailableSlot>? slots = slotsResult.fold(
+      (failure) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(failure.message),
+            backgroundColor: AppColors.error,
+          ),
+        );
+        return null;
+      },
+      (s) => s,
+    );
+    if (slots == null) return;
+    if (slots.isEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
-          content: Text('La nueva fecha y hora debe ser futura.'),
-          backgroundColor: AppColors.error,
+          content: Text('No hay horarios disponibles para esa fecha.'),
         ),
       );
       return;
     }
 
-    final iso = DateFormat('yyyy-MM-dd HH:mm:ss').format(newStart);
+    if (!mounted) return;
+    final picked = await showModalBottomSheet<AvailableSlot>(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: AppColors.surface,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+      ),
+      builder: (sheetCtx) {
+        return SafeArea(
+          child: Padding(
+            padding: const EdgeInsets.fromLTRB(20, 16, 20, 24),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                const Text(
+                  'Horarios disponibles',
+                  style: TextStyle(fontSize: 18, fontWeight: FontWeight.w700),
+                ),
+                const SizedBox(height: 4),
+                Text(
+                  DateFormat("EEEE d 'de' MMMM", 'es').format(pickedDate),
+                  style: const TextStyle(
+                    fontSize: 13,
+                    color: AppColors.textSecondary,
+                  ),
+                ),
+                const SizedBox(height: 16),
+                Flexible(
+                  child: SingleChildScrollView(
+                    child: Wrap(
+                      spacing: 10,
+                      runSpacing: 10,
+                      children: slots
+                          .map((slot) => SlotChip(
+                                slot: slot,
+                                isSelected: false,
+                                onTap: () => Navigator.pop(sheetCtx, slot),
+                              ))
+                          .toList(),
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ),
+        );
+      },
+    );
+
+    if (picked == null || !mounted) return;
+
+    final iso = DateFormat('yyyy-MM-dd HH:mm:ss').format(picked.start);
 
     setState(() => _rescheduling = true);
-    final repo = getIt<ReservationRepository>();
     final result = await repo.reschedule(widget.reservationId, scheduledAt: iso);
     if (!mounted) return;
     result.fold(
