@@ -51,6 +51,13 @@ interface DetailPanelProps {
   reservation: Reservation | null;
   open: boolean;
   onClose: () => void;
+  /**
+   * When true, render as an inline master-detail card (no Sheet wrapper,
+   * no backdrop) so the timeline next to it stays interactive. Used by
+   * the desktop layout. On smaller viewports we keep the Sheet because a
+   * sliding overlay fits the touch ergonomics better.
+   */
+  embedded?: boolean;
 }
 
 function InfoRow({ label, value }: { label: string; value: React.ReactNode }) {
@@ -63,7 +70,7 @@ function InfoRow({ label, value }: { label: string; value: React.ReactNode }) {
   );
 }
 
-export function DetailPanel({ reservation, open, onClose }: DetailPanelProps) {
+export function DetailPanel({ reservation, open, onClose, embedded = false }: DetailPanelProps) {
   const transition = useTransitionReservation();
   const cancel = useCancelReservation();
   const { data: settings } = useSettings();
@@ -162,35 +169,49 @@ export function DetailPanel({ reservation, open, onClose }: DetailPanelProps) {
     );
   }
 
-  return (
-    <>
-      <Sheet open={open} onOpenChange={(o) => !o && onClose()}>
-        <SheetContent className="w-full overflow-y-auto sm:max-w-[400px]">
-          <SheetHeader>
-            <SheetTitle className="flex items-center gap-2">
-              Reserva #{reservation.id.slice(0, 8)}
-              <Badge
-                className={cn(
-                  'border-0 text-xs',
-                  statusCfg.bgColor,
-                  statusCfg.color
-                )}
-              >
-                {statusCfg.label}
-              </Badge>
-            </SheetTitle>
-            <SheetDescription>
-              Detalle de la reserva
-            </SheetDescription>
-            <a
-              href={`/reservations/${reservation.id}`}
-              className="mt-2 inline-flex w-fit text-[12px] font-medium text-[var(--brand-700)] hover:underline"
-            >
-              Abrir vista completa →
-            </a>
-          </SheetHeader>
+  const header = (
+    <div className="flex items-start justify-between gap-3">
+      <div className="min-w-0">
+        <div className="flex flex-wrap items-center gap-2">
+          <h2 className="text-[16px] font-semibold text-[var(--fg-strong)]">
+            Reserva #{reservation.id.slice(0, 8)}
+          </h2>
+          <Badge
+            className={cn(
+              'border-0 text-xs',
+              statusCfg.bgColor,
+              statusCfg.color
+            )}
+          >
+            {statusCfg.label}
+          </Badge>
+        </div>
+        <p className="mt-1 text-[12px] text-[var(--fg-muted)]">
+          Detalle de la reserva
+        </p>
+        <a
+          href={`/reservations/${reservation.id}`}
+          className="mt-2 inline-flex w-fit text-[12px] font-medium text-[var(--brand-700)] hover:underline"
+        >
+          Abrir vista completa →
+        </a>
+      </div>
+      {embedded && (
+        <Button
+          variant="ghost"
+          size="icon"
+          onClick={onClose}
+          className="h-8 w-8 shrink-0 cursor-pointer text-[var(--fg-muted)] hover:bg-[var(--bg-sunken)] hover:text-[var(--fg-strong)]"
+          aria-label="Cerrar detalle"
+        >
+          <X className="h-4 w-4" />
+        </Button>
+      )}
+    </div>
+  );
 
-          <div className="mt-6 space-y-5">
+  const body = (
+    <div className={cn('space-y-5', embedded ? 'mt-4' : 'mt-6')}>
             {/* Actions — one tap-friendly primary CTA per state; alternative
                 paths sit as outlined secondaries; destructive / no-show land
                 in the overflow menu so they don't compete for attention. */}
@@ -383,9 +404,57 @@ export function DetailPanel({ reservation, open, onClose }: DetailPanelProps) {
                 </div>
               </>
             )}
-          </div>
-        </SheetContent>
-      </Sheet>
+    </div>
+  );
+
+  return (
+    <>
+      {embedded ? (
+        // Master-detail: render as a sticky card next to the timeline. No
+        // backdrop, no Sheet, so the surrounding view stays interactive.
+        // Parent grid is responsible for visibility (hidden on mobile).
+        <div
+          className={cn(
+            'rounded-xl border border-[var(--border)] bg-[var(--bg-surface)] p-5',
+            'max-h-[calc(100dvh-2rem)] overflow-y-auto',
+            // Subtle enter animation — slide in from the right edge of the
+            // grid column. Exit is handled by the parent unmounting us.
+            'animate-in fade-in slide-in-from-right-3 duration-200 ease-out',
+          )}
+        >
+          {header}
+          {body}
+        </div>
+      ) : (
+        <Sheet open={open} onOpenChange={(o) => !o && onClose()}>
+          <SheetContent className="w-full overflow-y-auto sm:max-w-[400px]">
+            <SheetHeader>
+              <SheetTitle className="flex items-center gap-2">
+                Reserva #{reservation.id.slice(0, 8)}
+                <Badge
+                  className={cn(
+                    'border-0 text-xs',
+                    statusCfg.bgColor,
+                    statusCfg.color
+                  )}
+                >
+                  {statusCfg.label}
+                </Badge>
+              </SheetTitle>
+              <SheetDescription>
+                Detalle de la reserva
+              </SheetDescription>
+              <a
+                href={`/reservations/${reservation.id}`}
+                className="mt-2 inline-flex w-fit text-[12px] font-medium text-[var(--brand-700)] hover:underline"
+              >
+                Abrir vista completa →
+              </a>
+            </SheetHeader>
+            {body}
+          </SheetContent>
+        </Sheet>
+      )}
 
       {reservation && (
         <CheckInModal

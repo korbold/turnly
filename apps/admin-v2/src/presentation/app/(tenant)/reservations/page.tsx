@@ -27,6 +27,23 @@ import { DetailPanel } from '@/presentation/components/features/reservations/det
 import { CreateModal } from '@/presentation/components/features/reservations/create-modal';
 import type { Reservation, ReservationStatus } from '@/domain/entities/reservation';
 
+/**
+ * Track whether the viewport is wide enough for the master-detail layout.
+ * Below the threshold we fall back to the Sheet overlay — drawers are
+ * the right pattern for narrow screens, master-detail isn't.
+ */
+function useIsDesktop(query = '(min-width: 1024px)'): boolean {
+  const [isDesktop, setIsDesktop] = useState(false);
+  useEffect(() => {
+    const mql = window.matchMedia(query);
+    const update = () => setIsDesktop(mql.matches);
+    update();
+    mql.addEventListener('change', update);
+    return () => mql.removeEventListener('change', update);
+  }, [query]);
+  return isDesktop;
+}
+
 function ReservationsContent() {
   const { dateStr, setDateStr, statusFilter } = useFilterParams();
   const [view, setView] = useState<'timeline' | 'calendar'>('timeline');
@@ -125,82 +142,120 @@ function ReservationsContent() {
     setView('timeline');
   }
 
+  const isDesktop = useIsDesktop();
+  const showInlinePanel = isDesktop && !!selectedReservation;
+
   return (
-    <div className="space-y-4">
-      {/* Header */}
-      <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-        <div className="flex items-center gap-2">
-          {/* View toggle */}
-          <div className="flex rounded-lg border bg-white p-0.5">
-            <button
-              className={`rounded-md px-2.5 py-1.5 text-xs font-medium transition-colors ${
-                view === 'timeline'
-                  ? 'bg-[var(--color-primary-muted)] text-[var(--color-primary-hover)]'
-                  : 'text-muted-foreground hover:text-foreground'
-              }`}
-              onClick={() => setView('timeline')}
-            >
-              <LayoutList className="mr-1 inline h-3.5 w-3.5" />
-              Timeline
-            </button>
-            <button
-              className={`rounded-md px-2.5 py-1.5 text-xs font-medium transition-colors ${
-                view === 'calendar'
-                  ? 'bg-[var(--color-primary-muted)] text-[var(--color-primary-hover)]'
-                  : 'text-muted-foreground hover:text-foreground'
-              }`}
-              onClick={() => setView('calendar')}
-            >
-              <CalendarDays className="mr-1 inline h-3.5 w-3.5" />
-              Calendario
-            </button>
+    <div
+      className={
+        // Master-detail grid: timeline takes the full row, the detail
+        // panel slots into an `auto` column that collapses to 0px when no
+        // reservation is selected. We avoid transitioning grid-template
+        // because Safari still ships a janky implementation — the panel
+        // itself owns the slide-in animation so the layout shift reads
+        // as intentional.
+        showInlinePanel
+          ? 'grid grid-cols-1 gap-4 lg:grid-cols-[minmax(0,1fr)_400px]'
+          : 'grid grid-cols-1 gap-4'
+      }
+    >
+      <main className="min-w-0 space-y-4">
+        {/* Header */}
+        <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+          <div className="flex items-center gap-2">
+            {/* View toggle */}
+            <div className="flex rounded-lg border bg-white p-0.5">
+              <button
+                className={`rounded-md px-2.5 py-1.5 text-xs font-medium transition-colors ${
+                  view === 'timeline'
+                    ? 'bg-[var(--color-primary-muted)] text-[var(--color-primary-hover)]'
+                    : 'text-muted-foreground hover:text-foreground'
+                }`}
+                onClick={() => setView('timeline')}
+              >
+                <LayoutList className="mr-1 inline h-3.5 w-3.5" />
+                Timeline
+              </button>
+              <button
+                className={`rounded-md px-2.5 py-1.5 text-xs font-medium transition-colors ${
+                  view === 'calendar'
+                    ? 'bg-[var(--color-primary-muted)] text-[var(--color-primary-hover)]'
+                    : 'text-muted-foreground hover:text-foreground'
+                }`}
+                onClick={() => setView('calendar')}
+              >
+                <CalendarDays className="mr-1 inline h-3.5 w-3.5" />
+                Calendario
+              </button>
+            </div>
+
+            <Button size="sm" onClick={() => setCreateOpen(true)}>
+              <Plus className="mr-1 h-4 w-4" />
+              Nueva Reserva
+            </Button>
           </div>
-
-          <Button size="sm" onClick={() => setCreateOpen(true)}>
-            <Plus className="mr-1 h-4 w-4" />
-            Nueva Reserva
-          </Button>
         </div>
-      </div>
 
-      {/* Filters */}
-      {view === 'timeline' ? (
-        <ReservationFilters reservations={allReservations} />
-      ) : (
-        <ReservationFilters
-          reservations={allReservations}
-          calendarMonth={calendarMonth}
-          onMonthChange={setCalendarMonth}
-        />
+        {/* Filters */}
+        {view === 'timeline' ? (
+          <ReservationFilters reservations={allReservations} />
+        ) : (
+          <ReservationFilters
+            reservations={allReservations}
+            calendarMonth={calendarMonth}
+            onMonthChange={setCalendarMonth}
+          />
+        )}
+
+        {/* Content */}
+        {isLoading ? (
+          <div className="space-y-3">
+            {Array.from({ length: 4 }).map((_, i) => (
+              <Skeleton key={i} className="h-20 w-full rounded-lg" />
+            ))}
+          </div>
+        ) : view === 'timeline' ? (
+          <Timeline
+            reservations={displayReservations}
+            onSelect={setSelectedReservation}
+          />
+        ) : (
+          <CalendarView
+            month={calendarMonth}
+            reservations={displayReservations}
+            onSelectDay={handleCalendarSelectDay}
+            onSelectReservation={setSelectedReservation}
+          />
+        )}
+      </main>
+
+      {/* Desktop master-detail — sticky aside, no backdrop, timeline
+          stays interactive. Mounts only when both the viewport is wide
+          enough and a reservation is selected, otherwise its grid column
+          collapses to 0px. */}
+      {showInlinePanel && selectedReservation && (
+        <aside className="hidden lg:block">
+          <div className="sticky top-4">
+            <DetailPanel
+              embedded
+              reservation={selectedReservation}
+              open
+              onClose={closeDetailPanel}
+            />
+          </div>
+        </aside>
       )}
 
-      {/* Content */}
-      {isLoading ? (
-        <div className="space-y-3">
-          {Array.from({ length: 4 }).map((_, i) => (
-            <Skeleton key={i} className="h-20 w-full rounded-lg" />
-          ))}
-        </div>
-      ) : view === 'timeline' ? (
-        <Timeline
-          reservations={displayReservations}
-          onSelect={setSelectedReservation}
-        />
-      ) : (
-        <CalendarView
-          month={calendarMonth}
-          reservations={displayReservations}
-          onSelectDay={handleCalendarSelectDay}
-          onSelectReservation={setSelectedReservation}
+      {/* Mobile / tablet — fall back to the Sheet overlay so the touch
+          ergonomics stay right. Suppressed on desktop so its portal
+          doesn't double up with the inline panel above. */}
+      {!isDesktop && (
+        <DetailPanel
+          reservation={selectedReservation}
+          open={!!selectedReservation}
+          onClose={closeDetailPanel}
         />
       )}
-
-      {/* Detail panel */}
-      <DetailPanel
-        reservation={selectedReservation}
-        open={!!selectedReservation}
-        onClose={closeDetailPanel}
-      />
 
       {/* Create modal */}
       <CreateModal open={createOpen} onClose={() => setCreateOpen(false)} />
