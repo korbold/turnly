@@ -317,4 +317,22 @@ class ReservationRepositoryImpl implements ReservationRepository {
       return Left(ServerFailure(e.toString()));
     }
   }
+
+  @override
+  Future<Either<Failure, Unit>> reschedule(
+    String id, {
+    required String scheduledAt,
+  }) async {
+    try {
+      await _dio.patch('/client/reservations/$id/reschedule', data: {
+        'scheduled_at': scheduledAt,
+      });
+      return const Right(unit);
+    } on DioException catch (e) {
+      if (e.response?.statusCode == 401) return const Left(AuthFailure());
+      return Left(ServerFailure(_extractError(e)));
+    } catch (e) {
+      return Left(ServerFailure(e.toString()));
+    }
+  }
 }

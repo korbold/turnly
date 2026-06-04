@@ -29,6 +29,7 @@ class _ReservationDetailScreenState extends State<ReservationDetailScreen> {
   String? _error;
   bool _loading = true;
   bool _cancelling = false;
+  bool _rescheduling = false;
 
   @override
   void initState() {
@@ -234,7 +235,82 @@ class _ReservationDetailScreenState extends State<ReservationDetailScreen> {
     return _ReservationDetailContent(
       reservation: _reservation!,
       cancelling: _cancelling,
+      rescheduling: _rescheduling,
       onCancel: _cancelReservation,
+      onReschedule: _rescheduleReservation,
+    );
+  }
+
+  Future<void> _rescheduleReservation() async {
+    final res = _reservation;
+    if (res == null) return;
+
+    // Step 1 — date. Allow up to 90 days out to mirror booking limits.
+    final now = DateTime.now();
+    final pickedDate = await showDatePicker(
+      context: context,
+      initialDate: res.scheduledAt.isAfter(now) ? res.scheduledAt : now,
+      firstDate: now,
+      lastDate: now.add(const Duration(days: 90)),
+      helpText: 'Selecciona nueva fecha',
+    );
+    if (pickedDate == null || !mounted) return;
+
+    // Step 2 — time. Keep the current time as the seed so customers
+    // can nudge by minutes if they just want a small shift.
+    final pickedTime = await showTimePicker(
+      context: context,
+      initialTime: TimeOfDay(
+        hour: res.scheduledAt.hour,
+        minute: res.scheduledAt.minute,
+      ),
+      helpText: 'Selecciona nueva hora',
+    );
+    if (pickedTime == null || !mounted) return;
+
+    final newStart = DateTime(
+      pickedDate.year,
+      pickedDate.month,
+      pickedDate.day,
+      pickedTime.hour,
+      pickedTime.minute,
+    );
+    if (!newStart.isAfter(now)) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('La nueva fecha y hora debe ser futura.'),
+          backgroundColor: AppColors.error,
+        ),
+      );
+      return;
+    }
+
+    final iso = DateFormat('yyyy-MM-dd HH:mm:ss').format(newStart);
+
+    setState(() => _rescheduling = true);
+    final repo = getIt<ReservationRepository>();
+    final result = await repo.reschedule(widget.reservationId, scheduledAt: iso);
+    if (!mounted) return;
+    result.fold(
+      (failure) {
+        setState(() => _rescheduling = false);
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(failure.message),
+            backgroundColor: AppColors.error,
+          ),
+        );
+      },
+      (_) {
+        setState(() => _rescheduling = false);
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Reserva reagendada'),
+            backgroundColor: AppColors.success,
+          ),
+        );
+        _loadReservation();
+      },
     );
   }
 }
@@ -242,12 +318,16 @@ class _ReservationDetailScreenState extends State<ReservationDetailScreen> {
 class _ReservationDetailContent extends StatelessWidget {
   final Reservation reservation;
   final bool cancelling;
+  final bool rescheduling;
   final VoidCallback onCancel;
+  final VoidCallback onReschedule;
 
   const _ReservationDetailContent({
     required this.reservation,
     required this.cancelling,
+    required this.rescheduling,
     required this.onCancel,
+    required this.onReschedule,
   });
 
   @override
@@ -494,6 +574,14 @@ class _ReservationDetailContent extends StatelessWidget {
           ],
           if (reservation.canCancel) ...[
             const SizedBox(height: 12),
+            AppButton(
+              label: 'Reagendar',
+              variant: AppButtonVariant.outline,
+              onPressed: onReschedule,
+              isLoading: rescheduling,
+              icon: Icons.event_repeat_rounded,
+            ).animate().fadeIn(duration: 400.ms, delay: 290.ms),
+            const SizedBox(height: 10),
             AppButton(
               label: 'Cancelar Reserva',
               variant: AppButtonVariant.primary,

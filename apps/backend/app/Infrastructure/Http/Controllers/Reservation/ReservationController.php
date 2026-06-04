@@ -76,6 +76,88 @@ class ReservationController extends Controller
         ]);
     }
 
+    /**
+     * Customer-initiated reschedule. Moves the reservation to a new
+     * `scheduled_at` and recomputes `estimated_end` from the existing
+     * items[] sum. Same window as cancel: blocked once we're inside the
+     * tenant's `cancellation_hours` cooldown.
+     */
+    public function myReservationReschedule(Request $request, string $id): JsonResponse
+    {
+        $data = $request->validate([
+            'scheduled_at' => ['required', 'date', 'after:now'],
+        ]);
+
+        $reservation = ReservationModel::withoutGlobalScope(\App\Infrastructure\Persistence\Scopes\TenantScope::class)
+            ->where('client_id', $request->user()->id)
+            ->with(['items', 'tenant', 'service'])
+            ->findOrFail($id);
+
+        if (!in_array($reservation->status, ['pending', 'confirmed'], true)) {
+            return response()->json([
+                'error' => ['code' => 'INVALID_STATUS', 'message' => 'Solo puedes reagendar reservas pendientes o confirmadas.'],
+            ], 422);
+        }
+
+        $cancellationHours = $reservation->tenant?->settings['cancellation_hours'] ?? 1;
+        $hoursUntil = now()->diffInHours(\Carbon\Carbon::parse($reservation->scheduled_at), false);
+        if ($hoursUntil < $cancellationHours) {
+            return response()->json([
+                'error' => ['code' => 'COOLDOWN', 'message' => "Solo puedes reagendar hasta {$cancellationHours} hora(s) antes de tu cita."],
+            ], 422);
+        }
+
+        // Sum durations off the persisted items so the new estimated_end
+        // matches what the customer actually booked, not the legacy
+        // single-service duration.
+        $totalDurationMin = 0;
+        foreach ($reservation->items as $it) {
+            $variant = \App\Infrastructure\Persistence\Models\ServiceVariantModel::find($it->ref_id);
+            $totalDurationMin += (int) (($variant?->duration_min ?? 30) * ($it->qty ?: 1));
+        }
+        if ($totalDurationMin <= 0) {
+            $totalDurationMin = (int) ($reservation->service?->duration_minutes ?? 30);
+        }
+
+        $start = new \DateTimeImmutable($data['scheduled_at']);
+        $end = $start->modify("+{$totalDurationMin} minutes");
+
+        $reservation->update([
+            'scheduled_at' => $start->format('Y-m-d H:i:s'),
+            'estimated_end' => $end->format('Y-m-d H:i:s'),
+        ]);
+
+        // Notify client + tenant admins so the agenda reflects the move.
+        try {
+            $fresh = ReservationModel::with(['service', 'tenant', 'client'])->find($reservation->id);
+            if ($fresh) {
+                $client = $fresh->client;
+                if ($client) {
+                    $client->notify(new \App\Infrastructure\Notifications\Notifications\ReservationModified($fresh));
+                }
+                $admins = $fresh->tenant
+                    ?->users()
+                    ->wherePivotIn('role', ['owner', 'tenant_admin', 'cashier'])
+                    ->wherePivot('is_active', true)
+                    ->get();
+                if ($admins && $admins->isNotEmpty()) {
+                    \Illuminate\Support\Facades\Notification::send($admins, new \App\Infrastructure\Notifications\Notifications\ReservationModified($fresh));
+                }
+            }
+        } catch (\Throwable $e) {
+            \Illuminate\Support\Facades\Log::error('Failed to send reschedule notification', ['error' => $e->getMessage()]);
+        }
+
+        return response()->json([
+            'data' => [
+                'message' => 'Reservation rescheduled',
+                'scheduled_at' => $reservation->scheduled_at,
+                'estimated_end' => $reservation->estimated_end,
+            ],
+            'meta' => ['timestamp' => now()->toIso8601String()],
+        ]);
+    }
+
     public function index(Request $request)
     {
         $query = ReservationModel::with(['clientResource', 'service', 'client']);

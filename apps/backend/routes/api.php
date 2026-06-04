@@ -89,6 +89,7 @@ Route::prefix('v1')->group(function () {
         Route::get('client/reservations', [ReservationController::class, 'myReservations']);
         Route::get('client/reservations/{id}', [ReservationController::class, 'myReservationShow']);
         Route::patch('client/reservations/{id}/cancel', [ReservationController::class, 'myReservationCancel']);
+        Route::patch('client/reservations/{id}/reschedule', [ReservationController::class, 'myReservationReschedule']);
 
         // Phase 3.5 — customer can edit pending/confirmed reservations.
         Route::get('client/reservations/{id}/items', [ClientReservationItemController::class, 'index']);

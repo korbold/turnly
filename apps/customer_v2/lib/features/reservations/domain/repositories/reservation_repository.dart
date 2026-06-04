@@ -40,6 +40,11 @@ abstract class ReservationRepository {
 
   Future<Either<Failure, Unit>> cancel(String id, {String? reason});
 
+  /// Customer-initiated reschedule. Same backend cooldown as cancel
+  /// (>= cancellation_hours before the booking). Body sends only the
+  /// new scheduled_at; backend recomputes estimated_end from items.
+  Future<Either<Failure, Unit>> reschedule(String id, {required String scheduledAt});
+
   // Phase 3.5 — customer edits items on a pending/confirmed reservation.
   Future<Either<Failure, List<ReservationItem>>> listItems(String reservationId);
   Future<Either<Failure, ReservationItem>> addItem(
