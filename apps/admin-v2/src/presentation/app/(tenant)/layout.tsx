@@ -4,6 +4,12 @@ import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { authStorage } from '@/infrastructure/storage/auth-storage';
 import { AppShell } from '@/presentation/components/layout/app-shell';
+import { useReservationsRealtime } from '@/presentation/hooks/use-reservations-realtime';
+
+function RealtimeBridge() {
+  useReservationsRealtime();
+  return null;
+}
 
 export default function TenantLayout({
   children,
@@ -30,5 +36,10 @@ export default function TenantLayout({
     );
   }
 
-  return <AppShell>{children}</AppShell>;
+  return (
+    <AppShell>
+      <RealtimeBridge />
+      {children}
+    </AppShell>
+  );
 }

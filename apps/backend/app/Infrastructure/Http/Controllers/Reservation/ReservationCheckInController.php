@@ -6,6 +6,7 @@ namespace App\Infrastructure\Http\Controllers\Reservation;
 
 use App\Domain\Inventory\ConsumptionEngine;
 use App\Domain\Reservation\Enums\ReservationStatus;
+use App\Events\ReservationUpdated;
 use App\Infrastructure\Http\Controllers\Controller;
 use App\Infrastructure\Http\Resources\ReservationResource;
 use App\Infrastructure\Notifications\Notifications\ReservationCheckedIn;
@@ -70,6 +71,8 @@ class ReservationCheckInController extends Controller
 
         $fresh = ReservationModel::with(['service', 'client', 'clientResource', 'items', 'tenant'])
             ->findOrFail($reservation->id);
+
+        ReservationUpdated::dispatch($fresh);
 
         // Let the customer know we received them. Doesn't block the
         // response if the FCM call fails downstream.

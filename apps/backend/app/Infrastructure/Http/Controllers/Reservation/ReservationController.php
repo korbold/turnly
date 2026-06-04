@@ -138,6 +138,7 @@ class ReservationController extends Controller
         try {
             $fresh = ReservationModel::with(['service', 'tenant', 'client'])->find($reservation->id);
             if ($fresh) {
+                \App\Events\ReservationUpdated::dispatch($fresh);
                 $client = $fresh->client;
                 if ($client) {
                     $client->notify(new \App\Infrastructure\Notifications\Notifications\ReservationModified($fresh));
@@ -423,6 +424,7 @@ class ReservationController extends Controller
         try {
             $fresh = ReservationModel::with(['service', 'tenant', 'client'])->find($reservation->id);
             if ($fresh) {
+                \App\Events\ReservationUpdated::dispatch($fresh);
                 $client = $fresh->client;
                 if ($client) {
                     $client->notify(new \App\Infrastructure\Notifications\Notifications\ReservationModified($fresh));

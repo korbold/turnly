@@ -7,6 +7,7 @@ use App\Domain\Reservation\Contracts\ReservationRepositoryInterface;
 use App\Domain\Reservation\Enums\ReservationStatus;
 use App\Domain\Reservation\Exceptions\InvalidStatusTransitionException;
 use App\Domain\Reservation\Exceptions\ReservationNotFoundException;
+use App\Events\ReservationUpdated;
 use App\Infrastructure\Notifications\Notifications\ReservationCompleted;
 use App\Infrastructure\Persistence\Models\ReservationModel;
 use App\Infrastructure\Persistence\Models\UserModel;
@@ -37,6 +38,7 @@ class CompleteWashUseCase
         // is retried.
         $model = ReservationModel::with(['service', 'tenant'])->find($reservationId);
         if ($model) {
+            ReservationUpdated::dispatch($model);
             $this->consumption->applyForReservation($model);
 
             // Tell the customer the service is finished — push + in-app row.

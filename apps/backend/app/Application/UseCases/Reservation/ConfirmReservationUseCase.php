@@ -6,6 +6,7 @@ use App\Domain\Reservation\Contracts\ReservationRepositoryInterface;
 use App\Domain\Reservation\Enums\ReservationStatus;
 use App\Domain\Reservation\Exceptions\InvalidStatusTransitionException;
 use App\Domain\Reservation\Exceptions\ReservationNotFoundException;
+use App\Events\ReservationUpdated;
 use App\Infrastructure\Notifications\Notifications\ReservationConfirmed;
 use App\Infrastructure\Persistence\Models\ReservationModel;
 use App\Infrastructure\Persistence\Models\UserModel;
@@ -30,9 +31,12 @@ class ConfirmReservationUseCase
 
         $this->reservationRepository->updateStatus($reservationId, ReservationStatus::Confirmed);
 
-        // Notify client
+        // Notify client + broadcast realtime update
         try {
             $model = ReservationModel::with(['service', 'tenant'])->find($reservationId);
+            if ($model) {
+                ReservationUpdated::dispatch($model);
+            }
             $client = $model ? UserModel::find($model->client_id) : null;
             if ($client && $model) {
                 $client->notify(new ReservationConfirmed($model));
