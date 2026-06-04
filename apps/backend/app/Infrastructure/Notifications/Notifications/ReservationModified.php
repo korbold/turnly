@@ -2,6 +2,7 @@
 
 namespace App\Infrastructure\Notifications\Notifications;
 
+use App\Domain\Reservation\ReservationSummary;
 use App\Infrastructure\Notifications\Channels\FcmChannel;
 use App\Infrastructure\Persistence\Models\ReservationModel;
 use Illuminate\Bus\Queueable;
@@ -23,7 +24,7 @@ class ReservationModified extends Notification implements ShouldQueue
     {
         return [
             'title' => '📝 Reserva actualizada',
-            'body' => "Tu reserva para {$this->reservation->service->name} ha sido reprogramada al {$this->reservation->scheduled_at->translatedFormat('d M')} a las {$this->reservation->scheduled_at->format('H:i')}.",
+            'body' => 'Tu reserva para ' . ReservationSummary::servicesLabel($this->reservation) . " ha sido reprogramada al {$this->reservation->scheduled_at->translatedFormat('d M')} a las {$this->reservation->scheduled_at->format('H:i')}.",
             'action_type' => 'reservation_detail',
             'action_id' => $this->reservation->id,
             'tenant_id' => $this->reservation->tenant_id,

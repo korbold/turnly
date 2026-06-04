@@ -2,6 +2,7 @@
 
 namespace App\Infrastructure\Notifications\Notifications;
 
+use App\Domain\Reservation\ReservationSummary;
 use App\Infrastructure\Notifications\Channels\FcmChannel;
 use App\Infrastructure\Persistence\Models\ReservationModel;
 use Illuminate\Bus\Queueable;
@@ -23,7 +24,7 @@ class ReservationConfirmed extends Notification implements ShouldQueue
     {
         return [
             'title' => '✅ Reserva confirmada',
-            'body' => "Tu reserva para {$this->reservation->service->name} el {$this->reservation->scheduled_at->translatedFormat('d M')} a las {$this->reservation->scheduled_at->format('H:i')} ha sido confirmada.",
+            'body' => 'Tu reserva para ' . ReservationSummary::servicesLabel($this->reservation) . " el {$this->reservation->scheduled_at->translatedFormat('d M')} a las {$this->reservation->scheduled_at->format('H:i')} ha sido confirmada.",
             'action_type' => 'reservation_detail',
             'action_id' => $this->reservation->id,
             'tenant_id' => $this->reservation->tenant_id,

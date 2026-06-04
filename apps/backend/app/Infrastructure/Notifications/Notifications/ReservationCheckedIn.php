@@ -2,6 +2,7 @@
 
 namespace App\Infrastructure\Notifications\Notifications;
 
+use App\Domain\Reservation\ReservationSummary;
 use App\Infrastructure\Notifications\Channels\FcmChannel;
 use App\Infrastructure\Persistence\Models\ReservationModel;
 use Illuminate\Bus\Queueable;
@@ -23,7 +24,7 @@ class ReservationCheckedIn extends Notification implements ShouldQueue
     {
         return [
             'title' => '📍 Check-in registrado',
-            'body' => "Te recibimos en {$this->reservation->tenant->name} para tu {$this->reservation->service->name}.",
+            'body' => "Te recibimos en {$this->reservation->tenant->name} para tu " . ReservationSummary::servicesLabel($this->reservation) . '.',
             'action_type' => 'reservation_detail',
             'action_id' => $this->reservation->id,
             'tenant_id' => $this->reservation->tenant_id,

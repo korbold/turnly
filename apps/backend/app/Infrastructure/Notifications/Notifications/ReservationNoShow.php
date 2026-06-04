@@ -2,6 +2,7 @@
 
 namespace App\Infrastructure\Notifications\Notifications;
 
+use App\Domain\Reservation\ReservationSummary;
 use App\Infrastructure\Notifications\Channels\FcmChannel;
 use App\Infrastructure\Persistence\Models\ReservationModel;
 use Illuminate\Bus\Queueable;

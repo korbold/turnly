@@ -2,6 +2,7 @@
 
 namespace App\Infrastructure\Notifications\Notifications;
 
+use App\Domain\Reservation\ReservationSummary;
 use App\Infrastructure\Notifications\Channels\FcmChannel;
 use App\Infrastructure\Persistence\Models\ReservationModel;
 use Illuminate\Bus\Queueable;
@@ -27,9 +28,10 @@ class ReservationCancelled extends Notification implements ShouldQueue
         $isClient = $notifiable->getKey() === $this->reservation->client_id;
         $reason = $this->reservation->cancel_reason;
 
+        $services = ReservationSummary::servicesLabel($this->reservation);
         $body = $isClient
-            ? "Tu reserva para {$this->reservation->service->name} el {$this->reservation->scheduled_at->translatedFormat('d M')} ha sido cancelada."
-            : "La reserva de {$this->reservation->client->name} para {$this->reservation->service->name} ha sido cancelada.";
+            ? "Tu reserva para {$services} el {$this->reservation->scheduled_at->translatedFormat('d M')} ha sido cancelada."
+            : "La reserva de {$this->reservation->client->name} para {$services} ha sido cancelada.";
 
         if ($reason) {
             $body .= " Motivo: {$reason}";
