@@ -18,7 +18,6 @@ import {
   useCancelReservation,
   useReservationItems,
 } from '@/presentation/hooks/use-reservations';
-import { CheckInModal } from '@/presentation/components/features/reservations/check-in-modal';
 import { useEffect, useState } from 'react';
 
 function useIsDesktop(query = '(min-width: 640px)'): boolean {
@@ -92,7 +91,6 @@ export function ReservationDetailSheet({
   const transition = useTransitionReservation();
   const cancel = useCancelReservation();
   const isDesktop = useIsDesktop();
-  const [checkInOpen, setCheckInOpen] = useState(false);
   // Phase 3 — pulled before the early return so the hooks list keeps
   // a stable shape across renders. The hook is gated by `enabled`
   // when the id is null so no extra request fires.
@@ -290,17 +288,19 @@ export function ReservationDetailSheet({
         </div>
 
         <div className="mt-7 flex flex-col gap-2.5">
-          {/* Confirmed bookings get a dedicated "Confirmar llegada" CTA
-              that opens the check-in modal (items review + billing).
-              This is separate from the action loop because it isn't a
-              ReservationAction enum value — it's the bridge between
-              Confirmed and CheckedIn. */}
+          {/* Confirmed bookings route to the full reservation page so
+              staff can review items + billing before commiting check-in.
+              The dashboard sheet is too cramped for a meaningful review
+              and the modal hides the items behind billing fields. */}
           {reservation.status === 'confirmed' && (
             <Button
               size="lg"
               variant="default"
               className="w-full"
-              onClick={() => setCheckInOpen(true)}
+              onClick={() => {
+                onOpenChange(false);
+                router.push(`/reservations/${reservation.id}`);
+              }}
             >
               Confirmar llegada
             </Button>
@@ -346,18 +346,6 @@ export function ReservationDetailSheet({
           </Button>
         </div>
       </SheetContent>
-
-      <CheckInModal
-        open={checkInOpen}
-        reservationId={reservation.id}
-        defaultEmail={reservation.client?.email}
-        defaultName={reservation.client?.name}
-        onClose={() => setCheckInOpen(false)}
-        onSuccess={() => {
-          setCheckInOpen(false);
-          onOpenChange(false);
-        }}
-      />
     </Sheet>
   );
 }
