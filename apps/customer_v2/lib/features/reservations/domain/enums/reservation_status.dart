@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 enum ReservationStatus {
   pending,
   confirmed,
+  checkedIn,
   inProgress,
   completed,
   cancelled,
@@ -13,6 +14,7 @@ enum ReservationStatus {
     return switch (value) {
       'pending' => ReservationStatus.pending,
       'confirmed' => ReservationStatus.confirmed,
+      'checked_in' => ReservationStatus.checkedIn,
       'in_progress' => ReservationStatus.inProgress,
       'completed' => ReservationStatus.completed,
       'cancelled' => ReservationStatus.cancelled,
@@ -24,6 +26,7 @@ enum ReservationStatus {
   String get label => switch (this) {
     ReservationStatus.pending => 'Pendiente',
     ReservationStatus.confirmed => 'Confirmada',
+    ReservationStatus.checkedIn => 'Revisando',
     ReservationStatus.inProgress => 'En progreso',
     ReservationStatus.completed => 'Completada',
     ReservationStatus.cancelled => 'Cancelada',
@@ -34,6 +37,7 @@ enum ReservationStatus {
   Color get color => switch (this) {
     ReservationStatus.pending => const Color(0xFFB47114),
     ReservationStatus.confirmed => const Color(0xFF1666BF),
+    ReservationStatus.checkedIn => const Color(0xFFB45309),
     ReservationStatus.inProgress => const Color(0xFF1A56D6),
     ReservationStatus.completed => const Color(0xFF0B7A44),
     ReservationStatus.cancelled => const Color(0xFFA91D2C),
@@ -44,11 +48,16 @@ enum ReservationStatus {
   Color get backgroundColor => switch (this) {
     ReservationStatus.pending => const Color(0xFFFFF6E0),
     ReservationStatus.confirmed => const Color(0xFFE4F1FE),
+    ReservationStatus.checkedIn => const Color(0xFFFFEDD5),
     ReservationStatus.inProgress => const Color(0xFFDCE8FF),
     ReservationStatus.completed => const Color(0xFFE8F8F0),
     ReservationStatus.cancelled => const Color(0xFFFCE9EB),
     ReservationStatus.noShow => const Color(0xFFEEF0F3),
   };
 
-  bool get isUpcoming => this == pending || this == confirmed || this == inProgress;
+  bool get isUpcoming =>
+      this == pending ||
+      this == confirmed ||
+      this == checkedIn ||
+      this == inProgress;
 }
