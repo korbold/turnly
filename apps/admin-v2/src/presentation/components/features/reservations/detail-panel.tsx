@@ -35,6 +35,7 @@ import {
   useTransitionReservation,
   useCancelReservation,
   useRescheduleReservation,
+  useAvailableSlots,
 } from '@/presentation/hooks/use-reservations';
 import { Input } from '@/presentation/components/ui/input';
 import { Label } from '@/presentation/components/ui/label';
@@ -70,8 +71,12 @@ export function DetailPanel({ reservation, open, onClose }: DetailPanelProps) {
   const [cancelReason, setCancelReason] = useState('');
   const [checkInOpen, setCheckInOpen] = useState(false);
   const [rescheduleOpen, setRescheduleOpen] = useState(false);
-  const [rescheduleAt, setRescheduleAt] = useState('');
+  const [rescheduleDate, setRescheduleDate] = useState('');
   const reschedule = useRescheduleReservation();
+  const { data: rescheduleSlots, isLoading: rescheduleSlotsLoading } = useAvailableSlots(
+    rescheduleOpen && rescheduleDate ? rescheduleDate : undefined,
+    rescheduleOpen ? reservation?.serviceId : undefined,
+  );
 
   if (!reservation) return null;
 
@@ -114,19 +119,20 @@ export function DetailPanel({ reservation, open, onClose }: DetailPanelProps) {
 
   function openReschedule() {
     if (!reservation) return;
-    // datetime-local needs "YYYY-MM-DDTHH:mm". Seed the input with the
-    // current scheduled_at so staff usually just nudge by minutes.
+    // Seed with the current booking's date so staff usually just nudges
+    // the day; slots load automatically via useAvailableSlots.
     const d = new Date(reservation.scheduledAt);
     const pad = (n: number) => String(n).padStart(2, '0');
-    setRescheduleAt(
-      `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}`,
-    );
+    setRescheduleDate(`${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`);
     setRescheduleOpen(true);
   }
 
-  function handleReschedule() {
-    if (!reservation || !rescheduleAt) return;
-    const iso = rescheduleAt.replace('T', ' ') + ':00';
+  function handleReschedule(slotStart: Date) {
+    if (!reservation) return;
+    const pad = (n: number) => String(n).padStart(2, '0');
+    const iso =
+      `${slotStart.getFullYear()}-${pad(slotStart.getMonth() + 1)}-${pad(slotStart.getDate())} ` +
+      `${pad(slotStart.getHours())}:${pad(slotStart.getMinutes())}:00`;
     reschedule.mutate(
       { id: reservation.id, scheduledAt: iso },
       {
@@ -426,28 +432,79 @@ export function DetailPanel({ reservation, open, onClose }: DetailPanelProps) {
       </Dialog>
 
       {/* Reschedule dialog — only reachable while pending or confirmed.
-          Backend rejects checked_in / in_progress / terminal states. */}
+          Backend rejects checked_in / in_progress / terminal states.
+          Loads real slots from the tenant's calendar so staff can only
+          pick a time the service is actually open + nothing overlaps. */}
       <Dialog open={rescheduleOpen} onOpenChange={setRescheduleOpen}>
         <DialogContent className="sm:max-w-md">
           <DialogHeader>
             <DialogTitle>Reagendar reserva</DialogTitle>
             <DialogDescription>
-              Elige la nueva fecha y hora. La duración se recalcula con los
-              servicios actuales.
+              Elige una fecha y luego un horario disponible. La duración se
+              recalcula con los servicios actuales.
             </DialogDescription>
           </DialogHeader>
-          <div className="space-y-2">
-            <Label htmlFor="reschedule-at" className="text-[12px] font-semibold uppercase tracking-[0.04em] text-[var(--fg-muted)]">
-              Nueva fecha y hora
-            </Label>
-            <Input
-              id="reschedule-at"
-              type="datetime-local"
-              value={rescheduleAt}
-              onChange={(e) => setRescheduleAt(e.target.value)}
-              min={new Date().toISOString().slice(0, 16)}
-            />
+
+          <div className="space-y-3">
+            <div className="space-y-1.5">
+              <Label
+                htmlFor="reschedule-date"
+                className="text-[12px] font-semibold uppercase tracking-[0.04em] text-[var(--fg-muted)]"
+              >
+                Nueva fecha
+              </Label>
+              <Input
+                id="reschedule-date"
+                type="date"
+                value={rescheduleDate}
+                onChange={(e) => setRescheduleDate(e.target.value)}
+                min={new Date().toISOString().slice(0, 10)}
+              />
+            </div>
+
+            <div className="space-y-1.5">
+              <Label className="text-[12px] font-semibold uppercase tracking-[0.04em] text-[var(--fg-muted)]">
+                Horarios disponibles
+              </Label>
+              {rescheduleSlotsLoading && (
+                <p className="text-[13px] text-[var(--fg-secondary)]">
+                  Cargando horarios…
+                </p>
+              )}
+              {!rescheduleSlotsLoading &&
+                (!rescheduleSlots || rescheduleSlots.length === 0) && (
+                  <p className="rounded-lg border border-dashed border-[var(--border-strong)] p-3 text-center text-[12px] text-[var(--fg-secondary)]">
+                    No hay horarios disponibles para esa fecha.
+                  </p>
+                )}
+              {!rescheduleSlotsLoading && rescheduleSlots && rescheduleSlots.length > 0 && (
+                <div className="flex max-h-64 flex-wrap gap-2 overflow-y-auto rounded-lg border border-[var(--border)] p-2">
+                  {rescheduleSlots.map((slot) => {
+                    const time = format(slot.start, 'HH:mm');
+                    return (
+                      <button
+                        key={slot.start.toISOString()}
+                        type="button"
+                        onClick={() => handleReschedule(slot.start)}
+                        disabled={reschedule.isPending}
+                        className={cn(
+                          'rounded-md border border-[var(--border)] bg-[var(--bg-surface)]',
+                          'px-3 py-1.5 text-[13px] font-medium tabular-nums text-[var(--fg-strong)]',
+                          'transition-colors hover:border-[var(--brand-300)] hover:bg-[var(--brand-50)]',
+                          'disabled:opacity-50 disabled:cursor-not-allowed',
+                          'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--brand-300)]',
+                        )}
+                        style={{ fontFamily: 'var(--font-mono)' }}
+                      >
+                        {time}
+                      </button>
+                    );
+                  })}
+                </div>
+              )}
+            </div>
           </div>
+
           <DialogFooter>
             <Button
               variant="outline"
@@ -455,12 +512,6 @@ export function DetailPanel({ reservation, open, onClose }: DetailPanelProps) {
               disabled={reschedule.isPending}
             >
               Cancelar
-            </Button>
-            <Button
-              onClick={handleReschedule}
-              disabled={!rescheduleAt || reschedule.isPending}
-            >
-              Guardar
             </Button>
           </DialogFooter>
         </DialogContent>
