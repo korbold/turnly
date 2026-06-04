@@ -43,6 +43,10 @@ export interface ReservationRepository {
   create(data: CreateReservationData): Promise<Reservation>;
   cancel(id: string, reason: string): Promise<Reservation>;
   transition(id: string, action: ReservationAction): Promise<Reservation>;
+  /** Tenant-staff reschedule. Backend validates pending|confirmed only;
+      `scheduledAt` is sent as "YYYY-MM-DD HH:mm:ss" to match the create
+      endpoint's contract. */
+  reschedule(id: string, scheduledAt: string): Promise<Reservation>;
   getAvailableSlots(date: string, serviceId: string): Promise<AvailableSlot[]>;
 
   // Phase 3

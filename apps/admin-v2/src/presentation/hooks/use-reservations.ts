@@ -78,6 +78,19 @@ export function useCancelReservation() {
   });
 }
 
+export function useRescheduleReservation() {
+  const repo = useRepository('reservation');
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: ({ id, scheduledAt }: { id: string; scheduledAt: string }) =>
+      repo.reschedule(id, scheduledAt),
+    onSuccess: (_data, { id }) => {
+      queryClient.invalidateQueries({ queryKey: ['reservations'] });
+      queryClient.invalidateQueries({ queryKey: ['reservation', id] });
+    },
+  });
+}
+
 export function useReservation(id: string | null) {
   const repo = useRepository('reservation');
   return useQuery({

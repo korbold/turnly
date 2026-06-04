@@ -4,7 +4,7 @@ import { useState } from 'react';
 import { format } from 'date-fns';
 import { es } from 'date-fns/locale';
 import { toast } from 'sonner';
-import { CheckCircle2, MoreHorizontal, Play, Trophy, UserX, X } from 'lucide-react';
+import { Calendar as CalendarIcon, CheckCircle2, MoreHorizontal, Play, Trophy, UserX, X } from 'lucide-react';
 import {
   Sheet,
   SheetContent,
@@ -34,7 +34,10 @@ import { Separator } from '@/presentation/components/ui/separator';
 import {
   useTransitionReservation,
   useCancelReservation,
+  useRescheduleReservation,
 } from '@/presentation/hooks/use-reservations';
+import { Input } from '@/presentation/components/ui/input';
+import { Label } from '@/presentation/components/ui/label';
 import { useSettings } from '@/presentation/hooks/use-settings';
 import { CheckInModal } from '@/presentation/components/features/reservations/check-in-modal';
 import {
@@ -66,6 +69,9 @@ export function DetailPanel({ reservation, open, onClose }: DetailPanelProps) {
   const [cancelOpen, setCancelOpen] = useState(false);
   const [cancelReason, setCancelReason] = useState('');
   const [checkInOpen, setCheckInOpen] = useState(false);
+  const [rescheduleOpen, setRescheduleOpen] = useState(false);
+  const [rescheduleAt, setRescheduleAt] = useState('');
+  const reschedule = useRescheduleReservation();
 
   if (!reservation) return null;
 
@@ -102,6 +108,37 @@ export function DetailPanel({ reservation, open, onClose }: DetailPanelProps) {
           onClose();
         },
         onError: () => toast.error('Error al cancelar'),
+      }
+    );
+  }
+
+  function openReschedule() {
+    if (!reservation) return;
+    // datetime-local needs "YYYY-MM-DDTHH:mm". Seed the input with the
+    // current scheduled_at so staff usually just nudge by minutes.
+    const d = new Date(reservation.scheduledAt);
+    const pad = (n: number) => String(n).padStart(2, '0');
+    setRescheduleAt(
+      `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}`,
+    );
+    setRescheduleOpen(true);
+  }
+
+  function handleReschedule() {
+    if (!reservation || !rescheduleAt) return;
+    const iso = rescheduleAt.replace('T', ' ') + ':00';
+    reschedule.mutate(
+      { id: reservation.id, scheduledAt: iso },
+      {
+        onSuccess: () => {
+          toast.success('Reserva reagendada');
+          setRescheduleOpen(false);
+          onClose();
+        },
+        onError: (err: unknown) => {
+          const e = err as { message?: string };
+          toast.error(e?.message ?? 'No se pudo reagendar');
+        },
       }
     );
   }
@@ -222,6 +259,16 @@ export function DetailPanel({ reservation, open, onClose }: DetailPanelProps) {
                         </Button>
                       </DropdownMenuTrigger>
                       <DropdownMenuContent align="end" className="w-48">
+                        {(reservation.status === 'pending' ||
+                          reservation.status === 'confirmed') && (
+                          <>
+                            <DropdownMenuItem onClick={openReschedule}>
+                              <CalendarIcon className="mr-2 h-4 w-4" />
+                              Reagendar
+                            </DropdownMenuItem>
+                            <DropdownMenuSeparator />
+                          </>
+                        )}
                         {(reservation.status === 'confirmed' ||
                           reservation.status === 'checked_in') && (
                           <>
@@ -372,6 +419,47 @@ export function DetailPanel({ reservation, open, onClose }: DetailPanelProps) {
               disabled={!cancelReason.trim() || cancel.isPending}
             >
               Confirmar Cancelación
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Reschedule dialog — only reachable while pending or confirmed.
+          Backend rejects checked_in / in_progress / terminal states. */}
+      <Dialog open={rescheduleOpen} onOpenChange={setRescheduleOpen}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle>Reagendar reserva</DialogTitle>
+            <DialogDescription>
+              Elige la nueva fecha y hora. La duración se recalcula con los
+              servicios actuales.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-2">
+            <Label htmlFor="reschedule-at" className="text-[12px] font-semibold uppercase tracking-[0.04em] text-[var(--fg-muted)]">
+              Nueva fecha y hora
+            </Label>
+            <Input
+              id="reschedule-at"
+              type="datetime-local"
+              value={rescheduleAt}
+              onChange={(e) => setRescheduleAt(e.target.value)}
+              min={new Date().toISOString().slice(0, 16)}
+            />
+          </div>
+          <DialogFooter>
+            <Button
+              variant="outline"
+              onClick={() => setRescheduleOpen(false)}
+              disabled={reschedule.isPending}
+            >
+              Cancelar
+            </Button>
+            <Button
+              onClick={handleReschedule}
+              disabled={!rescheduleAt || reschedule.isPending}
+            >
+              Guardar
             </Button>
           </DialogFooter>
         </DialogContent>

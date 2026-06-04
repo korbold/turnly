@@ -79,6 +79,13 @@ export class ApiReservationRepository implements ReservationRepository {
     return mapReservation(res.data);
   }
 
+  async reschedule(id: string, scheduledAt: string): Promise<Reservation> {
+    const { data: res } = await api.patch(`/reservations/${id}/reschedule`, {
+      scheduled_at: scheduledAt,
+    });
+    return mapReservation(res.data);
+  }
+
   async getAvailableSlots(date: string, serviceId: string): Promise<AvailableSlot[]> {
     const { data: res } = await api.get('/reservations/available-slots', {
       params: { date, service_id: serviceId },
