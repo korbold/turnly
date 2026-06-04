@@ -445,7 +445,14 @@ class PublicController extends Controller
         $scheduledAt = new \DateTimeImmutable($request->scheduled_at);
         $estimatedEnd = $scheduledAt->modify("+{$totalDurationMin} minutes");
 
-        $reservation = DB::transaction(function () use ($tenant, $client, $clientResourceId, $resolvedItems, $firstServiceId, $firstVariantId, $scheduledAt, $estimatedEnd, $request) {
+        // Tenants that don't review every booking (car wash, lavandería)
+        // can flip `auto_confirm_reservations` in settings so customer
+        // submissions land directly as `confirmed` and skip the manual
+        // "Confirmar cita" step in the dashboard.
+        $autoConfirm = (bool) ($tenant->settings['auto_confirm_reservations'] ?? false);
+        $initialStatus = $autoConfirm ? 'confirmed' : 'pending';
+
+        $reservation = DB::transaction(function () use ($tenant, $client, $clientResourceId, $resolvedItems, $firstServiceId, $firstVariantId, $scheduledAt, $estimatedEnd, $request, $initialStatus) {
             $r = ReservationModel::withoutGlobalScopes()->create([
                 'id' => (string) Str::uuid(),
                 'tenant_id' => $tenant->id,
@@ -457,7 +464,7 @@ class PublicController extends Controller
                 'service_variant_id' => $firstVariantId,
                 'scheduled_at' => $scheduledAt->format('Y-m-d H:i:s'),
                 'estimated_end' => $estimatedEnd->format('Y-m-d H:i:s'),
-                'status' => 'pending',
+                'status' => $initialStatus,
                 'notes' => $request->notes,
                 'created_by' => $client->id,
             ]);

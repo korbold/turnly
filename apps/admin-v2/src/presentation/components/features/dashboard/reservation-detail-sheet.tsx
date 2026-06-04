@@ -52,7 +52,7 @@ function getInitials(name: string | undefined): string {
 }
 
 const ACTION_LABELS: Record<ReservationAction, string> = {
-  confirm: 'Confirmar llegada',
+  confirm: 'Confirmar cita',
   start: 'Iniciar servicio',
   complete: 'Completar',
   cancel: 'Cancelar',
@@ -144,13 +144,11 @@ export function ReservationDetailSheet({
       );
       return;
     }
-    // "Confirmar llegada" now triggers the full Phase 3 check-in: it
-    // collects billing data + reserves BOM consumibles. Skips the
-    // legacy plain `confirm` transition.
-    if (action === 'confirm') {
-      setCheckInOpen(true);
-      return;
-    }
+    // pending → confirmed is now a simple status flip ("negocio aceptó
+    // la cita"). The check-in modal (with billing + BOM reservation)
+    // only opens once the reservation is in `confirmed` or later via a
+    // separate "Confirmar llegada" entry — see the additional action
+    // surfaced for those statuses.
     transition.mutate(
       { id: reservation.id, action },
       {
@@ -292,6 +290,21 @@ export function ReservationDetailSheet({
         </div>
 
         <div className="mt-7 flex flex-col gap-2.5">
+          {/* Confirmed bookings get a dedicated "Confirmar llegada" CTA
+              that opens the check-in modal (items review + billing).
+              This is separate from the action loop because it isn't a
+              ReservationAction enum value — it's the bridge between
+              Confirmed and CheckedIn. */}
+          {reservation.status === 'confirmed' && (
+            <Button
+              size="lg"
+              variant="default"
+              className="w-full"
+              onClick={() => setCheckInOpen(true)}
+            >
+              Confirmar llegada
+            </Button>
+          )}
           {actions.map((action) => (
             <Button
               key={action}

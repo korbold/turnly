@@ -34,6 +34,7 @@ function buildFormFromSettings(settings: TenantSettings | undefined): Partial<Te
     slotDuration: settings.slotDuration,
     cancellationHours: settings.cancellationHours,
     defaultTaxRate: settings.defaultTaxRate,
+    autoConfirmReservations: settings.autoConfirmReservations,
     socialLinks: settings.socialLinks ?? { instagram: null, facebook: null, whatsapp: null, maps_url: null },
     logoUrl: settings.logoUrl,
     coverUrl: settings.coverUrl,
@@ -128,6 +129,7 @@ export function GeneralTab() {
         slotDuration: form.slotDuration || 30,
         cancellationHours: form.cancellationHours ?? 0,
         defaultTaxRate: form.defaultTaxRate ?? 15,
+        autoConfirmReservations: form.autoConfirmReservations ?? false,
       };
       await update.mutateAsync(payload);
       setBaseline(form);
@@ -347,6 +349,32 @@ export function GeneralTab() {
                 Se aplica a productos nuevos. Tarifa SRI Ecuador actual: 15%.
               </p>
             </div>
+          </div>
+
+          {/* Auto-confirm toggle. Off by default so the staff reviews
+              each booking before it counts as Confirmada. */}
+          <div className="mt-5 flex items-start justify-between gap-4 rounded-lg border border-[var(--border)] bg-[var(--bg-app)]/40 p-3">
+            <div className="min-w-0">
+              <p className="text-[13px] font-semibold text-[var(--fg-strong)]">
+                Aceptar citas automáticamente
+              </p>
+              <p className="mt-0.5 text-[11px] leading-snug text-[var(--fg-muted)]">
+                Cuando está activo, las reservas nuevas saltan el paso de
+                aprobación manual y entran como <strong>Confirmada</strong>.
+                Útil para negocios que aceptan todo lo que entra.
+              </p>
+            </div>
+            <label className="relative inline-flex cursor-pointer items-center">
+              <input
+                type="checkbox"
+                checked={Boolean(form.autoConfirmReservations)}
+                onChange={(e) =>
+                  handleChange('autoConfirmReservations', e.target.checked as unknown as never)
+                }
+                className="peer sr-only"
+              />
+              <span className="h-6 w-11 rounded-full bg-[var(--ink-100)] transition-colors peer-checked:bg-[var(--brand-600)] after:absolute after:left-[2px] after:top-[2px] after:h-5 after:w-5 after:rounded-full after:bg-white after:transition-transform after:content-[''] peer-checked:after:translate-x-5" />
+            </label>
           </div>
         </CardContent>
       </Card>

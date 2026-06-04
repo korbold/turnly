@@ -2,6 +2,8 @@
 
 import { useEffect, useState } from 'react';
 import { toast } from 'sonner';
+import { useRouter } from 'next/navigation';
+import { Pencil } from 'lucide-react';
 import {
   Dialog,
   DialogContent,
@@ -20,7 +22,10 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/presentation/components/ui/select';
-import { useCheckInReservation } from '@/presentation/hooks/use-reservations';
+import {
+  useCheckInReservation,
+  useReservationItems,
+} from '@/presentation/hooks/use-reservations';
 
 interface Props {
   open: boolean;
@@ -41,12 +46,22 @@ const DOC_TYPES: { value: DocType; label: string }[] = [
 ];
 
 export function CheckInModal({ open, reservationId, defaultEmail, defaultName, onClose, onSuccess }: Props) {
+  const router = useRouter();
   const [docType, setDocType] = useState<DocType>('final_consumer');
   const [docNumber, setDocNumber] = useState('');
   const [legalName, setLegalName] = useState('');
   const [email, setEmail] = useState('');
   const [address, setAddress] = useState('');
   const [phone, setPhone] = useState('');
+
+  // Items snapshot — read-only inside the modal so staff can confirm
+  // the customer ordered what they expected before billing is frozen.
+  // Editing routes back to the full /reservations/{id} page where the
+  // swap-variant + override-price tooling already lives.
+  const { data: items } = useReservationItems(open ? reservationId : null);
+  const itemsTotal = (items ?? []).reduce((acc, it) => acc + it.lineTotal, 0);
+  const moneyFmt = (n: number) =>
+    new Intl.NumberFormat('es-EC', { style: 'currency', currency: 'USD' }).format(n);
 
   const mutation = useCheckInReservation(reservationId);
 
@@ -91,14 +106,74 @@ export function CheckInModal({ open, reservationId, defaultEmail, defaultName, o
 
   return (
     <Dialog open={open} onOpenChange={(o) => !o && onClose()}>
-      <DialogContent className="sm:max-w-md">
+      <DialogContent className="sm:max-w-lg">
         <DialogHeader>
           <DialogTitle>Confirmar llegada</DialogTitle>
           <DialogDescription>
-            Confirma los datos de facturación. Una vez guardados se reservan los
-            insumos en inventario y la reserva pasa a estado <strong>revisando</strong>.
+            Revisa los servicios y confirma los datos de facturación. Al
+            guardar se reservan los insumos en inventario y la reserva pasa a
+            estado <strong>revisando</strong>.
           </DialogDescription>
         </DialogHeader>
+
+        {/* Items snapshot — read-only here. "Editar servicios" jumps to
+            the full items editor so the staff can swap a variant, drop
+            a line, or override a price before billing is frozen. */}
+        {items && items.length > 0 && (
+          <div className="space-y-2 rounded-lg border border-[var(--border)] bg-[var(--bg-surface)] p-3">
+            <div className="flex items-center justify-between">
+              <p className="text-[11px] font-semibold uppercase tracking-[0.04em] text-[var(--fg-muted)]">
+                Servicios ({items.length})
+              </p>
+              <button
+                type="button"
+                onClick={() => {
+                  onClose();
+                  router.push(`/reservations/${reservationId}`);
+                }}
+                className="inline-flex items-center gap-1 text-[12px] font-semibold text-[var(--brand-700)] hover:underline"
+              >
+                <Pencil className="h-3 w-3" />
+                Editar servicios
+              </button>
+            </div>
+            <ul className="space-y-1">
+              {items.map((it) => (
+                <li
+                  key={it.id}
+                  className="flex items-center justify-between gap-2 text-[13px]"
+                >
+                  <span className="flex-1 truncate text-[var(--fg-strong)]">
+                    {it.label}
+                  </span>
+                  {it.qty !== 1 && (
+                    <span
+                      className="font-mono text-[12px] text-[var(--fg-muted)]"
+                      style={{ fontFamily: 'var(--font-mono)' }}
+                    >
+                      x{it.qty}
+                    </span>
+                  )}
+                  <span
+                    className="w-20 text-right font-mono text-[var(--fg-strong)] tabular-nums"
+                    style={{ fontFamily: 'var(--font-mono)' }}
+                  >
+                    {moneyFmt(it.lineTotal)}
+                  </span>
+                </li>
+              ))}
+            </ul>
+            <div className="flex items-center justify-between border-t border-[var(--border)] pt-2 text-[13px] font-semibold">
+              <span>Total</span>
+              <span
+                className="font-mono tabular-nums"
+                style={{ fontFamily: 'var(--font-mono)' }}
+              >
+                {moneyFmt(itemsTotal)}
+              </span>
+            </div>
+          </div>
+        )}
 
         <div className="space-y-3">
           <div>

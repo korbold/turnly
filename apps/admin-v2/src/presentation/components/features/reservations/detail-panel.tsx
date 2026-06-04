@@ -195,10 +195,11 @@ export function DetailPanel({ reservation, open, onClose }: DetailPanelProps) {
                   {reservation.status === 'pending' && (
                     <Button
                       className="h-11 flex-1 gap-2 bg-sky-500 text-white shadow-sm hover:bg-sky-600 active:scale-[0.98] transition-all"
-                      onClick={() => setCheckInOpen(true)}
+                      onClick={() => handleTransition('confirm')}
+                      disabled={transition.isPending}
                     >
                       <CheckCircle2 className="h-4 w-4" />
-                      Confirmar llegada
+                      Confirmar cita
                     </Button>
                   )}
 
