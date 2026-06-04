@@ -15,7 +15,14 @@ Future<void> _firebaseMessagingBackgroundHandler(RemoteMessage message) async {
   // Background messages handled by system tray automatically
 }
 
-void _log(String msg) => dev.log(msg, name: 'PushNotificationService');
+void _log(String msg) {
+  // Dual log: dev.log goes to OSLog (Console.app, hidden in plain Xcode
+  // output), print goes straight to the Xcode debug area so we can see
+  // the push handshake during release-mode device debugging.
+  dev.log(msg, name: 'PushNotificationService');
+  // ignore: avoid_print
+  print('[PushNotificationService] $msg');
+}
 
 class PushNotificationService {
   final FirebaseMessaging _messaging = FirebaseMessaging.instance;
@@ -72,14 +79,22 @@ class PushNotificationService {
   Future<void> _fetchTokenWhenReady() async {
     try {
       if (Platform.isIOS) {
-        // Single longer wait avoids the looped getAPNSToken() calls that
-        // appear to race with native FCM init.
-        await Future.delayed(const Duration(seconds: 3));
-        final apns = await _messaging.getAPNSToken();
+        // APNs provisioning can take longer than 3s after a fresh install
+        // or the first launch following a capability change. Poll every
+        // 500ms for up to 15s before bailing — the token registration
+        // hook (_onTokenRefreshSub) will still pick it up later if APNs
+        // shows up after this window.
+        String? apns;
+        for (var i = 0; i < 30; i++) {
+          apns = await _messaging.getAPNSToken();
+          if (apns != null) break;
+          await Future.delayed(const Duration(milliseconds: 500));
+        }
         if (apns == null) {
-          _log('APNS token not provisioned yet; will retry on next init().');
+          _log('APNS token still null after 15s; will retry on next init().');
           return;
         }
+        _log('APNS token ready: ${apns.substring(0, 12)}…');
       }
       final token = await _messaging.getToken();
       if (token == null) {

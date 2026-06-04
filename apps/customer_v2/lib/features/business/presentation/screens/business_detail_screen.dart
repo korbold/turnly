@@ -236,20 +236,26 @@ class _ServicesTab extends StatelessWidget {
           index: index,
           onReserve: () async {
             await SecureStorage.saveTenantSlug(business.slug);
-            if (context.mounted) {
-              context.push('/reservations/create', extra: {
-                'tenantSlug': business.slug,
-                'serviceId': service.id,
-                'services': business.services,
-                'customFields': business.customFields,
-                'businessType': business.businessType,
-              });
-            }
+            if (!context.mounted) return;
+
+            // Variant (size/type) is now resolved inside the booking flow:
+            // after the resource is picked, the backend's VariantSuggester
+            // matches it against the customer's vehicle/pet/etc. The user
+            // only sees a manual picker when the suggestion can't decide.
+            context.push('/reservations/create', extra: {
+              'tenantSlug': business.slug,
+              'serviceId': service.id,
+              'serviceVariantId': null,
+              'services': business.services,
+              'customFields': business.customFields,
+              'businessType': business.businessType,
+            });
           },
         );
       },
     );
   }
+
 }
 
 // Info Tab

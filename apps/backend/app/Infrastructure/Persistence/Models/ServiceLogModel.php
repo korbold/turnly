@@ -14,9 +14,10 @@ class ServiceLogModel extends Model
     protected $table = 'service_logs';
 
     protected $fillable = [
-        'tenant_id', 'client_resource_id', 'service_id', 'reservation_id',
+        'tenant_id', 'client_resource_id', 'service_id', 'service_variant_id', 'reservation_id',
         'attended_by', 'created_by', 'started_at', 'finished_at',
         'price_charged', 'payment_method', 'status', 'notes', 'log_date',
+        'consumption_applied_at',
     ];
 
     protected function casts(): array
@@ -26,7 +27,13 @@ class ServiceLogModel extends Model
             'finished_at' => 'datetime',
             'price_charged' => 'decimal:2',
             'log_date' => 'date',
+            'consumption_applied_at' => 'datetime',
         ];
+    }
+
+    public function variant()
+    {
+        return $this->belongsTo(ServiceVariantModel::class, 'service_variant_id');
     }
 
     public function tenant()

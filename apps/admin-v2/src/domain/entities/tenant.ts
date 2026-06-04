@@ -34,6 +34,11 @@ export interface TenantSettings {
   themeColor: string | null;
   slotDuration: number;
   cancellationHours: number;
+  defaultTaxRate: number;
+  /** When true, new public bookings land as `confirmed` instead of
+      `pending`, skipping the manual review step in the dashboard.
+      Useful for high-volume tenants (car wash, lavandería). */
+  autoConfirmReservations: boolean;
   socialLinks: {
     instagram: string | null;
     facebook: string | null;

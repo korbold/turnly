@@ -144,4 +144,55 @@ class UserController extends Controller
             'meta' => ['timestamp' => now()->toIso8601String()],
         ]);
     }
+
+    /**
+     * Admin patch of a client's contact info. Allowed only when the user
+     * is still a ghost (never claimed an account from the app) AND the
+     * client belongs to the current tenant. Once the customer claims
+     * the account they own these fields exclusively.
+     */
+    public function updateClient(Request $request, string $id): JsonResponse
+    {
+        $tenantId = app('current_tenant_id');
+
+        $belongs = TenantUserModel::where('tenant_id', $tenantId)
+            ->where('user_id', $id)
+            ->where('role', 'client')
+            ->exists();
+        if (!$belongs) {
+            return response()->json([
+                'error' => ['code' => 'NOT_FOUND', 'message' => 'Cliente no encontrado'],
+            ], 404);
+        }
+
+        $user = UserModel::findOrFail($id);
+        if (!$user->isGhost()) {
+            return response()->json([
+                'error' => [
+                    'code' => 'CLAIMED',
+                    'message' => 'El cliente activó su cuenta. Solo él puede editar sus datos.',
+                ],
+            ], 403);
+        }
+
+        $data = $request->validate([
+            'name'  => ['nullable', 'string', 'max:255'],
+            'email' => ['nullable', 'email', 'max:255'],
+            'phone' => ['nullable', 'string', 'max:30'],
+        ]);
+
+        $user->fill(array_filter($data, fn ($v) => $v !== null));
+        $user->save();
+
+        return response()->json([
+            'data' => [
+                'id'    => $user->id,
+                'name'  => $user->name,
+                'email' => $user->email,
+                'phone' => $user->phone,
+                'is_ghost' => $user->isGhost(),
+            ],
+            'meta' => ['timestamp' => now()->toIso8601String()],
+        ]);
+    }
 }

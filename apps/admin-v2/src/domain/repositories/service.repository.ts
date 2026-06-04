@@ -12,6 +12,7 @@ export interface CreateServiceData {
 
 export interface ServiceRepository {
   getAll(page?: number): Promise<PaginatedResult<Service>>;
+  getById(id: string): Promise<Service>;
   create(data: CreateServiceData): Promise<Service>;
   update(id: string, data: Partial<CreateServiceData>): Promise<Service>;
   delete(id: string): Promise<void>;

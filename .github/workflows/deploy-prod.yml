@@ -60,6 +60,9 @@ jobs:
 
             sudo /usr/bin/systemctl reload php8.3-fpm
             sudo /usr/bin/systemctl restart turnly-queue
+            if systemctl list-unit-files | grep -q turnly-reverb; then
+              sudo /usr/bin/systemctl restart turnly-reverb
+            fi
 
             # Rotate DB backups: keep last 14
             ls -1t ~/backups/db-*.sql.gz | tail -n +15 | xargs -r rm --

@@ -9,9 +9,12 @@ import '../../../../core/di/injection.dart';
 import '../../../../shared/widgets/app_button.dart';
 import '../../../../shared/widgets/empty_state.dart';
 import '../../../../shared/widgets/shimmer_loader.dart';
+import '../../domain/entities/available_slot.dart';
 import '../../domain/entities/reservation.dart';
 import '../../domain/enums/reservation_status.dart';
 import '../../domain/repositories/reservation_repository.dart';
+import '../widgets/reservation_items_section.dart';
+import '../widgets/slot_chip.dart';
 
 class ReservationDetailScreen extends StatefulWidget {
   final String reservationId;
@@ -28,6 +31,7 @@ class _ReservationDetailScreenState extends State<ReservationDetailScreen> {
   String? _error;
   bool _loading = true;
   bool _cancelling = false;
+  bool _rescheduling = false;
 
   @override
   void initState() {
@@ -230,10 +234,159 @@ class _ReservationDetailScreenState extends State<ReservationDetailScreen> {
 
     if (_reservation == null) return const SizedBox.shrink();
 
-    return _ReservationDetailContent(
-      reservation: _reservation!,
-      cancelling: _cancelling,
-      onCancel: _cancelReservation,
+    return RefreshIndicator(
+      onRefresh: _loadReservation,
+      child: _ReservationDetailContent(
+        reservation: _reservation!,
+        cancelling: _cancelling,
+        rescheduling: _rescheduling,
+        onCancel: _cancelReservation,
+        onReschedule: _rescheduleReservation,
+      ),
+    );
+  }
+
+  Future<void> _rescheduleReservation() async {
+    final res = _reservation;
+    if (res == null) return;
+    if (res.serviceId.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('No se pudo cargar el horario de este servicio.'),
+          backgroundColor: AppColors.error,
+        ),
+      );
+      return;
+    }
+
+    // Pick the new date — capped to 90 days out to mirror booking.
+    final now = DateTime.now();
+    final pickedDate = await showDatePicker(
+      context: context,
+      initialDate: res.scheduledAt.isAfter(now) ? res.scheduledAt : now,
+      firstDate: now,
+      lastDate: now.add(const Duration(days: 90)),
+      helpText: 'Selecciona nueva fecha',
+    );
+    if (pickedDate == null || !mounted) return;
+
+    // Pull slot list from the same endpoint the booking flow uses, so
+    // the customer only sees options the tenant actually offers (within
+    // business hours, not already taken, etc.). Duration matches the
+    // current reservation so the slot search blocks overlapping rooms.
+    final durationMin = res.estimatedEnd != null
+        ? res.estimatedEnd!.difference(res.scheduledAt).inMinutes
+        : 30;
+    final dateStr = DateFormat('yyyy-MM-dd').format(pickedDate);
+    final repo = getIt<ReservationRepository>();
+
+    final slotsResult = await repo.getAvailableSlots(
+      dateStr,
+      res.serviceId,
+      durationMin: durationMin > 0 ? durationMin : null,
+    );
+    if (!mounted) return;
+
+    final List<AvailableSlot>? slots = slotsResult.fold(
+      (failure) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(failure.message),
+            backgroundColor: AppColors.error,
+          ),
+        );
+        return null;
+      },
+      (s) => s,
+    );
+    if (slots == null) return;
+    if (slots.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('No hay horarios disponibles para esa fecha.'),
+        ),
+      );
+      return;
+    }
+
+    if (!mounted) return;
+    final picked = await showModalBottomSheet<AvailableSlot>(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: AppColors.surface,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+      ),
+      builder: (sheetCtx) {
+        return SafeArea(
+          child: Padding(
+            padding: const EdgeInsets.fromLTRB(20, 16, 20, 24),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                const Text(
+                  'Horarios disponibles',
+                  style: TextStyle(fontSize: 18, fontWeight: FontWeight.w700),
+                ),
+                const SizedBox(height: 4),
+                Text(
+                  DateFormat("EEEE d 'de' MMMM", 'es').format(pickedDate),
+                  style: const TextStyle(
+                    fontSize: 13,
+                    color: AppColors.textSecondary,
+                  ),
+                ),
+                const SizedBox(height: 16),
+                Flexible(
+                  child: SingleChildScrollView(
+                    child: Wrap(
+                      spacing: 10,
+                      runSpacing: 10,
+                      children: slots
+                          .map((slot) => SlotChip(
+                                slot: slot,
+                                isSelected: false,
+                                onTap: () => Navigator.pop(sheetCtx, slot),
+                              ))
+                          .toList(),
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ),
+        );
+      },
+    );
+
+    if (picked == null || !mounted) return;
+
+    final iso = DateFormat('yyyy-MM-dd HH:mm:ss').format(picked.start);
+
+    setState(() => _rescheduling = true);
+    final result = await repo.reschedule(widget.reservationId, scheduledAt: iso);
+    if (!mounted) return;
+    result.fold(
+      (failure) {
+        setState(() => _rescheduling = false);
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(failure.message),
+            backgroundColor: AppColors.error,
+          ),
+        );
+      },
+      (_) {
+        setState(() => _rescheduling = false);
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Reserva reagendada'),
+            backgroundColor: AppColors.success,
+          ),
+        );
+        _loadReservation();
+      },
     );
   }
 }
@@ -241,12 +394,16 @@ class _ReservationDetailScreenState extends State<ReservationDetailScreen> {
 class _ReservationDetailContent extends StatelessWidget {
   final Reservation reservation;
   final bool cancelling;
+  final bool rescheduling;
   final VoidCallback onCancel;
+  final VoidCallback onReschedule;
 
   const _ReservationDetailContent({
     required this.reservation,
     required this.cancelling,
+    required this.rescheduling,
     required this.onCancel,
+    required this.onReschedule,
   });
 
   @override
@@ -334,9 +491,14 @@ class _ReservationDetailContent extends StatelessWidget {
                               Icon(Icons.access_time_rounded, size: 16, color: statusColor),
                               const SizedBox(width: 6),
                               Text(
-                                reservation.estimatedEnd != null
-                                    ? '${timeFormat.format(reservation.scheduledAt)} - ${timeFormat.format(reservation.estimatedEnd!)}'
-                                    : timeFormat.format(reservation.scheduledAt),
+                                // The duration badge to the right already
+                                // surfaces "N min", so the customer only
+                                // needs the start time here. Showing the
+                                // estimated_end alongside (e.g. 15:00 -
+                                // 19:40 for a 280-min booking) was
+                                // visually loud and made staff scheduling
+                                // look longer than the real service.
+                                timeFormat.format(reservation.scheduledAt),
                                 style: TextStyle(
                                   fontSize: 15,
                                   fontWeight: FontWeight.w600,
@@ -396,17 +558,11 @@ class _ReservationDetailContent extends StatelessWidget {
 
           const SizedBox(height: 24),
 
-          // Service name
-          Text(
-            reservation.serviceName ?? 'Servicio',
-            style: const TextStyle(
-              fontSize: 20,
-              fontWeight: FontWeight.w700,
-              color: AppColors.textPrimary,
-            ),
-          ).animate().fadeIn(duration: 400.ms, delay: 50.ms),
-
-          const SizedBox(height: 20),
+          // (Standalone service title removed — the
+          // "Servicios incluidos" card below lists every item, and
+          // legacy `serviceName` only ever held the first service so
+          // multi-item bookings used to look like single-service ones.)
+          const SizedBox(height: 0),
 
           // Details list
           _InfoTile(
@@ -431,33 +587,16 @@ class _ReservationDetailContent extends StatelessWidget {
 
           const SizedBox(height: 16),
 
-          // Price summary
-          if (reservation.servicePrice != null) ...[
-            const Divider(),
-            const SizedBox(height: 12),
-            Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-              children: [
-                const Text(
-                  'Total',
-                  style: TextStyle(
-                    fontSize: 16,
-                    fontWeight: FontWeight.w500,
-                    color: AppColors.textSecondary,
-                  ),
-                ),
-                Text(
-                  '\$${reservation.servicePrice}',
-                  style: const TextStyle(
-                    fontSize: 24,
-                    fontWeight: FontWeight.w800,
-                    color: AppColors.textPrimary,
-                  ),
-                ),
-              ],
-            ).animate().fadeIn(duration: 400.ms, delay: 250.ms),
-            const SizedBox(height: 24),
-          ],
+          // Items panel (Phase 3.5): listed + editable while pending/confirmed.
+          // Owns its own Total — no separate price block needed.
+          ReservationItemsSection(
+            reservationId: reservation.id,
+            status: reservation.status,
+            scheduledAt: reservation.scheduledAt,
+            tenantSlug: reservation.tenantSlug,
+          ),
+
+          const SizedBox(height: 24),
 
           // Cancellation policy notice
           if (reservation.status == ReservationStatus.pending || reservation.status == ReservationStatus.confirmed) ...[
@@ -504,7 +643,46 @@ class _ReservationDetailContent extends StatelessWidget {
             ).animate().fadeIn(duration: 400.ms, delay: 280.ms),
           ],
           if (reservation.canCancel) ...[
-            const SizedBox(height: 12),
+            if (reservation.canReschedule) ...[
+              const SizedBox(height: 12),
+              AppButton(
+                label: 'Reagendar',
+                variant: AppButtonVariant.outline,
+                onPressed: onReschedule,
+                isLoading: rescheduling,
+                icon: Icons.event_repeat_rounded,
+              ).animate().fadeIn(duration: 400.ms, delay: 290.ms),
+            ] else if (reservation.clientRescheduledAt != null) ...[
+              const SizedBox(height: 12),
+              Container(
+                padding: const EdgeInsets.all(12),
+                decoration: BoxDecoration(
+                  color: AppColors.background,
+                  borderRadius: BorderRadius.circular(12),
+                  border: Border.all(color: AppColors.border),
+                ),
+                child: Row(
+                  children: [
+                    Icon(
+                      Icons.info_outline_rounded,
+                      size: 18,
+                      color: AppColors.textSecondary,
+                    ),
+                    const SizedBox(width: 8),
+                    const Expanded(
+                      child: Text(
+                        'Ya reagendaste esta reserva. Contacta al negocio si necesitas otro cambio.',
+                        style: TextStyle(
+                          fontSize: 12,
+                          color: AppColors.textSecondary,
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              ).animate().fadeIn(duration: 400.ms, delay: 290.ms),
+            ],
+            const SizedBox(height: 10),
             AppButton(
               label: 'Cancelar Reserva',
               variant: AppButtonVariant.primary,

@@ -2,6 +2,7 @@
 
 namespace App\Infrastructure\Notifications\Notifications;
 
+use App\Domain\Reservation\ReservationSummary;
 use App\Infrastructure\Notifications\Channels\FcmChannel;
 use App\Infrastructure\Persistence\Models\ReservationModel;
 use Illuminate\Bus\Queueable;
@@ -23,7 +24,7 @@ class NewReservationForAdmin extends Notification implements ShouldQueue
     {
         return [
             'title' => '📅 Nueva reserva',
-            'body' => "{$this->reservation->client->name} agendó {$this->reservation->service->name} para el {$this->reservation->scheduled_at->translatedFormat('d M')} a las {$this->reservation->scheduled_at->format('H:i')}.",
+            'body' => "{$this->reservation->client->name} agendó " . ReservationSummary::servicesLabel($this->reservation) . " para el {$this->reservation->scheduled_at->translatedFormat('d M')} a las {$this->reservation->scheduled_at->format('H:i')}.",
             'action_type' => 'reservation_detail',
             'action_id' => $this->reservation->id,
             'tenant_id' => $this->reservation->tenant_id,

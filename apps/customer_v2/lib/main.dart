@@ -17,9 +17,11 @@ import 'app/theme/app_theme.dart';
 import 'core/connectivity/connectivity_cubit.dart';
 import 'core/connectivity/connectivity_service.dart';
 import 'core/di/injection.dart';
+import 'core/realtime/pusher_service.dart';
 import 'core/widgets/offline_banner.dart';
 import 'features/auth/domain/repositories/auth_repository.dart';
 import 'features/auth/presentation/cubit/auth_cubit.dart';
+import 'features/auth/presentation/cubit/auth_state.dart';
 import 'features/favorites/data/favorites_storage.dart';
 import 'features/favorites/presentation/cubit/favorites_cubit.dart';
 import 'features/reservations/domain/repositories/reservation_repository.dart';
@@ -28,7 +30,7 @@ import 'features/reservations/presentation/cubit/reservations_cubit.dart';
 /// Default entry point. Kept for backward compat with tooling that ignores
 /// `--target`. Reads ENV from --dart-define, defaults to dev.
 void main() async {
-  const env = String.fromEnvironment('ENV', defaultValue: 'prod');
+  const env = String.fromEnvironment('ENV', defaultValue: 'dev');
   await bootstrap(env: env);
 }
 
@@ -110,23 +112,56 @@ class TurnlyApp extends StatelessWidget {
           create: (_) => ReservationsCubit(getIt<ReservationRepository>())..loadReservations(),
         ),
       ],
-      child: MaterialApp.router(
-        title: 'Turnly',
-        debugShowCheckedModeBanner: false,
-        theme: AppTheme.light,
-        routerConfig: appRouter,
-        builder: (context, child) => Stack(
-          children: [
-            child ?? const SizedBox.shrink(),
-            const Positioned(
-              top: 0,
-              left: 0,
-              right: 0,
-              child: OfflineBanner(),
-            ),
-          ],
+      child: _RealtimeBridge(
+        child: MaterialApp.router(
+          title: 'Turnly',
+          debugShowCheckedModeBanner: false,
+          theme: AppTheme.light,
+          routerConfig: appRouter,
+          builder: (context, child) => Stack(
+            children: [
+              child ?? const SizedBox.shrink(),
+              const Positioned(
+                top: 0,
+                left: 0,
+                right: 0,
+                child: OfflineBanner(),
+              ),
+            ],
+          ),
         ),
       ),
+    );
+  }
+}
+
+/// Watches auth state. When authenticated, opens the Reverb WS and hooks
+/// `reservation.updated` events into `ReservationsCubit.loadReservations()`.
+/// On logout, shuts the socket down so nothing leaks across sessions.
+class _RealtimeBridge extends StatelessWidget {
+  final Widget child;
+  const _RealtimeBridge({required this.child});
+
+  @override
+  Widget build(BuildContext context) {
+    return BlocListener<AuthCubit, AuthState>(
+      listenWhen: (prev, curr) =>
+          (prev is! AuthAuthenticated && curr is AuthAuthenticated) ||
+          (prev is AuthAuthenticated && curr is! AuthAuthenticated),
+      listener: (context, state) async {
+        if (state is AuthAuthenticated) {
+          final reservationsCubit = context.read<ReservationsCubit>();
+          await PusherService.instance.start(
+            userId: state.user.id,
+            onReservationUpdated: (_) {
+              reservationsCubit.loadReservations();
+            },
+          );
+        } else {
+          await PusherService.instance.stop();
+        }
+      },
+      child: child,
     );
   }
 }

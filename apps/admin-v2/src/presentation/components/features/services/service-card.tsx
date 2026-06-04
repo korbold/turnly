@@ -1,6 +1,7 @@
 'use client';
 
-import { MoreHorizontal, Pencil, Trash2, Copy } from 'lucide-react';
+import Link from 'next/link';
+import { MoreHorizontal, Pencil, Trash2, Copy, Layers } from 'lucide-react';
 import { toast } from 'sonner';
 import { Button } from '@/presentation/components/ui/button';
 import {
@@ -92,6 +93,12 @@ export function ServiceCard({ service, onEdit, onDuplicate }: ServiceCardProps) 
               <DropdownMenuItem onClick={() => onEdit(service)}>
                 <Pencil className="mr-2 h-3.5 w-3.5" />
                 Editar
+              </DropdownMenuItem>
+              <DropdownMenuItem asChild>
+                <Link href={`/services/${service.id}`}>
+                  <Layers className="mr-2 h-3.5 w-3.5" />
+                  Variantes y receta
+                </Link>
               </DropdownMenuItem>
               {onDuplicate && (
                 <DropdownMenuItem onClick={() => onDuplicate(service)}>

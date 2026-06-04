@@ -27,10 +27,14 @@ export class ApiTenantRepository implements TenantRepository {
     if (settings.themeColor !== undefined) body.brand_theme = settings.themeColor;
     if (settings.slotDuration !== undefined) body.slot_duration = settings.slotDuration;
     if (settings.cancellationHours !== undefined) body.cancellation_hours = settings.cancellationHours;
+    if (settings.defaultTaxRate !== undefined) body.default_tax_rate = settings.defaultTaxRate;
     if (settings.socialLinks !== undefined) body.social_links = settings.socialLinks;
     if (settings.customFields !== undefined) body.custom_fields = settings.customFields;
     if (settings.businessType !== undefined) body.business_type = settings.businessType;
     if (settings.permissions !== undefined) body.permissions = settings.permissions;
+    if (settings.autoConfirmReservations !== undefined) {
+      body.auto_confirm_reservations = settings.autoConfirmReservations;
+    }
 
     const { data: res } = await api.patch('/tenant/settings', body);
     return mapTenantSettings(res.data);

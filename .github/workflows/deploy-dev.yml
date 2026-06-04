@@ -48,6 +48,9 @@ jobs:
 
             sudo /usr/bin/systemctl reload php8.3-fpm
             sudo /usr/bin/systemctl restart turnly-queue
+            if systemctl list-unit-files | grep -q turnly-reverb; then
+              sudo /usr/bin/systemctl restart turnly-reverb
+            fi
 
             echo "Deploy OK at $(date)"
           ENDSSH

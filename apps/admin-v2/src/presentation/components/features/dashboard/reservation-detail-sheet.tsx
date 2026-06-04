@@ -3,7 +3,7 @@
 import { format } from 'date-fns';
 import { es } from 'date-fns/locale';
 import { useRouter } from 'next/navigation';
-import { Calendar, Loader2 } from 'lucide-react';
+import { Calendar, Loader2, Pencil } from 'lucide-react';
 import {
   Sheet,
   SheetContent,
@@ -13,7 +13,11 @@ import {
 } from '@/presentation/components/ui/sheet';
 import { Button } from '@/presentation/components/ui/button';
 import { Avatar, AvatarFallback } from '@/presentation/components/ui/avatar';
-import { useTransitionReservation, useCancelReservation } from '@/presentation/hooks/use-reservations';
+import {
+  useTransitionReservation,
+  useCancelReservation,
+  useReservationItems,
+} from '@/presentation/hooks/use-reservations';
 import { useEffect, useState } from 'react';
 
 function useIsDesktop(query = '(min-width: 640px)'): boolean {
@@ -47,7 +51,7 @@ function getInitials(name: string | undefined): string {
 }
 
 const ACTION_LABELS: Record<ReservationAction, string> = {
-  confirm: 'Confirmar llegada',
+  confirm: 'Confirmar cita',
   start: 'Iniciar servicio',
   complete: 'Completar',
   cancel: 'Cancelar',
@@ -59,6 +63,7 @@ function nextActions(status: Reservation['status']): ReservationAction[] {
     case 'pending':
       return ['confirm', 'cancel'];
     case 'confirmed':
+    case 'checked_in':
       return ['start', 'cancel'];
     case 'in_progress':
       return ['complete'];
@@ -86,6 +91,10 @@ export function ReservationDetailSheet({
   const transition = useTransitionReservation();
   const cancel = useCancelReservation();
   const isDesktop = useIsDesktop();
+  // Phase 3 — pulled before the early return so the hooks list keeps
+  // a stable shape across renders. The hook is gated by `enabled`
+  // when the id is null so no extra request fires.
+  const { data: items } = useReservationItems(reservation?.id ?? null);
 
   if (!reservation) return null;
 
@@ -97,7 +106,23 @@ export function ReservationDetailSheet({
   const day = format(new Date(reservation.scheduledAt), "EEEE d 'de' MMMM", {
     locale: es,
   });
-  const price = reservation.service?.price;
+
+  const hasItems = (items?.length ?? 0) > 0;
+  const itemsTotal = (items ?? []).reduce((acc, it) => acc + it.lineTotal, 0);
+  const legacyPrice = Number(reservation.service?.price ?? 0);
+  const totalAmount = hasItems ? itemsTotal : legacyPrice;
+
+  // Items remain editable while the reservation hasn't reached a
+  // terminal state. Mirrors the backend rule on POST /items.
+  const isEditable = ['pending', 'confirmed', 'checked_in'].includes(
+    reservation.status
+  );
+  const totalLabel = totalAmount > 0
+    ? totalAmount.toLocaleString('es-EC', {
+        style: 'currency',
+        currency: 'USD',
+      })
+    : null;
 
   const actions = nextActions(reservation.status);
   const isPending = transition.isPending || cancel.isPending;
@@ -117,6 +142,11 @@ export function ReservationDetailSheet({
       );
       return;
     }
+    // pending → confirmed is now a simple status flip ("negocio aceptó
+    // la cita"). The check-in modal (with billing + BOM reservation)
+    // only opens once the reservation is in `confirmed` or later via a
+    // separate "Confirmar llegada" entry — see the additional action
+    // surfaced for those statuses.
     transition.mutate(
       { id: reservation.id, action },
       {
@@ -193,20 +223,57 @@ export function ReservationDetailSheet({
                 {day}
               </dd>
             </div>
-            {price && (
+            {totalLabel && (
               <div>
                 <dt className="text-[11px] font-semibold uppercase tracking-[0.04em] text-[var(--fg-muted)]">
-                  Precio
+                  Total
                 </dt>
                 <dd
                   className="mt-1 font-semibold tabular-nums text-[var(--fg-strong)]"
                   style={{ fontFamily: 'var(--font-mono)' }}
                 >
-                  {price}
+                  {totalLabel}
                 </dd>
               </div>
             )}
           </dl>
+
+          {hasItems && (
+            <div className="rounded-lg border border-[var(--border)] bg-[var(--bg-surface)] p-3">
+              <p className="mb-2 text-[11px] font-semibold uppercase tracking-[0.04em] text-[var(--fg-muted)]">
+                Servicios ({items!.length})
+              </p>
+              <ul className="space-y-1.5">
+                {items!.map((it) => (
+                  <li
+                    key={it.id}
+                    className="flex items-center gap-2 text-[13px] leading-snug"
+                  >
+                    <span className="flex-1 truncate text-[var(--fg-strong)]">
+                      {it.label}
+                    </span>
+                    {it.qty !== 1 && (
+                      <span
+                        className="font-mono text-[12px] text-[var(--fg-muted)]"
+                        style={{ fontFamily: 'var(--font-mono)' }}
+                      >
+                        x{it.qty}
+                      </span>
+                    )}
+                    <span
+                      className="w-20 text-right font-mono text-[var(--fg-strong)] tabular-nums"
+                      style={{ fontFamily: 'var(--font-mono)' }}
+                    >
+                      {it.lineTotal.toLocaleString('es-EC', {
+                        style: 'currency',
+                        currency: 'USD',
+                      })}
+                    </span>
+                  </li>
+                ))}
+              </ul>
+            </div>
+          )}
 
           {reservation.notes && (
             <div>
@@ -221,6 +288,23 @@ export function ReservationDetailSheet({
         </div>
 
         <div className="mt-7 flex flex-col gap-2.5">
+          {/* Confirmed bookings route to the full reservation page so
+              staff can review items + billing before commiting check-in.
+              The dashboard sheet is too cramped for a meaningful review
+              and the modal hides the items behind billing fields. */}
+          {reservation.status === 'confirmed' && (
+            <Button
+              size="lg"
+              variant="default"
+              className="w-full"
+              onClick={() => {
+                onOpenChange(false);
+                router.push(`/reservations/${reservation.id}`);
+              }}
+            >
+              Confirmar llegada
+            </Button>
+          )}
           {actions.map((action) => (
             <Button
               key={action}
@@ -234,6 +318,20 @@ export function ReservationDetailSheet({
               {ACTION_LABELS[action]}
             </Button>
           ))}
+          {isEditable && (
+            <Button
+              size="lg"
+              variant="outline"
+              className="w-full"
+              onClick={() => {
+                onOpenChange(false);
+                router.push(`/reservations/${reservation.id}`);
+              }}
+            >
+              <Pencil className="mr-2 h-4 w-4" aria-hidden="true" />
+              Editar servicios
+            </Button>
+          )}
           <Button
             size="lg"
             variant="ghost"

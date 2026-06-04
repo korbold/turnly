@@ -37,6 +37,8 @@ export function mapTenantSettings(raw: Record<string, unknown>): TenantSettings 
     themeColor: (raw.brand_theme as string) ?? (raw.theme_color as string) ?? null,
     slotDuration: (raw.slot_duration as number) ?? 30,
     cancellationHours: (raw.cancellation_hours as number) ?? 2,
+    defaultTaxRate: Number(raw.default_tax_rate ?? 15),
+    autoConfirmReservations: Boolean(raw.auto_confirm_reservations ?? false),
     socialLinks: {
       instagram: socialLinks.instagram ?? null,
       facebook: socialLinks.facebook ?? null,

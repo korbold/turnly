@@ -17,15 +17,17 @@ const EXTRA_ORDER: ReservationStatus[] = ['in_progress', 'no_show'];
 const LABELS: Record<ReservationStatus, string> = {
   confirmed: 'confirmadas',
   pending: 'pendientes',
+  checked_in: 'revisando',
   in_progress: 'en progreso',
   completed: 'completadas',
   cancelled: 'canceladas',
-  no_show: 'no-show',
+  no_show: 'ausentes',
 };
 
 const TONES: Record<ReservationStatus, { fg: string; bg: string }> = {
   confirmed: { fg: 'var(--status-confirmed-fg)', bg: 'var(--status-confirmed-bg)' },
   pending: { fg: 'var(--status-pending-fg)', bg: 'var(--status-pending-bg)' },
+  checked_in: { fg: 'var(--warning-700)', bg: 'var(--warning-50)' },
   in_progress: { fg: 'var(--status-progress-fg)', bg: 'var(--status-progress-bg)' },
   completed: { fg: 'var(--status-completed-fg)', bg: 'var(--status-completed-bg)' },
   cancelled: { fg: 'var(--status-cancelled-fg)', bg: 'var(--status-cancelled-bg)' },
@@ -49,6 +51,7 @@ export function DayStats({
     const acc: Record<ReservationStatus, number> = {
       pending: 0,
       confirmed: 0,
+      checked_in: 0,
       in_progress: 0,
       completed: 0,
       cancelled: 0,

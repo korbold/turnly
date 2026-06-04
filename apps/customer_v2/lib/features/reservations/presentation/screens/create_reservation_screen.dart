@@ -18,6 +18,7 @@ import '../../../resources/domain/repositories/resource_repository.dart';
 import '../../../resources/presentation/cubit/resources_cubit.dart';
 import '../../../resources/presentation/cubit/resources_state.dart';
 import '../../domain/entities/available_slot.dart';
+import '../../domain/entities/booking_item.dart';
 import '../../domain/repositories/reservation_repository.dart';
 import '../cubit/create_reservation_cubit.dart';
 import '../cubit/create_reservation_state.dart';
@@ -28,6 +29,7 @@ import '../../../../core/widgets/offline_action_gate.dart';
 class CreateReservationScreen extends StatelessWidget {
   final String tenantSlug;
   final String? serviceId;
+  final String? serviceVariantId;
   final List<explore.Service> services;
   final List<Map<String, dynamic>> customFields;
   final String? businessType;
@@ -36,6 +38,7 @@ class CreateReservationScreen extends StatelessWidget {
     super.key,
     required this.tenantSlug,
     this.serviceId,
+    this.serviceVariantId,
     this.services = const [],
     this.customFields = const [],
     this.businessType,
@@ -67,6 +70,7 @@ class CreateReservationScreen extends StatelessWidget {
             child: _CreateReservationView(
               tenantSlug: tenantSlug,
               serviceId: serviceId,
+              serviceVariantId: serviceVariantId,
               services: services,
               customFields: customFields,
               businessType: businessType,
@@ -81,6 +85,7 @@ class CreateReservationScreen extends StatelessWidget {
 class _CreateReservationView extends StatefulWidget {
   final String tenantSlug;
   final String? serviceId;
+  final String? serviceVariantId;
   final List<explore.Service> services;
   final List<Map<String, dynamic>> customFields;
   final String? businessType;
@@ -88,6 +93,7 @@ class _CreateReservationView extends StatefulWidget {
   const _CreateReservationView({
     required this.tenantSlug,
     this.serviceId,
+    this.serviceVariantId,
     this.services = const [],
     this.customFields = const [],
     this.businessType,
@@ -116,6 +122,14 @@ class _CreateReservationViewState extends State<_CreateReservationView> {
   DateTime? _selectedDate;
   AvailableSlot? _selectedSlot;
 
+  // Phase 3.7 — variant the backend matched to the chosen resource.
+  // Null when the tenant has no segmentation field, the resource lacks
+  // the value, or no variant label fits. In that case the user must
+  // pick manually in step 2.
+  explore.ServiceVariantOption? _resolvedVariant;
+  bool _resolvingVariant = false;
+  String? _lastResolvedFor;
+
   // Step 3: Notes
   final _notesController = TextEditingController();
 
@@ -130,6 +144,34 @@ class _CreateReservationViewState extends State<_CreateReservationView> {
     }
     if (_selectedService == null && widget.services.length == 1) {
       _selectedService = widget.services.first;
+    }
+
+    // Seed the cubit's cart with the initially-tapped service so the
+    // multi-item endpoint sees at least one row. If a variant was
+    // picked up-stream (size/type selector before this screen), the
+    // BookingItem carries its label + price + duration so totals match
+    // exactly what the customer saw.
+    if (_selectedService != null) {
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (!mounted) return;
+        final svc = _selectedService!;
+        final variant = widget.serviceVariantId == null
+            ? null
+            : svc.variants
+                .where((v) => v.id == widget.serviceVariantId)
+                .cast<explore.ServiceVariantOption?>()
+                .firstWhere((v) => v != null, orElse: () => null);
+
+        context.read<CreateReservationCubit>().seedCart([
+          BookingItem(
+            serviceId: svc.id,
+            serviceVariantId: variant?.id,
+            label: variant == null ? svc.name : '${svc.name} · ${variant.label}',
+            price: variant?.price ?? svc.price,
+            durationMin: variant?.durationMin ?? svc.durationMinutes,
+          ),
+        ]);
+      });
     }
   }
 
@@ -173,11 +215,88 @@ class _CreateReservationViewState extends State<_CreateReservationView> {
         );
   }
 
+  Future<void> _resolveVariantForResource(ClientResource resource) async {
+    final svc = _selectedService;
+    if (svc == null || !svc.hasVariants) return;
+    if (_lastResolvedFor == '${svc.id}:${resource.id}') return;
+
+    setState(() {
+      _resolvingVariant = true;
+      _lastResolvedFor = '${svc.id}:${resource.id}';
+    });
+
+    final repo = getIt<ReservationRepository>();
+    final result = await repo.fetchSuggestedVariant(
+      serviceId: svc.id,
+      clientResourceId: resource.id,
+    );
+
+    if (!mounted) return;
+    result.match(
+      (_) => setState(() {
+        _resolvingVariant = false;
+        _resolvedVariant = null;
+      }),
+      (variant) {
+        setState(() {
+          _resolvingVariant = false;
+          _resolvedVariant = variant;
+        });
+        if (variant != null) _reseedCart(variant);
+      },
+    );
+  }
+
+  void _reseedCart(explore.ServiceVariantOption? variant) {
+    final svc = _selectedService;
+    if (svc == null) return;
+    context.read<CreateReservationCubit>().seedCart([
+      BookingItem(
+        serviceId: svc.id,
+        serviceVariantId: variant?.id,
+        label: variant == null ? svc.name : '${svc.name} · ${variant.label}',
+        price: variant?.price ?? svc.price,
+        durationMin: variant?.durationMin ?? svc.durationMinutes,
+      ),
+    ]);
+  }
+
+  Future<void> _pickVariantManually() async {
+    final svc = _selectedService;
+    if (svc == null || !svc.hasVariants) return;
+    final picked = await showVariantPickerSheet(context, svc);
+    if (!mounted || picked == null) return;
+    setState(() => _resolvedVariant = picked);
+    _reseedCart(picked);
+  }
+
   Future<void> _submitReservation() async {
     if (_selectedSlot == null || _selectedService == null) return;
     if (!_skipResourceStep && _selectedResource == null) return;
 
+    // Guard: every cart line whose service has size/type variants must
+    // carry the picked variantId. Otherwise the backend rejects with
+    // items.*.service_variant_id => required_with.
+    final cart = context.read<CreateReservationCubit>().cart;
+    final servicesById = {for (final s in widget.services) s.id: s};
+    final missing = cart.where((it) {
+      final svc = servicesById[it.serviceId];
+      return (svc?.hasVariants ?? false) && it.serviceVariantId == null;
+    }).toList();
+    if (missing.isNotEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(
+            'Elige tamaño para: ${missing.map((m) => m.label).join(", ")}',
+          ),
+          backgroundColor: AppColors.error,
+        ),
+      );
+      return;
+    }
+
     context.read<CreateReservationCubit>().createReservation(
+          tenantSlug: widget.tenantSlug,
           clientResourceId: _selectedResource?.id,
           serviceId: _selectedService!.id,
           scheduledAt: DateFormat('yyyy-MM-dd HH:mm:ss').format(_selectedSlot!.start),
@@ -210,9 +329,11 @@ class _CreateReservationViewState extends State<_CreateReservationView> {
             if (state is ResourcesLoaded &&
                 state.resources.isNotEmpty &&
                 _selectedResource == null) {
+              final first = state.resources.first;
               setState(() {
-                _selectedResource = state.resources.first;
+                _selectedResource = first;
               });
+              _resolveVariantForResource(first);
             }
           },
         ),
@@ -238,32 +359,17 @@ class _CreateReservationViewState extends State<_CreateReservationView> {
         ),
         body: Column(
           children: [
-            StepIndicator(currentStep: _currentStep, totalSteps: _totalSteps),
-            // Step labels
-            Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 20),
-              child: Row(
-                mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                children: [
-                  if (!_skipResourceStep)
-                    _StepLabel(
-                      label: 'Registro',
-                      isActive: _currentStep >= 0,
-                    ),
-                  _StepLabel(
-                    label: 'Fecha y hora',
-                    isActive: _skipResourceStep
-                        ? _currentStep >= 0
-                        : _currentStep >= 1,
-                  ),
-                  _StepLabel(
-                    label: 'Confirmar',
-                    isActive: _currentStep >= _totalSteps - 1,
-                  ),
-                ],
-              ),
+            StepIndicator(
+              currentStep: _currentStep,
+              totalSteps: _totalSteps,
+              labels: _skipResourceStep
+                  ? const ['Fecha', 'Confirmar']
+                  : const ['Registro', 'Fecha', 'Confirmar'],
+              onStepTap: (i) {
+                if (i <= _currentStep) _goToStep(i);
+              },
             ),
-            const SizedBox(height: 16),
+            const SizedBox(height: 12),
             Expanded(
               child: PageView(
                 controller: _pageController,
@@ -274,7 +380,12 @@ class _CreateReservationViewState extends State<_CreateReservationView> {
                       selectedResource: _selectedResource,
                       scrollController: _step1ScrollController,
                       onResourceSelected: (r) {
-                        setState(() => _selectedResource = r);
+                        setState(() {
+                          _selectedResource = r;
+                          _resolvedVariant = null;
+                          _lastResolvedFor = null;
+                        });
+                        _resolveVariantForResource(r);
                       },
                       onCreateResource: () async {
                         final result = await context.push(
@@ -291,9 +402,13 @@ class _CreateReservationViewState extends State<_CreateReservationView> {
                           if (mounted) {
                             final state = context.read<ResourcesCubit>().state;
                             if (state is ResourcesLoaded && state.resources.isNotEmpty) {
+                              final last = state.resources.last;
                               setState(() {
-                                _selectedResource = state.resources.last;
+                                _selectedResource = last;
+                                _resolvedVariant = null;
+                                _lastResolvedFor = null;
                               });
+                              _resolveVariantForResource(last);
                             }
                           }
                         }
@@ -345,11 +460,19 @@ class _CreateReservationViewState extends State<_CreateReservationView> {
                     hasPreselectedService: widget.serviceId != null,
                     selectedDate: _selectedDate,
                     selectedSlot: _selectedSlot,
+                    resolvedVariant: _resolvedVariant,
+                    resolvingVariant: _resolvingVariant,
+                    onChangeVariant: _pickVariantManually,
                     onServiceSelected: (service) {
                       setState(() {
                         _selectedService = service;
                         _selectedSlot = null;
+                        _resolvedVariant = null;
+                        _lastResolvedFor = null;
                       });
+                      if (_selectedResource != null) {
+                        _resolveVariantForResource(_selectedResource!);
+                      }
                       _loadSlots();
                     },
                     onDateSelected: (date) {
@@ -373,6 +496,7 @@ class _CreateReservationViewState extends State<_CreateReservationView> {
                     selectedSlot: _selectedSlot,
                     notesController: _notesController,
                     onSubmit: _submitReservation,
+                    availableServices: widget.services,
                   ),
                 ],
               ),
@@ -432,26 +556,6 @@ class _CreateReservationViewState extends State<_CreateReservationView> {
             ),
           ],
         ),
-      ),
-    );
-  }
-}
-
-// -- Step Label --
-class _StepLabel extends StatelessWidget {
-  final String label;
-  final bool isActive;
-
-  const _StepLabel({required this.label, required this.isActive});
-
-  @override
-  Widget build(BuildContext context) {
-    return Text(
-      label,
-      style: TextStyle(
-        fontSize: 11,
-        fontWeight: isActive ? FontWeight.w600 : FontWeight.w400,
-        color: isActive ? AppColors.textPrimary : AppColors.textTertiary,
       ),
     );
   }
@@ -683,12 +787,65 @@ class _ResourceCard extends StatelessWidget {
 }
 
 // -- Step 2: Date & Slot Selection --
+Future<explore.ServiceVariantOption?> showVariantPickerSheet(
+  BuildContext context,
+  explore.Service service,
+) {
+  final primary = Theme.of(context).colorScheme.primary;
+  return showModalBottomSheet<explore.ServiceVariantOption>(
+    context: context,
+    isScrollControlled: true,
+    backgroundColor: AppColors.surface,
+    shape: const RoundedRectangleBorder(
+      borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+    ),
+    builder: (sheetCtx) {
+      return SafeArea(
+        child: Padding(
+          padding: const EdgeInsets.all(20),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                service.name,
+                style: const TextStyle(fontSize: 18, fontWeight: FontWeight.w700),
+              ),
+              const SizedBox(height: 4),
+              const Text(
+                'Elige una opción',
+                style: TextStyle(fontSize: 13, color: AppColors.textSecondary),
+              ),
+              const SizedBox(height: 12),
+              ...service.variants.map(
+                (v) => ListTile(
+                  contentPadding: EdgeInsets.zero,
+                  title: Text(v.label),
+                  subtitle: Text(
+                    '\$${v.price.toStringAsFixed(2)} · ${v.durationMin} min',
+                    style: const TextStyle(fontSize: 12),
+                  ),
+                  trailing: Icon(Icons.chevron_right_rounded, color: primary),
+                  onTap: () => Navigator.pop(sheetCtx, v),
+                ),
+              ),
+            ],
+          ),
+        ),
+      );
+    },
+  );
+}
+
 class _Step2DateSlot extends StatelessWidget {
   final List<explore.Service> services;
   final explore.Service? selectedService;
   final bool hasPreselectedService;
   final DateTime? selectedDate;
   final AvailableSlot? selectedSlot;
+  final explore.ServiceVariantOption? resolvedVariant;
+  final bool resolvingVariant;
+  final VoidCallback onChangeVariant;
   final ValueChanged<explore.Service> onServiceSelected;
   final ValueChanged<DateTime> onDateSelected;
   final ValueChanged<AvailableSlot> onSlotSelected;
@@ -700,11 +857,17 @@ class _Step2DateSlot extends StatelessWidget {
     this.hasPreselectedService = false,
     required this.selectedDate,
     required this.selectedSlot,
+    required this.resolvedVariant,
+    required this.resolvingVariant,
+    required this.onChangeVariant,
     required this.onServiceSelected,
     required this.onDateSelected,
     required this.onSlotSelected,
     required this.onNext,
   });
+
+  bool get _needsVariant =>
+      (selectedService?.hasVariants ?? false) && resolvedVariant == null;
 
   @override
   Widget build(BuildContext context) {
@@ -780,6 +943,15 @@ class _Step2DateSlot extends StatelessWidget {
                 );
               }).toList(),
             ).animate().fadeIn(duration: 400.ms, delay: 50.ms),
+            const SizedBox(height: 24),
+          ],
+
+          if (selectedService?.hasVariants ?? false) ...[
+            _VariantSection(
+              variant: resolvedVariant,
+              loading: resolvingVariant,
+              onChange: onChangeVariant,
+            ).animate().fadeIn(duration: 400.ms, delay: 75.ms),
             const SizedBox(height: 24),
           ],
 
@@ -905,10 +1077,100 @@ class _Step2DateSlot extends StatelessWidget {
 
           const SizedBox(height: 32),
           AppButton(
-            label: 'Siguiente',
-            onPressed: selectedSlot != null ? onNext : null,
-            icon: Icons.arrow_forward_rounded,
+            label: _needsVariant ? 'Elige tamaño' : 'Siguiente',
+            onPressed: (_needsVariant)
+                ? onChangeVariant
+                : (selectedSlot != null ? onNext : null),
+            icon: _needsVariant
+                ? Icons.tune_rounded
+                : Icons.arrow_forward_rounded,
           ).animate().fadeIn(duration: 400.ms, delay: 200.ms),
+        ],
+      ),
+    );
+  }
+}
+
+class _VariantSection extends StatelessWidget {
+  final explore.ServiceVariantOption? variant;
+  final bool loading;
+  final VoidCallback onChange;
+
+  const _VariantSection({
+    required this.variant,
+    required this.loading,
+    required this.onChange,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final primary = Theme.of(context).colorScheme.primary;
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.all(14),
+      decoration: BoxDecoration(
+        color: AppColors.surface,
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: AppColors.border),
+      ),
+      child: Row(
+        children: [
+          Container(
+            width: 42,
+            height: 42,
+            decoration: BoxDecoration(
+              color: primary.withValues(alpha: 0.1),
+              borderRadius: BorderRadius.circular(12),
+            ),
+            child: Icon(Icons.straighten_rounded, color: primary, size: 20),
+          ),
+          const SizedBox(width: 12),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                const Text(
+                  'Tamaño',
+                  style: TextStyle(
+                    fontSize: 12,
+                    color: AppColors.textSecondary,
+                  ),
+                ),
+                const SizedBox(height: 2),
+                if (loading)
+                  const Text(
+                    'Sugiriendo según tu registro…',
+                    style: TextStyle(
+                      fontSize: 14,
+                      fontWeight: FontWeight.w600,
+                      color: AppColors.textTertiary,
+                    ),
+                  )
+                else if (variant != null)
+                  Text(
+                    '${variant!.label} · \$${variant!.price.toStringAsFixed(2)} · ${variant!.durationMin} min',
+                    style: const TextStyle(
+                      fontSize: 14,
+                      fontWeight: FontWeight.w600,
+                      color: AppColors.textPrimary,
+                    ),
+                  )
+                else
+                  const Text(
+                    'Elige una opción',
+                    style: TextStyle(
+                      fontSize: 14,
+                      fontWeight: FontWeight.w600,
+                      color: AppColors.textPrimary,
+                    ),
+                  ),
+              ],
+            ),
+          ),
+          TextButton(
+            onPressed: loading ? null : onChange,
+            child: Text(variant == null ? 'Elegir' : 'Cambiar'),
+          ),
         ],
       ),
     );
@@ -923,6 +1185,7 @@ class _Step3Confirm extends StatelessWidget {
   final AvailableSlot? selectedSlot;
   final TextEditingController notesController;
   final VoidCallback onSubmit;
+  final List<explore.Service> availableServices;
 
   const _Step3Confirm({
     required this.selectedResource,
@@ -931,14 +1194,169 @@ class _Step3Confirm extends StatelessWidget {
     required this.selectedSlot,
     required this.notesController,
     required this.onSubmit,
+    required this.availableServices,
   });
+
+  Future<explore.ServiceVariantOption?> _pickVariantInline(
+    BuildContext context,
+    explore.Service service,
+  ) {
+    final primary = Theme.of(context).colorScheme.primary;
+    return showModalBottomSheet<explore.ServiceVariantOption>(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: AppColors.surface,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+      ),
+      builder: (sheetCtx) {
+        return SafeArea(
+          child: Padding(
+            padding: const EdgeInsets.all(20),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  service.name,
+                  style: const TextStyle(fontSize: 18, fontWeight: FontWeight.w700),
+                ),
+                const SizedBox(height: 4),
+                const Text(
+                  'Elige una opción',
+                  style: TextStyle(fontSize: 13, color: AppColors.textSecondary),
+                ),
+                const SizedBox(height: 12),
+                ...service.variants.map(
+                  (v) => ListTile(
+                    contentPadding: EdgeInsets.zero,
+                    title: Text(v.label),
+                    subtitle: Text(
+                      '\$${v.price.toStringAsFixed(2)} · ${v.durationMin} min',
+                      style: const TextStyle(fontSize: 12),
+                    ),
+                    trailing: Icon(Icons.chevron_right_rounded, color: primary),
+                    onTap: () => Navigator.pop(sheetCtx, v),
+                  ),
+                ),
+              ],
+            ),
+          ),
+        );
+      },
+    );
+  }
+
+  void _openServicePicker(BuildContext context) {
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: AppColors.surface,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+      ),
+      builder: (sheetCtx) {
+        final cubit = context.read<CreateReservationCubit>();
+        final added = cubit.cart.map((c) => c.serviceId).toSet();
+        return SafeArea(
+          child: Padding(
+            padding: const EdgeInsets.all(20),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                const Text(
+                  'Agregar servicio',
+                  style: TextStyle(fontSize: 18, fontWeight: FontWeight.w700),
+                ),
+                const SizedBox(height: 12),
+                Flexible(
+                  child: ListView.separated(
+                    shrinkWrap: true,
+                    itemCount: availableServices.length,
+                    separatorBuilder: (_, __) => const Divider(height: 1),
+                    itemBuilder: (_, i) {
+                      final s = availableServices[i];
+                      final alreadyInCart = added.contains(s.id);
+                      final priceLabel = s.hasVariants
+                          ? 'Desde \$${s.displayPrice.toStringAsFixed(2)}'
+                          : '\$${s.price.toStringAsFixed(2)}';
+                      return ListTile(
+                        title: Text(s.name),
+                        subtitle: Text(
+                          '$priceLabel · ${s.durationMinutes} min',
+                          style: const TextStyle(fontSize: 12),
+                        ),
+                        trailing: alreadyInCart
+                            ? const Icon(Icons.check_circle, color: Colors.green, size: 20)
+                            : const Icon(Icons.add_circle_outline, size: 20),
+                        onTap: () async {
+                          Navigator.of(sheetCtx).pop();
+                          if (!context.mounted) return;
+
+                          if (s.hasVariants) {
+                            // Try the backend's VariantSuggester first
+                            // (Phase 3.7) — it matches the customer's
+                            // selected resource (vehicle/pet/etc.) to a
+                            // variant via the tenant's variant_map. Only
+                            // open the manual picker when it can't decide.
+                            explore.ServiceVariantOption? variant;
+                            final resourceId = selectedResource?.id;
+                            if (resourceId != null) {
+                              final res = await getIt<ReservationRepository>()
+                                  .fetchSuggestedVariant(
+                                serviceId: s.id,
+                                clientResourceId: resourceId,
+                              );
+                              variant = res.fold((_) => null, (v) => v);
+                            }
+                            if (variant == null) {
+                              if (!context.mounted) return;
+                              variant = await _pickVariantInline(context, s);
+                              if (variant == null) return;
+                            }
+                            cubit.addToCart(BookingItem(
+                              serviceId: s.id,
+                              serviceVariantId: variant.id,
+                              label: '${s.name} · ${variant.label}',
+                              price: variant.price,
+                              durationMin: variant.durationMin,
+                            ));
+                          } else {
+                            cubit.addToCart(BookingItem(
+                              serviceId: s.id,
+                              label: s.name,
+                              price: s.price,
+                              durationMin: s.durationMinutes,
+                            ));
+                          }
+                        },
+                      );
+                    },
+                  ),
+                ),
+              ],
+            ),
+          ),
+        );
+      },
+    );
+  }
 
   @override
   Widget build(BuildContext context) {
     final dateFormat = DateFormat("EEEE d 'de' MMMM, yyyy", 'es');
     final timeFormat = DateFormat('HH:mm');
+    final primary = Theme.of(context).colorScheme.primary;
 
-    return SingleChildScrollView(
+    return BlocBuilder<CreateReservationCubit, CreateReservationState>(
+      buildWhen: (_, __) => true,
+      builder: (context, _) {
+        final cubit = context.read<CreateReservationCubit>();
+        final cart = cubit.cart;
+        final hasCart = cart.isNotEmpty;
+
+        return SingleChildScrollView(
       padding: const EdgeInsets.all(20),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -961,7 +1379,139 @@ class _Step3Confirm extends StatelessWidget {
           ).animate().fadeIn(duration: 400.ms, delay: 50.ms),
           const SizedBox(height: 24),
 
-          // Summary card
+          // Services cart
+          Container(
+            width: double.infinity,
+            padding: const EdgeInsets.all(16),
+            decoration: BoxDecoration(
+              color: AppColors.surface,
+              borderRadius: BorderRadius.circular(16),
+              boxShadow: [
+                BoxShadow(
+                  color: Colors.black.withValues(alpha: 0.06),
+                  blurRadius: 16,
+                  offset: const Offset(0, 4),
+                ),
+              ],
+            ),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Row(
+                  children: [
+                    Icon(Icons.miscellaneous_services_rounded,
+                        color: primary, size: 18),
+                    const SizedBox(width: 8),
+                    const Text(
+                      'Servicios',
+                      style: TextStyle(
+                        fontSize: 13,
+                        color: AppColors.textTertiary,
+                        fontWeight: FontWeight.w500,
+                      ),
+                    ),
+                    const Spacer(),
+                    if (hasCart)
+                      Text(
+                        '${cubit.totalDurationMin} min',
+                        style: const TextStyle(
+                          fontSize: 12,
+                          color: AppColors.textTertiary,
+                        ),
+                      ),
+                  ],
+                ),
+                const SizedBox(height: 8),
+                if (!hasCart && selectedService != null)
+                  Padding(
+                    padding: const EdgeInsets.symmetric(vertical: 4),
+                    child: Text(
+                      '${selectedService!.name} · \$${selectedService!.price.toStringAsFixed(2)}',
+                      style: const TextStyle(
+                        fontSize: 14,
+                        color: AppColors.textPrimary,
+                        fontWeight: FontWeight.w600,
+                      ),
+                    ),
+                  ),
+                for (var i = 0; i < cart.length; i++)
+                  Padding(
+                    padding: const EdgeInsets.symmetric(vertical: 4),
+                    child: Row(
+                      children: [
+                        Expanded(
+                          child: Text(
+                            cart[i].qty > 1
+                                ? '${cart[i].label} × ${cart[i].qty}'
+                                : cart[i].label,
+                            style: const TextStyle(
+                              fontSize: 14,
+                              color: AppColors.textPrimary,
+                              fontWeight: FontWeight.w600,
+                            ),
+                          ),
+                        ),
+                        const SizedBox(width: 8),
+                        Text(
+                          '\$${cart[i].lineTotal.toStringAsFixed(2)}',
+                          style: const TextStyle(
+                            fontSize: 14,
+                            fontWeight: FontWeight.w600,
+                          ),
+                        ),
+                        if (cart.length > 1)
+                          IconButton(
+                            icon: const Icon(Icons.close, size: 18),
+                            onPressed: () => cubit.removeFromCart(i),
+                            visualDensity: VisualDensity.compact,
+                          ),
+                      ],
+                    ),
+                  ),
+                if (availableServices.length > 1) ...[
+                  const SizedBox(height: 4),
+                  TextButton.icon(
+                    onPressed: () => _openServicePicker(context),
+                    icon: const Icon(Icons.add, size: 18),
+                    label: const Text('Agregar otro servicio'),
+                    style: TextButton.styleFrom(
+                      foregroundColor: primary,
+                      padding: EdgeInsets.zero,
+                      alignment: Alignment.centerLeft,
+                    ),
+                  ),
+                ],
+                if (hasCart) ...[
+                  const Divider(height: 24),
+                  Row(
+                    children: [
+                      const Text(
+                        'Total',
+                        style: TextStyle(
+                          fontSize: 14,
+                          fontWeight: FontWeight.w700,
+                          color: AppColors.textPrimary,
+                        ),
+                      ),
+                      const Spacer(),
+                      Text(
+                        '\$${cubit.totalPrice.toStringAsFixed(2)}',
+                        style: TextStyle(
+                          fontSize: 18,
+                          fontWeight: FontWeight.w800,
+                          color: primary,
+                        ),
+                      ),
+                    ],
+                  ),
+                ],
+              ],
+            ),
+          ).animate().fadeIn(duration: 300.ms, delay: 80.ms),
+
+          const SizedBox(height: 16),
+
+          // Resource / Date / Time summary
           Container(
             width: double.infinity,
             padding: const EdgeInsets.all(20),
@@ -978,14 +1528,6 @@ class _Step3Confirm extends StatelessWidget {
             ),
             child: Column(
               children: [
-                if (selectedService != null) ...[
-                  _SummaryRow(
-                    icon: Icons.miscellaneous_services_rounded,
-                    label: 'Servicio',
-                    value: '${selectedService!.name} - \$${selectedService!.price.toStringAsFixed(2)}',
-                  ),
-                  const Divider(height: 24),
-                ],
                 if (selectedResource != null) ...[
                   _SummaryRow(
                     icon: Icons.badge_outlined,
@@ -1006,7 +1548,7 @@ class _Step3Confirm extends StatelessWidget {
                   icon: Icons.access_time_rounded,
                   label: 'Hora',
                   value: selectedSlot != null
-                      ? '${timeFormat.format(selectedSlot!.start)} - ${timeFormat.format(selectedSlot!.end)}'
+                      ? timeFormat.format(selectedSlot!.start)
                       : '-',
                 ),
               ],
@@ -1040,6 +1582,8 @@ class _Step3Confirm extends StatelessWidget {
           ).animate().fadeIn(duration: 400.ms, delay: 300.ms),
         ],
       ),
+    );
+      },
     );
   }
 }

@@ -47,3 +47,11 @@ app.*.map.json
 # Env files (.env.dev/.env.prod committed; .env / .env.local for personal overrides)
 .env
 .env.local
+
+# Android signing (NEVER commit keystores or passwords)
+android/key.properties
+android/app/upload-keystore.jks
+android/app/*.jks
+android/app/*.keystore
+*.jks
+*.keystore

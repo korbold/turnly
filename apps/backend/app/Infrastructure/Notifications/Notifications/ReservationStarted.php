@@ -2,6 +2,7 @@
 
 namespace App\Infrastructure\Notifications\Notifications;
 
+use App\Domain\Reservation\ReservationSummary;
 use App\Infrastructure\Notifications\Channels\FcmChannel;
 use App\Infrastructure\Persistence\Models\ReservationModel;
 use Illuminate\Bus\Queueable;
@@ -23,7 +24,7 @@ class ReservationStarted extends Notification implements ShouldQueue
     {
         return [
             'title' => '🚀 Tu cita ha iniciado',
-            'body' => "Tu {$this->reservation->service->name} en {$this->reservation->tenant->name} ha comenzado.",
+            'body' => 'Tu ' . ReservationSummary::servicesLabel($this->reservation) . " en {$this->reservation->tenant->name} ha comenzado.",
             'action_type' => 'reservation_detail',
             'action_id' => $this->reservation->id,
             'tenant_id' => $this->reservation->tenant_id,

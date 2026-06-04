@@ -15,9 +15,12 @@ class ReservationModel extends Model
     protected $table = 'reservations';
 
     protected $fillable = [
-        'tenant_id', 'client_id', 'client_resource_id', 'service_id',
+        'tenant_id', 'client_id', 'client_resource_id', 'service_id', 'service_variant_id',
         'assigned_to', 'scheduled_at', 'estimated_end', 'status',
         'notes', 'cancelled_at', 'cancel_reason', 'created_by',
+        'consumption_applied_at',
+        'checked_in_at', 'billing_snapshot',
+        'client_rescheduled_at',
     ];
 
     protected function casts(): array
@@ -26,7 +29,26 @@ class ReservationModel extends Model
             'scheduled_at' => 'datetime',
             'estimated_end' => 'datetime',
             'cancelled_at' => 'datetime',
+            'consumption_applied_at' => 'datetime',
+            'checked_in_at' => 'datetime',
+            'client_rescheduled_at' => 'datetime',
+            'billing_snapshot' => 'array',
         ];
+    }
+
+    public function items()
+    {
+        return $this->hasMany(ReservationItemModel::class, 'reservation_id')->orderBy('sort_order');
+    }
+
+    public function itemChanges()
+    {
+        return $this->hasMany(ReservationItemChangeModel::class, 'reservation_id')->orderByDesc('changed_at');
+    }
+
+    public function variant()
+    {
+        return $this->belongsTo(ServiceVariantModel::class, 'service_variant_id');
     }
 
     public function tenant()

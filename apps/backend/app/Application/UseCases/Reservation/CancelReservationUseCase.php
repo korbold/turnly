@@ -6,6 +6,7 @@ use App\Domain\Reservation\Contracts\ReservationRepositoryInterface;
 use App\Domain\Reservation\Enums\ReservationStatus;
 use App\Domain\Reservation\Exceptions\InvalidStatusTransitionException;
 use App\Domain\Reservation\Exceptions\ReservationNotFoundException;
+use App\Events\ReservationUpdated;
 use App\Infrastructure\Notifications\Notifications\ReservationCancelled;
 use App\Infrastructure\Persistence\Models\ReservationModel;
 use App\Infrastructure\Persistence\Models\TenantModel;
@@ -50,6 +51,7 @@ class CancelReservationUseCase
         try {
             $model = ReservationModel::with(['service', 'client', 'tenant'])->find($reservationId);
             if ($model) {
+                ReservationUpdated::dispatch($model);
                 $notification = new ReservationCancelled($model);
 
                 // Notify client

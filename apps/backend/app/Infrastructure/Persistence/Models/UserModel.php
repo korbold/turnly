@@ -22,6 +22,7 @@ class UserModel extends Authenticatable
         'name', 'email', 'username', 'password', 'phone',
         'terms_accepted_at', 'terms_version_accepted',
         'deletion_requested_at',
+        'claimed_at', 'created_by_walkin',
     ];
 
     protected $hidden = [
@@ -34,9 +35,20 @@ class UserModel extends Authenticatable
             'email_verified_at' => 'datetime',
             'terms_accepted_at' => 'datetime',
             'deletion_requested_at' => 'datetime',
+            'claimed_at' => 'datetime',
+            'created_by_walkin' => 'boolean',
             'password' => 'hashed',
             'is_super_admin' => 'boolean',
         ];
+    }
+
+    /// Ghost users are created by a cashier in walk-in flows; they have
+    /// a random password and the customer hasn't claimed the account
+    /// yet. Used by edit guards to allow admins to keep updating data
+    /// only while the user is still a ghost.
+    public function isGhost(): bool
+    {
+        return $this->created_by_walkin === true && $this->claimed_at === null;
     }
 
     public function tenants()

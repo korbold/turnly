@@ -15,6 +15,7 @@ import { cn } from '@/shared/utils/cn';
 const STATUS_BORDER: Record<ReservationStatus, string> = {
   pending: 'var(--status-pending-fg)',
   confirmed: 'var(--status-confirmed-fg)',
+  checked_in: 'var(--warning-700)',
   in_progress: 'var(--status-progress-fg)',
   completed: 'var(--status-completed-fg)',
   cancelled: 'var(--status-cancelled-fg)',

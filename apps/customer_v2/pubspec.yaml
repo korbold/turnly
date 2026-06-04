@@ -1,7 +1,7 @@
 name: customer_v2
 description: Turnly Customer App V2
 publish_to: 'none'
-version: 1.0.0+2
+version: 1.0.0+6
 
 environment:
   sdk: ^3.8.0
@@ -44,6 +44,7 @@ dependencies:
   firebase_auth: ^5.3.4
   connectivity_plus: ^6.1.0
   flutter_local_notifications: ^18.0.0
+  pusher_channels_flutter: ^2.4.0
 
   # UI
   cached_network_image: ^3.4.0

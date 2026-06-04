@@ -8,7 +8,11 @@ import { CreateReservationUseCase } from '@/application/use-cases/reservations/c
 import { TransitionReservationUseCase } from '@/application/use-cases/reservations/transition-reservation.use-case';
 import { CancelReservationUseCase } from '@/application/use-cases/reservations/cancel-reservation.use-case';
 import type { ReservationFilters, ReservationAction } from '@/domain/entities/reservation';
-import type { CreateReservationData } from '@/domain/repositories/reservation.repository';
+import type {
+  CreateReservationData,
+  AddItemInput,
+  CheckInInput,
+} from '@/domain/repositories/reservation.repository';
 
 export function useReservations(filters: ReservationFilters, enabled = true) {
   const repo = useRepository('reservation');
@@ -46,8 +50,15 @@ export function useTransitionReservation() {
   return useMutation({
     mutationFn: ({ id, action }: { id: string; action: ReservationAction }) =>
       new TransitionReservationUseCase(repo).execute(id, action),
-    onSuccess: () => {
+    onSuccess: (_data, { id }) => {
       queryClient.invalidateQueries({ queryKey: ['reservations'] });
+      // The detail page reads ['reservation', id] separately, so without
+      // these invalidations its status badge + action buttons stay
+      // stale, the user clicks again, and the backend rejects with 422
+      // ("No se pudo iniciar"). Sibling queries follow the same key.
+      queryClient.invalidateQueries({ queryKey: ['reservation', id] });
+      queryClient.invalidateQueries({ queryKey: ['reservation-items', id] });
+      queryClient.invalidateQueries({ queryKey: ['reservation-changes', id] });
     },
   });
 }
@@ -58,8 +69,111 @@ export function useCancelReservation() {
   return useMutation({
     mutationFn: ({ id, reason }: { id: string; reason: string }) =>
       new CancelReservationUseCase(repo).execute(id, reason),
-    onSuccess: () => {
+    onSuccess: (_data, { id }) => {
       queryClient.invalidateQueries({ queryKey: ['reservations'] });
+      queryClient.invalidateQueries({ queryKey: ['reservation', id] });
+      queryClient.invalidateQueries({ queryKey: ['reservation-items', id] });
+      queryClient.invalidateQueries({ queryKey: ['reservation-changes', id] });
+    },
+  });
+}
+
+export function useRescheduleReservation() {
+  const repo = useRepository('reservation');
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: ({ id, scheduledAt }: { id: string; scheduledAt: string }) =>
+      repo.reschedule(id, scheduledAt),
+    onSuccess: (_data, { id }) => {
+      queryClient.invalidateQueries({ queryKey: ['reservations'] });
+      queryClient.invalidateQueries({ queryKey: ['reservation', id] });
+    },
+  });
+}
+
+export function useReservation(id: string | null) {
+  const repo = useRepository('reservation');
+  return useQuery({
+    queryKey: ['reservation', id],
+    queryFn: () => repo.getById(id as string),
+    enabled: Boolean(id),
+  });
+}
+
+export function useReservationItems(id: string | null) {
+  const repo = useRepository('reservation');
+  return useQuery({
+    queryKey: ['reservation-items', id],
+    queryFn: () => repo.listItems(id as string),
+    enabled: Boolean(id),
+  });
+}
+
+export function useReservationChanges(id: string | null) {
+  const repo = useRepository('reservation');
+  return useQuery({
+    queryKey: ['reservation-changes', id],
+    queryFn: () => repo.listChanges(id as string),
+    enabled: Boolean(id),
+  });
+}
+
+export function useCheckInReservation(id: string) {
+  const repo = useRepository('reservation');
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (input: CheckInInput) => repo.checkIn(id, input),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ['reservation', id] });
+      qc.invalidateQueries({ queryKey: ['reservations'] });
+    },
+  });
+}
+
+export function useUpdateReservationBilling(id: string) {
+  const repo = useRepository('reservation');
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (input: CheckInInput) => repo.updateBilling(id, input),
+    onSuccess: () => qc.invalidateQueries({ queryKey: ['reservation', id] }),
+  });
+}
+
+export function useAddReservationItem(id: string) {
+  const repo = useRepository('reservation');
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (input: AddItemInput) => repo.addItem(id, input),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ['reservation-items', id] });
+      qc.invalidateQueries({ queryKey: ['reservation-changes', id] });
+      qc.invalidateQueries({ queryKey: ['reservation', id] });
+    },
+  });
+}
+
+export function useRemoveReservationItem(id: string) {
+  const repo = useRepository('reservation');
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: ({ itemId, reason }: { itemId: string; reason?: string }) =>
+      repo.removeItem(itemId, reason),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ['reservation-items', id] });
+      qc.invalidateQueries({ queryKey: ['reservation-changes', id] });
+    },
+  });
+}
+
+export function useOverrideReservationItemPrice(id: string) {
+  const repo = useRepository('reservation');
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: ({ itemId, unitPrice, reason }: { itemId: string; unitPrice: number; reason: string }) =>
+      repo.overrideItemPrice(itemId, unitPrice, reason),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ['reservation-items', id] });
+      qc.invalidateQueries({ queryKey: ['reservation-changes', id] });
     },
   });
 }

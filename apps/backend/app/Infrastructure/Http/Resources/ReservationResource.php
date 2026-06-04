@@ -21,6 +21,7 @@ class ReservationResource extends JsonResource
             'notes'         => $this->notes,
             'cancelled_at'  => $this->cancelled_at?->toIso8601String(),
             'cancel_reason' => $this->cancel_reason,
+            'client_rescheduled_at' => $this->client_rescheduled_at?->toIso8601String(),
             'created_by'    => $this->created_by,
             'created_at'    => $this->created_at?->toIso8601String(),
 
@@ -33,6 +34,18 @@ class ReservationResource extends JsonResource
             'service' => $this->whenLoaded('service', fn () => [
                 'name'             => $this->service->name,
                 'price'            => $this->service->price,
+            ]),
+
+            // Compact services summary so list views can render the
+            // multi-service label without firing a follow-up /items
+            // request per row. Loaded only when the caller asked for
+            // the items relationship.
+            'services_summary' => $this->whenLoaded('items', fn () => [
+                'count'  => $this->items->count(),
+                'labels' => $this->items
+                    ->map(fn ($it) => preg_replace('/\s·\s.*$/u', '', (string) $it->label))
+                    ->filter()
+                    ->values(),
             ]),
 
             'client' => $this->whenLoaded('client', fn () => [

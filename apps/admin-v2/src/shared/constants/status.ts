@@ -1,6 +1,7 @@
 export type ReservationStatus =
   | 'pending'
   | 'confirmed'
+  | 'checked_in'
   | 'in_progress'
   | 'completed'
   | 'cancelled'
@@ -25,6 +26,12 @@ export const RESERVATION_STATUS_CONFIG: Record<ReservationStatus, StatusConfig> 
     color: 'text-[var(--status-confirmed-fg)]',
     bgColor: 'bg-[var(--status-confirmed-bg)]',
     dotColor: 'bg-[var(--status-confirmed-fg)]',
+  },
+  checked_in: {
+    label: 'Revisando',
+    color: 'text-[var(--warning-700)]',
+    bgColor: 'bg-[var(--warning-50)]',
+    dotColor: 'bg-[var(--warning-700)]',
   },
   in_progress: {
     label: 'En progreso',
