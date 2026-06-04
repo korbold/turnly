@@ -14,56 +14,70 @@ import { cn } from '@/shared/utils/cn';
  * tinted body. Tokens are local on purpose — calendar tints need to be
  * lighter than the badge bg to stay readable on the rest of the body.
  */
-const ACCENT: Record<ReservationStatus, { rail: string; tint: string; text: string }> = {
+const ACCENT: Record<ReservationStatus, { rail: string; tint: string; text: string; dot: string }> = {
   pending: {
     rail: 'bg-amber-400',
     tint: 'bg-amber-50/70 hover:bg-amber-50',
     text: 'text-amber-700',
+    dot: 'bg-amber-400',
   },
   confirmed: {
     rail: 'bg-sky-400',
     tint: 'bg-sky-50/70 hover:bg-sky-50',
     text: 'text-sky-700',
+    dot: 'bg-sky-400',
   },
   checked_in: {
     rail: 'bg-orange-400',
     tint: 'bg-orange-50/70 hover:bg-orange-50',
     text: 'text-orange-700',
+    dot: 'bg-orange-400',
   },
   in_progress: {
     rail: 'bg-indigo-500',
     tint: 'bg-indigo-50/80 hover:bg-indigo-50',
     text: 'text-indigo-700',
+    dot: 'bg-indigo-500',
   },
   completed: {
     rail: 'bg-emerald-400',
     tint: 'bg-emerald-50/70 hover:bg-emerald-50',
     text: 'text-emerald-700',
+    dot: 'bg-emerald-400',
   },
   cancelled: {
     rail: 'bg-rose-400',
     tint: 'bg-rose-50/70 hover:bg-rose-50',
     text: 'text-rose-700',
+    dot: 'bg-rose-400',
   },
   no_show: {
     rail: 'bg-slate-400',
     tint: 'bg-slate-50/80 hover:bg-slate-50',
     text: 'text-slate-700',
+    dot: 'bg-slate-400',
   },
 };
+
+type Density = 'full' | 'medium' | 'compact';
 
 interface ReservationCardProps {
   reservation: Reservation;
   onClick?: () => void;
+  /** Picks how much content to render. Parent (Timeline) computes this
+      from the available column width so tightly packed lanes drop the
+      service subline instead of overflowing into ellipses. */
+  density?: Density;
 }
 
-export function ReservationCard({ reservation, onClick }: ReservationCardProps) {
+export function ReservationCard({
+  reservation,
+  onClick,
+  density = 'full',
+}: ReservationCardProps) {
   const statusCfg = RESERVATION_STATUS_CONFIG[reservation.status];
   const accent = ACCENT[reservation.status];
 
-  // Prefer a free-text custom field if the resource has one (the booking
-  // form lets clients label their car/pet/etc.); fall back to plate and
-  // finally to the account holder.
   const resourceData = reservation.clientResource?.data as
     | Record<string, unknown>
     | null
@@ -83,50 +97,66 @@ export function ReservationCard({ reservation, onClick }: ReservationCardProps) 
 
   return (
     <motion.button
-      whileHover={{ y: -1, boxShadow: '0 6px 16px rgba(15,23,42,0.08)' }}
+      whileHover={{ y: -1, boxShadow: '0 8px 20px rgba(15,23,42,0.10)' }}
       whileTap={{ scale: 0.99 }}
       transition={{ type: 'spring', stiffness: 380, damping: 28 }}
       onClick={onClick}
       className={cn(
-        'group relative flex h-full w-full overflow-hidden rounded-lg text-left',
-        'border border-[var(--border)] shadow-sm',
+        'group/card relative flex h-full w-full overflow-hidden rounded-lg text-left',
+        'border border-[var(--border)] shadow-sm backdrop-blur-[1px]',
         'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--brand-300)] focus-visible:ring-offset-1',
         accent.tint,
       )}
+      aria-label={`${headline}, ${timeLabel}, ${statusCfg.label}`}
     >
-      {/* Status rail */}
       <span
         className={cn('w-1 shrink-0', accent.rail)}
         aria-hidden="true"
       />
 
-      <div className="flex min-w-0 flex-1 flex-col items-start justify-start gap-1 px-3 py-2">
-        {/* Headline row: name + status pill, top-aligned so tall cards
-            still read at a glance without scrolling visually. */}
+      <div
+        className={cn(
+          'flex min-w-0 flex-1 flex-col items-start justify-start gap-1',
+          density === 'compact' ? 'px-2 py-1.5' : 'px-3 py-2',
+        )}
+      >
         <div className="flex w-full items-start justify-between gap-2">
           <div className="min-w-0 flex-1">
-            <p className="truncate text-[13px] font-semibold leading-tight text-[var(--fg-strong)]">
-              {headline}
-            </p>
+            <div className="flex items-center gap-1.5">
+              {density === 'compact' && (
+                <span
+                  className={cn(
+                    'h-2 w-2 shrink-0 rounded-full',
+                    accent.dot,
+                  )}
+                  aria-hidden="true"
+                />
+              )}
+              <p className="truncate text-[13px] font-semibold leading-tight text-[var(--fg-strong)]">
+                {headline}
+              </p>
+            </div>
             <p
-              className="mt-0.5 text-[11px] tabular-nums text-[var(--fg-muted)]"
+              className="mt-0.5 truncate text-[11px] tabular-nums text-[var(--fg-muted)]"
               style={{ fontFamily: 'var(--font-mono)' }}
             >
               {timeLabel}
             </p>
           </div>
-          <span
-            className={cn(
-              'shrink-0 rounded-full px-2 py-[2px] text-[10px] font-semibold uppercase tracking-[0.04em]',
-              statusCfg.bgColor,
-              accent.text,
-            )}
-          >
-            {statusCfg.label}
-          </span>
+          {density !== 'compact' && (
+            <span
+              className={cn(
+                'shrink-0 rounded-full px-2 py-[2px] text-[10px] font-semibold uppercase tracking-[0.04em]',
+                statusCfg.bgColor,
+                accent.text,
+              )}
+            >
+              {statusCfg.label}
+            </span>
+          )}
         </div>
 
-        {subline && (
+        {density === 'full' && subline && (
           <p className="truncate text-[12px] text-[var(--fg-secondary)] leading-snug">
             {subline}
           </p>
