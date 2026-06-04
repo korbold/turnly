@@ -335,9 +335,14 @@ class _ReservationDetailContent extends StatelessWidget {
                               Icon(Icons.access_time_rounded, size: 16, color: statusColor),
                               const SizedBox(width: 6),
                               Text(
-                                reservation.estimatedEnd != null
-                                    ? '${timeFormat.format(reservation.scheduledAt)} - ${timeFormat.format(reservation.estimatedEnd!)}'
-                                    : timeFormat.format(reservation.scheduledAt),
+                                // The duration badge to the right already
+                                // surfaces "N min", so the customer only
+                                // needs the start time here. Showing the
+                                // estimated_end alongside (e.g. 15:00 -
+                                // 19:40 for a 280-min booking) was
+                                // visually loud and made staff scheduling
+                                // look longer than the real service.
+                                timeFormat.format(reservation.scheduledAt),
                                 style: TextStyle(
                                   fontSize: 15,
                                   fontWeight: FontWeight.w600,

@@ -1548,7 +1548,7 @@ class _Step3Confirm extends StatelessWidget {
                   icon: Icons.access_time_rounded,
                   label: 'Hora',
                   value: selectedSlot != null
-                      ? '${timeFormat.format(selectedSlot!.start)} - ${timeFormat.format(selectedSlot!.end)}'
+                      ? timeFormat.format(selectedSlot!.start)
                       : '-',
                 ),
               ],
