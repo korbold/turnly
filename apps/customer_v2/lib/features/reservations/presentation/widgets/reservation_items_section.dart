@@ -5,6 +5,7 @@ import 'package:intl/intl.dart';
 import '../../../../app/theme/app_colors.dart';
 import '../../../../core/di/injection.dart';
 import '../../../explore/domain/entities/business.dart';
+import '../../../explore/domain/entities/service.dart';
 import '../../../explore/domain/repositories/explore_repository.dart';
 import '../../domain/entities/reservation_item.dart';
 import '../../domain/enums/reservation_status.dart';
@@ -129,8 +130,17 @@ class _ReservationItemsSectionState extends State<ReservationItemsSection> {
       return;
     }
 
+    // Set of service IDs already in the cart so we can mark them as
+    // "Ya agregado" instead of letting the user double-add the same
+    // service (which would also fail on the backend uuid lookup when
+    // the catalog only knows about variants).
+    final addedServiceIds = _items
+        .map((i) => i.serviceId)
+        .whereType<String>()
+        .toSet();
+
     if (!mounted) return;
-    final selected = await showModalBottomSheet<String>(
+    final selectedService = await showModalBottomSheet<Service>(
       context: context,
       isScrollControlled: true,
       backgroundColor: AppColors.surface,
@@ -157,13 +167,28 @@ class _ReservationItemsSectionState extends State<ReservationItemsSection> {
                     separatorBuilder: (_, __) => const Divider(height: 1),
                     itemBuilder: (_, i) {
                       final s = business.services[i];
+                      final alreadyAdded = addedServiceIds.contains(s.id);
+                      final priceLabel = s.hasVariants
+                          ? 'Desde \$${s.displayPrice.toStringAsFixed(2)}'
+                          : '\$${s.price.toStringAsFixed(2)}';
                       return ListTile(
+                        enabled: !alreadyAdded,
                         title: Text(s.name),
                         subtitle: Text(
-                          '\$${s.price.toStringAsFixed(2)} · ${s.durationMinutes} min',
-                          style: const TextStyle(fontSize: 12),
+                          alreadyAdded
+                              ? 'Ya agregado'
+                              : '$priceLabel · ${s.durationMinutes} min',
+                          style: TextStyle(
+                            fontSize: 12,
+                            color: alreadyAdded ? AppColors.textTertiary : null,
+                          ),
                         ),
-                        onTap: () => Navigator.pop(sheetCtx, s.id),
+                        trailing: alreadyAdded
+                            ? const Icon(Icons.check_circle, color: Colors.green, size: 20)
+                            : const Icon(Icons.add_circle_outline, size: 20),
+                        onTap: alreadyAdded
+                            ? null
+                            : () => Navigator.pop(sheetCtx, s),
                       );
                     },
                   ),
@@ -175,15 +200,23 @@ class _ReservationItemsSectionState extends State<ReservationItemsSection> {
       },
     );
 
-    if (selected == null) return;
+    if (selectedService == null || !mounted) return;
+
+    String refId;
+    if (selectedService.hasVariants) {
+      final picked = await _pickVariant(selectedService);
+      if (picked == null) return;
+      refId = picked.id;
+    } else {
+      _toast('Este servicio no tiene variantes configuradas.');
+      return;
+    }
 
     setState(() => _busy = true);
     final res = await getIt<ReservationRepository>().addItem(
       widget.reservationId,
-      // The catalog exposes services, not variants yet; backend will
-      // accept the legacy service path when the picker matures.
       itemType: 'service_variant',
-      refId: selected,
+      refId: refId,
     );
     if (!mounted) return;
     res.fold(
@@ -191,6 +224,52 @@ class _ReservationItemsSectionState extends State<ReservationItemsSection> {
       (item) => setState(() => _items.add(item)),
     );
     setState(() => _busy = false);
+  }
+
+  Future<ServiceVariantOption?> _pickVariant(Service service) {
+    return showModalBottomSheet<ServiceVariantOption>(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: AppColors.surface,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+      ),
+      builder: (sheetCtx) {
+        return SafeArea(
+          child: Padding(
+            padding: const EdgeInsets.all(20),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  service.name,
+                  style: const TextStyle(fontSize: 18, fontWeight: FontWeight.w700),
+                ),
+                const SizedBox(height: 4),
+                const Text(
+                  'Elige una opción',
+                  style: TextStyle(fontSize: 13, color: AppColors.textSecondary),
+                ),
+                const SizedBox(height: 12),
+                ...service.variants.map(
+                  (v) => ListTile(
+                    contentPadding: EdgeInsets.zero,
+                    title: Text(v.label),
+                    subtitle: Text(
+                      '\$${v.price.toStringAsFixed(2)} · ${v.durationMin} min',
+                      style: const TextStyle(fontSize: 12),
+                    ),
+                    trailing: const Icon(Icons.chevron_right_rounded),
+                    onTap: () => Navigator.pop(sheetCtx, v),
+                  ),
+                ),
+              ],
+            ),
+          ),
+        );
+      },
+    );
   }
 
   void _toast(String msg) {

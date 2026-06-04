@@ -6,6 +6,9 @@ class ReservationItem extends Equatable {
   final String reservationId;
   final String itemType; // 'service_variant' | 'product'
   final String refId;
+  /// Parent service for variant items. Backend exposes it so the editor
+  /// can mark sibling variants as "already added" without an extra lookup.
+  final String? serviceId;
   final String label;
   final num qty;
   final num unitPrice;
@@ -16,6 +19,7 @@ class ReservationItem extends Equatable {
     required this.reservationId,
     required this.itemType,
     required this.refId,
+    this.serviceId,
     required this.label,
     required this.qty,
     required this.unitPrice,
@@ -28,6 +32,7 @@ class ReservationItem extends Equatable {
       reservationId: json['reservation_id'] as String,
       itemType: json['item_type'] as String,
       refId: json['ref_id'] as String,
+      serviceId: json['service_id'] as String?,
       label: json['label'] as String,
       qty: (json['qty'] as num?) ?? 1,
       unitPrice: (json['unit_price'] as num?) ?? 0,
@@ -36,5 +41,5 @@ class ReservationItem extends Equatable {
   }
 
   @override
-  List<Object?> get props => [id, reservationId, itemType, refId, label, qty, unitPrice, lineTotal];
+  List<Object?> get props => [id, reservationId, itemType, refId, serviceId, label, qty, unitPrice, lineTotal];
 }
