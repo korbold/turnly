@@ -643,14 +643,45 @@ class _ReservationDetailContent extends StatelessWidget {
             ).animate().fadeIn(duration: 400.ms, delay: 280.ms),
           ],
           if (reservation.canCancel) ...[
-            const SizedBox(height: 12),
-            AppButton(
-              label: 'Reagendar',
-              variant: AppButtonVariant.outline,
-              onPressed: onReschedule,
-              isLoading: rescheduling,
-              icon: Icons.event_repeat_rounded,
-            ).animate().fadeIn(duration: 400.ms, delay: 290.ms),
+            if (reservation.canReschedule) ...[
+              const SizedBox(height: 12),
+              AppButton(
+                label: 'Reagendar',
+                variant: AppButtonVariant.outline,
+                onPressed: onReschedule,
+                isLoading: rescheduling,
+                icon: Icons.event_repeat_rounded,
+              ).animate().fadeIn(duration: 400.ms, delay: 290.ms),
+            ] else if (reservation.clientRescheduledAt != null) ...[
+              const SizedBox(height: 12),
+              Container(
+                padding: const EdgeInsets.all(12),
+                decoration: BoxDecoration(
+                  color: AppColors.background,
+                  borderRadius: BorderRadius.circular(12),
+                  border: Border.all(color: AppColors.border),
+                ),
+                child: Row(
+                  children: [
+                    Icon(
+                      Icons.info_outline_rounded,
+                      size: 18,
+                      color: AppColors.textSecondary,
+                    ),
+                    const SizedBox(width: 8),
+                    const Expanded(
+                      child: Text(
+                        'Ya reagendaste esta reserva. Contacta al negocio si necesitas otro cambio.',
+                        style: TextStyle(
+                          fontSize: 12,
+                          color: AppColors.textSecondary,
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              ).animate().fadeIn(duration: 400.ms, delay: 290.ms),
+            ],
             const SizedBox(height: 10),
             AppButton(
               label: 'Cancelar Reserva',

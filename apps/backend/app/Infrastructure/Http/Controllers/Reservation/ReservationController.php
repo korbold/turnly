@@ -99,6 +99,12 @@ class ReservationController extends Controller
             ], 422);
         }
 
+        if (!empty($reservation->client_rescheduled_at)) {
+            return response()->json([
+                'error' => ['code' => 'ALREADY_RESCHEDULED', 'message' => 'Solo puedes reagendar tu cita una vez. Contáctanos si necesitas otro cambio.'],
+            ], 422);
+        }
+
         $cancellationHours = $reservation->tenant?->settings['cancellation_hours'] ?? 1;
         $hoursUntil = now()->diffInHours(\Carbon\Carbon::parse($reservation->scheduled_at), false);
         if ($hoursUntil < $cancellationHours) {
@@ -125,6 +131,7 @@ class ReservationController extends Controller
         $reservation->update([
             'scheduled_at' => $start->format('Y-m-d H:i:s'),
             'estimated_end' => $end->format('Y-m-d H:i:s'),
+            'client_rescheduled_at' => now(),
         ]);
 
         // Notify client + tenant admins so the agenda reflects the move.

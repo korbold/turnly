@@ -20,6 +20,7 @@ class ReservationModel extends Model
         'notes', 'cancelled_at', 'cancel_reason', 'created_by',
         'consumption_applied_at',
         'checked_in_at', 'billing_snapshot',
+        'client_rescheduled_at',
     ];
 
     protected function casts(): array
@@ -30,6 +31,7 @@ class ReservationModel extends Model
             'cancelled_at' => 'datetime',
             'consumption_applied_at' => 'datetime',
             'checked_in_at' => 'datetime',
+            'client_rescheduled_at' => 'datetime',
             'billing_snapshot' => 'array',
         ];
     }

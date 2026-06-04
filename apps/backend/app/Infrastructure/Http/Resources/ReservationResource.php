@@ -21,6 +21,7 @@ class ReservationResource extends JsonResource
             'notes'         => $this->notes,
             'cancelled_at'  => $this->cancelled_at?->toIso8601String(),
             'cancel_reason' => $this->cancel_reason,
+            'client_rescheduled_at' => $this->client_rescheduled_at?->toIso8601String(),
             'created_by'    => $this->created_by,
             'created_at'    => $this->created_at?->toIso8601String(),
 

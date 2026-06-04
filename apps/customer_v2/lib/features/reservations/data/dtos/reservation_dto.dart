@@ -46,6 +46,9 @@ class ReservationDto {
       tenantName: tenant?['name'] as String?,
       tenantSlug: tenant?['slug'] as String?,
       cancellationHours: tenant?['cancellation_hours'] as int? ?? 1,
+      clientRescheduledAt: json['client_rescheduled_at'] != null
+          ? DateTime.parse(json['client_rescheduled_at'] as String).toLocal()
+          : null,
     );
   }
 }
