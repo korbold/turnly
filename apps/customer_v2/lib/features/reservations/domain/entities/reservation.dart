@@ -22,6 +22,14 @@ class Reservation extends Equatable {
   /// backend refuses any further customer-initiated reschedule on this
   /// reservation; the UI hides the button accordingly.
   final DateTime? clientRescheduledAt;
+  // Pago — runs on a track separate from the lifecycle status. A booking
+  // can be `completed` while still `unpaid` (typical car-wash pickup),
+  // or paid upfront (spa prepay). Customer screen renders these as a
+  // read-only badge so they know what to expect at the counter.
+  final String paymentStatus; // 'unpaid' | 'paid'
+  final String? paymentMethod; // 'cash' | 'card' | 'transfer'
+  final DateTime? paidAt;
+  final String? paymentReference;
 
   const Reservation({
     required this.id,
@@ -40,7 +48,13 @@ class Reservation extends Equatable {
     this.tenantSlug,
     this.cancellationHours = 1,
     this.clientRescheduledAt,
+    this.paymentStatus = 'unpaid',
+    this.paymentMethod,
+    this.paidAt,
+    this.paymentReference,
   });
+
+  bool get isPaid => paymentStatus == 'paid';
 
   bool get canCancel {
     if (!status.isUpcoming) return false;

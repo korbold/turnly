@@ -35,6 +35,10 @@ export interface TenantSettings {
   slotDuration: number;
   cancellationHours: number;
   defaultTaxRate: number;
+  /** When the staff captures payment in the lifecycle. Drives where the
+      "Registrar pago" CTA appears in the admin and whether the customer
+      app shows a prepay checkout step. */
+  paymentTiming: 'prepay_required' | 'at_pickup' | 'at_completion' | 'flexible' | 'none';
   /** When true, new public bookings land as `confirmed` instead of
       `pending`, skipping the manual review step in the dashboard.
       Useful for high-volume tenants (car wash, lavandería). */

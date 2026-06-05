@@ -49,6 +49,12 @@ class ReservationDto {
       clientRescheduledAt: json['client_rescheduled_at'] != null
           ? DateTime.parse(json['client_rescheduled_at'] as String).toLocal()
           : null,
+      paymentStatus: (json['payment_status'] as String?) ?? 'unpaid',
+      paymentMethod: json['payment_method'] as String?,
+      paidAt: json['paid_at'] != null
+          ? DateTime.parse(json['paid_at'] as String).toLocal()
+          : null,
+      paymentReference: json['payment_reference'] as String?,
     );
   }
 }

@@ -21,6 +21,7 @@ class ReservationModel extends Model
         'consumption_applied_at',
         'checked_in_at', 'billing_snapshot',
         'client_rescheduled_at',
+        'payment_status', 'payment_method', 'paid_at', 'payment_reference',
     ];
 
     protected function casts(): array
@@ -33,6 +34,7 @@ class ReservationModel extends Model
             'checked_in_at' => 'datetime',
             'client_rescheduled_at' => 'datetime',
             'billing_snapshot' => 'array',
+            'paid_at' => 'datetime',
         ];
     }
 

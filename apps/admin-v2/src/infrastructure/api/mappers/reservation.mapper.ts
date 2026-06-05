@@ -28,6 +28,10 @@ export function mapReservation(raw: Record<string, unknown>): Reservation {
     createdAt: new Date(raw.created_at as string),
     checkedInAt: raw.checked_in_at ? new Date(raw.checked_in_at as string) : null,
     billingSnapshot: mapBillingSnapshot(raw.billing_snapshot),
+    paymentStatus: ((raw.payment_status as 'unpaid' | 'paid' | null) ?? 'unpaid') as Reservation['paymentStatus'],
+    paymentMethod: ((raw.payment_method as 'transfer' | 'card' | 'cash' | null) ?? null) as Reservation['paymentMethod'],
+    paidAt: raw.paid_at ? new Date(raw.paid_at as string) : null,
+    paymentReference: (raw.payment_reference as string | null) ?? null,
     clientResource: clientResource
       ? {
           label: (clientResource.label as string) ?? null,

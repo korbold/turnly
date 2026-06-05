@@ -38,6 +38,7 @@ export function mapTenantSettings(raw: Record<string, unknown>): TenantSettings 
     slotDuration: (raw.slot_duration as number) ?? 30,
     cancellationHours: (raw.cancellation_hours as number) ?? 2,
     defaultTaxRate: Number(raw.default_tax_rate ?? 15),
+    paymentTiming: (raw.payment_timing as TenantSettings['paymentTiming']) ?? 'flexible',
     autoConfirmReservations: Boolean(raw.auto_confirm_reservations ?? false),
     socialLinks: {
       instagram: socialLinks.instagram ?? null,

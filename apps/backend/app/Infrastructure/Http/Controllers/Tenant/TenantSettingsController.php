@@ -38,6 +38,7 @@ class TenantSettingsController extends Controller
             'cancellation_hours' => 'sometimes|integer|min:0|max:72',
             'default_tax_rate' => 'sometimes|numeric|min:0|max:100',
             'auto_confirm_reservations' => 'sometimes|boolean',
+            'payment_timing' => 'sometimes|string|in:prepay_required,at_pickup,at_completion,flexible,none',
         ]);
 
         $tenant = TenantModel::findOrFail(app('current_tenant_id'));
@@ -69,6 +70,9 @@ class TenantSettingsController extends Controller
         }
         if ($request->has('auto_confirm_reservations')) {
             $settings['auto_confirm_reservations'] = (bool) $request->auto_confirm_reservations;
+        }
+        if ($request->has('payment_timing')) {
+            $settings['payment_timing'] = (string) $request->payment_timing;
         }
         if ($request->has('settings')) {
             $settings = array_merge($settings, $request->settings);

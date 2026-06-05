@@ -3,6 +3,15 @@ export type ReservationAction = 'confirm' | 'start' | 'complete' | 'cancel' | 'n
 
 export type ReservationItemType = 'service_variant' | 'product';
 
+export type ReservationPaymentStatus = 'unpaid' | 'paid';
+export type ReservationPaymentMethod = 'transfer' | 'card' | 'cash';
+export type ReservationPaymentTiming =
+  | 'prepay_required'
+  | 'at_pickup'
+  | 'at_completion'
+  | 'flexible'
+  | 'none';
+
 export interface ReservationItem {
   id: string;
   reservationId: string;
@@ -78,6 +87,10 @@ export interface Reservation {
   createdAt: Date;
   checkedInAt: Date | null;
   billingSnapshot: BillingSnapshot | null;
+  paymentStatus: ReservationPaymentStatus;
+  paymentMethod: ReservationPaymentMethod | null;
+  paidAt: Date | null;
+  paymentReference: string | null;
   clientResource?: ReservationClientResource;
   service?: ReservationService;
   client?: ReservationClient;

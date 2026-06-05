@@ -596,6 +596,15 @@ class _ReservationDetailContent extends StatelessWidget {
             tenantSlug: reservation.tenantSlug,
           ),
 
+          const SizedBox(height: 12),
+
+          // Pago — read-only on the customer side. Cashier records the
+          // method in admin; this just tells the customer what to
+          // expect at the counter.
+          _PaymentStatusTile(reservation: reservation)
+              .animate()
+              .fadeIn(duration: 400.ms, delay: 240.ms),
+
           const SizedBox(height: 24),
 
           // Cancellation policy notice
@@ -694,6 +703,135 @@ class _ReservationDetailContent extends StatelessWidget {
           ],
 
           const SizedBox(height: 20),
+        ],
+      ),
+    );
+  }
+}
+
+/// Read-only payment indicator. Either shows "Pago pendiente" with a
+/// hint about when to pay, or the captured method + when + reference.
+class _PaymentStatusTile extends StatelessWidget {
+  final Reservation reservation;
+
+  const _PaymentStatusTile({required this.reservation});
+
+  String _methodLabel(String method) {
+    switch (method) {
+      case 'cash':
+        return 'Efectivo';
+      case 'card':
+        return 'Tarjeta';
+      case 'transfer':
+        return 'Transferencia';
+      default:
+        return method;
+    }
+  }
+
+  IconData _methodIcon(String? method) {
+    switch (method) {
+      case 'cash':
+        return Icons.payments_outlined;
+      case 'card':
+        return Icons.credit_card_rounded;
+      case 'transfer':
+        return Icons.compare_arrows_rounded;
+      default:
+        return Icons.account_balance_wallet_outlined;
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final isPaid = reservation.isPaid;
+    final method = reservation.paymentMethod;
+    final paidAt = reservation.paidAt;
+
+    return Container(
+      padding: const EdgeInsets.all(14),
+      decoration: BoxDecoration(
+        color: isPaid
+            ? AppColors.success.withValues(alpha: 0.08)
+            : AppColors.textTertiary.withValues(alpha: 0.06),
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(
+          color: isPaid
+              ? AppColors.success.withValues(alpha: 0.25)
+              : AppColors.textTertiary.withValues(alpha: 0.18),
+        ),
+      ),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Icon(
+            _methodIcon(method),
+            size: 20,
+            color: isPaid ? AppColors.success : AppColors.textTertiary,
+          ),
+          const SizedBox(width: 12),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Row(
+                  children: [
+                    Text(
+                      isPaid ? 'Pagado' : 'Pago pendiente',
+                      style: TextStyle(
+                        fontSize: 14,
+                        fontWeight: FontWeight.w600,
+                        color: isPaid ? AppColors.success : AppColors.textPrimary,
+                      ),
+                    ),
+                    if (isPaid && method != null) ...[
+                      const SizedBox(width: 8),
+                      Text(
+                        '· ${_methodLabel(method)}',
+                        style: const TextStyle(
+                          fontSize: 13,
+                          color: AppColors.textSecondary,
+                          fontWeight: FontWeight.w500,
+                        ),
+                      ),
+                    ],
+                  ],
+                ),
+                if (isPaid && paidAt != null) ...[
+                  const SizedBox(height: 2),
+                  Text(
+                    'Registrado ${paidAt.day}/${paidAt.month}/${paidAt.year} '
+                    '${paidAt.hour.toString().padLeft(2, '0')}:${paidAt.minute.toString().padLeft(2, '0')}',
+                    style: const TextStyle(
+                      fontSize: 12,
+                      color: AppColors.textTertiary,
+                    ),
+                  ),
+                ] else if (!isPaid) ...[
+                  const SizedBox(height: 2),
+                  const Text(
+                    'Coordina el pago con el negocio al recoger.',
+                    style: TextStyle(
+                      fontSize: 12,
+                      color: AppColors.textTertiary,
+                    ),
+                  ),
+                ],
+                if (reservation.paymentReference != null &&
+                    reservation.paymentReference!.isNotEmpty) ...[
+                  const SizedBox(height: 2),
+                  Text(
+                    'Ref. ${reservation.paymentReference}',
+                    style: const TextStyle(
+                      fontSize: 11,
+                      color: AppColors.textTertiary,
+                      fontFeatures: [FontFeature.tabularFigures()],
+                    ),
+                  ),
+                ],
+              ],
+            ),
+          ),
         ],
       ),
     );

@@ -25,6 +25,10 @@ import {
   Hash,
   Wrench,
   Package,
+  Wallet,
+  Banknote,
+  CreditCard,
+  ArrowLeftRight,
 } from 'lucide-react';
 import { Button } from '@/presentation/components/ui/button';
 import { Input } from '@/presentation/components/ui/input';
@@ -51,7 +55,12 @@ import {
 import { useServiceVariants } from '@/presentation/hooks/use-service-variants';
 import { CheckInModal } from '@/presentation/components/features/reservations/check-in-modal';
 import { AddItemModal } from '@/presentation/components/features/reservations/add-item-modal';
-import type { ReservationItem, ReservationStatus } from '@/domain/entities/reservation';
+import { PaymentModal } from '@/presentation/components/features/reservations/payment-modal';
+import type {
+  ReservationPaymentMethod,
+  ReservationItem,
+  ReservationStatus,
+} from '@/domain/entities/reservation';
 
 function fmt(n: number) {
   return new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD' }).format(n);
@@ -85,6 +94,18 @@ const STATUS_ICON: Record<ReservationStatus, typeof Clock> = {
   completed: Trophy,
   cancelled: XCircle,
   no_show: UserX,
+};
+
+const PAYMENT_METHOD_LABEL: Record<ReservationPaymentMethod, string> = {
+  cash: 'Efectivo',
+  card: 'Tarjeta',
+  transfer: 'Transferencia',
+};
+
+const PAYMENT_METHOD_ICON: Record<ReservationPaymentMethod, typeof Wallet> = {
+  cash: Banknote,
+  card: CreditCard,
+  transfer: ArrowLeftRight,
 };
 
 function formatDuration(startISO: Date, endISO: Date): string {
@@ -171,6 +192,7 @@ export default function ReservationDetailPage({ params }: { params: Promise<{ id
   const addItem = useAddReservationItem(id);
 
   const [checkInOpen, setCheckInOpen] = useState(false);
+  const [paymentOpen, setPaymentOpen] = useState(false);
   const [addOpen, setAddOpen] = useState(false);
   const [overrideTarget, setOverrideTarget] = useState<ReservationItem | null>(null);
   const [overridePrice, setOverridePrice] = useState('');
@@ -296,6 +318,16 @@ export default function ReservationDetailPage({ params }: { params: Promise<{ id
   const itemsCount = items?.length ?? 0;
   const hasResource = !!reservation.clientResource?.plate;
   const isTerminal = status === 'completed' || status === 'cancelled' || status === 'no_show';
+  const isPaid = reservation.paymentStatus === 'paid';
+  // The "pending payment" banner only makes sense for live bookings —
+  // a cancelled / no-show row never expects money, and a paid one is
+  // already closed. Otherwise (pending → completed lifecycle), surface
+  // it once the service is finished and money still hasn't landed,
+  // which is the car-wash-at-pickup signal staff want loud.
+  const showPaymentPendingBanner =
+    !isPaid && status === 'completed';
+  const canRecordPayment =
+    !isPaid && status !== 'cancelled' && status !== 'no_show' && total > 0;
 
   return (
     <div className="space-y-4">
@@ -384,6 +416,33 @@ export default function ReservationDetailPage({ params }: { params: Promise<{ id
           <Stat icon={Receipt} label="Total" value={fmt(total)} mono emphasis />
         </dl>
       </header>
+
+      {/* Payment-pending banner — service done, money still missing.
+          This is the loudest signal staff need at the counter so they
+          collect before the customer walks away with the car. */}
+      {showPaymentPendingBanner && (
+        <div className="flex flex-col gap-3 rounded-xl border border-[var(--warning-200)] bg-[var(--warning-50)] p-4 sm:flex-row sm:items-center sm:justify-between">
+          <div className="flex items-start gap-3">
+            <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-[var(--warning-100)] text-[var(--warning-700)]">
+              <Wallet className="h-4 w-4" aria-hidden="true" />
+            </span>
+            <div>
+              <p className="text-[13.5px] font-semibold text-[var(--warning-800)]">
+                Servicio terminado · pago pendiente
+              </p>
+              <p className="mt-0.5 text-[12.5px] text-[var(--warning-700)]">
+                Cobra al cliente antes de entregar el vehículo o servicio.
+              </p>
+            </div>
+          </div>
+          <Button
+            onClick={() => setPaymentOpen(true)}
+            className="cursor-pointer bg-[var(--warning-600)] text-white hover:bg-[var(--warning-700)]"
+          >
+            <Wallet className="mr-1.5 h-4 w-4" /> Registrar pago
+          </Button>
+        </div>
+      )}
 
       {/* ─── Main grid: items + history on the left, customer/total sidebar on the right ─── */}
       <div className="grid gap-4 lg:grid-cols-3">
@@ -628,6 +687,81 @@ export default function ReservationDetailPage({ params }: { params: Promise<{ id
             )}
           </section>
 
+          {/* Pago card — independent of lifecycle status. Either we
+              already have a receipt (paid + method + when + reference)
+              or we surface the CTA so the cashier can register it. */}
+          <section className="rounded-xl border border-[var(--border)] bg-[var(--bg-surface)] p-4 sm:p-5">
+            <div className="mb-3 flex items-center justify-between gap-2">
+              <h3 className="flex items-center gap-1.5 text-[11px] font-semibold uppercase tracking-[0.06em] text-[var(--fg-muted)]">
+                <Wallet className="h-3.5 w-3.5" aria-hidden="true" />
+                Pago
+              </h3>
+              {isPaid ? (
+                <span className="inline-flex items-center gap-1 rounded-full bg-[var(--success-50)] px-2 py-0.5 text-[11px] font-semibold text-[var(--success-700)]">
+                  <CheckCircle2 className="h-3 w-3" aria-hidden="true" />
+                  Pagado
+                </span>
+              ) : (
+                <span className="inline-flex items-center gap-1 rounded-full bg-[var(--bg-sunken)] px-2 py-0.5 text-[11px] font-semibold text-[var(--fg-secondary)]">
+                  Pendiente
+                </span>
+              )}
+            </div>
+
+            {isPaid && reservation.paymentMethod ? (
+              <dl className="space-y-2.5 text-[13px]">
+                <div className="flex items-center justify-between gap-3">
+                  <dt className="text-[var(--fg-muted)]">Método</dt>
+                  <dd className="flex items-center gap-1.5 font-semibold text-[var(--fg-strong)]">
+                    {(() => {
+                      const Icon = PAYMENT_METHOD_ICON[reservation.paymentMethod];
+                      return <Icon className="h-3.5 w-3.5" aria-hidden="true" />;
+                    })()}
+                    {PAYMENT_METHOD_LABEL[reservation.paymentMethod]}
+                  </dd>
+                </div>
+                {reservation.paidAt && (
+                  <div className="flex items-center justify-between gap-3">
+                    <dt className="text-[var(--fg-muted)]">Cobrado</dt>
+                    <dd
+                      className="font-mono tabular-nums text-[var(--fg-secondary)]"
+                      style={{ fontFamily: 'var(--font-mono)' }}
+                    >
+                      {reservation.paidAt.toLocaleString('es-EC', {
+                        dateStyle: 'medium',
+                        timeStyle: 'short',
+                      })}
+                    </dd>
+                  </div>
+                )}
+                {reservation.paymentReference && (
+                  <div className="flex items-baseline justify-between gap-3 border-t border-[var(--border)] pt-2.5">
+                    <dt className="shrink-0 text-[var(--fg-muted)]">Ref.</dt>
+                    <dd
+                      className="truncate text-right font-mono text-[12.5px] text-[var(--fg-secondary)]"
+                      style={{ fontFamily: 'var(--font-mono)' }}
+                      title={reservation.paymentReference}
+                    >
+                      {reservation.paymentReference}
+                    </dd>
+                  </div>
+                )}
+              </dl>
+            ) : canRecordPayment ? (
+              <Button
+                size="sm"
+                onClick={() => setPaymentOpen(true)}
+                className="w-full cursor-pointer"
+              >
+                <Wallet className="mr-1.5 h-3.5 w-3.5" /> Registrar pago
+              </Button>
+            ) : (
+              <p className="text-[12.5px] text-[var(--fg-muted)]">
+                Sin pago registrado.
+              </p>
+            )}
+          </section>
+
           {/* Cliente card */}
           <section className="rounded-xl border border-[var(--border)] bg-[var(--bg-surface)] p-4 sm:p-5">
             <h3 className="mb-3 text-[11px] font-semibold uppercase tracking-[0.06em] text-[var(--fg-muted)]">
@@ -716,6 +850,13 @@ export default function ReservationDetailPage({ params }: { params: Promise<{ id
         defaultName={reservation.client?.name}
         onClose={() => setCheckInOpen(false)}
         onSuccess={() => setCheckInOpen(false)}
+      />
+
+      <PaymentModal
+        open={paymentOpen}
+        reservationId={id}
+        total={total}
+        onClose={() => setPaymentOpen(false)}
       />
 
       <AddItemModal

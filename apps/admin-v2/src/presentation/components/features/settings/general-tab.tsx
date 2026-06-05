@@ -35,6 +35,7 @@ function buildFormFromSettings(settings: TenantSettings | undefined): Partial<Te
     cancellationHours: settings.cancellationHours,
     defaultTaxRate: settings.defaultTaxRate,
     autoConfirmReservations: settings.autoConfirmReservations,
+    paymentTiming: settings.paymentTiming,
     socialLinks: settings.socialLinks ?? { instagram: null, facebook: null, whatsapp: null, maps_url: null },
     logoUrl: settings.logoUrl,
     coverUrl: settings.coverUrl,
@@ -130,6 +131,7 @@ export function GeneralTab() {
         cancellationHours: form.cancellationHours ?? 0,
         defaultTaxRate: form.defaultTaxRate ?? 15,
         autoConfirmReservations: form.autoConfirmReservations ?? false,
+        paymentTiming: form.paymentTiming ?? 'flexible',
       };
       await update.mutateAsync(payload);
       setBaseline(form);
@@ -349,6 +351,44 @@ export function GeneralTab() {
                 Se aplica a productos nuevos. Tarifa SRI Ecuador actual: 15%.
               </p>
             </div>
+          </div>
+
+          {/* Payment timing — controls when the staff is prompted to
+              register the payment. The default is keyed off business
+              type by the backend (car_wash=at_pickup, barber=at_completion,
+              spa=prepay_required…), but tenants can override here. */}
+          <div className="mt-5 space-y-1.5">
+            <Label className="text-xs">Cuándo cobras a los clientes</Label>
+            <Select
+              value={form.paymentTiming ?? 'flexible'}
+              onValueChange={(v) =>
+                handleChange('paymentTiming', v as TenantSettings['paymentTiming'])
+              }
+            >
+              <SelectTrigger>
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="at_pickup">
+                  Al retirar — cliente paga cuando recoge (car wash)
+                </SelectItem>
+                <SelectItem value="at_completion">
+                  Al terminar — cliente paga al cerrar el servicio (barbería, spa)
+                </SelectItem>
+                <SelectItem value="prepay_required">
+                  Por adelantado — exigir pago antes de confirmar (spa con depósito)
+                </SelectItem>
+                <SelectItem value="flexible">
+                  Flexible — el cajero decide (médico, otros)
+                </SelectItem>
+                <SelectItem value="none">
+                  Sin pago en app — membresía o seguro (gym)
+                </SelectItem>
+              </SelectContent>
+            </Select>
+            <p className="text-[11px] leading-snug text-[var(--fg-muted)]">
+              El admin muestra el botón <strong>Registrar pago</strong> en el momento correcto del flujo.
+            </p>
           </div>
 
           {/* Auto-confirm toggle. Off by default so the staff reviews

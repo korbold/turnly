@@ -25,6 +25,18 @@ class ReservationResource extends JsonResource
             'created_by'    => $this->created_by,
             'created_at'    => $this->created_at?->toIso8601String(),
 
+            // Check-in artefacts. `checked_in_at` is the wall-clock the
+            // cashier captured the customer; `billing_snapshot` is the
+            // frozen billing payload used for the eventual SRI invoice.
+            'checked_in_at'    => $this->checked_in_at?->toIso8601String(),
+            'billing_snapshot' => $this->billing_snapshot,
+
+            // Phase 1 pago — independent of lifecycle status.
+            'payment_status'    => $this->payment_status,
+            'payment_method'    => $this->payment_method,
+            'paid_at'           => $this->paid_at?->toIso8601String(),
+            'payment_reference' => $this->payment_reference,
+
             'client_resource' => $this->whenLoaded('clientResource', fn () => [
                 'id'    => $this->clientResource->id,
                 'label' => ClientResourceResource::labelFrom($this->clientResource->data),
@@ -57,6 +69,7 @@ class ReservationResource extends JsonResource
                 'name' => $this->tenant->name,
                 'slug' => $this->tenant->slug,
                 'cancellation_hours' => $this->tenant->settings['cancellation_hours'] ?? 1,
+                'payment_timing'     => $this->tenant->getPaymentTiming(),
             ]),
         ];
     }

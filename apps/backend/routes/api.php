@@ -147,6 +147,11 @@ Route::prefix('v1')->group(function () {
             Route::post('reservations/{id}/check-in', [ReservationCheckInController::class, 'checkIn']);
             Route::patch('reservations/{id}/billing', [ReservationCheckInController::class, 'updateBilling']);
 
+            // Phase 1 pago: independent of lifecycle status. Cashier
+            // records method + reference when the customer pays —
+            // sometimes upfront, sometimes at pickup.
+            Route::post('reservations/{id}/payment', [\App\Infrastructure\Http\Controllers\Reservation\ReservationPaymentController::class, 'record']);
+
             // Polymorphic line items + audit log.
             Route::get('reservations/{id}/items', [ReservationItemController::class, 'index']);
             Route::post('reservations/{id}/items', [ReservationItemController::class, 'store']);
