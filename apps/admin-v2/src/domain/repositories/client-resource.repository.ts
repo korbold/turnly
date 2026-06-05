@@ -1,6 +1,15 @@
 import type { ClientResource } from '../entities/client-resource';
 import type { PaginatedResult } from '../../shared/types/api';
 
+export interface BillingProfileInput {
+  docType: 'final_consumer' | 'cedula' | 'ruc' | 'passport';
+  docNumber?: string;
+  legalName?: string;
+  email?: string;
+  address?: string;
+  phone?: string;
+}
+
 export interface CreateClientResourceData {
   clientId?: string;
   data?: Record<string, unknown>;
@@ -9,6 +18,9 @@ export interface CreateClientResourceData {
   model?: string;
   color?: string;
   type?: string;
+  /** Optional SRI billing snapshot. Persisted on the linked user when
+      present so check-in can auto-pick it (Fase D). */
+  billingProfile?: BillingProfileInput;
 }
 
 export interface ClientResourceRepository {

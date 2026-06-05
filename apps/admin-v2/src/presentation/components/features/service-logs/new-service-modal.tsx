@@ -31,6 +31,13 @@ import { useCreateServiceLog } from '@/presentation/hooks/use-service-logs';
 import { ServiceCombobox } from '@/presentation/components/features/service-logs/service-combobox';
 import { BankChip } from '@/presentation/components/features/reservations/bank-chip';
 import { ECUADOR_BANKS } from '@/shared/constants/banks';
+import {
+  BillingProfileForm,
+  EMPTY_BILLING_PROFILE,
+  isBillingProfileDirty,
+  isBillingProfileValid,
+  type BillingProfileDraft,
+} from '@/presentation/components/features/billing/billing-profile-form';
 import type { Service } from '@/domain/entities/service';
 import type { PaymentMethod } from '@/domain/entities/service-log';
 import type { ClientResource } from '@/domain/entities/client-resource';
@@ -167,6 +174,7 @@ export function NewServiceModal({ open, onClose, embedded = false }: NewServiceM
 
   const [showCustomForm, setShowCustomForm] = useState(false);
   const [customFieldValues, setCustomFieldValues] = useState<Record<string, string>>({});
+  const [billingProfile, setBillingProfile] = useState<BillingProfileDraft>(EMPTY_BILLING_PROFILE);
 
   function applyCapitalization(value: string, mode?: 'none' | 'uppercase' | 'capitalize' | 'lowercase'): string {
     if (mode === 'uppercase') return value.toUpperCase();
@@ -208,12 +216,34 @@ export function NewServiceModal({ open, onClose, embedded = false }: NewServiceM
       toast.error('Llena al menos un campo');
       return;
     }
+    // Billing snapshot capture (Fase D) — only ship when dirty and
+    // valid. If the cashier touched something but checksum fails we
+    // bail so they can fix it instead of silently dropping the data.
+    const shouldShipBilling = isBillingProfileDirty(billingProfile);
+    if (shouldShipBilling && !isBillingProfileValid(billingProfile)) {
+      toast.error('Revisa los datos de facturación');
+      return;
+    }
+
     try {
-      const created = await createClient.mutateAsync({ data: cleaned });
+      const created = await createClient.mutateAsync({
+        data: cleaned,
+        billingProfile: shouldShipBilling
+          ? {
+              docType: billingProfile.docType,
+              docNumber: billingProfile.docNumber.trim() || undefined,
+              legalName: billingProfile.legalName.trim() || undefined,
+              email: billingProfile.email.trim() || undefined,
+              address: billingProfile.address.trim() || undefined,
+              phone: billingProfile.phone.trim() || undefined,
+            }
+          : undefined,
+      });
       setSelectedClientResourceId(created.id);
       setSelectedClientResource(created);
       setShowCustomForm(false);
       setCustomFieldValues({});
+      setBillingProfile(EMPTY_BILLING_PROFILE);
       setClientSearch('');
       toast.success('Registro creado');
     } catch {
@@ -235,6 +265,9 @@ export function NewServiceModal({ open, onClose, embedded = false }: NewServiceM
     setPaymentBank(null);
     setPaymentTiming('now');
     setNotes('');
+    setShowCustomForm(false);
+    setCustomFieldValues({});
+    setBillingProfile(EMPTY_BILLING_PROFILE);
   }
 
   function handleClose() {
@@ -599,6 +632,16 @@ export function NewServiceModal({ open, onClose, embedded = false }: NewServiceM
                     )}
                   </div>
                 ))}
+
+                {/* Optional billing snapshot — captured alongside the
+                    custom-field data so SRI factura tiene la identidad
+                    lista desde el primer registro. (Fase D) */}
+                <BillingProfileForm
+                  value={billingProfile}
+                  onChange={setBillingProfile}
+                  compact
+                />
+
                 <div className="flex gap-2">
                   <Button
                     size="sm"
@@ -614,6 +657,7 @@ export function NewServiceModal({ open, onClose, embedded = false }: NewServiceM
                     onClick={() => {
                       setShowCustomForm(false);
                       setCustomFieldValues({});
+                      setBillingProfile(EMPTY_BILLING_PROFILE);
                     }}
                   >
                     Cancelar
