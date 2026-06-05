@@ -20,6 +20,7 @@ class ServiceLogResource extends JsonResource
             'finished_at'    => $this->finished_at?->toIso8601String(),
             'price_charged'  => $this->price_charged,
             'payment_method' => $this->payment_method,
+            'payment_bank'   => $this->payment_bank,
             'status'         => $this->status,
             'notes'          => $this->notes,
             'log_date'       => $this->log_date,

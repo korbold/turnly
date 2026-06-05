@@ -31,6 +31,24 @@ class ClientResourceController extends Controller
             $query->where('client_id', $request->user()->id);
         }
 
+        // Free-form search across the most-likely customer identifiers
+        // staff types at the counter: plate, cédula/RUC, name, email.
+        // The custom-field data JSON is searched with a single LIKE %q%
+        // pass — MySQL evaluates each key/value pair as text, which is
+        // good enough for the realistic cardinality (hundreds, not
+        // millions) without forcing a JSON_TABLE rewrite.
+        $search = trim((string) $request->get('search', ''));
+        if ($search !== '') {
+            $like = '%' . $search . '%';
+            $query->where(function ($q) use ($like) {
+                $q->where('data', 'like', $like)
+                    ->orWhereHas('client', function ($c) use ($like) {
+                        $c->where('name', 'like', $like)
+                            ->orWhere('email', 'like', $like);
+                    });
+            });
+        }
+
         $clientResources = $query->paginate($request->get('per_page', 15));
 
         return ClientResourceResource::collection($clientResources);

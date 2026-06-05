@@ -19,6 +19,7 @@ export function mapServiceLog(raw: Record<string, unknown>): ServiceLog {
         ? parseFloat(raw.price_charged)
         : (raw.price_charged as number),
     paymentMethod: raw.payment_method as ServiceLog['paymentMethod'],
+    paymentBank: (raw.payment_bank as string | null) ?? null,
     status: raw.status as ServiceLog['status'],
     notes: (raw.notes as string) ?? null,
     logDate: raw.log_date as string,

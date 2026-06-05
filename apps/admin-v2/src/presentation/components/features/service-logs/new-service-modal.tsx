@@ -29,6 +29,8 @@ import { useSettings } from '@/presentation/hooks/use-settings';
 import { useTeam } from '@/presentation/hooks/use-team';
 import { useCreateServiceLog } from '@/presentation/hooks/use-service-logs';
 import { ServiceCombobox } from '@/presentation/components/features/service-logs/service-combobox';
+import { BankChip } from '@/presentation/components/features/reservations/bank-chip';
+import { ECUADOR_BANKS } from '@/shared/constants/banks';
 import type { Service } from '@/domain/entities/service';
 import type { PaymentMethod } from '@/domain/entities/service-log';
 import type { ClientResource } from '@/domain/entities/client-resource';
@@ -113,8 +115,15 @@ export function NewServiceModal({ open, onClose, embedded = false }: NewServiceM
   const [attendedBy, setAttendedBy] = useState('');
   const [price, setPrice] = useState('');
   const [paymentMethod, setPaymentMethod] = useState<PaymentMethod>('cash');
+  const [paymentBank, setPaymentBank] = useState<string | null>(null);
   const [notes, setNotes] = useState('');
   const [recentServiceIds, setRecentServiceIds] = useState<string[]>([]);
+
+  // Drop the bank pick whenever the cashier flips away from transfer.
+  // Otherwise the form would carry a stale slug into the next submit.
+  useEffect(() => {
+    if (paymentMethod !== 'transfer') setPaymentBank(null);
+  }, [paymentMethod]);
 
   // Seed recent-services list once on mount (and refresh when the panel
   // opens) so the cashier sees their muscle-memory picks at the top.
@@ -208,6 +217,7 @@ export function NewServiceModal({ open, onClose, embedded = false }: NewServiceM
     setAttendedBy('');
     setPrice('');
     setPaymentMethod('cash');
+    setPaymentBank(null);
     setNotes('');
   }
 
@@ -225,6 +235,10 @@ export function NewServiceModal({ open, onClose, embedded = false }: NewServiceM
 
   function handleSubmit() {
     if (!selectedClientResourceId || !selectedService || !attendedBy || !price) return;
+    if (paymentMethod === 'transfer' && !paymentBank) {
+      toast.error('Selecciona el banco emisor');
+      return;
+    }
 
     createMutation.mutate(
       {
@@ -233,6 +247,7 @@ export function NewServiceModal({ open, onClose, embedded = false }: NewServiceM
         attendedBy,
         priceCharged: Number(price),
         paymentMethod,
+        paymentBank: paymentMethod === 'transfer' ? paymentBank : null,
         notes: notes || undefined,
       },
       {
@@ -245,7 +260,12 @@ export function NewServiceModal({ open, onClose, embedded = false }: NewServiceM
     );
   }
 
-  const canSubmit = !!selectedService && !!selectedClientResourceId && !!attendedBy && !!price;
+  const canSubmit =
+    !!selectedService &&
+    !!selectedClientResourceId &&
+    !!attendedBy &&
+    !!price &&
+    (paymentMethod !== 'transfer' || !!paymentBank);
 
   const body = (
     <>
@@ -309,11 +329,22 @@ export function NewServiceModal({ open, onClose, embedded = false }: NewServiceM
               <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
               <Input
                 className="pl-9"
-                placeholder={
-                  hasCustomFields
-                    ? `Buscar por ${customFields[0].label.toLowerCase()}...`
-                    : 'Buscar cliente o registro...'
-                }
+                placeholder={(() => {
+                  // Pull the tenant's first 2 custom-field labels
+                  // (placa for car wash, nombre_paciente for medical,
+                  // etc.) so the hint matches what the tenant actually
+                  // captures, then tack on the always-available name +
+                  // email fallbacks.
+                  const customLabels = customFields
+                    .slice(0, 2)
+                    .map((f) => f.label.toLowerCase())
+                    .filter(Boolean);
+                  const hints = [...customLabels, 'nombre', 'correo'];
+                  // Dedupe in case the tenant added "Nombre" as a custom
+                  // field so the placeholder doesn't read "nombre, nombre".
+                  const unique = Array.from(new Set(hints));
+                  return `Buscar por ${unique.join(', ')}…`;
+                })()}
                 value={clientSearch}
                 onChange={(e) => setClientSearch(e.target.value)}
               />
@@ -526,6 +557,41 @@ export function NewServiceModal({ open, onClose, embedded = false }: NewServiceM
                 );
               })}
             </div>
+
+            {/* Bank picker — only renders for transferencia. Same chip
+                pattern as the reservation payment modal so the cashier
+                recognises the row across screens. */}
+            {paymentMethod === 'transfer' && (
+              <div className="mt-3 space-y-2 rounded-lg border border-[var(--border)] bg-[var(--bg-app)] p-3">
+                <label className="block text-[11px] font-semibold uppercase tracking-[0.04em] text-[var(--fg-muted)]">
+                  Banco emisor
+                </label>
+                <div className="grid grid-cols-2 gap-2 sm:grid-cols-3">
+                  {ECUADOR_BANKS.map((b) => {
+                    const active = paymentBank === b.slug;
+                    return (
+                      <button
+                        key={b.slug}
+                        type="button"
+                        onClick={() => setPaymentBank(b.slug)}
+                        className={cn(
+                          'flex items-center gap-2 rounded-lg border px-2.5 py-2 text-left transition-colors cursor-pointer',
+                          'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--brand-300)]',
+                          active
+                            ? 'border-[var(--brand-500)] bg-[var(--brand-50)]'
+                            : 'border-[var(--border)] bg-[var(--bg-surface)] hover:border-[var(--border-strong)]',
+                        )}
+                      >
+                        <BankChip bank={b} size={24} />
+                        <span className="min-w-0 truncate text-[12px] font-medium text-[var(--fg-strong)]">
+                          {b.name.replace(/^Banco\s/, '').replace(/^Cooperativa\s/, '')}
+                        </span>
+                      </button>
+                    );
+                  })}
+                </div>
+              </div>
+            )}
           </div>
 
           {/* Notes */}

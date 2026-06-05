@@ -31,6 +31,7 @@ export class ApiServiceLogRepository implements ServiceLogRepository {
       attended_by: data.attendedBy,
       price_charged: data.priceCharged,
       payment_method: data.paymentMethod,
+      payment_bank: data.paymentBank ?? null,
       notes: data.notes,
     });
     return mapServiceLog(res.data);
@@ -42,6 +43,7 @@ export class ApiServiceLogRepository implements ServiceLogRepository {
     if (data.attendedBy !== undefined) body.attended_by = data.attendedBy;
     if (data.priceCharged !== undefined) body.price_charged = data.priceCharged;
     if (data.paymentMethod !== undefined) body.payment_method = data.paymentMethod;
+    if (data.paymentBank !== undefined) body.payment_bank = data.paymentBank;
     if (data.notes !== undefined) body.notes = data.notes;
 
     const { data: res } = await api.patch(`/service-logs/${id}`, body);

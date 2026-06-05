@@ -54,11 +54,18 @@ class ServiceLogController extends Controller
 
         $serviceLog = $this->createServiceLog->execute($dto);
 
-        // Variant id rides on the model rather than the DTO to keep the
-        // existing service-log domain pipeline untouched.
+        // Variant id + bank ride on the model rather than the DTO so we
+        // don't have to ripple them through the domain pipeline. Bank
+        // is only stamped when the customer paid via transferencia.
+        $patch = [];
         if ($request->service_variant_id) {
-            ServiceLogModel::where('id', $serviceLog->id)
-                ->update(['service_variant_id' => $request->service_variant_id]);
+            $patch['service_variant_id'] = $request->service_variant_id;
+        }
+        if ($request->payment_method === 'transfer' && $request->filled('payment_bank')) {
+            $patch['payment_bank'] = $request->payment_bank;
+        }
+        if (!empty($patch)) {
+            ServiceLogModel::where('id', $serviceLog->id)->update($patch);
         }
 
         $model = ServiceLogModel::with(['clientResource', 'service', 'attendant'])->find($serviceLog->id);
@@ -83,11 +90,12 @@ class ServiceLogController extends Controller
             'attended_by' => 'nullable|uuid',
             'price_charged' => 'nullable|numeric|min:0',
             'payment_method' => 'nullable|in:cash,card,transfer,other',
+            'payment_bank' => 'nullable|string|max:40',
             'notes' => 'nullable|string|max:500',
         ]);
 
         $serviceLog->update($request->only([
-            'service_id', 'attended_by', 'price_charged', 'payment_method', 'notes',
+            'service_id', 'attended_by', 'price_charged', 'payment_method', 'payment_bank', 'notes',
         ]));
 
         return new ServiceLogResource($serviceLog->load(['clientResource', 'service', 'attendant']));

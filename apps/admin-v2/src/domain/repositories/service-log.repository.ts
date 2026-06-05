@@ -7,6 +7,8 @@ export interface CreateServiceLogData {
   attendedBy: string;
   priceCharged: number;
   paymentMethod: PaymentMethod;
+  /** Bank slug when paymentMethod === 'transfer'. Ignored otherwise. */
+  paymentBank?: string | null;
   notes?: string;
 }
 
@@ -15,6 +17,7 @@ export interface UpdateServiceLogData {
   attendedBy?: string;
   priceCharged?: number;
   paymentMethod?: PaymentMethod;
+  paymentBank?: string | null;
   notes?: string;
 }
 

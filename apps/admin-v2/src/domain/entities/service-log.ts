@@ -27,6 +27,7 @@ export interface ServiceLog {
   finishedAt: Date | null;
   priceCharged: number;
   paymentMethod: PaymentMethod;
+  paymentBank: string | null;
   status: ServiceLogStatus;
   notes: string | null;
   logDate: string;

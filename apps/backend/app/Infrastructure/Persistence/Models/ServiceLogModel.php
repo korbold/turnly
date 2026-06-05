@@ -16,7 +16,7 @@ class ServiceLogModel extends Model
     protected $fillable = [
         'tenant_id', 'client_resource_id', 'service_id', 'service_variant_id', 'reservation_id',
         'attended_by', 'created_by', 'started_at', 'finished_at',
-        'price_charged', 'payment_method', 'status', 'notes', 'log_date',
+        'price_charged', 'payment_method', 'payment_bank', 'status', 'notes', 'log_date',
         'consumption_applied_at',
     ];
 
