@@ -1,16 +1,29 @@
 import type { ServiceLog, ServiceLogFilters, DailySummary, PaymentMethod } from '../entities/service-log';
 import type { PaginatedResult } from '../../shared/types/api';
 
+export interface CreateServiceLogItemInput {
+  serviceId: string;
+  label: string;
+  qty: number;
+  unitPrice: number;
+}
+
 export interface CreateServiceLogData {
   clientResourceId: string;
-  serviceId: string;
+  /** Primary service. Optional when `items` carries the full breakdown
+      — the backend derives it from `items[0]`. */
+  serviceId?: string;
   attendedBy: string;
-  priceCharged: number;
+  /** Required only when `items` is not provided. Otherwise the backend
+      sums `items[].unitPrice * qty`. */
+  priceCharged?: number;
   paymentMethod: PaymentMethod | null;
-  /** Bank slug when paymentMethod === 'transfer'. Ignored otherwise. */
   paymentBank?: string | null;
-  /** Cobrar ahora vs cobrar al retirar. Defaults to `paid` server-side. */
   paymentStatus?: 'paid' | 'unpaid';
+  /** Multi-service breakdown. Each line maps to a service_log_items
+      row; the parent log carries the sum so legacy reports keep
+      grouping correctly. */
+  items?: CreateServiceLogItemInput[];
   notes?: string;
 }
 

@@ -38,6 +38,11 @@ class ServiceLogModel extends Model
         return $this->belongsTo(ServiceVariantModel::class, 'service_variant_id');
     }
 
+    public function items()
+    {
+        return $this->hasMany(ServiceLogItemModel::class, 'service_log_id')->orderBy('sort_order');
+    }
+
     public function tenant()
     {
         return $this->belongsTo(TenantModel::class, 'tenant_id');

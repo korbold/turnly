@@ -25,7 +25,10 @@ class ServiceLogController extends Controller
 
     public function index(Request $request)
     {
-        $query = ServiceLogModel::with(['clientResource', 'service', 'attendant']);
+        // `items` is eager-loaded so the LogList row can render the
+        // multi-service rollup ("Lavada + Pulido +1 más") off the
+        // services_summary block in the resource without per-row queries.
+        $query = ServiceLogModel::with(['clientResource', 'service', 'attendant', 'items']);
 
         if ($request->has('date')) {
             $query->whereDate('log_date', $request->date);
@@ -40,13 +43,30 @@ class ServiceLogController extends Controller
 
     public function store(CreateServiceLogRequest $request): JsonResponse
     {
+        // Multi-service items[]: when present, the "primary" service_id
+        // + price_charged on the parent row are derived from the items
+        // so legacy reports keep grouping correctly. Each item also
+        // lands in service_log_items for the granular breakdown.
+        $items = $request->input('items', []);
+        $hasItems = is_array($items) && count($items) > 0;
+
+        $primaryServiceId = $hasItems
+            ? $items[0]['service_id']
+            : $request->service_id;
+        $priceCharged = $hasItems
+            ? array_sum(array_map(
+                fn ($it) => (float) $it['unit_price'] * (float) $it['qty'],
+                $items,
+            ))
+            : (float) $request->price_charged;
+
         $dto = new CreateServiceLogDTO(
             tenantId: app('current_tenant_id'),
             clientResourceId: $request->client_resource_id,
-            serviceId: $request->service_id,
+            serviceId: $primaryServiceId,
             attendedBy: $request->attended_by,
             createdBy: $request->user()->id,
-            priceCharged: $request->price_charged,
+            priceCharged: $priceCharged,
             paymentMethod: $request->payment_method,
             reservationId: $request->reservation_id,
             notes: $request->notes,
@@ -77,7 +97,32 @@ class ServiceLogController extends Controller
         }
         ServiceLogModel::where('id', $serviceLog->id)->update($patch);
 
-        $model = ServiceLogModel::with(['clientResource', 'service', 'attendant'])->find($serviceLog->id);
+        // Persist multi-service items[]. Each line becomes a row in
+        // service_log_items keyed off the parent log; the consumption
+        // engine + future reports can iterate them without touching
+        // the parent shape.
+        if ($hasItems) {
+            $sort = 0;
+            $tenantId = app('current_tenant_id');
+            foreach ($items as $line) {
+                $unit = (float) $line['unit_price'];
+                $qty  = (float) $line['qty'];
+                \App\Infrastructure\Persistence\Models\ServiceLogItemModel::create([
+                    'tenant_id'      => $tenantId,
+                    'service_log_id' => $serviceLog->id,
+                    'item_type'      => 'service_variant',
+                    'ref_id'         => $line['service_id'],
+                    'label'          => $line['label'],
+                    'qty'            => $qty,
+                    'unit_price'     => $unit,
+                    'line_total'     => $unit * $qty,
+                    'sort_order'     => $sort++,
+                ]);
+            }
+        }
+
+        $model = ServiceLogModel::with(['clientResource', 'service', 'attendant', 'items'])
+            ->find($serviceLog->id);
 
         return (new ServiceLogResource($model))
             ->response()
@@ -86,7 +131,9 @@ class ServiceLogController extends Controller
 
     public function show(string $id): ServiceLogResource
     {
-        $serviceLog = ServiceLogModel::with(['clientResource', 'service', 'attendant', 'reservation'])->findOrFail($id);
+        $serviceLog = ServiceLogModel::with([
+            'clientResource', 'service', 'attendant', 'reservation', 'items',
+        ])->findOrFail($id);
         return new ServiceLogResource($serviceLog);
     }
 

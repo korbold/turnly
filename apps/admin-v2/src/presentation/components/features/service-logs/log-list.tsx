@@ -139,7 +139,18 @@ export function LogList({ date, onEdit, onCreate }: LogListProps) {
             </span>
 
             <span className="text-sm">
-              {log.service?.name ?? 'N/A'}
+              {(() => {
+                // Prefer the multi-service rollup when the log carries
+                // items. Falls back to the legacy single-service name
+                // for rows that pre-date Fase C or only had one item.
+                const summary = log.servicesSummary;
+                if (summary && summary.count > 1) {
+                  const head = summary.labels[0] ?? log.service?.name ?? '';
+                  const extra = summary.count - 1;
+                  return `${head} +${extra} más`;
+                }
+                return summary?.labels[0] ?? log.service?.name ?? 'N/A';
+              })()}
             </span>
 
             <span className="text-sm text-muted-foreground">

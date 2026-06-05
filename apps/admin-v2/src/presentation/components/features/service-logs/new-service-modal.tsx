@@ -107,18 +107,27 @@ interface NewServiceModalProps {
   embedded?: boolean;
 }
 
+interface LineItem {
+  service: Service;
+  qty: number;
+  unitPrice: number;
+}
+
 export function NewServiceModal({ open, onClose, embedded = false }: NewServiceModalProps) {
-  const [selectedService, setSelectedService] = useState<Service | null>(null);
+  const [lineItems, setLineItems] = useState<LineItem[]>([]);
   const [clientSearch, setClientSearch] = useState('');
   const [selectedClientResourceId, setSelectedClientResourceId] = useState<string | null>(null);
   const [selectedClientResource, setSelectedClientResource] = useState<ClientResource | null>(null);
   const [attendedBy, setAttendedBy] = useState('');
-  const [price, setPrice] = useState('');
   const [paymentMethod, setPaymentMethod] = useState<PaymentMethod>('cash');
   const [paymentBank, setPaymentBank] = useState<string | null>(null);
   const [paymentTiming, setPaymentTiming] = useState<'now' | 'later'>('now');
   const [notes, setNotes] = useState('');
   const [recentServiceIds, setRecentServiceIds] = useState<string[]>([]);
+
+  // Total = sum of line items. Stays the source of truth for the price
+  // shown in the footer + sent to the backend.
+  const total = lineItems.reduce((acc, it) => acc + it.unitPrice * it.qty, 0);
 
   // Drop the bank pick whenever the cashier flips away from transfer.
   // Otherwise the form would carry a stale slug into the next submit.
@@ -217,12 +226,11 @@ export function NewServiceModal({ open, onClose, embedded = false }: NewServiceM
   const team = teamData?.data ?? [];
 
   function handleReset() {
-    setSelectedService(null);
+    setLineItems([]);
     setClientSearch('');
     setSelectedClientResourceId(null);
     setSelectedClientResource(null);
     setAttendedBy('');
-    setPrice('');
     setPaymentMethod('cash');
     setPaymentBank(null);
     setPaymentTiming('now');
@@ -234,15 +242,35 @@ export function NewServiceModal({ open, onClose, embedded = false }: NewServiceM
     onClose();
   }
 
-  function handleSelectService(svc: Service) {
-    setSelectedService(svc);
-    setPrice(String(svc.price));
+  function handleAddLineItem(svc: Service) {
+    setLineItems((prev) => {
+      const existing = prev.find((it) => it.service.id === svc.id);
+      if (existing) {
+        // Same service picked again — bump the qty instead of pushing
+        // a duplicate row. Cashier registering "lavada x2" stays one
+        // line with qty = 2.
+        return prev.map((it) =>
+          it.service.id === svc.id ? { ...it, qty: it.qty + 1 } : it,
+        );
+      }
+      return [...prev, { service: svc, qty: 1, unitPrice: svc.price }];
+    });
     pushRecentServiceId(svc.id);
     setRecentServiceIds((prev) => [svc.id, ...prev.filter((id) => id !== svc.id)].slice(0, 5));
   }
 
+  function handleRemoveLineItem(serviceId: string) {
+    setLineItems((prev) => prev.filter((it) => it.service.id !== serviceId));
+  }
+
+  function handleUpdateLineItem(serviceId: string, patch: Partial<Omit<LineItem, 'service'>>) {
+    setLineItems((prev) =>
+      prev.map((it) => (it.service.id === serviceId ? { ...it, ...patch } : it)),
+    );
+  }
+
   function handleSubmit() {
-    if (!selectedClientResourceId || !selectedService || !attendedBy || !price) return;
+    if (!selectedClientResourceId || lineItems.length === 0 || !attendedBy) return;
     if (paymentTiming === 'now' && paymentMethod === 'transfer' && !paymentBank) {
       toast.error('Selecciona el banco emisor');
       return;
@@ -253,9 +281,13 @@ export function NewServiceModal({ open, onClose, embedded = false }: NewServiceM
     createMutation.mutate(
       {
         clientResourceId: selectedClientResourceId,
-        serviceId: selectedService.id,
         attendedBy,
-        priceCharged: Number(price),
+        items: lineItems.map((it) => ({
+          serviceId: it.service.id,
+          label: it.service.name,
+          qty: it.qty,
+          unitPrice: it.unitPrice,
+        })),
         paymentMethod: payNow ? paymentMethod : null,
         paymentBank: payNow && paymentMethod === 'transfer' ? paymentBank : null,
         paymentStatus: payNow ? 'paid' : 'unpaid',
@@ -267,32 +299,109 @@ export function NewServiceModal({ open, onClose, embedded = false }: NewServiceM
           handleClose();
         },
         onError: () => toast.error('Error al registrar servicio'),
-      }
+      },
     );
   }
 
   const canSubmit =
-    !!selectedService &&
+    lineItems.length > 0 &&
     !!selectedClientResourceId &&
     !!attendedBy &&
-    !!price &&
+    total > 0 &&
     (paymentTiming === 'later' || paymentMethod !== 'transfer' || !!paymentBank);
 
   const body = (
     <>
       <div className="space-y-5">
-          {/* Service combobox — searchable + keyboard-nav so the picker
-              scales beyond a handful of cards. Recent picks sticky at
-              the top so a busy cashier just hits Enter. */}
+          {/* Multi-service line items. Combobox stays the entry point —
+              picking a service appends a row. Each row carries its own
+              qty + unit_price override so the cashier can capture
+              "lavada x2 + pulido descuento" without leaving the form. */}
           <div>
-            <label className="mb-2 block text-sm font-medium">Servicio</label>
+            <div className="mb-2 flex items-baseline justify-between gap-2">
+              <label className="block text-sm font-medium">
+                Servicios{' '}
+                {lineItems.length > 0 && (
+                  <span className="text-[12px] font-normal text-[var(--fg-muted)]">
+                    ({lineItems.length})
+                  </span>
+                )}
+              </label>
+              {lineItems.length > 0 && (
+                <span
+                  className="font-mono text-[13.5px] font-semibold tabular-nums text-[var(--fg-strong)]"
+                  style={{ fontFamily: 'var(--font-mono)' }}
+                >
+                  {new Intl.NumberFormat('es-EC', {
+                    style: 'currency',
+                    currency: 'USD',
+                  }).format(total)}
+                </span>
+              )}
+            </div>
+
             <ServiceCombobox
               services={services}
-              selected={selectedService}
+              selected={null}
               recentIds={recentServiceIds}
               isLoading={servicesLoading}
-              onSelect={handleSelectService}
+              onSelect={handleAddLineItem}
+              placeholder={
+                lineItems.length === 0
+                  ? 'Selecciona un servicio…'
+                  : 'Agregar otro servicio…'
+              }
             />
+
+            {lineItems.length > 0 && (
+              <ul className="mt-2 space-y-1.5 rounded-lg border border-[var(--border)] bg-[var(--bg-surface)] p-2">
+                {lineItems.map((it) => (
+                  <li
+                    key={it.service.id}
+                    className="grid grid-cols-[1fr_auto_auto_auto] items-center gap-2 rounded-md px-2 py-1.5"
+                  >
+                    <span className="truncate text-[13px] font-medium text-[var(--fg-strong)]">
+                      {it.service.name}
+                    </span>
+                    <Input
+                      type="number"
+                      min={1}
+                      step="1"
+                      value={it.qty}
+                      onChange={(e) =>
+                        handleUpdateLineItem(it.service.id, {
+                          qty: Math.max(1, Number(e.target.value) || 1),
+                        })
+                      }
+                      className="h-8 w-16 text-center"
+                      aria-label="Cantidad"
+                    />
+                    <Input
+                      type="number"
+                      min={0}
+                      step="0.01"
+                      value={it.unitPrice}
+                      onChange={(e) =>
+                        handleUpdateLineItem(it.service.id, {
+                          unitPrice: Math.max(0, Number(e.target.value) || 0),
+                        })
+                      }
+                      className="h-8 w-24 text-right font-mono tabular-nums"
+                      style={{ fontFamily: 'var(--font-mono)' }}
+                      aria-label="Precio unitario"
+                    />
+                    <button
+                      type="button"
+                      onClick={() => handleRemoveLineItem(it.service.id)}
+                      className="rounded-md p-1.5 text-[var(--fg-muted)] transition-colors hover:bg-[var(--danger-50)] hover:text-[var(--danger-600)] cursor-pointer"
+                      aria-label={`Quitar ${it.service.name}`}
+                    >
+                      <X className="h-3.5 w-3.5" />
+                    </button>
+                  </li>
+                ))}
+              </ul>
+            )}
           </div>
 
           {/* Client resource search */}
@@ -529,17 +638,6 @@ export function NewServiceModal({ open, onClose, embedded = false }: NewServiceM
                 ))}
               </SelectContent>
             </Select>
-          </div>
-
-          {/* Price */}
-          <div>
-            <label className="mb-1.5 block text-sm font-medium">Precio</label>
-            <Input
-              type="number"
-              value={price}
-              onChange={(e) => setPrice(e.target.value)}
-              placeholder="0"
-            />
           </div>
 
           {/* Timing toggle — cobrar ahora vs cobrar al retirar.

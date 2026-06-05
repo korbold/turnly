@@ -16,6 +16,17 @@ export interface ServiceLogAttendant {
   name: string;
 }
 
+export interface ServiceLogItem {
+  id: string;
+  itemType: 'service_variant' | 'product';
+  refId: string;
+  label: string;
+  qty: number;
+  unitPrice: number;
+  lineTotal: number;
+  sortOrder: number;
+}
+
 export interface ServiceLog {
   id: string;
   clientResourceId: string;
@@ -37,6 +48,10 @@ export interface ServiceLog {
   clientResource?: ServiceLogClientResource;
   service?: ServiceLogService;
   attendant?: ServiceLogAttendant;
+  /** Multi-service breakdown — populated when the backend eager-loaded
+      `items`. Empty for legacy single-service rows. */
+  items?: ServiceLogItem[];
+  servicesSummary?: { count: number; labels: string[] };
 }
 
 export interface DailySummary {

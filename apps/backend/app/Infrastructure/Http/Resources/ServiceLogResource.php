@@ -41,6 +41,30 @@ class ServiceLogResource extends JsonResource
             'attendant' => $this->whenLoaded('attendant', fn () => [
                 'name' => $this->attendant->name,
             ]),
+
+            // Multi-service breakdown — loaded only when the caller
+            // asked for `items` so we don't fan-out queries on list
+            // endpoints that don't need it. `services_summary` is a
+            // compact rollup the LogList row can render without
+            // touching each item.
+            'items' => $this->whenLoaded('items', fn () => $this->items->map(fn ($it) => [
+                'id'         => $it->id,
+                'item_type'  => $it->item_type,
+                'ref_id'     => $it->ref_id,
+                'label'      => $it->label,
+                'qty'        => (float) $it->qty,
+                'unit_price' => (float) $it->unit_price,
+                'line_total' => (float) $it->line_total,
+                'sort_order' => (int) $it->sort_order,
+            ])),
+
+            'services_summary' => $this->whenLoaded('items', fn () => [
+                'count'  => $this->items->count(),
+                'labels' => $this->items
+                    ->map(fn ($it) => preg_replace('/\s·\s.*$/u', '', (string) $it->label))
+                    ->filter()
+                    ->values(),
+            ]),
         ];
     }
 
