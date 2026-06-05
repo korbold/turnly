@@ -30,6 +30,7 @@ class Reservation extends Equatable {
   final String? paymentMethod; // 'cash' | 'card' | 'transfer'
   final DateTime? paidAt;
   final String? paymentReference;
+  final String? paymentBank;
 
   const Reservation({
     required this.id,
@@ -52,6 +53,7 @@ class Reservation extends Equatable {
     this.paymentMethod,
     this.paidAt,
     this.paymentReference,
+    this.paymentBank,
   });
 
   bool get isPaid => paymentStatus == 'paid';

@@ -729,6 +729,26 @@ class _PaymentStatusTile extends StatelessWidget {
     }
   }
 
+  String? _bankLabel(String? slug) {
+    if (slug == null) return null;
+    const map = {
+      'pichincha': 'Pichincha',
+      'pacifico': 'Pacífico',
+      'guayaquil': 'Guayaquil',
+      'produbanco': 'Produbanco',
+      'bolivariano': 'Bolivariano',
+      'internacional': 'Internacional',
+      'austro': 'Austro',
+      'loja': 'Loja',
+      'solidario': 'Solidario',
+      'machala': 'Machala',
+      'jep': 'JEP',
+      'diners': 'Diners Club',
+      'other': 'Otro banco',
+    };
+    return map[slug];
+  }
+
   IconData _methodIcon(String? method) {
     switch (method) {
       case 'cash':
@@ -787,7 +807,9 @@ class _PaymentStatusTile extends StatelessWidget {
                     if (isPaid && method != null) ...[
                       const SizedBox(width: 8),
                       Text(
-                        '· ${_methodLabel(method)}',
+                        method == 'transfer' && _bankLabel(reservation.paymentBank) != null
+                            ? '· ${_methodLabel(method)} · ${_bankLabel(reservation.paymentBank)}'
+                            : '· ${_methodLabel(method)}',
                         style: const TextStyle(
                           fontSize: 13,
                           color: AppColors.textSecondary,

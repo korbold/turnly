@@ -16,6 +16,7 @@ import { Input } from '@/presentation/components/ui/input';
 import { Label } from '@/presentation/components/ui/label';
 import { useRecordReservationPayment } from '@/presentation/hooks/use-reservations';
 import { cn } from '@/shared/utils/cn';
+import { ECUADOR_BANKS } from '@/shared/constants/banks';
 import type { ReservationPaymentMethod } from '@/domain/entities/reservation';
 
 interface Props {
@@ -55,18 +56,33 @@ const METHODS: {
 export function PaymentModal({ open, reservationId, total, onClose, onSuccess }: Props) {
   const [method, setMethod] = useState<ReservationPaymentMethod>('cash');
   const [reference, setReference] = useState('');
+  const [bank, setBank] = useState<string | null>(null);
   const mutation = useRecordReservationPayment(reservationId);
 
   useEffect(() => {
     if (open) {
       setMethod('cash');
       setReference('');
+      setBank(null);
     }
   }, [open]);
 
+  // Clear bank selection if cashier switches away from transfer.
+  useEffect(() => {
+    if (method !== 'transfer') setBank(null);
+  }, [method]);
+
   function submit() {
+    if (method === 'transfer' && !bank) {
+      toast.error('Selecciona el banco emisor');
+      return;
+    }
     mutation.mutate(
-      { method, reference: reference.trim() || null },
+      {
+        method,
+        reference: reference.trim() || null,
+        bank: method === 'transfer' ? bank : null,
+      },
       {
         onSuccess: () => {
           toast.success('Pago registrado');
@@ -166,6 +182,47 @@ export function PaymentModal({ open, reservationId, total, onClose, onSuccess }:
               })}
             </div>
           </div>
+
+          {/* Bank picker — only appears for transferencia. Color chip +
+              full bank name keeps it scannable for the cashier picking
+              from across the counter. */}
+          {method === 'transfer' && (
+            <div className="space-y-2">
+              <Label className="text-[12px] font-semibold uppercase tracking-[0.04em] text-[var(--fg-muted)]">
+                Banco emisor
+              </Label>
+              <div className="grid grid-cols-2 gap-2 sm:grid-cols-3">
+                {ECUADOR_BANKS.map((b) => {
+                  const active = bank === b.slug;
+                  return (
+                    <button
+                      key={b.slug}
+                      type="button"
+                      onClick={() => setBank(b.slug)}
+                      className={cn(
+                        'flex items-center gap-2 rounded-lg border px-2.5 py-2 text-left transition-colors cursor-pointer',
+                        'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--brand-300)]',
+                        active
+                          ? 'border-[var(--brand-500)] bg-[var(--brand-50)]'
+                          : 'border-[var(--border)] bg-[var(--bg-surface)] hover:border-[var(--border-strong)]',
+                      )}
+                    >
+                      <span
+                        className="flex h-7 w-7 shrink-0 items-center justify-center rounded-md text-[10px] font-bold tracking-tight"
+                        style={{ backgroundColor: b.color, color: b.fg }}
+                        aria-hidden="true"
+                      >
+                        {b.initials}
+                      </span>
+                      <span className="min-w-0 truncate text-[12px] font-medium text-[var(--fg-strong)]">
+                        {b.name.replace(/^Banco\s/, '')}
+                      </span>
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
+          )}
 
           <div className="space-y-1.5">
             <Label className="text-[12px] font-semibold uppercase tracking-[0.04em] text-[var(--fg-muted)]">

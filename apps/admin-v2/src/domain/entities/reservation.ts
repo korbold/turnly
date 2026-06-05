@@ -91,6 +91,9 @@ export interface Reservation {
   paymentMethod: ReservationPaymentMethod | null;
   paidAt: Date | null;
   paymentReference: string | null;
+  /** Bank slug (`pichincha`, `pacifico`…) when paid via transfer. Null
+      otherwise. Free-form string so tenants can add regional banks. */
+  paymentBank: string | null;
   clientResource?: ReservationClientResource;
   service?: ReservationService;
   client?: ReservationClient;

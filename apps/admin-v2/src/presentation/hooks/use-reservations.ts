@@ -146,6 +146,7 @@ export function useRecordReservationPayment(id: string) {
     mutationFn: (input: {
       method: 'transfer' | 'card' | 'cash';
       reference?: string | null;
+      bank?: string | null;
     }) => repo.recordPayment(id, input),
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ['reservation', id] });

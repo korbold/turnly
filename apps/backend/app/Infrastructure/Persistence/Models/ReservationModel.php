@@ -21,7 +21,7 @@ class ReservationModel extends Model
         'consumption_applied_at',
         'checked_in_at', 'billing_snapshot',
         'client_rescheduled_at',
-        'payment_status', 'payment_method', 'paid_at', 'payment_reference',
+        'payment_status', 'payment_method', 'paid_at', 'payment_reference', 'payment_bank',
     ];
 
     protected function casts(): array

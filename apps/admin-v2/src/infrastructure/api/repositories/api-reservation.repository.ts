@@ -101,11 +101,16 @@ export class ApiReservationRepository implements ReservationRepository {
 
   async recordPayment(
     id: string,
-    input: { method: 'transfer' | 'card' | 'cash'; reference?: string | null },
+    input: {
+      method: 'transfer' | 'card' | 'cash';
+      reference?: string | null;
+      bank?: string | null;
+    },
   ): Promise<Reservation> {
     const { data: res } = await api.post(`/reservations/${id}/payment`, {
       method: input.method,
       reference: input.reference ?? null,
+      bank: input.bank ?? null,
     });
     return mapReservation(res.data);
   }

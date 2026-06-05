@@ -36,6 +36,7 @@ class ReservationResource extends JsonResource
             'payment_method'    => $this->payment_method,
             'paid_at'           => $this->paid_at?->toIso8601String(),
             'payment_reference' => $this->payment_reference,
+            'payment_bank'      => $this->payment_bank,
 
             'client_resource' => $this->whenLoaded('clientResource', fn () => [
                 'id'    => $this->clientResource->id,

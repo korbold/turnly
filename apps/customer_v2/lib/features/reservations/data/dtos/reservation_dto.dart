@@ -55,6 +55,7 @@ class ReservationDto {
           ? DateTime.parse(json['paid_at'] as String).toLocal()
           : null,
       paymentReference: json['payment_reference'] as String?,
+      paymentBank: json['payment_bank'] as String?,
     );
   }
 }

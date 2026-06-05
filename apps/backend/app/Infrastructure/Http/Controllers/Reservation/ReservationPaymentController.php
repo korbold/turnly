@@ -29,6 +29,10 @@ class ReservationPaymentController extends Controller
         $data = $request->validate([
             'method'    => ['required', Rule::in(['transfer', 'card', 'cash'])],
             'reference' => ['nullable', 'string', 'max:100'],
+            // Bank slug — only meaningful when method = transfer. Kept
+            // free-form so tenants can add regional banks without a
+            // schema change.
+            'bank'      => ['nullable', 'string', 'max:40'],
         ]);
 
         $reservation = ReservationModel::with(['service', 'client', 'tenant'])
@@ -47,6 +51,7 @@ class ReservationPaymentController extends Controller
             'payment_status'    => 'paid',
             'payment_method'    => $data['method'],
             'payment_reference' => $data['reference'] ?? null,
+            'payment_bank'      => $data['method'] === 'transfer' ? ($data['bank'] ?? null) : null,
             'paid_at'           => now(),
         ]);
 

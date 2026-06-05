@@ -56,6 +56,7 @@ import { useServiceVariants } from '@/presentation/hooks/use-service-variants';
 import { CheckInModal } from '@/presentation/components/features/reservations/check-in-modal';
 import { AddItemModal } from '@/presentation/components/features/reservations/add-item-modal';
 import { PaymentModal } from '@/presentation/components/features/reservations/payment-modal';
+import { findBank } from '@/shared/constants/banks';
 import type {
   ReservationPaymentMethod,
   ReservationItem,
@@ -720,6 +721,24 @@ export default function ReservationDetailPage({ params }: { params: Promise<{ id
                     {PAYMENT_METHOD_LABEL[reservation.paymentMethod]}
                   </dd>
                 </div>
+                {reservation.paymentMethod === 'transfer' && (() => {
+                  const b = findBank(reservation.paymentBank);
+                  return b ? (
+                    <div className="flex items-center justify-between gap-3">
+                      <dt className="text-[var(--fg-muted)]">Banco</dt>
+                      <dd className="flex items-center gap-1.5 font-semibold text-[var(--fg-strong)]">
+                        <span
+                          className="flex h-5 w-5 items-center justify-center rounded text-[9px] font-bold"
+                          style={{ backgroundColor: b.color, color: b.fg }}
+                          aria-hidden="true"
+                        >
+                          {b.initials}
+                        </span>
+                        {b.name.replace(/^Banco\s/, '')}
+                      </dd>
+                    </div>
+                  ) : null;
+                })()}
                 {reservation.paidAt && (
                   <div className="flex items-center justify-between gap-3">
                     <dt className="text-[var(--fg-muted)]">Cobrado</dt>
