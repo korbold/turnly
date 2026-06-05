@@ -53,14 +53,18 @@ export function AppShell({ children }: { children: ReactNode }) {
   // Tablet + Desktop: sidebar + topbar + content
   return (
     <BrandThemeProvider>
-      <div className="flex h-screen overflow-hidden bg-zinc-50">
-        <Sidebar
-          collapsed={sidebarCollapsed}
-          onToggle={() => setSidebarCollapsed((c) => !c)}
-        />
-        <div className="flex flex-1 flex-col overflow-hidden">
-          <Topbar />
-          <main className="flex-1 overflow-y-auto px-4 py-6 lg:px-8">
+      <div className="flex h-screen overflow-hidden bg-zinc-50 print:block print:h-auto print:overflow-visible print:bg-white">
+        <div className="contents print:hidden">
+          <Sidebar
+            collapsed={sidebarCollapsed}
+            onToggle={() => setSidebarCollapsed((c) => !c)}
+          />
+        </div>
+        <div className="flex flex-1 flex-col overflow-hidden print:overflow-visible">
+          <div className="print:hidden">
+            <Topbar />
+          </div>
+          <main className="flex-1 overflow-y-auto px-4 py-6 lg:px-8 print:overflow-visible print:p-0">
             {children}
           </main>
         </div>

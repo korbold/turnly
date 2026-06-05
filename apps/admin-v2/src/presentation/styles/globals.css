@@ -349,3 +349,51 @@ body {
     scroll-behavior: auto !important;
   }
 }
+
+@media print {
+  @page {
+    size: letter portrait;
+    margin: 12mm;
+  }
+
+  html,
+  body {
+    background: #ffffff !important;
+    color: #0a0a0a !important;
+    -webkit-print-color-adjust: exact;
+    print-color-adjust: exact;
+  }
+
+  /* Mantenemos los colores de marca / status pills cuando el navegador
+     soporta print-color-adjust. La regla anterior solo cambia el fondo
+     y el texto por defecto; gráficos, donut, badges y chips conservan
+     sus tonos. */
+
+  /* Recharts: forza ancho 100% del contenedor de impresión y altura
+     suficiente para que la curva no quede aplastada. */
+  .recharts-responsive-container,
+  .recharts-wrapper,
+  .recharts-surface {
+    width: 100% !important;
+  }
+  .recharts-responsive-container {
+    height: 260px !important;
+  }
+
+  /* Page-break hints — la tabla puede quebrar entre filas pero el
+     chart y el resumen deben mantenerse juntos. */
+  [data-print-block],
+  .recharts-wrapper {
+    page-break-inside: avoid;
+    break-inside: avoid;
+  }
+  table {
+    page-break-inside: auto;
+  }
+  thead {
+    display: table-header-group;
+  }
+  tr {
+    page-break-inside: avoid;
+  }
+}
