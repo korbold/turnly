@@ -1,8 +1,8 @@
 'use client';
 
-import { useState, useMemo } from 'react';
+import { useEffect, useState, useMemo } from 'react';
 import { toast } from 'sonner';
-import { Search, Check, Plus, Loader2, X } from 'lucide-react';
+import { Search, Check, Plus, Loader2, X, Banknote, CreditCard, ArrowLeftRight, MoreHorizontal } from 'lucide-react';
 import {
   Dialog,
   DialogContent,
@@ -21,7 +21,6 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/presentation/components/ui/select';
-import { Card, CardContent } from '@/presentation/components/ui/card';
 import { Skeleton } from '@/presentation/components/ui/skeleton';
 import { cn } from '@/shared/utils/cn';
 import { useServices } from '@/presentation/hooks/use-services';
@@ -29,10 +28,36 @@ import { useClients, useCreateClient } from '@/presentation/hooks/use-clients';
 import { useSettings } from '@/presentation/hooks/use-settings';
 import { useTeam } from '@/presentation/hooks/use-team';
 import { useCreateServiceLog } from '@/presentation/hooks/use-service-logs';
+import { ServiceCombobox } from '@/presentation/components/features/service-logs/service-combobox';
 import type { Service } from '@/domain/entities/service';
 import type { PaymentMethod } from '@/domain/entities/service-log';
 import type { ClientResource } from '@/domain/entities/client-resource';
 import type { BusinessType, CustomField } from '@/domain/entities/tenant';
+
+const RECENT_SERVICES_KEY = 'turnly:service-log:recent-services';
+
+function loadRecentServiceIds(): string[] {
+  if (typeof window === 'undefined') return [];
+  try {
+    const raw = window.localStorage.getItem(RECENT_SERVICES_KEY);
+    if (!raw) return [];
+    const parsed = JSON.parse(raw);
+    return Array.isArray(parsed) ? parsed.filter((x) => typeof x === 'string') : [];
+  } catch {
+    return [];
+  }
+}
+
+function pushRecentServiceId(id: string) {
+  if (typeof window === 'undefined') return;
+  const current = loadRecentServiceIds().filter((x) => x !== id);
+  const next = [id, ...current].slice(0, 5);
+  try {
+    window.localStorage.setItem(RECENT_SERVICES_KEY, JSON.stringify(next));
+  } catch {
+    // localStorage full / disabled — silently drop, the combobox still works.
+  }
+}
 
 const BUSINESS_TYPE_DEFAULT_FIELDS: Partial<Record<BusinessType, CustomField[]>> = {
   car_wash: [
@@ -61,19 +86,26 @@ const BUSINESS_TYPE_DEFAULT_FIELDS: Partial<Record<BusinessType, CustomField[]>>
   ],
 };
 
-const PAYMENT_OPTIONS: { value: PaymentMethod; label: string; icon: string }[] = [
-  { value: 'cash', label: 'Efectivo', icon: '\uD83D\uDCB5' },
-  { value: 'card', label: 'Tarjeta', icon: '\uD83D\uDCB3' },
-  { value: 'transfer', label: 'Transfer', icon: '\uD83D\uDD04' },
-  { value: 'other', label: 'Otro', icon: '\uD83D\uDCCB' },
+const PAYMENT_OPTIONS: { value: PaymentMethod; label: string; icon: typeof Banknote }[] = [
+  { value: 'cash', label: 'Efectivo', icon: Banknote },
+  { value: 'card', label: 'Tarjeta', icon: CreditCard },
+  { value: 'transfer', label: 'Transfer', icon: ArrowLeftRight },
+  { value: 'other', label: 'Otro', icon: MoreHorizontal },
 ];
 
 interface NewServiceModalProps {
   open: boolean;
   onClose: () => void;
+  /**
+   * When true, render the form as an inline card (no Dialog wrapper,
+   * no backdrop) so the page can use it as a sticky right-rail in the
+   * master-detail layout. Below the breakpoint we still fall back to
+   * the Dialog mobile-friendly behaviour.
+   */
+  embedded?: boolean;
 }
 
-export function NewServiceModal({ open, onClose }: NewServiceModalProps) {
+export function NewServiceModal({ open, onClose, embedded = false }: NewServiceModalProps) {
   const [selectedService, setSelectedService] = useState<Service | null>(null);
   const [clientSearch, setClientSearch] = useState('');
   const [selectedClientResourceId, setSelectedClientResourceId] = useState<string | null>(null);
@@ -82,6 +114,13 @@ export function NewServiceModal({ open, onClose }: NewServiceModalProps) {
   const [price, setPrice] = useState('');
   const [paymentMethod, setPaymentMethod] = useState<PaymentMethod>('cash');
   const [notes, setNotes] = useState('');
+  const [recentServiceIds, setRecentServiceIds] = useState<string[]>([]);
+
+  // Seed recent-services list once on mount (and refresh when the panel
+  // opens) so the cashier sees their muscle-memory picks at the top.
+  useEffect(() => {
+    if (open) setRecentServiceIds(loadRecentServiceIds());
+  }, [open]);
 
   const { data: servicesData, isLoading: servicesLoading } = useServices();
   const { data: clientsData, isLoading: clientsLoading } = useClients(1, clientSearch || undefined);
@@ -180,6 +219,8 @@ export function NewServiceModal({ open, onClose }: NewServiceModalProps) {
   function handleSelectService(svc: Service) {
     setSelectedService(svc);
     setPrice(String(svc.price));
+    pushRecentServiceId(svc.id);
+    setRecentServiceIds((prev) => [svc.id, ...prev.filter((id) => id !== svc.id)].slice(0, 5));
   }
 
   function handleSubmit() {
@@ -206,54 +247,21 @@ export function NewServiceModal({ open, onClose }: NewServiceModalProps) {
 
   const canSubmit = !!selectedService && !!selectedClientResourceId && !!attendedBy && !!price;
 
-  return (
-    <Dialog open={open} onOpenChange={(o) => !o && handleClose()}>
-      <DialogContent className="max-h-[85vh] overflow-y-auto sm:max-w-xl">
-        <DialogHeader>
-          <DialogTitle>Nuevo Servicio</DialogTitle>
-          <DialogDescription>Registrar un servicio realizado</DialogDescription>
-        </DialogHeader>
-
-        <div className="space-y-5">
-          {/* Service selection as cards */}
+  const body = (
+    <>
+      <div className="space-y-5">
+          {/* Service combobox — searchable + keyboard-nav so the picker
+              scales beyond a handful of cards. Recent picks sticky at
+              the top so a busy cashier just hits Enter. */}
           <div>
             <label className="mb-2 block text-sm font-medium">Servicio</label>
-            <div className="grid grid-cols-2 gap-2">
-              {servicesLoading
-                ? Array.from({ length: 4 }).map((_, i) => (
-                    <Skeleton key={i} className="h-16 rounded-lg" />
-                  ))
-                : services
-                    .filter((s) => s.isActive)
-                    .map((svc) => (
-                      <Card
-                        key={svc.id}
-                        className={cn(
-                          'cursor-pointer transition-all',
-                          selectedService?.id === svc.id
-                            ? 'border-[var(--color-primary)] ring-2 ring-[var(--color-primary)]/20'
-                            : 'hover:border-zinc-300'
-                        )}
-                        onClick={() => handleSelectService(svc)}
-                      >
-                        <CardContent className="flex items-center gap-2 p-3">
-                          {selectedService?.id === svc.id && (
-                            <Check className="h-4 w-4 shrink-0 text-[var(--color-primary)]" />
-                          )}
-                          <div className="min-w-0">
-                            <p className="truncate text-sm font-medium">{svc.name}</p>
-                            <p className="text-xs text-muted-foreground">
-                              {new Intl.NumberFormat('es-EC', {
-                                style: 'currency',
-                                currency: 'USD',
-                                minimumFractionDigits: 0,
-                              }).format(svc.price)}
-                            </p>
-                          </div>
-                        </CardContent>
-                      </Card>
-                    ))}
-            </div>
+            <ServiceCombobox
+              services={services}
+              selected={selectedService}
+              recentIds={recentServiceIds}
+              isLoading={servicesLoading}
+              onSelect={handleSelectService}
+            />
           </div>
 
           {/* Client resource search */}
@@ -496,22 +504,27 @@ export function NewServiceModal({ open, onClose }: NewServiceModalProps) {
           <div>
             <label className="mb-2 block text-sm font-medium">Método de pago</label>
             <div className="grid grid-cols-4 gap-2">
-              {PAYMENT_OPTIONS.map((opt) => (
-                <button
-                  key={opt.value}
-                  type="button"
-                  className={cn(
-                    'flex flex-col items-center gap-1 rounded-lg border p-3 text-sm transition-all',
-                    paymentMethod === opt.value
-                      ? 'border-[var(--color-primary)] bg-[var(--color-primary-muted)] ring-1 ring-[var(--color-primary)]/20'
-                      : 'hover:bg-zinc-50'
-                  )}
-                  onClick={() => setPaymentMethod(opt.value)}
-                >
-                  <span className="text-lg">{opt.icon}</span>
-                  <span className="text-xs font-medium">{opt.label}</span>
-                </button>
-              ))}
+              {PAYMENT_OPTIONS.map((opt) => {
+                const Icon = opt.icon;
+                const active = paymentMethod === opt.value;
+                return (
+                  <button
+                    key={opt.value}
+                    type="button"
+                    className={cn(
+                      'flex flex-col items-center gap-1.5 rounded-lg border p-3 text-sm transition-colors cursor-pointer',
+                      'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--brand-300)]',
+                      active
+                        ? 'border-[var(--brand-500)] bg-[var(--brand-50)] text-[var(--brand-700)]'
+                        : 'border-[var(--border)] text-[var(--fg-strong)] hover:border-[var(--border-strong)] hover:bg-[var(--bg-sunken)]',
+                    )}
+                    onClick={() => setPaymentMethod(opt.value)}
+                  >
+                    <Icon className="h-4 w-4" aria-hidden="true" />
+                    <span className="text-xs font-medium">{opt.label}</span>
+                  </button>
+                );
+              })}
             </div>
           </div>
 
@@ -526,15 +539,70 @@ export function NewServiceModal({ open, onClose }: NewServiceModalProps) {
             />
           </div>
         </div>
+    </>
+  );
 
-        <DialogFooter>
-          <Button variant="outline" onClick={handleClose}>
-            Cancelar
+  const footerButtons = (
+    <>
+      <Button variant="outline" onClick={handleClose}>
+        Cancelar
+      </Button>
+      <Button onClick={handleSubmit} disabled={!canSubmit || createMutation.isPending}>
+        Registrar Servicio
+      </Button>
+    </>
+  );
+
+  // Embedded variant — used in the master-detail layout on desktop.
+  // No portal, no backdrop, no modal trap; the daily log stays visible
+  // and interactive to the left of the panel. Slides in from the right
+  // via animate-in / slide-in-from-right-3 so the layout shift reads as
+  // intentional rather than a pop.
+  if (embedded) {
+    if (!open) return null;
+    return (
+      <div
+        className={cn(
+          'flex max-h-[calc(100dvh-2rem)] flex-col overflow-hidden rounded-xl border border-[var(--border)] bg-[var(--bg-surface)]',
+          'animate-in fade-in slide-in-from-right-3 duration-200 ease-out',
+        )}
+      >
+        <header className="flex items-start justify-between gap-3 border-b border-[var(--border)] px-5 py-4">
+          <div className="min-w-0">
+            <h2 className="text-[16px] font-semibold text-[var(--fg-strong)]">
+              Nuevo servicio
+            </h2>
+            <p className="mt-0.5 text-[12.5px] text-[var(--fg-muted)]">
+              Registrar un servicio realizado
+            </p>
+          </div>
+          <Button
+            variant="ghost"
+            size="icon"
+            onClick={handleClose}
+            className="h-8 w-8 shrink-0 cursor-pointer text-[var(--fg-muted)] hover:bg-[var(--bg-sunken)] hover:text-[var(--fg-strong)]"
+            aria-label="Cerrar"
+          >
+            <X className="h-4 w-4" />
           </Button>
-          <Button onClick={handleSubmit} disabled={!canSubmit || createMutation.isPending}>
-            Registrar Servicio
-          </Button>
-        </DialogFooter>
+        </header>
+        <div className="flex-1 overflow-y-auto px-5 py-4">{body}</div>
+        <footer className="flex items-center justify-end gap-2 border-t border-[var(--border)] bg-[var(--bg-app)] px-5 py-3">
+          {footerButtons}
+        </footer>
+      </div>
+    );
+  }
+
+  return (
+    <Dialog open={open} onOpenChange={(o) => !o && handleClose()}>
+      <DialogContent className="max-h-[85vh] overflow-y-auto sm:max-w-xl">
+        <DialogHeader>
+          <DialogTitle>Nuevo Servicio</DialogTitle>
+          <DialogDescription>Registrar un servicio realizado</DialogDescription>
+        </DialogHeader>
+        {body}
+        <DialogFooter>{footerButtons}</DialogFooter>
       </DialogContent>
     </Dialog>
   );
