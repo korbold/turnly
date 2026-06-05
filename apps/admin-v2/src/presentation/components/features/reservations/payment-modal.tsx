@@ -17,6 +17,7 @@ import { Label } from '@/presentation/components/ui/label';
 import { useRecordReservationPayment } from '@/presentation/hooks/use-reservations';
 import { cn } from '@/shared/utils/cn';
 import { ECUADOR_BANKS } from '@/shared/constants/banks';
+import { BankChip } from '@/presentation/components/features/reservations/bank-chip';
 import type { ReservationPaymentMethod } from '@/domain/entities/reservation';
 
 interface Props {
@@ -207,13 +208,7 @@ export function PaymentModal({ open, reservationId, total, onClose, onSuccess }:
                           : 'border-[var(--border)] bg-[var(--bg-surface)] hover:border-[var(--border-strong)]',
                       )}
                     >
-                      <span
-                        className="flex h-7 w-7 shrink-0 items-center justify-center rounded-md text-[10px] font-bold tracking-tight"
-                        style={{ backgroundColor: b.color, color: b.fg }}
-                        aria-hidden="true"
-                      >
-                        {b.initials}
-                      </span>
+                      <BankChip bank={b} size={28} />
                       <span className="min-w-0 truncate text-[12px] font-medium text-[var(--fg-strong)]">
                         {b.name.replace(/^Banco\s/, '')}
                       </span>

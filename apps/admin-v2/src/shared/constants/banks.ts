@@ -18,12 +18,17 @@ export interface Bank {
   fg: string;
   /** Short label rendered inside the chip (1-3 chars). */
   initials: string;
+  /** Optional `/banks/{slug}.svg` URL when a real logo file is shipped
+      under `public/banks/`. Drop in an SVG with the slug name and the
+      UI will pick it up automatically; otherwise the chip fallback
+      keeps the row readable. */
+  logoUrl?: string;
 }
 
 export const ECUADOR_BANKS: Bank[] = [
-  { slug: 'pichincha',    name: 'Banco Pichincha',     color: '#FFC72C', fg: '#1B1B1B', initials: 'BP' },
+  { slug: 'pichincha',    name: 'Banco Pichincha',     color: '#FFC72C', fg: '#1B1B1B', initials: 'BP', logoUrl: '/banks/pichincha.svg' },
   { slug: 'pacifico',     name: 'Banco del Pacífico',  color: '#003F8F', fg: '#FFFFFF', initials: 'BP' },
-  { slug: 'guayaquil',    name: 'Banco Guayaquil',     color: '#007934', fg: '#FFFFFF', initials: 'BG' },
+  { slug: 'guayaquil',    name: 'Banco Guayaquil',     color: '#007934', fg: '#FFFFFF', initials: 'BG', logoUrl: '/banks/guayaquil.svg' },
   { slug: 'produbanco',   name: 'Produbanco',          color: '#E30613', fg: '#FFFFFF', initials: 'PB' },
   { slug: 'bolivariano',  name: 'Banco Bolivariano',   color: '#0066A1', fg: '#FFFFFF', initials: 'BB' },
   { slug: 'internacional', name: 'Banco Internacional', color: '#002D62', fg: '#FFFFFF', initials: 'BI' },

@@ -56,6 +56,7 @@ import { useServiceVariants } from '@/presentation/hooks/use-service-variants';
 import { CheckInModal } from '@/presentation/components/features/reservations/check-in-modal';
 import { AddItemModal } from '@/presentation/components/features/reservations/add-item-modal';
 import { PaymentModal } from '@/presentation/components/features/reservations/payment-modal';
+import { BankChip } from '@/presentation/components/features/reservations/bank-chip';
 import { findBank } from '@/shared/constants/banks';
 import type {
   ReservationPaymentMethod,
@@ -727,13 +728,7 @@ export default function ReservationDetailPage({ params }: { params: Promise<{ id
                     <div className="flex items-center justify-between gap-3">
                       <dt className="text-[var(--fg-muted)]">Banco</dt>
                       <dd className="flex items-center gap-1.5 font-semibold text-[var(--fg-strong)]">
-                        <span
-                          className="flex h-5 w-5 items-center justify-center rounded text-[9px] font-bold"
-                          style={{ backgroundColor: b.color, color: b.fg }}
-                          aria-hidden="true"
-                        >
-                          {b.initials}
-                        </span>
+                        <BankChip bank={b} size={20} />
                         {b.name.replace(/^Banco\s/, '')}
                       </dd>
                     </div>
