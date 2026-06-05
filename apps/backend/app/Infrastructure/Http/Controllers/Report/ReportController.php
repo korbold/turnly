@@ -71,31 +71,58 @@ class ReportController extends Controller
     {
         $this->ensureFeature();
         $request->validate([
-            'date_from' => 'sometimes|date',
-            'date_to'   => 'sometimes|date|after_or_equal:date_from',
+            'date_from'      => 'sometimes|date',
+            'date_to'        => 'sometimes|date|after_or_equal:date_from',
             // Legacy param names still accepted so older clients keep working.
-            'from'      => 'sometimes|date',
-            'to'        => 'sometimes|date|after_or_equal:from',
+            'from'           => 'sometimes|date',
+            'to'             => 'sometimes|date|after_or_equal:from',
+            'payment_method' => 'sometimes|nullable|in:cash,card,transfer',
+            'payment_bank'   => 'sometimes|nullable|string|max:40',
         ]);
 
         $from = $request->get('date_from', $request->get('from', now()->toDateString()));
         $to   = $request->get('date_to',   $request->get('to',   $from));
 
+        $methodFilter = $request->get('payment_method');
+        $bankFilter   = $request->get('payment_bank');
+
         // Legacy wash logs (kept around for tenants migrated from the
         // standalone "registro diario" surface).
-        $washLogs = ServiceLogModel::whereBetween('log_date', [$from, $to])->get();
+        $washLogsQuery = ServiceLogModel::whereBetween('log_date', [$from, $to]);
+        if ($methodFilter) {
+            $washLogsQuery->where('payment_method', $methodFilter);
+        }
+        // Wash logs don't carry payment_bank — filtering by bank means
+        // we're slicing to transferencia detail, so any non-reservation
+        // legacy row drops out of the result by definition.
+        if ($bankFilter) {
+            $washLogsQuery->whereRaw('1 = 0');
+        }
+        $washLogs = $washLogsQuery->get();
 
         // Reservations are the source of truth now. We compute revenue
         // off the persisted items[] (sum of line_total) because the
         // legacy `service.price` doesn't reflect multi-service bookings
         // or per-line overrides captured at check-in.
-        $reservations = ReservationModel::whereBetween('scheduled_at', [
+        $reservationsQuery = ReservationModel::whereBetween('scheduled_at', [
                 $from . ' 00:00:00',
                 $to . ' 23:59:59',
             ])
             ->whereNotIn('status', ['cancelled', 'no_show'])
-            ->with(['service', 'items'])
-            ->get();
+            ->with(['service', 'items']);
+
+        if ($methodFilter) {
+            // Filtering by method only makes sense on rows actually paid
+            // with that method; unpaid reservations have NULL columns.
+            $reservationsQuery
+                ->where('payment_status', 'paid')
+                ->where('payment_method', $methodFilter);
+        }
+        if ($bankFilter) {
+            $reservationsQuery->where('payment_bank', $bankFilter);
+        }
+
+        $reservations = $reservationsQuery->get();
 
         // A reservation's total = sum(items.line_total) when items exist,
         // otherwise fall back to the single-service price for legacy rows.
@@ -127,6 +154,21 @@ class ReportController extends Controller
             'card'     => $methodTotal('card'),
             'transfer' => $methodTotal('transfer'),
         ];
+
+        // Bank-level breakdown for the transfer slice. Only computed off
+        // reservations because wash logs don't track bank. Grouped on
+        // the slug so the UI can decorate each entry with the bank's
+        // brand chip / logo from its own constants table.
+        $transferReservations = $paidReservations
+            ->where('payment_method', 'transfer')
+            ->whereNotNull('payment_bank');
+        $byBank = [];
+        foreach ($transferReservations->groupBy('payment_bank') as $slug => $rows) {
+            $byBank[$slug] = [
+                'count' => $rows->count(),
+                'total' => (float) $rows->sum($totalForReservation),
+            ];
+        }
 
         // Daily breakdown over every date in the range, even days with
         // zero activity, so the chart's x-axis stays continuous.
@@ -178,6 +220,11 @@ class ReportController extends Controller
                 ],
                 'daily_breakdown'   => $dailyBreakdown,
                 'by_payment_method' => $byPaymentMethod,
+                'by_bank'           => $byBank,
+                'filters' => [
+                    'payment_method' => $methodFilter,
+                    'payment_bank'   => $bankFilter,
+                ],
             ],
             'meta' => [
                 'tenant'    => app('current_tenant')->slug ?? null,

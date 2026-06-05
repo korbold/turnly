@@ -1,4 +1,10 @@
-import type { ReportRepository, RangeReport, ReportStats, DailyBreakdown } from '@/domain/repositories/report.repository';
+import type {
+  ReportRepository,
+  RangeReport,
+  ReportStats,
+  DailyBreakdown,
+  RangeReportFilters,
+} from '@/domain/repositories/report.repository';
 import api from '../client';
 
 function mapStats(raw: Record<string, unknown>): ReportStats {
@@ -23,15 +29,24 @@ function mapDailyBreakdown(raw: Record<string, unknown>): DailyBreakdown {
 }
 
 function mapRangeReport(raw: Record<string, unknown>): RangeReport {
+  const filters = (raw.filters ?? {}) as Record<string, unknown>;
   return {
-    stats: mapStats(raw.stats as Record<string, unknown>),
-    dailyBreakdown: ((raw.daily_breakdown ?? raw.dailyBreakdown) as Record<string, unknown>[]).map(
+    stats: mapStats((raw.stats ?? {}) as Record<string, unknown>),
+    dailyBreakdown: (((raw.daily_breakdown ?? raw.dailyBreakdown) as Record<string, unknown>[]) ?? []).map(
       mapDailyBreakdown,
     ),
     byPaymentMethod: (raw.by_payment_method ?? raw.byPaymentMethod ?? {}) as Record<
       string,
       { count: number; total: number }
     >,
+    byBank: (raw.by_bank ?? raw.byBank ?? {}) as Record<
+      string,
+      { count: number; total: number }
+    >,
+    filters: {
+      paymentMethod: (filters.payment_method ?? filters.paymentMethod ?? null) as RangeReport['filters']['paymentMethod'],
+      paymentBank: (filters.payment_bank ?? filters.paymentBank ?? null) as string | null,
+    },
   };
 }
 
@@ -41,8 +56,11 @@ export class ApiReportRepository implements ReportRepository {
     return mapRangeReport(res.data);
   }
 
-  async getRange(from: string, to: string): Promise<RangeReport> {
-    const { data: res } = await api.get('/reports/range', { params: { date_from: from, date_to: to } });
+  async getRange(from: string, to: string, filters?: RangeReportFilters): Promise<RangeReport> {
+    const params: Record<string, string> = { date_from: from, date_to: to };
+    if (filters?.paymentMethod) params.payment_method = filters.paymentMethod;
+    if (filters?.paymentBank) params.payment_bank = filters.paymentBank;
+    const { data: res } = await api.get('/reports/range', { params });
     return mapRangeReport(res.data);
   }
 
