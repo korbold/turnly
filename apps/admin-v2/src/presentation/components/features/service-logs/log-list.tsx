@@ -100,10 +100,12 @@ export function LogList({ date, onEdit, onCreate }: LogListProps) {
 
   return (
     <div className="space-y-2">
-      {/* Desktop header — proportions match the row grid below so the
-          labels sit above the data instead of drifting. Hidden on
-          touch viewports; the row carries its own labels there. */}
-      <div className="hidden rounded-lg bg-[var(--bg-sunken)] px-4 py-2 text-[11px] font-semibold uppercase tracking-[0.04em] text-[var(--fg-muted)] lg:grid lg:grid-cols-[64px_minmax(0,1.4fr)_minmax(0,1.4fr)_minmax(0,1fr)_88px_120px_180px] lg:gap-3 lg:items-center">
+      {/* Desktop header — proportions match the row grid below. The
+          last slot (estado + acciones) is wider than before because
+          the "Cobrar"/"Completar" labeled buttons no longer fit in
+          180px next to the status badge + overflow ⋯, which was
+          clipping them at the right edge. */}
+      <div className="hidden rounded-lg bg-[var(--bg-sunken)] px-4 py-2 text-[11px] font-semibold uppercase tracking-[0.04em] text-[var(--fg-muted)] lg:grid lg:grid-cols-[60px_minmax(0,1.3fr)_minmax(0,1.3fr)_minmax(0,1fr)_84px_112px_minmax(280px,auto)] lg:gap-3 lg:items-center">
         <span>Hora</span>
         <span>Recurso</span>
         <span>Servicio</span>
@@ -140,7 +142,7 @@ export function LogList({ date, onEdit, onCreate }: LogListProps) {
             transition={{ delay: idx * 0.03 }}
             className={cn(
               'rounded-lg border border-[var(--border)] bg-white p-3 transition-colors hover:bg-[var(--bg-sunken)]/40',
-              'lg:grid lg:grid-cols-[64px_minmax(0,1.4fr)_minmax(0,1.4fr)_minmax(0,1fr)_88px_120px_180px] lg:items-center lg:gap-3',
+              'lg:grid lg:grid-cols-[60px_minmax(0,1.3fr)_minmax(0,1.3fr)_minmax(0,1fr)_84px_112px_minmax(280px,auto)] lg:items-center lg:gap-3',
             )}
           >
             {/* Hora — bigger weight on mobile to read like a chip,
@@ -204,8 +206,11 @@ export function LogList({ date, onEdit, onCreate }: LogListProps) {
 
             {/* Estado + acciones — primary action gets a labeled
                 button (40px target) so PWA taps land cleanly. Overflow
-                ⋯ keeps editar/eliminar. */}
-            <div className="mt-3 flex items-center justify-end gap-2 lg:mt-0">
+                ⋯ keeps editar/eliminar. `flex-nowrap + shrink-0` on the
+                primary CTA so it never clips at intermediate breakpoints
+                (the bug that made the Cobrar button only show on
+                hover). */}
+            <div className="mt-3 flex flex-nowrap items-center justify-end gap-2 lg:mt-0">
               <Badge
                 className={cn(
                   'inline-flex items-center gap-1.5 whitespace-nowrap border-0 px-2.5 py-1 text-[11.5px] font-semibold',
@@ -228,7 +233,7 @@ export function LogList({ date, onEdit, onCreate }: LogListProps) {
                 <Button
                   size="sm"
                   onClick={() => setPayTarget(log)}
-                  className="h-9 cursor-pointer gap-1.5 bg-[var(--warning-600)] px-3 text-white hover:bg-[var(--warning-700)]"
+                  className="h-9 shrink-0 cursor-pointer gap-1.5 bg-[var(--warning-600)] px-3 text-white hover:bg-[var(--warning-700)]"
                 >
                   <Wallet className="h-3.5 w-3.5" aria-hidden="true" />
                   Cobrar
@@ -239,7 +244,7 @@ export function LogList({ date, onEdit, onCreate }: LogListProps) {
                   variant="outline"
                   onClick={() => handleComplete(log.id)}
                   disabled={completeMutation.isPending}
-                  className="h-9 cursor-pointer gap-1.5 border-[var(--success-200)] px-3 text-[var(--success-700)] hover:bg-[var(--success-50)] hover:text-[var(--success-800)]"
+                  className="h-9 shrink-0 cursor-pointer gap-1.5 border-[var(--success-200)] px-3 text-[var(--success-700)] hover:bg-[var(--success-50)] hover:text-[var(--success-800)]"
                 >
                   <CheckCircle2 className="h-3.5 w-3.5" aria-hidden="true" />
                   Completar
