@@ -59,7 +59,7 @@ class Reservation extends Equatable {
   bool get isPaid => paymentStatus == 'paid';
 
   bool get canCancel {
-    if (!status.isUpcoming) return false;
+    if (!status.allowsCustomerEdit) return false;
     final deadline = scheduledAt.subtract(Duration(hours: cancellationHours));
     return DateTime.now().isBefore(deadline);
   }
