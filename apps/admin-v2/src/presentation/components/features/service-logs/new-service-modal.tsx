@@ -201,6 +201,64 @@ export function NewServiceModal({ open, onClose, embedded = false }: NewServiceM
     if (open) setRecentServiceIds(loadRecentServiceIds());
   }, [open]);
 
+  // Re-resolve variants when the cashier swaps the client/recurso.
+  // A Lavada premium picked while the Kia SUV was selected has to drop
+  // to the sedán price (or land in "needs pick" state) when the cashier
+  // flips to the Chevrolet sedán. Manually-overridden lines get
+  // overridden too — the new vehicle is the authoritative signal.
+  useEffect(() => {
+    if (!selectedClientResourceId) return;
+    if (lineItems.length === 0) return;
+    let cancelled = false;
+    const resourceId = selectedClientResourceId;
+
+    (async () => {
+      const updates = await Promise.all(
+        lineItems.map(async (it) => {
+          // Service has no variants → base price stays, nothing to do.
+          if (Array.isArray(it.availableVariants) && it.availableVariants.length === 0) {
+            return { id: it.service.id, patch: null as Partial<LineItem> | null };
+          }
+          const suggested = await fetchSuggestedVariant(it.service.id, resourceId);
+          if (suggested) {
+            return {
+              id: it.service.id,
+              patch: {
+                variantId: suggested.id,
+                variantLabel: suggested.label,
+                unitPrice: suggested.price,
+              } as Partial<LineItem>,
+            };
+          }
+          // No match for the new vehicle → drop the picked variant so
+          // the line lights up the inline picker again.
+          return {
+            id: it.service.id,
+            patch: {
+              variantId: null,
+              variantLabel: null,
+            } as Partial<LineItem>,
+          };
+        }),
+      );
+
+      if (cancelled) return;
+      setLineItems((prev) =>
+        prev.map((it) => {
+          const u = updates.find((x) => x.id === it.service.id);
+          return u?.patch ? { ...it, ...u.patch } : it;
+        }),
+      );
+    })();
+
+    return () => {
+      cancelled = true;
+    };
+    // Intentionally NOT depending on lineItems — only the resource id.
+    // Re-running on every line change would loop indefinitely.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [selectedClientResourceId]);
+
   const { data: servicesData, isLoading: servicesLoading } = useServices();
   const { data: clientsData, isLoading: clientsLoading } = useClients(1, clientSearch || undefined);
   const { data: settings } = useSettings();
