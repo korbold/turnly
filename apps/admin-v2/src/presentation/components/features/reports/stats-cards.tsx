@@ -30,30 +30,30 @@ export function StatsCards({ stats, isLoading }: StatsCardsProps) {
   const averageDaily = stats?.averageDailyRevenue ?? 0;
 
   return (
-    <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+    <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 print:grid-cols-4 print:gap-2">
       {/* Hero: Ingresos */}
       <section
         aria-label="Ingresos del rango"
-        className="rounded-xl border border-[var(--border)] bg-[var(--bg-surface)] p-5"
+        className="rounded-xl border border-[var(--border)] bg-[var(--bg-surface)] p-5 print:p-3"
       >
         <p className="text-[11px] font-semibold uppercase tracking-[0.04em] text-[var(--fg-muted)]">
           Ingresos
         </p>
         <p
-          className="mt-2 text-[34px] font-bold leading-none tabular-nums text-[var(--fg-strong)]"
+          className="mt-2 text-[34px] font-bold leading-none tabular-nums text-[var(--fg-strong)] print:mt-1 print:text-[22px]"
           style={{ fontFamily: 'var(--font-mono)' }}
         >
           {formatCurrency(totalRevenue)}
         </p>
-        <p className="mt-2 text-[13px] text-[var(--fg-secondary)]">
+        <p className="mt-2 text-[13px] text-[var(--fg-secondary)] print:mt-1 print:text-[11px]">
           {totalServices === 0
             ? 'Sin servicios en este rango'
             : `${totalServices} ${totalServices === 1 ? 'servicio' : 'servicios'} registrados`}
         </p>
       </section>
 
-      {/* Secondary metrics */}
-      <div className="grid grid-cols-3 gap-3">
+      {/* Secondary metrics. Inline on print so the 4 stats sit on one row. */}
+      <div className="grid grid-cols-3 gap-3 print:contents">
         <SecondaryCard
           icon={Activity}
           label="Servicios"

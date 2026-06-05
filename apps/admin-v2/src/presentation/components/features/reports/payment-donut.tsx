@@ -78,34 +78,70 @@ export function PaymentDonut({ data, isLoading }: PaymentDonutProps) {
     );
   }
 
+  const DonutBody = ({ size }: { size: number }) => (
+    <PieChart width={size} height={size}>
+      <Pie
+        data={chartData}
+        cx={size / 2}
+        cy={size / 2}
+        innerRadius={Math.round(size * 0.28)}
+        outerRadius={Math.round(size * 0.4)}
+        paddingAngle={3}
+        dataKey="value"
+        isAnimationActive={false}
+      >
+        {chartData.map((entry, i) => (
+          <Cell key={i} fill={entry.color} />
+        ))}
+      </Pie>
+      <Tooltip
+        formatter={(value) => formatCurrency(Number(value))}
+        contentStyle={{
+          borderRadius: 8,
+          border: '1px solid var(--border)',
+          boxShadow: 'var(--shadow-md)',
+        }}
+      />
+    </PieChart>
+  );
+
   return (
     <ChartShell>
       <div className="flex flex-col items-center gap-4">
-        <ResponsiveContainer width="100%" height={200}>
-          <PieChart>
-            <Pie
-              data={chartData}
-              cx="50%"
-              cy="50%"
-              innerRadius={55}
-              outerRadius={80}
-              paddingAngle={3}
-              dataKey="value"
-            >
-              {chartData.map((entry, i) => (
-                <Cell key={i} fill={entry.color} />
-              ))}
-            </Pie>
-            <Tooltip
-              formatter={(value) => formatCurrency(Number(value))}
-              contentStyle={{
-                borderRadius: 8,
-                border: '1px solid var(--border)',
-                boxShadow: 'var(--shadow-md)',
-              }}
-            />
-          </PieChart>
-        </ResponsiveContainer>
+        {/* Screen render via responsive wrapper. */}
+        <div className="w-full print:hidden">
+          <ResponsiveContainer width="100%" height={200}>
+            <PieChart>
+              <Pie
+                data={chartData}
+                cx="50%"
+                cy="50%"
+                innerRadius={55}
+                outerRadius={80}
+                paddingAngle={3}
+                dataKey="value"
+                isAnimationActive={false}
+              >
+                {chartData.map((entry, i) => (
+                  <Cell key={i} fill={entry.color} />
+                ))}
+              </Pie>
+              <Tooltip
+                formatter={(value) => formatCurrency(Number(value))}
+                contentStyle={{
+                  borderRadius: 8,
+                  border: '1px solid var(--border)',
+                  boxShadow: 'var(--shadow-md)',
+                }}
+              />
+            </PieChart>
+          </ResponsiveContainer>
+        </div>
+        {/* Print render — fixed pixel size so the SVG paints synchronously
+            and the PDF engine can rasterize it. */}
+        <div className="hidden print:block">
+          <DonutBody size={180} />
+        </div>
 
         <ul className="w-full space-y-2" role="list">
           {chartData.map((item) => {

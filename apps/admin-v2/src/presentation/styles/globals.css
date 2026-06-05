@@ -353,7 +353,7 @@ body {
 @media print {
   @page {
     size: letter portrait;
-    margin: 12mm;
+    margin: 10mm 12mm;
   }
 
   html,
@@ -362,6 +362,24 @@ body {
     color: #0a0a0a !important;
     -webkit-print-color-adjust: exact;
     print-color-adjust: exact;
+    /* System fonts so the PDF engine doesn't have to embed/subset
+       the brand webfont — fixes mojibake in the text layer
+       (`$608` becoming `$"0$` when copied from the PDF). */
+    font-family: ui-sans-serif, -apple-system, BlinkMacSystemFont, "Segoe UI",
+      Roboto, Helvetica, Arial, sans-serif !important;
+  }
+
+  /* Force tabular-nums everywhere so $ + digit don't get kerned into
+     a single ligature that the text layer can't decode. Beats the
+     inline `style={{ fontFamily: 'var(--font-mono)' }}` props sprinkled
+     through the reports surface too. */
+  *,
+  *::before,
+  *::after {
+    font-family: ui-sans-serif, -apple-system, BlinkMacSystemFont, "Segoe UI",
+      Roboto, Helvetica, Arial, sans-serif !important;
+    font-variant-numeric: tabular-nums !important;
+    font-feature-settings: "tnum" 1 !important;
   }
 
   /* Mantenemos los colores de marca / status pills cuando el navegador
@@ -369,15 +387,19 @@ body {
      y el texto por defecto; gráficos, donut, badges y chips conservan
      sus tonos. */
 
-  /* Recharts: forza ancho 100% del contenedor de impresión y altura
-     suficiente para que la curva no quede aplastada. */
-  .recharts-responsive-container,
+  /* Tighten card padding for print — saves vertical space and helps
+     the whole report fit on one Letter sheet. */
+  [data-slot="card"],
+  section.rounded-xl {
+    padding: 12px !important;
+  }
+
+  /* Recharts: el contenedor wrapper queda fijo cuando renderizamos sin
+     ResponsiveContainer (variante print de cada chart). Aseguramos que
+     la versión screen-only quede oculta y la print quede en flujo. */
   .recharts-wrapper,
   .recharts-surface {
-    width: 100% !important;
-  }
-  .recharts-responsive-container {
-    height: 260px !important;
+    overflow: visible !important;
   }
 
   /* Page-break hints — la tabla puede quebrar entre filas pero el
