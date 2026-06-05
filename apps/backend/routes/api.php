@@ -167,6 +167,9 @@ Route::prefix('v1')->group(function () {
             Route::patch('service-logs/{id}', [ServiceLogController::class, 'update']);
             Route::delete('service-logs/{id}', [ServiceLogController::class, 'destroy']);
             Route::patch('service-logs/{id}/complete', [ServiceLogController::class, 'complete']);
+            // Late payment registration — cashier marks a "cobrar al
+            // retirar" service as paid + captures method + bank.
+            Route::post('service-logs/{id}/payment', [ServiceLogController::class, 'recordPayment']);
 
             // Client Resources
             Route::get('client-resources', [ClientResourceController::class, 'index']);

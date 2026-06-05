@@ -2,6 +2,7 @@ import type {
   ServiceLogRepository,
   CreateServiceLogData,
   UpdateServiceLogData,
+  RecordPaymentData,
 } from '@/domain/repositories/service-log.repository';
 import type { ServiceLog, ServiceLogFilters, DailySummary } from '@/domain/entities/service-log';
 import type { PaginatedResult } from '@/shared/types/api';
@@ -32,7 +33,17 @@ export class ApiServiceLogRepository implements ServiceLogRepository {
       price_charged: data.priceCharged,
       payment_method: data.paymentMethod,
       payment_bank: data.paymentBank ?? null,
+      payment_status: data.paymentStatus ?? 'paid',
       notes: data.notes,
+    });
+    return mapServiceLog(res.data);
+  }
+
+  async recordPayment(id: string, data: RecordPaymentData): Promise<ServiceLog> {
+    const { data: res } = await api.post(`/service-logs/${id}/payment`, {
+      method: data.method,
+      bank: data.bank ?? null,
+      reference: data.reference ?? null,
     });
     return mapServiceLog(res.data);
   }

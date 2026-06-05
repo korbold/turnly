@@ -54,19 +54,28 @@ class ServiceLogController extends Controller
 
         $serviceLog = $this->createServiceLog->execute($dto);
 
-        // Variant id + bank ride on the model rather than the DTO so we
-        // don't have to ripple them through the domain pipeline. Bank
-        // is only stamped when the customer paid via transferencia.
+        // Variant id + payment metadata ride on the model rather than
+        // the DTO so we don't have to ripple them through the domain
+        // pipeline. Bank is only stamped for transferencia; method +
+        // bank are nulled when the cashier deferred cobro a la entrega.
+        $paymentStatus = $request->get('payment_status', 'paid');
         $patch = [];
         if ($request->service_variant_id) {
             $patch['service_variant_id'] = $request->service_variant_id;
         }
-        if ($request->payment_method === 'transfer' && $request->filled('payment_bank')) {
-            $patch['payment_bank'] = $request->payment_bank;
+        if ($paymentStatus === 'unpaid') {
+            $patch['payment_status'] = 'unpaid';
+            $patch['paid_at'] = null;
+            $patch['payment_method'] = null;
+            $patch['payment_bank'] = null;
+        } else {
+            $patch['payment_status'] = 'paid';
+            $patch['paid_at'] = now();
+            if ($request->payment_method === 'transfer' && $request->filled('payment_bank')) {
+                $patch['payment_bank'] = $request->payment_bank;
+            }
         }
-        if (!empty($patch)) {
-            ServiceLogModel::where('id', $serviceLog->id)->update($patch);
-        }
+        ServiceLogModel::where('id', $serviceLog->id)->update($patch);
 
         $model = ServiceLogModel::with(['clientResource', 'service', 'attendant'])->find($serviceLog->id);
 
@@ -107,6 +116,45 @@ class ServiceLogController extends Controller
         $serviceLog->delete();
 
         return response()->json(['data' => ['message' => 'Registro eliminado']], 200);
+    }
+
+    /**
+     * Records the moment + method a customer paid for a service log
+     * that was registered as "cobrar al retirar". Mirrors the reserva
+     * payment endpoint shape so the admin uses the same modal.
+     */
+    public function recordPayment(Request $request, string $id): JsonResponse
+    {
+        $data = $request->validate([
+            'method'    => ['required', 'in:cash,card,transfer,other'],
+            'bank'      => ['nullable', 'string', 'max:40'],
+            'reference' => ['nullable', 'string', 'max:100'],
+        ]);
+
+        $log = ServiceLogModel::findOrFail($id);
+        if ($log->payment_status === 'paid') {
+            return response()->json([
+                'error' => [
+                    'code'    => 'ALREADY_PAID',
+                    'message' => 'Este servicio ya está marcado como pagado.',
+                ],
+            ], 422);
+        }
+
+        $log->update([
+            'payment_method' => $data['method'],
+            'payment_bank'   => $data['method'] === 'transfer' ? ($data['bank'] ?? null) : null,
+            'payment_status' => 'paid',
+            'paid_at'        => now(),
+            // Append reference into notes when supplied; service_logs
+            // doesn't carry a dedicated payment_reference column yet
+            // and the typical car-wash use case doesn't need one.
+            'notes'          => trim(($log->notes ?? '') . ($data['reference'] ?? '' ? "\nRef: {$data['reference']}" : '')) ?: null,
+        ]);
+
+        return (new ServiceLogResource(
+            $log->load(['clientResource', 'service', 'attendant'])
+        ))->response()->setStatusCode(200);
     }
 
     public function complete(string $id): JsonResponse

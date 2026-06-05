@@ -116,6 +116,7 @@ export function NewServiceModal({ open, onClose, embedded = false }: NewServiceM
   const [price, setPrice] = useState('');
   const [paymentMethod, setPaymentMethod] = useState<PaymentMethod>('cash');
   const [paymentBank, setPaymentBank] = useState<string | null>(null);
+  const [paymentTiming, setPaymentTiming] = useState<'now' | 'later'>('now');
   const [notes, setNotes] = useState('');
   const [recentServiceIds, setRecentServiceIds] = useState<string[]>([]);
 
@@ -124,6 +125,12 @@ export function NewServiceModal({ open, onClose, embedded = false }: NewServiceM
   useEffect(() => {
     if (paymentMethod !== 'transfer') setPaymentBank(null);
   }, [paymentMethod]);
+
+  // Drop method + bank when deferring cobro — the cashier captures
+  // them later via the dedicated payment endpoint.
+  useEffect(() => {
+    if (paymentTiming === 'later') setPaymentBank(null);
+  }, [paymentTiming]);
 
   // Seed recent-services list once on mount (and refresh when the panel
   // opens) so the cashier sees their muscle-memory picks at the top.
@@ -218,6 +225,7 @@ export function NewServiceModal({ open, onClose, embedded = false }: NewServiceM
     setPrice('');
     setPaymentMethod('cash');
     setPaymentBank(null);
+    setPaymentTiming('now');
     setNotes('');
   }
 
@@ -235,10 +243,12 @@ export function NewServiceModal({ open, onClose, embedded = false }: NewServiceM
 
   function handleSubmit() {
     if (!selectedClientResourceId || !selectedService || !attendedBy || !price) return;
-    if (paymentMethod === 'transfer' && !paymentBank) {
+    if (paymentTiming === 'now' && paymentMethod === 'transfer' && !paymentBank) {
       toast.error('Selecciona el banco emisor');
       return;
     }
+
+    const payNow = paymentTiming === 'now';
 
     createMutation.mutate(
       {
@@ -246,13 +256,14 @@ export function NewServiceModal({ open, onClose, embedded = false }: NewServiceM
         serviceId: selectedService.id,
         attendedBy,
         priceCharged: Number(price),
-        paymentMethod,
-        paymentBank: paymentMethod === 'transfer' ? paymentBank : null,
+        paymentMethod: payNow ? paymentMethod : null,
+        paymentBank: payNow && paymentMethod === 'transfer' ? paymentBank : null,
+        paymentStatus: payNow ? 'paid' : 'unpaid',
         notes: notes || undefined,
       },
       {
         onSuccess: () => {
-          toast.success('Servicio registrado');
+          toast.success(payNow ? 'Servicio registrado y cobrado' : 'Servicio registrado · pago pendiente');
           handleClose();
         },
         onError: () => toast.error('Error al registrar servicio'),
@@ -265,7 +276,7 @@ export function NewServiceModal({ open, onClose, embedded = false }: NewServiceM
     !!selectedClientResourceId &&
     !!attendedBy &&
     !!price &&
-    (paymentMethod !== 'transfer' || !!paymentBank);
+    (paymentTiming === 'later' || paymentMethod !== 'transfer' || !!paymentBank);
 
   const body = (
     <>
@@ -531,7 +542,50 @@ export function NewServiceModal({ open, onClose, embedded = false }: NewServiceM
             />
           </div>
 
-          {/* Payment method radio-style buttons */}
+          {/* Timing toggle — cobrar ahora vs cobrar al retirar.
+              Default "ahora" preserves the legacy flow; "al retirar"
+              is the car-wash pickup case where the cashier registers
+              the service first and collects when the customer recoge
+              el vehículo. */}
+          <div>
+            <label className="mb-2 block text-sm font-medium">Cuándo se cobra</label>
+            <div className="grid grid-cols-2 gap-2">
+              {(['now', 'later'] as const).map((mode) => {
+                const active = paymentTiming === mode;
+                return (
+                  <button
+                    key={mode}
+                    type="button"
+                    onClick={() => setPaymentTiming(mode)}
+                    className={cn(
+                      'rounded-lg border px-3 py-2.5 text-left transition-colors cursor-pointer',
+                      'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--brand-300)]',
+                      active
+                        ? 'border-[var(--brand-500)] bg-[var(--brand-50)]'
+                        : 'border-[var(--border)] hover:border-[var(--border-strong)] hover:bg-[var(--bg-sunken)]',
+                    )}
+                  >
+                    <p className={cn('text-[13.5px] font-semibold', active ? 'text-[var(--brand-700)]' : 'text-[var(--fg-strong)]')}>
+                      {mode === 'now' ? 'Cobrar ahora' : 'Cobrar al retirar'}
+                    </p>
+                    <p className="mt-0.5 text-[11.5px] text-[var(--fg-muted)]">
+                      {mode === 'now'
+                        ? 'Captura método ahora mismo'
+                        : 'Marcar pago pendiente'}
+                    </p>
+                  </button>
+                );
+              })}
+            </div>
+          </div>
+
+          {/* Payment method radio-style buttons — only when cobrando ahora. */}
+          {paymentTiming === 'later' ? (
+            <div className="rounded-lg border border-dashed border-[var(--border-strong)] bg-[var(--warning-50)] p-3 text-[12.5px] text-[var(--warning-800)]">
+              Pago pendiente al entregar. Podrás registrar el método desde el listado
+              cuando el cliente cobre.
+            </div>
+          ) : (
           <div>
             <label className="mb-2 block text-sm font-medium">Método de pago</label>
             <div className="grid grid-cols-4 gap-2">
@@ -593,6 +647,7 @@ export function NewServiceModal({ open, onClose, embedded = false }: NewServiceM
               </div>
             )}
           </div>
+          )}
 
           {/* Notes */}
           <div>

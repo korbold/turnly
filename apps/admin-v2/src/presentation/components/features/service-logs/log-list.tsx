@@ -22,6 +22,7 @@ import {
   useDeleteServiceLog,
 } from '@/presentation/hooks/use-service-logs';
 import { PAYMENT_METHOD_CONFIG } from '@/shared/constants/status';
+import { RegisterPaymentDialog } from '@/presentation/components/features/service-logs/register-payment-dialog';
 import type { ServiceLog, ServiceLogStatus } from '@/domain/entities/service-log';
 
 const STATUS_CONFIG: Record<ServiceLogStatus, { label: string; color: string; bg: string }> = {
@@ -46,6 +47,7 @@ export function LogList({ date, onEdit, onCreate }: LogListProps) {
   const { data, isLoading } = useServiceLogs({ date });
   const completeMutation = useCompleteServiceLog();
   const deleteMutation = useDeleteServiceLog();
+  const [payTarget, setPayTarget] = useState<ServiceLog | null>(null);
 
   const logs = data?.data ?? [];
 
@@ -111,7 +113,10 @@ export function LogList({ date, onEdit, onCreate }: LogListProps) {
 
       {logs.map((log, idx) => {
         const statusCfg = STATUS_CONFIG[log.status];
-        const pmCfg = PAYMENT_METHOD_CONFIG[log.paymentMethod];
+        // paymentMethod is nullable once "cobrar al retirar" landed —
+        // unpaid rows show the pendiente badge instead of a method.
+        const pmCfg = log.paymentMethod ? PAYMENT_METHOD_CONFIG[log.paymentMethod] : null;
+        const isUnpaid = log.paymentStatus === 'unpaid';
 
         return (
           <motion.div
@@ -146,7 +151,17 @@ export function LogList({ date, onEdit, onCreate }: LogListProps) {
             </span>
 
             <span className="text-xs">
-              {pmCfg?.icon} {pmCfg?.label ?? log.paymentMethod}
+              {isUnpaid ? (
+                <span className="inline-flex items-center gap-1 rounded-full bg-[var(--warning-50)] px-2 py-0.5 text-[11px] font-semibold text-[var(--warning-700)]">
+                  Pendiente
+                </span>
+              ) : pmCfg ? (
+                <>
+                  {pmCfg.icon} {pmCfg.label}
+                </>
+              ) : (
+                <span className="text-[var(--fg-muted)]">—</span>
+              )}
             </span>
 
             <div className="flex items-center justify-between gap-2 sm:justify-start">
@@ -176,6 +191,15 @@ export function LogList({ date, onEdit, onCreate }: LogListProps) {
                     </Button>
                   </DropdownMenuTrigger>
                   <DropdownMenuContent align="end" className="min-w-[10rem]">
+                    {isUnpaid && (
+                      <>
+                        <DropdownMenuItem onClick={() => setPayTarget(log)}>
+                          <CheckCircle2 className="mr-2 h-3.5 w-3.5" />
+                          Registrar pago
+                        </DropdownMenuItem>
+                        <DropdownMenuSeparator />
+                      </>
+                    )}
                     <DropdownMenuItem onClick={() => onEdit?.(log)}>
                       <Pencil className="mr-2 h-3.5 w-3.5" />
                       Editar
@@ -195,6 +219,16 @@ export function LogList({ date, onEdit, onCreate }: LogListProps) {
           </motion.div>
         );
       })}
+
+      {/* Pago dialog — triggered from the unpaid rows' overflow menu. */}
+      {payTarget && (
+        <RegisterPaymentDialog
+          serviceLogId={payTarget.id}
+          total={payTarget.priceCharged}
+          open
+          onClose={() => setPayTarget(null)}
+        />
+      )}
     </div>
   );
 }

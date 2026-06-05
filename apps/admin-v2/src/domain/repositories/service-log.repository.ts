@@ -6,10 +6,18 @@ export interface CreateServiceLogData {
   serviceId: string;
   attendedBy: string;
   priceCharged: number;
-  paymentMethod: PaymentMethod;
+  paymentMethod: PaymentMethod | null;
   /** Bank slug when paymentMethod === 'transfer'. Ignored otherwise. */
   paymentBank?: string | null;
+  /** Cobrar ahora vs cobrar al retirar. Defaults to `paid` server-side. */
+  paymentStatus?: 'paid' | 'unpaid';
   notes?: string;
+}
+
+export interface RecordPaymentData {
+  method: PaymentMethod;
+  bank?: string | null;
+  reference?: string | null;
 }
 
 export interface UpdateServiceLogData {
@@ -28,5 +36,6 @@ export interface ServiceLogRepository {
   update(id: string, data: UpdateServiceLogData): Promise<ServiceLog>;
   delete(id: string): Promise<void>;
   complete(id: string): Promise<ServiceLog>;
+  recordPayment(id: string, data: RecordPaymentData): Promise<ServiceLog>;
   getSummary(date: string): Promise<DailySummary>;
 }
