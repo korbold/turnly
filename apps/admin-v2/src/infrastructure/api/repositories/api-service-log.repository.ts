@@ -37,6 +37,7 @@ export class ApiServiceLogRepository implements ServiceLogRepository {
     if (data.items && data.items.length > 0) {
       body.items = data.items.map((it) => ({
         service_id: it.serviceId,
+        variant_id: it.variantId ?? null,
         label: it.label,
         qty: it.qty,
         unit_price: it.unitPrice,

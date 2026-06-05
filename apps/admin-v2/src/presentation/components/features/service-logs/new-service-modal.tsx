@@ -118,6 +118,53 @@ interface LineItem {
   service: Service;
   qty: number;
   unitPrice: number;
+  /** Picked variant — when present, the backend persists this as the
+      item's `ref_id` (item_type=service_variant) instead of the parent
+      service id. Required when the service has variants registered. */
+  variantId: string | null;
+  variantLabel: string | null;
+  /** Variants available for this service. Empty array = service has no
+      variants → use base price. `null` while we're still fetching. */
+  availableVariants: ServiceVariantSlim[] | null;
+}
+
+interface ServiceVariantSlim {
+  id: string;
+  label: string;
+  price: number;
+}
+
+async function fetchVariantsForService(serviceId: string): Promise<ServiceVariantSlim[]> {
+  // Direct fetch via the shared axios client — keeps the modal
+  // self-contained without spinning up a dedicated query key per
+  // service id added.
+  const { default: api } = await import('@/infrastructure/api/client');
+  const { data: res } = await api.get(`/services/${serviceId}/variants`);
+  const raw = (res.data ?? []) as Array<Record<string, unknown>>;
+  return raw
+    .filter((v) => v.is_active !== false)
+    .map((v) => ({
+      id: String(v.id),
+      label: String(v.label ?? ''),
+      price: Number(v.price ?? 0),
+    }));
+}
+
+async function fetchSuggestedVariant(
+  serviceId: string,
+  resourceId: string,
+): Promise<ServiceVariantSlim | null> {
+  const { default: api } = await import('@/infrastructure/api/client');
+  try {
+    const { data: res } = await api.get(`/public/services/${serviceId}/suggested-variant`, {
+      params: { resource_id: resourceId },
+    });
+    const d = res.data;
+    if (!d || !d.variant_id) return null;
+    return { id: String(d.variant_id), label: String(d.label ?? ''), price: Number(d.price ?? 0) };
+  } catch {
+    return null;
+  }
 }
 
 export function NewServiceModal({ open, onClose, embedded = false }: NewServiceModalProps) {
@@ -275,21 +322,72 @@ export function NewServiceModal({ open, onClose, embedded = false }: NewServiceM
     onClose();
   }
 
-  function handleAddLineItem(svc: Service) {
-    setLineItems((prev) => {
-      const existing = prev.find((it) => it.service.id === svc.id);
-      if (existing) {
-        // Same service picked again — bump the qty instead of pushing
-        // a duplicate row. Cashier registering "lavada x2" stays one
-        // line with qty = 2.
-        return prev.map((it) =>
-          it.service.id === svc.id ? { ...it, qty: it.qty + 1 } : it,
-        );
-      }
-      return [...prev, { service: svc, qty: 1, unitPrice: svc.price }];
-    });
+  async function handleAddLineItem(svc: Service) {
+    // Same service picked again → bump qty on the existing line, no
+    // variant resolution needed.
+    const existing = lineItems.find((it) => it.service.id === svc.id);
+    if (existing) {
+      setLineItems((prev) =>
+        prev.map((it) => (it.service.id === svc.id ? { ...it, qty: it.qty + 1 } : it)),
+      );
+      return;
+    }
+
+    // Optimistic insert with the service base price so the row appears
+    // immediately while we resolve the variant in the background.
+    setLineItems((prev) => [
+      ...prev,
+      {
+        service: svc,
+        qty: 1,
+        unitPrice: svc.price,
+        variantId: null,
+        variantLabel: null,
+        availableVariants: null,
+      },
+    ]);
     pushRecentServiceId(svc.id);
     setRecentServiceIds((prev) => [svc.id, ...prev.filter((id) => id !== svc.id)].slice(0, 5));
+
+    // Resolve in parallel: the suggester returns a variant matching the
+    // client's recurso (car wash → vehicle type), while the variants
+    // list is the fallback picker for cases where no auto-match exists.
+    const variants = await fetchVariantsForService(svc.id);
+
+    if (variants.length === 0) {
+      // No variants registered → keep the base price the line already
+      // landed with. Mark available as [] so the picker doesn't keep
+      // showing the "resolviendo…" hint.
+      setLineItems((prev) =>
+        prev.map((it) =>
+          it.service.id === svc.id ? { ...it, availableVariants: [] } : it,
+        ),
+      );
+      return;
+    }
+
+    let suggested: ServiceVariantSlim | null = null;
+    if (selectedClientResourceId) {
+      suggested = await fetchSuggestedVariant(svc.id, selectedClientResourceId);
+    }
+
+    setLineItems((prev) =>
+      prev.map((it) => {
+        if (it.service.id !== svc.id) return it;
+        if (suggested) {
+          return {
+            ...it,
+            variantId: suggested.id,
+            variantLabel: suggested.label,
+            unitPrice: suggested.price,
+            availableVariants: variants,
+          };
+        }
+        // No suggestion — leave the line awaiting cashier choice but
+        // surface the picker so the variants list is one click away.
+        return { ...it, availableVariants: variants };
+      }),
+    );
   }
 
   function handleRemoveLineItem(serviceId: string) {
@@ -302,10 +400,34 @@ export function NewServiceModal({ open, onClose, embedded = false }: NewServiceM
     );
   }
 
+  function handlePickVariant(serviceId: string, variant: ServiceVariantSlim) {
+    setLineItems((prev) =>
+      prev.map((it) =>
+        it.service.id === serviceId
+          ? {
+              ...it,
+              variantId: variant.id,
+              variantLabel: variant.label,
+              unitPrice: variant.price,
+            }
+          : it,
+      ),
+    );
+  }
+
   function handleSubmit() {
     if (!selectedClientResourceId || lineItems.length === 0 || !attendedBy) return;
     if (paymentTiming === 'now' && paymentMethod === 'transfer' && !paymentBank) {
       toast.error('Selecciona el banco emisor');
+      return;
+    }
+    // Any line with variants registered must have a variant picked.
+    // Lines whose service has no variants pass through with base price.
+    const missingVariant = lineItems.find(
+      (it) => Array.isArray(it.availableVariants) && it.availableVariants.length > 0 && !it.variantId,
+    );
+    if (missingVariant) {
+      toast.error(`Elige la variante para "${missingVariant.service.name}"`);
       return;
     }
 
@@ -317,7 +439,10 @@ export function NewServiceModal({ open, onClose, embedded = false }: NewServiceM
         attendedBy,
         items: lineItems.map((it) => ({
           serviceId: it.service.id,
-          label: it.service.name,
+          variantId: it.variantId,
+          label: it.variantLabel
+            ? `${it.service.name} · ${it.variantLabel}`
+            : it.service.name,
           qty: it.qty,
           unitPrice: it.unitPrice,
         })),
@@ -341,16 +466,23 @@ export function NewServiceModal({ open, onClose, embedded = false }: NewServiceM
     !!selectedClientResourceId &&
     !!attendedBy &&
     total > 0 &&
+    // Every line with variants registered must have one picked. Lines
+    // whose service has no variants pass through.
+    lineItems.every(
+      (it) =>
+        !Array.isArray(it.availableVariants) ||
+        it.availableVariants.length === 0 ||
+        !!it.variantId,
+    ) &&
     (paymentTiming === 'later' || paymentMethod !== 'transfer' || !!paymentBank);
 
   const body = (
     <>
-      <div className="space-y-5">
-          {/* Multi-service line items. Combobox stays the entry point —
-              picking a service appends a row. Each row carries its own
-              qty + unit_price override so the cashier can capture
-              "lavada x2 + pulido descuento" without leaving the form. */}
-          <div>
+      <div className="flex flex-col gap-5">
+          {/* Multi-service line items. Cliente lives above this block via
+              CSS order — the car-wash flow needs vehicle type captured
+              before service prices can resolve to the right variant. */}
+          <div className="order-2">
             <div className="mb-2 flex items-baseline justify-between gap-2">
               <label className="block text-sm font-medium">
                 Servicios{' '}
@@ -373,72 +505,129 @@ export function NewServiceModal({ open, onClose, embedded = false }: NewServiceM
               )}
             </div>
 
-            <ServiceCombobox
-              services={services}
-              selected={null}
-              recentIds={recentServiceIds}
-              isLoading={servicesLoading}
-              onSelect={handleAddLineItem}
-              placeholder={
-                lineItems.length === 0
-                  ? 'Selecciona un servicio…'
-                  : 'Agregar otro servicio…'
-              }
-            />
+            {selectedClientResourceId ? (
+              <ServiceCombobox
+                services={services}
+                selected={null}
+                recentIds={recentServiceIds}
+                isLoading={servicesLoading}
+                onSelect={handleAddLineItem}
+                placeholder={
+                  lineItems.length === 0
+                    ? 'Selecciona un servicio…'
+                    : 'Agregar otro servicio…'
+                }
+              />
+            ) : (
+              <div className="rounded-lg border border-dashed border-[var(--border-strong)] bg-[var(--bg-app)] px-3 py-3 text-[12.5px] text-[var(--fg-muted)]">
+                Selecciona o crea un cliente arriba para empezar a agregar
+                servicios. El precio se ajusta al recurso elegido (por ejemplo,
+                según el tipo de vehículo).
+              </div>
+            )}
 
             {lineItems.length > 0 && (
               <ul className="mt-2 space-y-1.5 rounded-lg border border-[var(--border)] bg-[var(--bg-surface)] p-2">
-                {lineItems.map((it) => (
-                  <li
-                    key={it.service.id}
-                    className="grid grid-cols-[1fr_auto_auto_auto] items-center gap-2 rounded-md px-2 py-1.5"
-                  >
-                    <span className="truncate text-[13px] font-medium text-[var(--fg-strong)]">
-                      {it.service.name}
-                    </span>
-                    <Input
-                      type="number"
-                      min={1}
-                      step="1"
-                      value={it.qty}
-                      onChange={(e) =>
-                        handleUpdateLineItem(it.service.id, {
-                          qty: Math.max(1, Number(e.target.value) || 1),
-                        })
-                      }
-                      className="h-8 w-16 text-center"
-                      aria-label="Cantidad"
-                    />
-                    <Input
-                      type="number"
-                      min={0}
-                      step="0.01"
-                      value={it.unitPrice}
-                      onChange={(e) =>
-                        handleUpdateLineItem(it.service.id, {
-                          unitPrice: Math.max(0, Number(e.target.value) || 0),
-                        })
-                      }
-                      className="h-8 w-24 text-right font-mono tabular-nums"
-                      style={{ fontFamily: 'var(--font-mono)' }}
-                      aria-label="Precio unitario"
-                    />
-                    <button
-                      type="button"
-                      onClick={() => handleRemoveLineItem(it.service.id)}
-                      className="rounded-md p-1.5 text-[var(--fg-muted)] transition-colors hover:bg-[var(--danger-50)] hover:text-[var(--danger-600)] cursor-pointer"
-                      aria-label={`Quitar ${it.service.name}`}
+                {lineItems.map((it) => {
+                  // Needs an explicit variant pick when the service has
+                  // variants registered but auto-suggest didn't land one.
+                  const variantsAvailable = Array.isArray(it.availableVariants) ? it.availableVariants : null;
+                  const needsVariantPick =
+                    variantsAvailable && variantsAvailable.length > 0 && !it.variantId;
+                  return (
+                    <li
+                      key={it.service.id}
+                      className={cn(
+                        'rounded-md px-2 py-1.5',
+                        needsVariantPick && 'bg-[var(--warning-50)]',
+                      )}
                     >
-                      <X className="h-3.5 w-3.5" />
-                    </button>
-                  </li>
-                ))}
+                      <div className="grid grid-cols-[1fr_auto_auto_auto] items-center gap-2">
+                        <div className="min-w-0">
+                          <p className="truncate text-[13px] font-medium text-[var(--fg-strong)]">
+                            {it.service.name}
+                          </p>
+                          {it.variantLabel && (
+                            <p className="mt-0.5 truncate text-[11.5px] text-[var(--fg-muted)]">
+                              {it.variantLabel}
+                            </p>
+                          )}
+                        </div>
+                        <Input
+                          type="number"
+                          min={1}
+                          step="1"
+                          value={it.qty}
+                          onChange={(e) =>
+                            handleUpdateLineItem(it.service.id, {
+                              qty: Math.max(1, Number(e.target.value) || 1),
+                            })
+                          }
+                          className="h-8 w-16 text-center"
+                          aria-label="Cantidad"
+                        />
+                        <Input
+                          type="number"
+                          min={0}
+                          step="0.01"
+                          value={it.unitPrice}
+                          onChange={(e) =>
+                            handleUpdateLineItem(it.service.id, {
+                              unitPrice: Math.max(0, Number(e.target.value) || 0),
+                            })
+                          }
+                          className="h-8 w-24 text-right font-mono tabular-nums"
+                          style={{ fontFamily: 'var(--font-mono)' }}
+                          aria-label="Precio unitario"
+                        />
+                        <button
+                          type="button"
+                          onClick={() => handleRemoveLineItem(it.service.id)}
+                          className="rounded-md p-1.5 text-[var(--fg-muted)] transition-colors hover:bg-[var(--danger-50)] hover:text-[var(--danger-600)] cursor-pointer"
+                          aria-label={`Quitar ${it.service.name}`}
+                        >
+                          <X className="h-3.5 w-3.5" />
+                        </button>
+                      </div>
+
+                      {/* Inline variant picker — fires when the
+                          suggestor couldn't pick one for the client's
+                          recurso, so the cashier still gets a one-tap
+                          path to the right price. */}
+                      {needsVariantPick && (
+                        <div className="mt-2 flex flex-wrap gap-1.5">
+                          <span className="text-[11px] font-semibold uppercase tracking-[0.04em] text-[var(--warning-700)]">
+                            Elige variante:
+                          </span>
+                          {variantsAvailable.map((v) => (
+                            <button
+                              key={v.id}
+                              type="button"
+                              onClick={() => handlePickVariant(it.service.id, v)}
+                              className="inline-flex items-center gap-1.5 rounded-md border border-[var(--border)] bg-[var(--bg-surface)] px-2 py-1 text-[11.5px] font-medium text-[var(--fg-strong)] transition-colors hover:border-[var(--brand-500)] hover:bg-[var(--brand-50)] cursor-pointer"
+                            >
+                              <span>{v.label}</span>
+                              <span
+                                className="font-mono text-[11px] tabular-nums text-[var(--fg-secondary)]"
+                                style={{ fontFamily: 'var(--font-mono)' }}
+                              >
+                                {new Intl.NumberFormat('es-EC', { style: 'currency', currency: 'USD' }).format(v.price)}
+                              </span>
+                            </button>
+                          ))}
+                        </div>
+                      )}
+                    </li>
+                  );
+                })}
               </ul>
             )}
           </div>
 
-          {/* Client resource search */}
-          <div>
+          {/* Client resource search — pinned to the top (order-1) so the
+              cashier captures vehicle type before resolving service
+              variants. */}
+          <div className="order-1">
             <label className="mb-2 block text-sm font-medium">Cliente / Recurso</label>
             {selectedClientResource && (
               <div className="mb-2 flex items-center gap-2 rounded-lg border border-[var(--brand-200)] bg-[var(--brand-50)] px-3 py-2">
@@ -668,7 +857,7 @@ export function NewServiceModal({ open, onClose, embedded = false }: NewServiceM
           </div>
 
           {/* Employee select */}
-          <div>
+          <div className="order-3">
             <label className="mb-1.5 block text-sm font-medium">Empleado</label>
             <Select value={attendedBy} onValueChange={setAttendedBy}>
               <SelectTrigger>
@@ -689,7 +878,7 @@ export function NewServiceModal({ open, onClose, embedded = false }: NewServiceM
               is the car-wash pickup case where the cashier registers
               the service first and collects when the customer recoge
               el vehículo. */}
-          <div>
+          <div className="order-4">
             <label className="mb-2 block text-sm font-medium">Cuándo se cobra</label>
             <div className="grid grid-cols-2 gap-2">
               {(['now', 'later'] as const).map((mode) => {
@@ -722,6 +911,7 @@ export function NewServiceModal({ open, onClose, embedded = false }: NewServiceM
           </div>
 
           {/* Payment method radio-style buttons — only when cobrando ahora. */}
+          <div className="order-5">
           {paymentTiming === 'later' ? (
             <div className="rounded-lg border border-dashed border-[var(--border-strong)] bg-[var(--warning-50)] p-3 text-[12.5px] text-[var(--warning-800)]">
               Pago pendiente al entregar. Podrás registrar el método desde el listado
@@ -790,9 +980,10 @@ export function NewServiceModal({ open, onClose, embedded = false }: NewServiceM
             )}
           </div>
           )}
+          </div>
 
           {/* Notes */}
-          <div>
+          <div className="order-6">
             <label className="mb-1.5 block text-sm font-medium">Notas (opcional)</label>
             <Textarea
               placeholder="Observaciones..."

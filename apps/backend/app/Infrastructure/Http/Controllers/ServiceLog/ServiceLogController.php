@@ -100,24 +100,37 @@ class ServiceLogController extends Controller
         // Persist multi-service items[]. Each line becomes a row in
         // service_log_items keyed off the parent log; the consumption
         // engine + future reports can iterate them without touching
-        // the parent shape.
+        // the parent shape. When the cashier picked a variant, ref_id
+        // points at the variant — mirrors reservation_items so reports
+        // can join service_variants directly.
         if ($hasItems) {
             $sort = 0;
             $tenantId = app('current_tenant_id');
             foreach ($items as $line) {
                 $unit = (float) $line['unit_price'];
                 $qty  = (float) $line['qty'];
+                $refId = !empty($line['variant_id']) ? $line['variant_id'] : $line['service_id'];
                 \App\Infrastructure\Persistence\Models\ServiceLogItemModel::create([
                     'tenant_id'      => $tenantId,
                     'service_log_id' => $serviceLog->id,
                     'item_type'      => 'service_variant',
-                    'ref_id'         => $line['service_id'],
+                    'ref_id'         => $refId,
                     'label'          => $line['label'],
                     'qty'            => $qty,
                     'unit_price'     => $unit,
                     'line_total'     => $unit * $qty,
                     'sort_order'     => $sort++,
                 ]);
+            }
+
+            // Bonus: stamp the first-line variant on the parent so
+            // legacy queries that look at `service_variant_id` (reports
+            // grouping by variant, BOM consumption) still see the
+            // representative variant rather than NULL.
+            $firstVariant = $items[0]['variant_id'] ?? null;
+            if ($firstVariant) {
+                ServiceLogModel::where('id', $serviceLog->id)
+                    ->update(['service_variant_id' => $firstVariant]);
             }
         }
 

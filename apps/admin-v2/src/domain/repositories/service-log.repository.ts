@@ -3,6 +3,10 @@ import type { PaginatedResult } from '../../shared/types/api';
 
 export interface CreateServiceLogItemInput {
   serviceId: string;
+  /** Variant picked for this line, when the service has variants. The
+      backend persists this as the item's `ref_id` so the row points at
+      the variant the cashier saw on screen. */
+  variantId?: string | null;
   label: string;
   qty: number;
   unitPrice: number;
