@@ -5,6 +5,7 @@ namespace App\Infrastructure\Persistence\Models;
 use App\Infrastructure\Persistence\Concerns\BelongsToTenant;
 use Illuminate\Database\Eloquent\Concerns\HasUuids;
 use Illuminate\Database\Eloquent\Model;
+use App\Infrastructure\Persistence\Models\UserModel;
 
 class BusinessResourceModel extends Model
 {

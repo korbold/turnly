@@ -40,12 +40,12 @@ class EloquentBusinessResourceRepository implements BusinessResourceRepositoryIn
             ]
         );
 
-        return $this->toEntity($model->fresh());
+        return $this->toEntity($model);
     }
 
     public function delete(string $id): void
     {
-        BusinessResourceModel::withoutGlobalScopes()->destroy($id);
+        BusinessResourceModel::withoutGlobalScopes()->where('id', $id)->delete();
     }
 
     private function toEntity(BusinessResourceModel $m): BusinessResource
