@@ -73,7 +73,7 @@ class BusinessResourceController extends Controller
             'sort_order'  => 'sometimes|integer|min:0',
         ]);
 
-        $existing = BusinessResourceModel::withoutGlobalScopes()->findOrFail($id);
+        $existing = BusinessResourceModel::findOrFail($id);
 
         $dto = new BusinessResourceDTO(
             name: $data['name'] ?? $existing->name,
@@ -93,6 +93,7 @@ class BusinessResourceController extends Controller
 
     public function destroy(string $id): JsonResponse
     {
+        BusinessResourceModel::findOrFail($id); // TenantScope ensures tenant ownership
         $this->delete->execute($id);
 
         return response()->json(null, 204);
