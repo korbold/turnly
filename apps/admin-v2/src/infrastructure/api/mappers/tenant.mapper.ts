@@ -40,6 +40,7 @@ export function mapTenantSettings(raw: Record<string, unknown>): TenantSettings 
     defaultTaxRate: Number(raw.default_tax_rate ?? 15),
     paymentTiming: (raw.payment_timing as TenantSettings['paymentTiming']) ?? 'flexible',
     autoConfirmReservations: Boolean(raw.auto_confirm_reservations ?? false),
+    allowClientResourceSelection: Boolean(raw.allow_client_resource_selection ?? false),
     socialLinks: {
       instagram: socialLinks.instagram ?? null,
       facebook: socialLinks.facebook ?? null,

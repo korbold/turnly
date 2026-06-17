@@ -43,6 +43,9 @@ export interface TenantSettings {
       `pending`, skipping the manual review step in the dashboard.
       Useful for high-volume tenants (car wash, lavandería). */
   autoConfirmReservations: boolean;
+  /** When true, clients can choose a preferred resource (e.g. barber, therapist)
+      during public booking. Auto-assigns when false. */
+  allowClientResourceSelection: boolean;
   socialLinks: {
     instagram: string | null;
     facebook: string | null;

@@ -36,6 +36,9 @@ export class ApiTenantRepository implements TenantRepository {
     if (settings.autoConfirmReservations !== undefined) {
       body.auto_confirm_reservations = settings.autoConfirmReservations;
     }
+    if (settings.allowClientResourceSelection !== undefined) {
+      body.allow_client_resource_selection = settings.allowClientResourceSelection;
+    }
 
     const { data: res } = await api.patch('/tenant/settings', body);
     return mapTenantSettings(res.data);

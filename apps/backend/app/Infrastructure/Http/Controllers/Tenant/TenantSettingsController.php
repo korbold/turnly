@@ -38,6 +38,7 @@ class TenantSettingsController extends Controller
             'cancellation_hours' => 'sometimes|integer|min:0|max:72',
             'default_tax_rate' => 'sometimes|numeric|min:0|max:100',
             'auto_confirm_reservations' => 'sometimes|boolean',
+            'allow_client_resource_selection' => 'sometimes|boolean',
             'payment_timing' => 'sometimes|string|in:prepay_required,at_pickup,at_completion,flexible,none',
         ]);
 
@@ -70,6 +71,9 @@ class TenantSettingsController extends Controller
         }
         if ($request->has('auto_confirm_reservations')) {
             $settings['auto_confirm_reservations'] = (bool) $request->auto_confirm_reservations;
+        }
+        if ($request->has('allow_client_resource_selection')) {
+            $settings['allow_client_resource_selection'] = (bool) $request->allow_client_resource_selection;
         }
         if ($request->has('payment_timing')) {
             $settings['payment_timing'] = (string) $request->payment_timing;

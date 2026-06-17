@@ -20,6 +20,7 @@ import {
   useUpdateBusinessResource,
   useDeleteBusinessResource,
 } from '@/presentation/hooks/use-business-resources';
+import { useTeam } from '@/presentation/hooks/use-team';
 import type { BusinessResource, ResourceType } from '@/domain/entities/business-resource';
 
 interface ResourceFormState {
@@ -27,6 +28,7 @@ interface ResourceFormState {
   description: string;
   type: ResourceType;
   isActive: boolean;
+  employeeId: string | null;
 }
 
 const EMPTY_FORM: ResourceFormState = {
@@ -34,10 +36,12 @@ const EMPTY_FORM: ResourceFormState = {
   description: '',
   type: 'physical',
   isActive: true,
+  employeeId: null,
 };
 
 export function ResourcesTab() {
   const { data: resources, isLoading } = useBusinessResources();
+  const { data: team } = useTeam();
   const createMutation = useCreateBusinessResource();
   const updateMutation = useUpdateBusinessResource();
   const deleteMutation = useDeleteBusinessResource();
@@ -59,6 +63,7 @@ export function ResourcesTab() {
       description: resource.description ?? '',
       type: resource.type,
       isActive: resource.isActive,
+      employeeId: resource.employeeId ?? null,
     });
     setDialogOpen(true);
   }
@@ -76,6 +81,7 @@ export function ResourcesTab() {
             description: form.description.trim() || null,
             type: form.type,
             isActive: form.isActive,
+            employeeId: form.employeeId,
           },
         });
         toast.success('Recurso actualizado');
@@ -85,6 +91,7 @@ export function ResourcesTab() {
           description: form.description.trim() || null,
           type: form.type,
           isActive: form.isActive,
+          employeeId: form.employeeId,
         });
         toast.success('Recurso creado');
       }
@@ -211,6 +218,21 @@ export function ResourcesTab() {
                 ))}
               </div>
             </div>
+            {form.type === 'person' && (
+              <div>
+                <label className="text-sm font-medium">Empleado vinculado (opcional)</label>
+                <select
+                  className="mt-1 w-full rounded-md border border-[var(--border-soft)] px-3 py-2 text-sm bg-white"
+                  value={form.employeeId ?? ''}
+                  onChange={(e) => setForm((f) => ({ ...f, employeeId: e.target.value || null }))}
+                >
+                  <option value="">Sin vincular</option>
+                  {team?.data.map((member) => (
+                    <option key={member.id} value={member.id}>{member.name}</option>
+                  ))}
+                </select>
+              </div>
+            )}
             <div className="flex justify-end gap-2 pt-2">
               <Button type="button" variant="ghost" onClick={() => setDialogOpen(false)}>
                 Cancelar

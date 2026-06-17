@@ -43,6 +43,7 @@ class TenantResource extends JsonResource
             'cancellation_hours'  => $this->settings['cancellation_hours'] ?? 1,
             'default_tax_rate'    => $this->settings['default_tax_rate'] ?? 15,
             'auto_confirm_reservations' => (bool) ($this->settings['auto_confirm_reservations'] ?? false),
+            'allow_client_resource_selection' => (bool) ($this->settings['allow_client_resource_selection'] ?? false),
             'payment_timing'      => $this->getPaymentTiming(),
         ];
     }
