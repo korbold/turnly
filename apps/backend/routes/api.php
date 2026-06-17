@@ -16,6 +16,7 @@ use App\Infrastructure\Http\Controllers\ClientResource\ClientResourceLookupContr
 use App\Infrastructure\Http\Controllers\Billing\UserBillingProfileController;
 use App\Infrastructure\Http\Controllers\ServiceLog\ServiceLogController;
 use App\Infrastructure\Http\Controllers\ClientResource\ClientResourceController;
+use App\Infrastructure\Http\Controllers\BusinessResource\BusinessResourceController;
 use App\Infrastructure\Http\Controllers\Service\ServiceController;
 use App\Infrastructure\Http\Controllers\Service\ServiceVariantController;
 use App\Infrastructure\Http\Controllers\Service\BomController;
@@ -178,6 +179,12 @@ Route::prefix('v1')->group(function () {
             Route::patch('client-resources/{id}', [ClientResourceController::class, 'update']);
             Route::delete('client-resources/{id}', [ClientResourceController::class, 'destroy']);
             Route::get('client-resources/{id}/history', [ClientResourceController::class, 'history']);
+
+            // Business Resources (stations, chairs, rooms)
+            Route::get('business-resources', [BusinessResourceController::class, 'index']);
+            Route::post('business-resources', [BusinessResourceController::class, 'store']);
+            Route::patch('business-resources/{id}', [BusinessResourceController::class, 'update']);
+            Route::delete('business-resources/{id}', [BusinessResourceController::class, 'destroy']);
 
             // Services
             Route::get('services', [ServiceController::class, 'index']);
