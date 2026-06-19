@@ -74,6 +74,7 @@ export interface Reservation {
   id: string;
   clientId: string;
   clientResourceId: string;
+  businessResourceId: string | null;
   serviceId: string;
   serviceVariantId: string | null;
   assignedTo: string | null;

@@ -15,6 +15,7 @@ export function mapReservation(raw: Record<string, unknown>): Reservation {
     id: raw.id as string,
     clientId: raw.client_id as string,
     clientResourceId: raw.client_resource_id as string,
+    businessResourceId: (raw.business_resource_id as string | null) ?? null,
     serviceId: raw.service_id as string,
     serviceVariantId: (raw.service_variant_id as string | null) ?? null,
     assignedTo: (raw.assigned_to as string) ?? null,
