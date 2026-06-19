@@ -2,6 +2,7 @@
 import 'package:equatable/equatable.dart';
 import 'service.dart';
 import 'business_hours.dart';
+import 'business_resource.dart';
 
 class Business extends Equatable {
   final String id;
@@ -19,6 +20,8 @@ class Business extends Equatable {
   final List<Service> services;
   final List<BusinessHours> hours;
   final List<Map<String, dynamic>> customFields;
+  final bool allowClientResourceSelection;
+  final List<BusinessResource> businessResources;
 
   const Business({
     required this.id,
@@ -36,6 +39,8 @@ class Business extends Equatable {
     this.services = const [],
     this.hours = const [],
     this.customFields = const [],
+    this.allowClientResourceSelection = false,
+    this.businessResources = const [],
   });
 
   @override
