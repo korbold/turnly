@@ -2,6 +2,7 @@
 
 namespace App\Infrastructure\Http\Controllers;
 
+use App\Application\Services\BusinessResourceAssigner;
 use App\Application\Services\PlanLimitsService;
 use App\Domain\Reservation\VariantSuggester;
 use App\Infrastructure\Notifications\Notifications\NewReservationForAdmin;
@@ -24,7 +25,10 @@ use Illuminate\Support\Str;
 
 class PublicController extends Controller
 {
-    public function __construct(private PlanLimitsService $planLimits) {}
+    public function __construct(
+        private PlanLimitsService $planLimits,
+        private BusinessResourceAssigner $resourceAssigner,
+    ) {}
 
     private function hasCustomPage(string $tenantId): bool
     {
@@ -376,6 +380,7 @@ class PublicController extends Controller
             'notes'                => 'nullable|string|max:500',
             'client_resource_id'   => 'nullable|uuid',
             'client_resource_data' => 'nullable|array',
+            'business_resource_id' => 'nullable|uuid',
             'service_id'           => 'nullable|uuid',
             'items'                => 'nullable|array|min:1|max:10',
             'items.*.service_variant_id' => 'required_with:items|uuid',
@@ -453,11 +458,20 @@ class PublicController extends Controller
         $initialStatus = $autoConfirm ? 'confirmed' : 'pending';
 
         $reservation = DB::transaction(function () use ($tenant, $client, $clientResourceId, $resolvedItems, $firstServiceId, $firstVariantId, $scheduledAt, $estimatedEnd, $request, $initialStatus) {
+            $businessResourceId = $this->resourceAssigner->assign(
+                tenantId: $tenant->id,
+                tenantSettings: $tenant->settings ?? [],
+                scheduledAt: $scheduledAt,
+                estimatedEnd: $estimatedEnd,
+                clientSelectedResourceId: $request->business_resource_id,
+            );
+
             $r = ReservationModel::withoutGlobalScopes()->create([
                 'id' => (string) Str::uuid(),
                 'tenant_id' => $tenant->id,
                 'client_id' => $client->id,
                 'client_resource_id' => $clientResourceId,
+                'business_resource_id' => $businessResourceId,
                 // Legacy single-service pointer kept for older listings;
                 // the canonical source of truth is reservation_items.
                 'service_id' => $firstServiceId,
