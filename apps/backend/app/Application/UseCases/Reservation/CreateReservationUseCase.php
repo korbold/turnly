@@ -3,6 +3,7 @@
 namespace App\Application\UseCases\Reservation;
 
 use App\Application\DTOs\Reservation\CreateReservationDTO;
+use App\Domain\BusinessResource\Exceptions\NoResourceAvailableException;
 use App\Domain\Reservation\Contracts\ReservationRepositoryInterface;
 use App\Domain\Reservation\Entities\Reservation;
 use App\Domain\Reservation\Enums\ReservationStatus;
@@ -10,6 +11,7 @@ use App\Domain\Reservation\Exceptions\OutsideBusinessHoursException;
 use App\Domain\Reservation\Exceptions\ReservationConflictException;
 use App\Infrastructure\Persistence\Models\AvailabilitySlotModel;
 use App\Infrastructure\Notifications\Notifications\NewReservationForAdmin;
+use App\Infrastructure\Persistence\Models\BusinessResourceModel;
 use App\Infrastructure\Persistence\Models\ReservationModel;
 use App\Infrastructure\Persistence\Models\TenantModel;
 use Illuminate\Support\Facades\Log;
@@ -60,12 +62,43 @@ class CreateReservationUseCase
             throw new ReservationConflictException();
         }
 
+        // Auto-assign or use client-selected business resource
+        $activeResources = BusinessResourceModel::where('tenant_id', $dto->tenantId)
+            ->where('is_active', true)
+            ->orderBy('sort_order')
+            ->orderBy('name')
+            ->get();
+
+        $businessResourceId = null;
+
+        if ($activeResources->isNotEmpty()) {
+            $allowClientSelection = (bool) ($tenant->settings['allow_client_resource_selection'] ?? false);
+
+            if (!$allowClientSelection) {
+                $assigned = $activeResources->first(function ($resource) use ($scheduledAt, $estimatedEnd) {
+                    return !ReservationModel::where('business_resource_id', $resource->id)
+                        ->where('scheduled_at', '<', $estimatedEnd->format('Y-m-d H:i:s'))
+                        ->where('estimated_end', '>', $scheduledAt->format('Y-m-d H:i:s'))
+                        ->whereNotIn('status', ['cancelled', 'no_show'])
+                        ->exists();
+                });
+
+                if (!$assigned) {
+                    throw new NoResourceAvailableException();
+                }
+
+                $businessResourceId = $assigned->id;
+            } else {
+                $businessResourceId = $dto->businessResourceId;
+            }
+        }
+
         $reservation = new Reservation(
             id: (string) Str::uuid(),
             tenantId: $dto->tenantId,
             clientId: $dto->clientId,
             clientResourceId: $dto->clientResourceId,
-            businessResourceId: $dto->businessResourceId,
+            businessResourceId: $businessResourceId,
             serviceId: $dto->serviceId,
             assignedTo: $dto->assignedTo,
             scheduledAt: $scheduledAt,
