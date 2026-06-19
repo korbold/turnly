@@ -7,15 +7,13 @@ import 'create_reservation_state.dart';
 class CreateReservationCubit extends Cubit<CreateReservationState> {
   final ReservationRepository _repository;
 
-  /// Cart of services the customer is booking in this session. The first
-  /// item is seeded by `business_detail_screen` when the user taps a
-  /// service card; "+ Agregar servicio" appends more entries.
   final List<BookingItem> _cart = [];
-
-  /// Bumped on every cart mutation so two `Initial` states aren't equal
-  /// under Equatable; otherwise `emit` would no-op and BlocBuilder
-  /// wouldn't rebuild the summary panel.
   int _cartVersion = 0;
+
+  // null = no selection made or sin preferencia; check _resourceStepCompleted
+  // to know whether the user has explicitly chosen.
+  String? _selectedBusinessResourceId;
+  bool _resourceStepCompleted = false;
 
   CreateReservationCubit(this._repository)
       : super(const CreateReservationInitial());
@@ -23,8 +21,7 @@ class CreateReservationCubit extends Cubit<CreateReservationState> {
   List<BookingItem> get cart => List.unmodifiable(_cart);
   int get totalDurationMin =>
       _cart.fold(0, (acc, it) => acc + it.durationMin * it.qty);
-  double get totalPrice =>
-      _cart.fold(0, (acc, it) => acc + it.lineTotal);
+  double get totalPrice => _cart.fold(0, (acc, it) => acc + it.lineTotal);
 
   void _emitCart() => emit(CreateReservationInitial(version: ++_cartVersion));
 
@@ -37,7 +34,8 @@ class CreateReservationCubit extends Cubit<CreateReservationState> {
 
   void addToCart(BookingItem item) {
     final existing = _cart.indexWhere(
-      (i) => i.serviceId == item.serviceId &&
+      (i) =>
+          i.serviceId == item.serviceId &&
           i.serviceVariantId == item.serviceVariantId,
     );
     if (existing >= 0) {
@@ -54,7 +52,18 @@ class CreateReservationCubit extends Cubit<CreateReservationState> {
     _emitCart();
   }
 
-  Future<void> loadSlots(String date, String serviceId) async {
+  // null = "sin preferencia" selected; sets _resourceStepCompleted = true.
+  void selectBusinessResource(String? id) {
+    _selectedBusinessResourceId = id;
+    _resourceStepCompleted = true;
+    // No state emit — UI drives navigation via PageController.
+  }
+
+  Future<void> loadSlots(
+    String date,
+    String serviceId, {
+    String? businessResourceId,
+  }) async {
     emit(const CreateReservationLoadingSlots());
     final variantIds = _cart
         .where((i) => i.serviceVariantId != null)
@@ -63,10 +72,9 @@ class CreateReservationCubit extends Cubit<CreateReservationState> {
     final result = await _repository.getAvailableSlots(
       date,
       serviceId,
-      // When the cart has variants we ask the backend to size each slot
-      // to the *total* duration of the booking.
       durationMin: totalDurationMin > 0 ? totalDurationMin : null,
       variantIds: variantIds.isNotEmpty ? variantIds : null,
+      businessResourceId: businessResourceId,
     );
     result.fold(
       (failure) => emit(CreateReservationError(failure.message)),
@@ -77,13 +85,13 @@ class CreateReservationCubit extends Cubit<CreateReservationState> {
   Future<void> createReservation({
     required String tenantSlug,
     String? clientResourceId,
+    String? businessResourceId,
     required String serviceId,
     required String scheduledAt,
     String? notes,
   }) async {
     emit(const CreateReservationSubmitting());
 
-    // Prefer the multi-service endpoint whenever the cart has entries.
     if (_cart.isNotEmpty) {
       final result = await _repository.createWithItems(
         tenantSlug: tenantSlug,
@@ -91,6 +99,7 @@ class CreateReservationCubit extends Cubit<CreateReservationState> {
         items: _cart,
         scheduledAt: scheduledAt,
         notes: notes,
+        businessResourceId: businessResourceId,
       );
       result.fold(
         (failure) => emit(CreateReservationError(failure.message)),
@@ -105,6 +114,7 @@ class CreateReservationCubit extends Cubit<CreateReservationState> {
       serviceId: serviceId,
       scheduledAt: scheduledAt,
       notes: notes,
+      businessResourceId: businessResourceId,
     );
     result.fold(
       (failure) => emit(CreateReservationError(failure.message)),
