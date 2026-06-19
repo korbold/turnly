@@ -10,11 +10,6 @@ class CreateReservationCubit extends Cubit<CreateReservationState> {
   final List<BookingItem> _cart = [];
   int _cartVersion = 0;
 
-  // null = no selection made or sin preferencia; check _resourceStepCompleted
-  // to know whether the user has explicitly chosen.
-  String? _selectedBusinessResourceId;
-  bool _resourceStepCompleted = false;
-
   CreateReservationCubit(this._repository)
       : super(const CreateReservationInitial());
 
@@ -50,13 +45,6 @@ class CreateReservationCubit extends Cubit<CreateReservationState> {
     if (index < 0 || index >= _cart.length) return;
     _cart.removeAt(index);
     _emitCart();
-  }
-
-  // null = "sin preferencia" selected; sets _resourceStepCompleted = true.
-  void selectBusinessResource(String? id) {
-    _selectedBusinessResourceId = id;
-    _resourceStepCompleted = true;
-    // No state emit — UI drives navigation via PageController.
   }
 
   Future<void> loadSlots(

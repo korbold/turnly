@@ -13,6 +13,7 @@ use App\Infrastructure\Persistence\Models\ReservationItemModel;
 use App\Infrastructure\Persistence\Models\ReservationModel;
 use App\Infrastructure\Persistence\Models\ServiceModel;
 use App\Infrastructure\Persistence\Models\ServiceVariantModel;
+use App\Infrastructure\Persistence\Models\BusinessResourceModel;
 use App\Infrastructure\Persistence\Models\TenantModel;
 use App\Infrastructure\Persistence\Models\TenantUserModel;
 use App\Infrastructure\Persistence\Models\UserModel;
@@ -224,7 +225,7 @@ class PublicController extends Controller
 
         $images = $tenant->images()->get(['id', 'url', 'caption']);
 
-        $businessResources = \App\Infrastructure\Persistence\Models\BusinessResourceModel::query()
+        $businessResources = BusinessResourceModel::query()
             ->forTenant($tenant->id)
             ->where('is_active', true)
             ->with('employee:id,name')

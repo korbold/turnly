@@ -49,7 +49,8 @@ test('getTenant exposes active business resources with employee', function () {
         ->assertJsonCount(1, 'data.business_resources')
         ->assertJsonPath('data.business_resources.0.name', 'Silla Juan')
         ->assertJsonPath('data.business_resources.0.type', 'person')
-        ->assertJsonPath('data.business_resources.0.employee.name', 'Juan Pérez');
+        ->assertJsonPath('data.business_resources.0.employee.name', 'Juan Pérez')
+        ->assertJsonPath('data.business_resources.0.employee.photo_url', null);
 });
 
 test('getTenant excludes inactive resources', function () {

@@ -98,3 +98,48 @@ test('available slots filtered by resource excludes occupied slots', function ()
     // The occupied slot must NOT appear when filtering by that resource
     expect($found)->toBeNull();
 });
+
+test('cancelled reservation for resource does not block the slot', function () {
+    $date      = now()->addDay()->format('Y-m-d');
+    $dayOfWeek = (int) now()->addDay()->format('N') - 1;
+
+    \App\Infrastructure\Persistence\Models\AvailabilitySlotModel::query()
+        ->forTenant($this->tenant->id)
+        ->update(['day_of_week' => $dayOfWeek]);
+
+    $cancelledStart = now()->addDay()->setHour(9)->setMinute(0)->setSecond(0);
+    $cancelledEnd   = (clone $cancelledStart)->addMinutes(30);
+
+    $otherClient = UserModel::factory()->create();
+    $clientResource = \App\Infrastructure\Persistence\Models\ClientResourceModel::factory()->create([
+        'tenant_id' => $this->tenant->id,
+        'client_id' => $otherClient->id,
+    ]);
+
+    ReservationModel::withoutGlobalScopes()->create([
+        'id'                   => (string) \Illuminate\Support\Str::uuid(),
+        'tenant_id'            => $this->tenant->id,
+        'client_id'            => $otherClient->id,
+        'service_id'           => $this->service->id,
+        'created_by'           => $otherClient->id,
+        'business_resource_id' => $this->resource->id,
+        'client_resource_id'   => $clientResource->id,
+        'scheduled_at'         => $cancelledStart,
+        'estimated_end'        => $cancelledEnd,
+        'status'               => 'cancelled',
+    ]);
+
+    $response = $this->actingAs($this->user, 'sanctum')
+        ->withHeader('X-Tenant', $this->tenant->slug)
+        ->getJson("/api/v1/reservations/available-slots?date={$date}&service_id={$this->service->id}&business_resource_id={$this->resource->id}");
+
+    $response->assertOk();
+
+    $slots = $response->json('data');
+    $cancelledSlotStart = $cancelledStart->format('Y-m-d H:i:s');
+    $found = collect($slots)->first(fn ($s) => $s['start'] === $cancelledSlotStart);
+
+    // A cancelled reservation must not block the slot
+    expect($found)->not->toBeNull();
+    expect($found['available'])->toBeGreaterThan(0);
+});
