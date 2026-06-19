@@ -183,3 +183,45 @@ it('uses client-provided business_resource_id when allow_client_resource_selecti
     $response->assertStatus(201);
     $response->assertJsonPath('data.business_resource_id', $r2->id);
 });
+
+it('rejects client-selected resource when it is already occupied', function () {
+    $settings = $this->tenant->settings;
+    $settings['allow_client_resource_selection'] = true;
+    $this->tenant->update(['settings' => $settings]);
+    app()->instance('current_tenant', $this->tenant->fresh());
+
+    $resource = BusinessResourceModel::create([
+        'id' => (string) \Illuminate\Support\Str::uuid(), 'tenant_id' => $this->tenant->id,
+        'name' => 'Estación 1', 'type' => 'physical', 'is_active' => true, 'sort_order' => 0,
+    ]);
+
+    $slotDuration  = $this->tenant->settings['slot_duration_minutes'] ?? 30;
+    $scheduledAt   = now()->addDay()->setHour(10)->setMinute(0)->setSecond(0);
+    $estimatedEnd  = (clone $scheduledAt)->addMinutes($slotDuration);
+
+    // Pre-book the resource
+    ReservationModel::factory()->create([
+        'tenant_id'            => $this->tenant->id,
+        'client_id'            => $this->user->id,
+        'client_resource_id'   => $this->clientResource->id,
+        'service_id'           => $this->service->id,
+        'created_by'           => $this->user->id,
+        'business_resource_id' => $resource->id,
+        'scheduled_at'         => $scheduledAt,
+        'estimated_end'        => $estimatedEnd,
+        'status'               => 'pending',
+    ]);
+
+    // Client tries to book the same resource in the same slot
+    $response = $this->actingAs($this->user)
+        ->withHeader('X-Tenant', $this->tenant->slug)
+        ->postJson('/api/v1/reservations', [
+            'client_resource_id'   => $this->clientResource->id,
+            'service_id'           => $this->service->id,
+            'scheduled_at'         => $scheduledAt->toIso8601String(),
+            'business_resource_id' => $resource->id,
+        ]);
+
+    $response->assertStatus(409);
+    $response->assertJsonPath('error.code', 'NO_RESOURCE_AVAILABLE');
+});

@@ -89,6 +89,18 @@ class CreateReservationUseCase
 
                 $businessResourceId = $assigned->id;
             } else {
+                if ($dto->businessResourceId !== null) {
+                    $alreadyBooked = \App\Infrastructure\Persistence\Models\ReservationModel::where('business_resource_id', $dto->businessResourceId)
+                        ->where('scheduled_at', '<', $estimatedEnd->format('Y-m-d H:i:s'))
+                        ->where('estimated_end', '>', $scheduledAt->format('Y-m-d H:i:s'))
+                        ->whereNotIn('status', ['cancelled', 'no_show'])
+                        ->exists();
+
+                    if ($alreadyBooked) {
+                        throw new NoResourceAvailableException();
+                    }
+                }
+
                 $businessResourceId = $dto->businessResourceId;
             }
         }
