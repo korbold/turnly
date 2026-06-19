@@ -67,6 +67,7 @@ class ReservationRepositoryImpl implements ReservationRepository {
     required String serviceId,
     required String scheduledAt,
     String? notes,
+    String? businessResourceId,
   }) async {
     try {
       final response = await _dio.post(
@@ -77,6 +78,7 @@ class ReservationRepositoryImpl implements ReservationRepository {
           'service_id': serviceId,
           'scheduled_at': scheduledAt,
           if (notes != null) 'notes': notes,
+          if (businessResourceId != null) 'business_resource_id': businessResourceId,
         },
       );
       return Right(
@@ -97,6 +99,7 @@ class ReservationRepositoryImpl implements ReservationRepository {
     required List<BookingItem> items,
     required String scheduledAt,
     String? notes,
+    String? businessResourceId,
   }) async {
     try {
       // Map cart items to the backend's items[] payload. When the
@@ -116,6 +119,7 @@ class ReservationRepositoryImpl implements ReservationRepository {
           'client_resource_id': clientResourceId,
         'scheduled_at': scheduledAt,
         if (notes != null) 'notes': notes,
+        if (businessResourceId != null) 'business_resource_id': businessResourceId,
       };
 
       if (payloadItems.isNotEmpty) {
@@ -168,6 +172,7 @@ class ReservationRepositoryImpl implements ReservationRepository {
     String serviceId, {
     int? durationMin,
     List<String>? variantIds,
+    String? businessResourceId,
   }) async {
     try {
       final queryParams = <String, dynamic>{
@@ -177,6 +182,9 @@ class ReservationRepositoryImpl implements ReservationRepository {
       if (durationMin != null) queryParams['duration_min'] = durationMin;
       if (variantIds != null && variantIds.isNotEmpty) {
         queryParams['variant_ids'] = variantIds;
+      }
+      if (businessResourceId != null) {
+        queryParams['business_resource_id'] = businessResourceId;
       }
 
       final response = await _dio.get(

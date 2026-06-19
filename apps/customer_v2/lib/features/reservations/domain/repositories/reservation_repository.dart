@@ -19,6 +19,7 @@ abstract class ReservationRepository {
     required String serviceId,
     required String scheduledAt,
     String? notes,
+    String? businessResourceId,
   });
 
   /// Multi-service booking. Backend expands each item to a
@@ -29,6 +30,7 @@ abstract class ReservationRepository {
     required List<BookingItem> items,
     required String scheduledAt,
     String? notes,
+    String? businessResourceId,
   });
 
   Future<Either<Failure, List<AvailableSlot>>> getAvailableSlots(
@@ -36,6 +38,7 @@ abstract class ReservationRepository {
     String serviceId, {
     int? durationMin,
     List<String>? variantIds,
+    String? businessResourceId,
   });
 
   Future<Either<Failure, Unit>> cancel(String id, {String? reason});
