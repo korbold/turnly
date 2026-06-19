@@ -224,26 +224,47 @@ class PublicController extends Controller
 
         $images = $tenant->images()->get(['id', 'url', 'caption']);
 
+        $businessResources = \App\Infrastructure\Persistence\Models\BusinessResourceModel::query()
+            ->forTenant($tenant->id)
+            ->where('is_active', true)
+            ->with('employee:id,name')
+            ->orderBy('sort_order')
+            ->orderBy('name')
+            ->get(['id', 'name', 'type', 'employee_id'])
+            ->map(fn ($r) => [
+                'id'       => $r->id,
+                'name'     => $r->name,
+                'type'     => $r->type,
+                'employee' => $r->employee ? [
+                    'name'      => $r->employee->name,
+                    'photo_url' => null,
+                ] : null,
+            ]);
+
         return response()->json([
             'data' => [
                 'tenant' => [
-                    'name' => $tenant->name,
-                    'slug' => $tenant->slug,
-                    'description' => $tenant->description,
-                    'business_type' => $tenant->business_type,
-                    'logo_url' => $tenant->logo_url,
-                    'cover_url' => $tenant->cover_url,
-                    'brand_theme' => $tenant->brand_theme,
-                    'social_links' => $tenant->social_links,
-                    'address' => $tenant->address,
-                    'phone' => $tenant->phone,
-                    'custom_fields' => $tenant->custom_fields,
-                    'slot_duration' => $tenant->settings['slot_duration_minutes'] ?? 30,
+                    'name'             => $tenant->name,
+                    'slug'             => $tenant->slug,
+                    'description'      => $tenant->description,
+                    'business_type'    => $tenant->business_type,
+                    'logo_url'         => $tenant->logo_url,
+                    'cover_url'        => $tenant->cover_url,
+                    'brand_theme'      => $tenant->brand_theme,
+                    'social_links'     => $tenant->social_links,
+                    'address'          => $tenant->address,
+                    'phone'            => $tenant->phone,
+                    'custom_fields'    => $tenant->custom_fields,
+                    'slot_duration'    => $tenant->settings['slot_duration_minutes'] ?? 30,
                     'cancellation_hours' => $tenant->settings['cancellation_hours'] ?? 1,
+                    'settings'         => [
+                        'allow_client_resource_selection' => (bool) ($tenant->settings['allow_client_resource_selection'] ?? false),
+                    ],
                 ],
-                'services' => $services,
-                'availability' => $availability,
-                'images' => $images,
+                'services'           => $services,
+                'availability'       => $availability,
+                'images'             => $images,
+                'business_resources' => $businessResources,
             ],
         ]);
     }
