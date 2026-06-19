@@ -1769,6 +1769,14 @@ class _Step3Confirm extends StatelessWidget {
             ),
             child: Column(
               children: [
+                if (selectedBusinessResourceName != null) ...[
+                  _SummaryRow(
+                    icon: Icons.person_outline_rounded,
+                    label: 'Atendido por',
+                    value: selectedBusinessResourceName!,
+                  ),
+                  const Divider(height: 24),
+                ],
                 if (selectedResource != null) ...[
                   _SummaryRow(
                     icon: Icons.badge_outlined,
