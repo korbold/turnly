@@ -36,6 +36,13 @@ class GetAvailableSlotsUseCase
         // Get existing reservations for the date
         $existingReservations = $this->reservationRepository->findByTenantAndDate($dto->tenantId, $dto->date);
 
+        if ($dto->businessResourceId !== null) {
+            $existingReservations = array_values(array_filter(
+                $existingReservations,
+                fn ($r) => $r->businessResourceId === $dto->businessResourceId,
+            ));
+        }
+
         $slots = [];
         $now = new \DateTimeImmutable();
         $isToday = $date->format('Y-m-d') === $now->format('Y-m-d');
@@ -43,7 +50,7 @@ class GetAvailableSlotsUseCase
         foreach ($availabilitySlots as $availability) {
             $startTime = new \DateTimeImmutable($dto->date . ' ' . $availability->start_time);
             $endTime = new \DateTimeImmutable($dto->date . ' ' . $availability->end_time);
-            $maxConcurrent = $availability->max_concurrent;
+            $maxConcurrent = $dto->businessResourceId !== null ? 1 : $availability->max_concurrent;
 
             // Generate time intervals
             $current = $startTime;

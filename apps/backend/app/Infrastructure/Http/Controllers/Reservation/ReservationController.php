@@ -457,14 +457,16 @@ class ReservationController extends Controller
     public function availableSlots(Request $request): JsonResponse
     {
         $request->validate([
-            'date' => 'required|date',
-            'service_id' => 'required|uuid',
+            'date'                 => 'required|date',
+            'service_id'           => 'required|uuid',
+            'business_resource_id' => 'nullable|uuid|exists:business_resources,id,tenant_id,' . app('current_tenant_id'),
         ]);
 
         $dto = new AvailableSlotsQueryDTO(
-            tenantId: app('current_tenant_id'),
-            date: $request->date,
-            serviceId: $request->service_id,
+            tenantId:           app('current_tenant_id'),
+            date:               $request->date,
+            serviceId:          $request->service_id,
+            businessResourceId: $request->business_resource_id,
         );
 
         $slots = $this->getAvailableSlots->execute($dto);
@@ -472,7 +474,7 @@ class ReservationController extends Controller
         return response()->json([
             'data' => $slots,
             'meta' => [
-                'tenant' => app('current_tenant')->slug ?? null,
+                'tenant'    => app('current_tenant')->slug ?? null,
                 'timestamp' => now()->toIso8601String(),
             ],
         ]);

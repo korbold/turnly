@@ -8,6 +8,7 @@ final readonly class AvailableSlotsQueryDTO
         public string $tenantId,
         public string $date,
         public string $serviceId,
+        public ?string $businessResourceId = null,
     ) {}
 
     public static function fromArray(array $data): static
@@ -16,6 +17,7 @@ final readonly class AvailableSlotsQueryDTO
             tenantId: $data['tenant_id'],
             date: $data['date'],
             serviceId: $data['service_id'],
+            businessResourceId: $data['business_resource_id'] ?? null,
         );
     }
 }
