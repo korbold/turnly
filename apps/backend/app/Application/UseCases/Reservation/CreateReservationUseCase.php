@@ -65,6 +65,7 @@ class CreateReservationUseCase
             tenantId: $dto->tenantId,
             clientId: $dto->clientId,
             clientResourceId: $dto->clientResourceId,
+            businessResourceId: $dto->businessResourceId,
             serviceId: $dto->serviceId,
             assignedTo: $dto->assignedTo,
             scheduledAt: $scheduledAt,

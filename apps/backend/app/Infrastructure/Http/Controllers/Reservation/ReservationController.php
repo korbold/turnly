@@ -225,6 +225,7 @@ class ReservationController extends Controller
             assignedTo: $request->assigned_to,
             notes: $request->notes,
             serviceVariantId: $variantId,
+            businessResourceId: $request->business_resource_id,
         );
 
         $reservation = $this->createReservation->execute($dto);

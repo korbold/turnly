@@ -13,6 +13,7 @@ class ReservationResource extends JsonResource
             'id'            => $this->id,
             'client_id'     => $this->client_id,
             'client_resource_id' => $this->client_resource_id,
+            'business_resource_id' => $this->business_resource_id,
             'service_id'    => $this->service_id,
             'assigned_to'   => $this->assigned_to,
             'scheduled_at'  => $this->scheduled_at?->toIso8601String(),

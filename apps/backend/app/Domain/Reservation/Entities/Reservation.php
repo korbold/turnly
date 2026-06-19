@@ -11,6 +11,7 @@ final readonly class Reservation
         public string $tenantId,
         public string $clientId,
         public ?string $clientResourceId,
+        public ?string $businessResourceId,
         public string $serviceId,
         public ?string $assignedTo,
         public \DateTimeImmutable $scheduledAt,
