@@ -249,6 +249,8 @@ class _ServicesTab extends StatelessWidget {
               'services': business.services,
               'customFields': business.customFields,
               'businessType': business.businessType,
+              'allowClientResourceSelection': business.allowClientResourceSelection,
+              'businessResources': business.businessResources,
             });
           },
         );

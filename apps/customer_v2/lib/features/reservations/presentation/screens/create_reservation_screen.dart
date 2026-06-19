@@ -10,7 +10,9 @@ import '../../../../app/theme/tenant_theme.dart';
 import '../../../../core/di/injection.dart';
 import '../../../../shared/widgets/app_button.dart';
 import '../../../explore/domain/entities/service.dart' as explore;
+import '../../../explore/domain/entities/business_resource.dart' as explore_resource;
 import '../../../../shared/widgets/app_text_field.dart';
+import '../../../../shared/widgets/avatar_circle.dart';
 import '../../../../shared/widgets/empty_state.dart';
 import '../../../../shared/widgets/shimmer_loader.dart';
 import '../../../resources/domain/entities/client_resource.dart';
@@ -33,6 +35,8 @@ class CreateReservationScreen extends StatelessWidget {
   final List<explore.Service> services;
   final List<Map<String, dynamic>> customFields;
   final String? businessType;
+  final bool allowClientResourceSelection;
+  final List<explore_resource.BusinessResource> businessResources;
 
   const CreateReservationScreen({
     super.key,
@@ -42,6 +46,8 @@ class CreateReservationScreen extends StatelessWidget {
     this.services = const [],
     this.customFields = const [],
     this.businessType,
+    this.allowClientResourceSelection = false,
+    this.businessResources = const [],
   });
 
   @override
@@ -74,6 +80,8 @@ class CreateReservationScreen extends StatelessWidget {
               services: services,
               customFields: customFields,
               businessType: businessType,
+              allowClientResourceSelection: allowClientResourceSelection,
+              businessResources: businessResources,
             ),
           );
         },
@@ -89,6 +97,8 @@ class _CreateReservationView extends StatefulWidget {
   final List<explore.Service> services;
   final List<Map<String, dynamic>> customFields;
   final String? businessType;
+  final bool allowClientResourceSelection;
+  final List<explore_resource.BusinessResource> businessResources;
 
   const _CreateReservationView({
     required this.tenantSlug,
@@ -97,6 +107,8 @@ class _CreateReservationView extends StatefulWidget {
     this.services = const [],
     this.customFields = const [],
     this.businessType,
+    this.allowClientResourceSelection = false,
+    this.businessResources = const [],
   });
 
   @override
@@ -107,12 +119,46 @@ class _CreateReservationViewState extends State<_CreateReservationView> {
   final _pageController = PageController();
   int _currentStep = 0;
 
+  // Business resource step state
+  String? _selectedBusinessResourceId;
+  bool _businessResourceStepCompleted = false;
+
+  // Whether to show the business resource selection step
+  bool get _showBusinessResourceStep =>
+      widget.allowClientResourceSelection &&
+      widget.businessResources.isNotEmpty;
+
   // Whether to skip the resource selection step (no usable custom fields)
   bool get _skipResourceStep =>
       widget.customFields
           .where((f) => (f['label'] as String?)?.trim().isNotEmpty == true)
           .isEmpty;
-  int get _totalSteps => _skipResourceStep ? 2 : 3;
+
+  int get _totalSteps {
+    int count = 2; // Date + Confirm always present
+    if (!_skipResourceStep) count++;
+    if (_showBusinessResourceStep) count++;
+    return count;
+  }
+
+  List<String> get _stepLabels {
+    final labels = <String>[];
+    if (_showBusinessResourceStep) labels.add('Barbero');
+    if (!_skipResourceStep) labels.add('Registro');
+    labels.add('Fecha');
+    labels.add('Confirmar');
+    return labels;
+  }
+
+  String? get _selectedBusinessResourceName {
+    if (!_showBusinessResourceStep) return null;
+    if (!_businessResourceStepCompleted) return null;
+    if (_selectedBusinessResourceId == null) return 'Sin preferencia';
+    return widget.businessResources
+        .where((r) => r.id == _selectedBusinessResourceId)
+        .map((r) => r.name)
+        .firstOrNull;
+  }
 
   // Step 1: Resource
   ClientResource? _selectedResource;
@@ -210,9 +256,12 @@ class _CreateReservationViewState extends State<_CreateReservationView> {
     if (_selectedDate == null || _selectedService == null) return;
     final dateStr = DateFormat('yyyy-MM-dd').format(_selectedDate!);
     context.read<CreateReservationCubit>().loadSlots(
-          dateStr,
-          _selectedService!.id,
-        );
+      dateStr,
+      _selectedService!.id,
+      businessResourceId: _showBusinessResourceStep
+          ? _selectedBusinessResourceId
+          : null,
+    );
   }
 
   Future<void> _resolveVariantForResource(ClientResource resource) async {
@@ -296,14 +345,17 @@ class _CreateReservationViewState extends State<_CreateReservationView> {
     }
 
     context.read<CreateReservationCubit>().createReservation(
-          tenantSlug: widget.tenantSlug,
-          clientResourceId: _selectedResource?.id,
-          serviceId: _selectedService!.id,
-          scheduledAt: DateFormat('yyyy-MM-dd HH:mm:ss').format(_selectedSlot!.start),
-          notes: _notesController.text.trim().isNotEmpty
-              ? _notesController.text.trim()
-              : null,
-        );
+      tenantSlug: widget.tenantSlug,
+      clientResourceId: _selectedResource?.id,
+      businessResourceId: _showBusinessResourceStep
+          ? _selectedBusinessResourceId
+          : null,
+      serviceId: _selectedService!.id,
+      scheduledAt: DateFormat('yyyy-MM-dd HH:mm:ss').format(_selectedSlot!.start),
+      notes: _notesController.text.trim().isNotEmpty
+          ? _notesController.text.trim()
+          : null,
+    );
   }
 
   @override
@@ -362,9 +414,7 @@ class _CreateReservationViewState extends State<_CreateReservationView> {
             StepIndicator(
               currentStep: _currentStep,
               totalSteps: _totalSteps,
-              labels: _skipResourceStep
-                  ? const ['Fecha', 'Confirmar']
-                  : const ['Registro', 'Fecha', 'Confirmar'],
+              labels: _stepLabels,
               onStepTap: (i) {
                 if (i <= _currentStep) _goToStep(i);
               },
@@ -375,6 +425,22 @@ class _CreateReservationViewState extends State<_CreateReservationView> {
                 controller: _pageController,
                 physics: const NeverScrollableScrollPhysics(),
                 children: [
+                  if (_showBusinessResourceStep)
+                    _StepBusinessResource(
+                      businessResources: widget.businessResources,
+                      selectedId: _selectedBusinessResourceId,
+                      selectionMade: _businessResourceStepCompleted,
+                      onSelected: (id) {
+                        setState(() {
+                          _selectedBusinessResourceId = id;
+                          _businessResourceStepCompleted = true;
+                        });
+                        context.read<CreateReservationCubit>().selectBusinessResource(id);
+                      },
+                      onNext: () {
+                        if (_businessResourceStepCompleted) _nextStep();
+                      },
+                    ),
                   if (!_skipResourceStep)
                     _Step1ResourceSelection(
                       selectedResource: _selectedResource,
@@ -491,6 +557,7 @@ class _CreateReservationViewState extends State<_CreateReservationView> {
                   ),
                   _Step3Confirm(
                     selectedResource: _selectedResource,
+                    selectedBusinessResourceName: _selectedBusinessResourceName,
                     selectedService: _selectedService,
                     selectedDate: _selectedDate,
                     selectedSlot: _selectedSlot,
@@ -779,6 +846,178 @@ class _ResourceCard extends StatelessWidget {
                 size: 18,
               ),
             ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+// -- Step Business Resource: Barber / Station / Room Selection --
+class _StepBusinessResource extends StatelessWidget {
+  final List<explore_resource.BusinessResource> businessResources;
+  final String? selectedId; // null = sin preferencia
+  final bool selectionMade;
+  final ValueChanged<String?> onSelected; // null = sin preferencia
+  final VoidCallback onNext;
+
+  const _StepBusinessResource({
+    required this.businessResources,
+    required this.selectedId,
+    required this.selectionMade,
+    required this.onSelected,
+    required this.onNext,
+  });
+
+  bool get _isSinPreferenciaSelected => selectionMade && selectedId == null;
+
+  @override
+  Widget build(BuildContext context) {
+    return SingleChildScrollView(
+      padding: const EdgeInsets.all(20),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          const Text(
+            '¿Con quién quieres reservar?',
+            style: TextStyle(
+              fontSize: 20,
+              fontWeight: FontWeight.w700,
+              color: AppColors.textPrimary,
+            ),
+          ).animate().fadeIn(duration: 400.ms),
+          const SizedBox(height: 4),
+          const Text(
+            'Elige o deja que asignemos automáticamente',
+            style: TextStyle(fontSize: 14, color: AppColors.textSecondary),
+          ).animate().fadeIn(duration: 400.ms, delay: 50.ms),
+          const SizedBox(height: 20),
+
+          GridView.count(
+            crossAxisCount: 2,
+            shrinkWrap: true,
+            physics: const NeverScrollableScrollPhysics(),
+            crossAxisSpacing: 12,
+            mainAxisSpacing: 12,
+            childAspectRatio: 0.85,
+            children: [
+              // "Sin preferencia" card — always first
+              _BusinessResourceCard(
+                id: null,
+                name: 'Sin preferencia',
+                employeeName: null,
+                employeePhotoUrl: null,
+                isSelected: _isSinPreferenciaSelected,
+                onTap: () => onSelected(null),
+              ),
+              // Resource cards
+              ...businessResources.map(
+                (r) => _BusinessResourceCard(
+                  id: r.id,
+                  name: r.name,
+                  employeeName: r.employeeName,
+                  employeePhotoUrl: r.employeePhotoUrl,
+                  isSelected: selectionMade && selectedId == r.id,
+                  onTap: () => onSelected(r.id),
+                ),
+              ),
+            ],
+          ).animate().fadeIn(duration: 400.ms, delay: 100.ms),
+
+          const SizedBox(height: 32),
+          AppButton(
+            label: 'Siguiente',
+            onPressed: selectionMade ? onNext : null,
+            icon: Icons.arrow_forward_rounded,
+          ).animate().fadeIn(duration: 400.ms, delay: 200.ms),
+        ],
+      ),
+    );
+  }
+}
+
+class _BusinessResourceCard extends StatelessWidget {
+  final String? id;
+  final String name;
+  final String? employeeName;
+  final String? employeePhotoUrl;
+  final bool isSelected;
+  final VoidCallback onTap;
+
+  const _BusinessResourceCard({
+    required this.id,
+    required this.name,
+    required this.employeeName,
+    required this.employeePhotoUrl,
+    required this.isSelected,
+    required this.onTap,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final primary = Theme.of(context).colorScheme.primary;
+    final displayName = employeeName ?? name;
+
+    return GestureDetector(
+      onTap: onTap,
+      child: AnimatedContainer(
+        duration: const Duration(milliseconds: 200),
+        padding: const EdgeInsets.all(12),
+        decoration: BoxDecoration(
+          color: isSelected ? primary.withValues(alpha: 0.06) : AppColors.surface,
+          borderRadius: BorderRadius.circular(16),
+          border: Border.all(
+            color: isSelected ? primary : AppColors.border,
+            width: isSelected ? 2 : 1,
+          ),
+          boxShadow: [
+            BoxShadow(
+              color: Colors.black.withValues(alpha: 0.04),
+              blurRadius: 10,
+              offset: const Offset(0, 2),
+            ),
+          ],
+        ),
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            id == null
+                ? Container(
+                    width: 56,
+                    height: 56,
+                    decoration: BoxDecoration(
+                      shape: BoxShape.circle,
+                      color: isSelected
+                          ? primary.withValues(alpha: 0.1)
+                          : AppColors.divider,
+                    ),
+                    child: Icon(
+                      Icons.person_search_rounded,
+                      color: isSelected ? primary : AppColors.textTertiary,
+                      size: 28,
+                    ),
+                  )
+                : AvatarCircle(
+                    name: displayName,
+                    size: 56,
+                    imageUrl: employeePhotoUrl,
+                  ),
+            const SizedBox(height: 8),
+            Text(
+              displayName,
+              textAlign: TextAlign.center,
+              maxLines: 2,
+              overflow: TextOverflow.ellipsis,
+              style: TextStyle(
+                fontSize: 13,
+                fontWeight: FontWeight.w600,
+                color: isSelected ? primary : AppColors.textPrimary,
+              ),
+            ),
+            if (isSelected) ...[
+              const SizedBox(height: 4),
+              Icon(Icons.check_circle_rounded, color: primary, size: 16),
+            ],
           ],
         ),
       ),
@@ -1180,6 +1419,7 @@ class _VariantSection extends StatelessWidget {
 // -- Step 3: Confirm --
 class _Step3Confirm extends StatelessWidget {
   final ClientResource? selectedResource;
+  final String? selectedBusinessResourceName;
   final explore.Service? selectedService;
   final DateTime? selectedDate;
   final AvailableSlot? selectedSlot;
@@ -1189,6 +1429,7 @@ class _Step3Confirm extends StatelessWidget {
 
   const _Step3Confirm({
     required this.selectedResource,
+    this.selectedBusinessResourceName,
     this.selectedService,
     required this.selectedDate,
     required this.selectedSlot,
