@@ -39,6 +39,10 @@ return [
         'client_id' => env('GOOGLE_CLIENT_ID'),
     ],
 
+    'billing' => [
+        'url' => env('BILLING_SERVICE_URL', 'http://localhost:8100'),
+    ],
+
     'firebase' => [
         'credentials' => env('FIREBASE_CREDENTIALS', storage_path('app/firebase/service-account.json')),
         'project_id' => env('FIREBASE_PROJECT_ID', 'turnly-services'),
