@@ -35,6 +35,9 @@ import type { Service } from '@/domain/entities/service';
 // ─── types ───────────────────────────────────────────────────────────────────
 
 interface LineItem {
+  /** Stable unique key for this row: variantId when the item is a variant,
+      serviceId otherwise. Used as React key and for targeting updates/removes. */
+  key: string;
   serviceId: string;
   serviceName: string;
   variantId: string | null;
@@ -48,6 +51,12 @@ interface ServiceVariantSlim {
   id: string;
   label: string;
   price: number;
+}
+
+/** Derive a stable row key that is unique even when the same service
+    appears twice with different variants. */
+function rowKey(serviceId: string, variantId: string | null): string {
+  return variantId ?? serviceId;
 }
 
 // ─── helpers (mirrors new-service-modal.tsx) ─────────────────────────────────
@@ -112,17 +121,19 @@ export function EditServiceLogDialog({ log, open, onClose }: Props) {
     if (log.items && log.items.length > 0) {
       setLineItems(
         log.items.map((it) => {
-          // NOTE: the mapper defaults itemType to 'service_variant' when the
-          // backend omits item_type (legacy rows). For such rows the label won't
-          // contain ' · ', so we use that as the reliable discriminator: if
-          // there's a variant segment in the label the item IS a variant.
+          // The mapper defaults itemType to 'service_variant' when the backend
+          // omits item_type (legacy rows). Use the label separator as the reliable
+          // discriminator instead: 'ServiceName · VariantLabel' means it IS a
+          // variant; a plain name with no ' · ' is a bare service item.
           const parts = it.label.split(' · ');
           const hasVariantLabel = parts.length > 1;
+          const variantId = hasVariantLabel ? it.refId : null;
           return {
+            key:               rowKey(it.refId, variantId),
             serviceId:         it.refId,
             serviceName:       parts[0] ?? it.label,
-            variantId:         hasVariantLabel ? it.refId : null,
-            variantLabel:      hasVariantLabel ? parts[1] : null,
+            variantId,
+            variantLabel:      hasVariantLabel ? (parts[1] ?? null) : null,
             qty:               it.qty,
             unitPrice:         it.unitPrice,
             availableVariants: [],
@@ -131,6 +142,7 @@ export function EditServiceLogDialog({ log, open, onClose }: Props) {
       );
     } else if (log.serviceId) {
       setLineItems([{
+        key:               rowKey(log.serviceId, null),
         serviceId:         log.serviceId,
         serviceName:       log.service?.name ?? 'Servicio',
         variantId:         null,
@@ -151,54 +163,61 @@ export function EditServiceLogDialog({ log, open, onClose }: Props) {
   // ── line item mutations ──────────────────────────────────────────────────
 
   async function handleAddLineItem(svc: Service) {
-    const existing = lineItems.find((it) => it.serviceId === svc.id);
-    if (existing) {
-      setLineItems((prev) =>
-        prev.map((it) => it.serviceId === svc.id ? { ...it, qty: it.qty + 1 } : it)
-      );
-      return;
-    }
+    // Use functional updater so the duplicate check reads current state, not
+    // a stale closure — important if two rapid selects arrive before re-render.
+    let alreadyPresent = false;
+    setLineItems((prev) => {
+      const existing = prev.find((it) => it.serviceId === svc.id && it.variantId === null);
+      if (existing) {
+        alreadyPresent = true;
+        return prev.map((it) =>
+          it.serviceId === svc.id && it.variantId === null ? { ...it, qty: it.qty + 1 } : it
+        );
+      }
+      return [
+        ...prev,
+        {
+          key:               rowKey(svc.id, null),
+          serviceId:         svc.id,
+          serviceName:       svc.name,
+          variantId:         null,
+          variantLabel:      null,
+          qty:               1,
+          unitPrice:         svc.price,
+          availableVariants: null,
+        },
+      ];
+    });
 
-    setLineItems((prev) => [
-      ...prev,
-      {
-        serviceId:         svc.id,
-        serviceName:       svc.name,
-        variantId:         null,
-        variantLabel:      null,
-        qty:               1,
-        unitPrice:         svc.price,
-        availableVariants: null,
-      },
-    ]);
+    if (alreadyPresent) return;
 
     const variants = await fetchVariantsForService(svc.id);
     // Guard against race: user may have removed the item while variants were loading.
     setLineItems((prev) => {
-      if (!prev.some((it) => it.serviceId === svc.id)) return prev;
+      if (!prev.some((it) => it.serviceId === svc.id && it.variantId === null)) return prev;
       return prev.map((it) =>
-        it.serviceId === svc.id ? { ...it, availableVariants: variants } : it
+        it.serviceId === svc.id && it.variantId === null ? { ...it, availableVariants: variants } : it
       );
     });
   }
 
-  function handleRemoveLineItem(serviceId: string) {
-    setLineItems((prev) => prev.filter((it) => it.serviceId !== serviceId));
+  function handleRemoveLineItem(key: string) {
+    setLineItems((prev) => prev.filter((it) => it.key !== key));
   }
 
-  function handleUpdateLineItem(serviceId: string, patch: Partial<Omit<LineItem, 'serviceId' | 'serviceName'>>) {
+  function handleUpdateLineItem(key: string, patch: Partial<Omit<LineItem, 'key' | 'serviceId' | 'serviceName'>>) {
     setLineItems((prev) =>
-      prev.map((it) => it.serviceId === serviceId ? { ...it, ...patch } : it)
+      prev.map((it) => it.key === key ? { ...it, ...patch } : it)
     );
   }
 
-  function handlePickVariant(serviceId: string, variant: ServiceVariantSlim) {
+  function handlePickVariant(itemKey: string, variant: ServiceVariantSlim) {
     setLineItems((prev) =>
-      prev.map((it) =>
-        it.serviceId === serviceId
-          ? { ...it, variantId: variant.id, variantLabel: variant.label, unitPrice: variant.price }
-          : it
-      )
+      prev.map((it) => {
+        if (it.key !== itemKey) return it;
+        const newKey = rowKey(it.serviceId, variant.id);
+        return { ...it, key: newKey, variantId: variant.id, variantLabel: variant.label, unitPrice: variant.price };
+      })
     );
   }
 
@@ -228,7 +247,10 @@ export function EditServiceLogDialog({ log, open, onClose }: Props) {
         attendedBy,
         paymentMethod: isPaid ? paymentMethod : undefined,
         paymentBank: isPaid && paymentMethod === 'transfer' ? paymentBank : null,
-        notes: notes || undefined,
+        // UpdateServiceLogData.notes is string | undefined (no null).
+        // Omitting the field when empty is acceptable; the backend leaves
+        // the existing notes intact. Clearing notes requires a separate API change.
+        notes: notes.trim() || undefined,
       },
     });
 
@@ -304,7 +326,7 @@ export function EditServiceLogDialog({ log, open, onClose }: Props) {
                   const needsVariantPick = variantsAvailable && variantsAvailable.length > 0 && !it.variantId;
                   return (
                     <li
-                      key={it.serviceId}
+                      key={it.key}
                       className={cn('rounded-md px-2 py-1.5', needsVariantPick && 'bg-[var(--warning-50)]')}
                     >
                       <div className="grid grid-cols-[1fr_auto_auto_auto] items-center gap-2">
@@ -324,7 +346,7 @@ export function EditServiceLogDialog({ log, open, onClose }: Props) {
                           step="1"
                           value={it.qty}
                           onChange={(e) =>
-                            handleUpdateLineItem(it.serviceId, {
+                            handleUpdateLineItem(it.key, {
                               qty: Math.max(1, Number(e.target.value) || 1),
                             })
                           }
@@ -337,7 +359,7 @@ export function EditServiceLogDialog({ log, open, onClose }: Props) {
                           step="0.01"
                           value={it.unitPrice}
                           onChange={(e) =>
-                            handleUpdateLineItem(it.serviceId, {
+                            handleUpdateLineItem(it.key, {
                               unitPrice: Math.max(0, Number(e.target.value) || 0),
                             })
                           }
@@ -347,7 +369,7 @@ export function EditServiceLogDialog({ log, open, onClose }: Props) {
                         />
                         <button
                           type="button"
-                          onClick={() => handleRemoveLineItem(it.serviceId)}
+                          onClick={() => handleRemoveLineItem(it.key)}
                           className="rounded-md p-1.5 text-[var(--fg-muted)] transition-colors hover:bg-[var(--danger-50)] hover:text-[var(--danger-600)] cursor-pointer"
                           aria-label={`Quitar ${it.serviceName}`}
                         >
@@ -364,7 +386,7 @@ export function EditServiceLogDialog({ log, open, onClose }: Props) {
                             <button
                               key={v.id}
                               type="button"
-                              onClick={() => handlePickVariant(it.serviceId, v)}
+                              onClick={() => handlePickVariant(it.key, v)}
                               className="inline-flex items-center gap-1.5 rounded-md border border-[var(--border)] bg-[var(--bg-surface)] px-2 py-1 text-[11.5px] font-medium text-[var(--fg-strong)] transition-colors hover:border-[var(--brand-500)] hover:bg-[var(--brand-50)] cursor-pointer"
                             >
                               <span>{v.label}</span>
