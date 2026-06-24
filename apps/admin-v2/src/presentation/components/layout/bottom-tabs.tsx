@@ -34,7 +34,7 @@ const tabs: (TabItem | 'fab')[] = [
   { label: 'Home', href: '/dashboard', icon: LayoutDashboard },
   { label: 'Reservas', href: '/reservations', icon: Calendar },
   'fab',
-  { label: 'Reportes', href: '/reports', icon: BarChart3 },
+  { label: 'Registro', href: '/service-logs', icon: ClipboardList },
   { label: 'Más', href: '#more', icon: MoreHorizontal },
 ];
 
@@ -45,6 +45,7 @@ const quickActions = [
 ];
 
 const moreItems = [
+  { label: 'Reportes', icon: BarChart3, href: '/reports' },
   { label: 'Clientes', icon: Users, href: '/clients' },
   { label: 'Servicios', icon: Scissors, href: '/services' },
   { label: 'Equipo', icon: UserPlus, href: '/team' },
