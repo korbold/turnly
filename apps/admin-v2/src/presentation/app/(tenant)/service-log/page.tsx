@@ -16,6 +16,8 @@ import { Skeleton } from '@/presentation/components/ui/skeleton';
 import { DailySummary } from '@/presentation/components/features/service-logs/daily-summary';
 import { LogList } from '@/presentation/components/features/service-logs/log-list';
 import { NewServiceModal } from '@/presentation/components/features/service-logs/new-service-modal';
+import { EditServiceLogDialog } from '@/presentation/components/features/service-logs/edit-service-log-dialog';
+import type { ServiceLog } from '@/domain/entities/service-log';
 
 /**
  * Master-detail breakpoint. On `lg+` the create form slots into a
@@ -41,6 +43,7 @@ function ServiceLogContent() {
   const pathname = usePathname();
   const [selectedDate, setSelectedDate] = useState(new Date());
   const [createOpen, setCreateOpen] = useState(false);
+  const [editTarget, setEditTarget] = useState<ServiceLog | null>(null);
   const dateStr = format(selectedDate, 'yyyy-MM-dd');
   const isDesktop = useIsDesktop();
   const showInlineCreate = isDesktop && createOpen;
@@ -131,7 +134,7 @@ function ServiceLogContent() {
         <DailySummary date={dateStr} />
 
         {/* Log list */}
-        <LogList date={dateStr} onCreate={() => setCreateOpen(true)} />
+        <LogList date={dateStr} onCreate={() => setCreateOpen(true)} onEdit={setEditTarget} />
       </main>
 
       {/* Desktop master-detail — embedded panel sticky in the right rail
@@ -149,6 +152,12 @@ function ServiceLogContent() {
       {!isDesktop && (
         <NewServiceModal open={createOpen} onClose={closeCreate} />
       )}
+
+      <EditServiceLogDialog
+        log={editTarget}
+        open={!!editTarget}
+        onClose={() => setEditTarget(null)}
+      />
     </div>
   );
 }
