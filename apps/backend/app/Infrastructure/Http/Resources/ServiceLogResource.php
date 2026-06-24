@@ -18,7 +18,7 @@ class ServiceLogResource extends JsonResource
             'created_by'     => $this->created_by,
             'started_at'     => $this->started_at?->toIso8601String(),
             'finished_at'    => $this->finished_at?->toIso8601String(),
-            'price_charged'  => $this->price_charged,
+            'price_charged'  => (float) $this->price_charged,
             'payment_method' => $this->payment_method,
             'payment_bank'   => $this->payment_bank,
             'payment_status' => $this->payment_status,
@@ -66,6 +66,15 @@ class ServiceLogResource extends JsonResource
                     ->values(),
             ]),
         ];
+    }
+
+    /**
+     * Preserve decimal notation for whole-number floats (e.g. 40.0 not 40)
+     * so assertJsonPath comparisons with float literals work correctly.
+     */
+    public function jsonOptions(): int
+    {
+        return JSON_PRESERVE_ZERO_FRACTION;
     }
 
     public function with(Request $request): array

@@ -170,6 +170,60 @@ class ServiceLogController extends Controller
         return new ServiceLogResource($serviceLog->load(['clientResource', 'service', 'attendant']));
     }
 
+    public function updateItems(Request $request, string $id): ServiceLogResource
+    {
+        $serviceLog = ServiceLogModel::findOrFail($id);
+
+        $request->validate([
+            'items'                  => 'required|array|min:1',
+            'items.*.service_id'     => 'required|uuid',
+            'items.*.variant_id'     => 'nullable|uuid',
+            'items.*.label'          => 'required|string|max:200',
+            'items.*.qty'            => 'required|numeric|min:0.01',
+            'items.*.unit_price'     => 'required|numeric|min:0',
+        ]);
+
+        $items = $request->input('items');
+        $tenantId = app('current_tenant_id');
+
+        // Replace all items atomically — delete then re-insert so sort
+        // order resets cleanly and orphaned rows can never accumulate.
+        $serviceLog->items()->delete();
+
+        $sort = 0;
+        foreach ($items as $line) {
+            $unit   = (float) $line['unit_price'];
+            $qty    = (float) $line['qty'];
+            $refId  = !empty($line['variant_id']) ? $line['variant_id'] : $line['service_id'];
+
+            \App\Infrastructure\Persistence\Models\ServiceLogItemModel::create([
+                'tenant_id'      => $tenantId,
+                'service_log_id' => $serviceLog->id,
+                'item_type'      => 'service_variant',
+                'ref_id'         => $refId,
+                'label'          => $line['label'],
+                'qty'            => $qty,
+                'unit_price'     => $unit,
+                'line_total'     => $unit * $qty,
+                'sort_order'     => $sort++,
+            ]);
+        }
+
+        // Re-derive parent columns from the new item list so legacy
+        // queries (reports grouping by service_id) remain correct.
+        $newTotal       = array_sum(array_map(fn ($it) => (float) $it['unit_price'] * (float) $it['qty'], $items));
+        $firstVariantId = $items[0]['variant_id'] ?? null;
+        $serviceLog->update([
+            'service_id'         => $items[0]['service_id'],
+            'price_charged'      => $newTotal,
+            'service_variant_id' => $firstVariantId,
+        ]);
+
+        return new ServiceLogResource(
+            $serviceLog->load(['clientResource', 'service', 'attendant', 'items'])
+        );
+    }
+
     public function destroy(string $id): JsonResponse
     {
         $serviceLog = ServiceLogModel::findOrFail($id);

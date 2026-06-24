@@ -125,6 +125,110 @@ test('create service log requires required fields', function () {
         ->assertJsonValidationErrors(['client_resource_id', 'service_id', 'attended_by', 'price_charged', 'payment_method']);
 });
 
+test('can update service log items — replaces existing items', function () {
+    $serviceLog = ServiceLogModel::factory()->create([
+        'tenant_id'          => $this->tenant->id,
+        'client_resource_id' => $this->clientResource->id,
+        'service_id'         => $this->service->id,
+        'attended_by'        => $this->user->id,
+        'created_by'         => $this->user->id,
+        'price_charged'      => 30.00,
+    ]);
+
+    $service2 = ServiceModel::factory()->create(['tenant_id' => $this->tenant->id]);
+
+    $response = $this->actingAs($this->user)
+        ->withHeader('X-Tenant', $this->tenant->slug)
+        ->putJson("/api/v1/service-logs/{$serviceLog->id}/items", [
+            'items' => [
+                [
+                    'service_id'  => $this->service->id,
+                    'variant_id'  => null,
+                    'label'       => 'Lavada básica',
+                    'qty'         => 1,
+                    'unit_price'  => 15.00,
+                ],
+                [
+                    'service_id'  => $service2->id,
+                    'variant_id'  => null,
+                    'label'       => 'Pulido',
+                    'qty'         => 1,
+                    'unit_price'  => 25.00,
+                ],
+            ],
+        ]);
+
+    $response->assertOk()
+        ->assertJsonPath('data.price_charged', 40.0)
+        ->assertJsonPath('data.service_id', $this->service->id)
+        ->assertJsonCount(2, 'data.items');
+
+    $this->assertDatabaseCount('service_log_items', 2);
+    $this->assertDatabaseHas('service_log_items', [
+        'service_log_id' => $serviceLog->id,
+        'label'          => 'Pulido',
+    ]);
+});
+
+test('update items replaces all — old items are gone', function () {
+    $serviceLog = ServiceLogModel::factory()->create([
+        'tenant_id'          => $this->tenant->id,
+        'client_resource_id' => $this->clientResource->id,
+        'service_id'         => $this->service->id,
+        'attended_by'        => $this->user->id,
+        'created_by'         => $this->user->id,
+        'price_charged'      => 30.00,
+    ]);
+
+    // Seed an existing item
+    \App\Infrastructure\Persistence\Models\ServiceLogItemModel::create([
+        'tenant_id'      => $this->tenant->id,
+        'service_log_id' => $serviceLog->id,
+        'item_type'      => 'service_variant',
+        'ref_id'         => $this->service->id,
+        'label'          => 'Old item',
+        'qty'            => 1,
+        'unit_price'     => 30.00,
+        'line_total'     => 30.00,
+        'sort_order'     => 0,
+    ]);
+
+    $this->actingAs($this->user)
+        ->withHeader('X-Tenant', $this->tenant->slug)
+        ->putJson("/api/v1/service-logs/{$serviceLog->id}/items", [
+            'items' => [
+                [
+                    'service_id'  => $this->service->id,
+                    'variant_id'  => null,
+                    'label'       => 'New item',
+                    'qty'         => 1,
+                    'unit_price'  => 20.00,
+                ],
+            ],
+        ]);
+
+    $this->assertDatabaseMissing('service_log_items', ['label' => 'Old item']);
+    $this->assertDatabaseHas('service_log_items', ['label' => 'New item']);
+});
+
+test('update items rejects empty items array', function () {
+    $serviceLog = ServiceLogModel::factory()->create([
+        'tenant_id'          => $this->tenant->id,
+        'client_resource_id' => $this->clientResource->id,
+        'service_id'         => $this->service->id,
+        'attended_by'        => $this->user->id,
+        'created_by'         => $this->user->id,
+        'price_charged'      => 30.00,
+    ]);
+
+    $response = $this->actingAs($this->user)
+        ->withHeader('X-Tenant', $this->tenant->slug)
+        ->putJson("/api/v1/service-logs/{$serviceLog->id}/items", ['items' => []]);
+
+    $response->assertStatus(422)
+        ->assertJsonValidationErrors(['items']);
+});
+
 test('can filter service logs by date', function () {
     $yesterday = now()->subDay()->toDateString();
     $today = now()->toDateString();

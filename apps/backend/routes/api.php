@@ -166,6 +166,7 @@ Route::prefix('v1')->group(function () {
             Route::post('service-logs', [ServiceLogController::class, 'store']);
             Route::get('service-logs/{id}', [ServiceLogController::class, 'show']);
             Route::patch('service-logs/{id}', [ServiceLogController::class, 'update']);
+            Route::put('service-logs/{id}/items', [ServiceLogController::class, 'updateItems']);
             Route::delete('service-logs/{id}', [ServiceLogController::class, 'destroy']);
             Route::patch('service-logs/{id}/complete', [ServiceLogController::class, 'complete']);
             // Late payment registration — cashier marks a "cobrar al
