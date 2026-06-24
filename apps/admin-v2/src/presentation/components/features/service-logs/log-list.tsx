@@ -2,7 +2,7 @@
 
 import { useState } from 'react';
 import { format } from 'date-fns';
-import { MoreHorizontal, CheckCircle2, Pencil, Trash2, Plus, ClipboardList, Wallet, Play, Trophy } from 'lucide-react';
+import { MoreHorizontal, CheckCircle2, Pencil, Trash2, Plus, ClipboardList, Wallet, Play, Trophy, FileText } from 'lucide-react';
 import { toast } from 'sonner';
 import { motion } from 'framer-motion';
 import { Badge } from '@/presentation/components/ui/badge';
@@ -23,6 +23,8 @@ import {
 } from '@/presentation/hooks/use-service-logs';
 import { PAYMENT_METHOD_CONFIG } from '@/shared/constants/status';
 import { RegisterPaymentDialog } from '@/presentation/components/features/service-logs/register-payment-dialog';
+import { InvoiceStatusBadge } from '@/presentation/components/features/service-logs/invoice-status-badge';
+import { useEmitInvoice } from '@/presentation/hooks/use-invoices';
 import type { ServiceLog, ServiceLogStatus } from '@/domain/entities/service-log';
 
 const STATUS_CONFIG: Record<ServiceLogStatus, { label: string; color: string; bg: string }> = {
@@ -47,6 +49,7 @@ export function LogList({ date, onEdit, onCreate }: LogListProps) {
   const { data, isLoading } = useServiceLogs({ date });
   const completeMutation = useCompleteServiceLog();
   const deleteMutation = useDeleteServiceLog();
+  const emitInvoiceMutation = useEmitInvoice();
   const [payTarget, setPayTarget] = useState<ServiceLog | null>(null);
 
   const logs = data?.data ?? [];
@@ -211,6 +214,8 @@ export function LogList({ date, onEdit, onCreate }: LogListProps) {
                 (the bug that made the Cobrar button only show on
                 hover). */}
             <div className="mt-3 flex flex-nowrap items-center justify-end gap-2 lg:mt-0">
+              <InvoiceStatusBadge status={log.invoiceStatus} className="ml-1" />
+
               <Badge
                 className={cn(
                   'inline-flex items-center gap-1.5 whitespace-nowrap border-0 px-2.5 py-1 text-[11.5px] font-semibold',
@@ -276,6 +281,22 @@ export function LogList({ date, onEdit, onCreate }: LogListProps) {
                     <Pencil className="mr-2 h-3.5 w-3.5" />
                     Editar
                   </DropdownMenuItem>
+                  {log.paymentStatus === 'paid' && log.invoiceStatus !== 'autorizada' && (
+                    <>
+                      <DropdownMenuSeparator />
+                      <DropdownMenuItem
+                        onClick={() =>
+                          emitInvoiceMutation.mutate(log.id, {
+                            onSuccess: () => toast.success('Facturación iniciada'),
+                            onError: () => toast.error('Error al iniciar facturación'),
+                          })
+                        }
+                      >
+                        <FileText className="mr-2 h-4 w-4" />
+                        {log.invoiceStatus === 'rechazada' ? 'Reintentar factura' : 'Facturar'}
+                      </DropdownMenuItem>
+                    </>
+                  )}
                   <DropdownMenuSeparator />
                   <DropdownMenuItem
                     className="text-[var(--status-cancelled-fg)] focus:bg-[var(--status-cancelled-bg)] focus:text-[var(--status-cancelled-fg)]"
