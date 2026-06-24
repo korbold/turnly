@@ -2,6 +2,7 @@ import type {
   ServiceLogRepository,
   CreateServiceLogData,
   UpdateServiceLogData,
+  UpdateServiceLogItemsData,
   RecordPaymentData,
 } from '@/domain/repositories/service-log.repository';
 import type { ServiceLog, ServiceLogFilters, DailySummary } from '@/domain/entities/service-log';
@@ -76,6 +77,19 @@ export class ApiServiceLogRepository implements ServiceLogRepository {
     if (data.notes !== undefined) body.notes = data.notes;
 
     const { data: res } = await api.patch(`/service-logs/${id}`, body);
+    return mapServiceLog(res.data);
+  }
+
+  async updateItems(id: string, items: UpdateServiceLogItemsData): Promise<ServiceLog> {
+    const { data: res } = await api.put(`/service-logs/${id}/items`, {
+      items: items.map((it) => ({
+        service_id:  it.serviceId,
+        variant_id:  it.variantId ?? null,
+        label:       it.label,
+        qty:         it.qty,
+        unit_price:  it.unitPrice,
+      })),
+    });
     return mapServiceLog(res.data);
   }
 

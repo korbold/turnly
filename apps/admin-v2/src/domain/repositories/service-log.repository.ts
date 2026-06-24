@@ -46,11 +46,22 @@ export interface UpdateServiceLogData {
   notes?: string;
 }
 
+export interface ServiceLogItemDraft {
+  serviceId: string;
+  variantId: string | null;
+  label: string;
+  qty: number;
+  unitPrice: number;
+}
+
+export type UpdateServiceLogItemsData = ServiceLogItemDraft[];
+
 export interface ServiceLogRepository {
   getAll(filters: ServiceLogFilters): Promise<PaginatedResult<ServiceLog>>;
   getById(id: string): Promise<ServiceLog>;
   create(data: CreateServiceLogData): Promise<ServiceLog>;
   update(id: string, data: UpdateServiceLogData): Promise<ServiceLog>;
+  updateItems(id: string, items: UpdateServiceLogItemsData): Promise<ServiceLog>;
   delete(id: string): Promise<void>;
   complete(id: string): Promise<ServiceLog>;
   recordPayment(id: string, data: RecordPaymentData): Promise<ServiceLog>;
