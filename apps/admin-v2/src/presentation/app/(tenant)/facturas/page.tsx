@@ -26,6 +26,12 @@ import type { InvoiceFilters, InvoiceStatus } from '@/domain/entities/invoice';
 const BILLING_SERVICE_URL =
   process.env.NEXT_PUBLIC_BILLING_SERVICE_URL ?? 'http://localhost:8100';
 
+const fmtCurrency = new Intl.NumberFormat('es-EC', {
+  style: 'currency',
+  currency: 'USD',
+  minimumFractionDigits: 2,
+});
+
 function FacturasContent() {
   const [dateFrom, setDateFrom] = useState<Date | undefined>(undefined);
   const [dateTo, setDateTo] = useState<Date | undefined>(undefined);
@@ -43,13 +49,6 @@ function FacturasContent() {
   const invoices = data?.data ?? [];
   const meta = data?.meta;
 
-  const fmtCurrency = (v: number) =>
-    new Intl.NumberFormat('es-EC', {
-      style: 'currency',
-      currency: 'USD',
-      minimumFractionDigits: 2,
-    }).format(v);
-
   return (
     <div className="p-4 space-y-4">
       <div className="flex flex-wrap items-center gap-2">
@@ -63,7 +62,7 @@ function FacturasContent() {
             </Button>
           </PopoverTrigger>
           <PopoverContent className="w-auto p-0" align="start">
-            <Calendar mode="single" selected={dateFrom} onSelect={setDateFrom} initialFocus />
+            <Calendar mode="single" selected={dateFrom} onSelect={(val) => { setDateFrom(val); setPage(1); }} initialFocus />
           </PopoverContent>
         </Popover>
 
@@ -75,13 +74,13 @@ function FacturasContent() {
             </Button>
           </PopoverTrigger>
           <PopoverContent className="w-auto p-0" align="start">
-            <Calendar mode="single" selected={dateTo} onSelect={setDateTo} initialFocus />
+            <Calendar mode="single" selected={dateTo} onSelect={(val) => { setDateTo(val); setPage(1); }} initialFocus />
           </PopoverContent>
         </Popover>
 
         <Select
           value={status ?? 'all'}
-          onValueChange={(v) => setStatus(v === 'all' ? undefined : (v as InvoiceStatus))}
+          onValueChange={(v) => { setStatus(v === 'all' ? undefined : (v as InvoiceStatus)); setPage(1); }}
         >
           <SelectTrigger className="w-40 h-9">
             <SelectValue placeholder="Estado" />
@@ -146,7 +145,7 @@ function FacturasContent() {
                     )}
                   </td>
                   <td className="px-3 py-2">{inv.serviceName ?? '—'}</td>
-                  <td className="px-3 py-2 text-right tabular-nums">{fmtCurrency(inv.priceCharged)}</td>
+                  <td className="px-3 py-2 text-right tabular-nums">{fmtCurrency.format(inv.priceCharged)}</td>
                   <td className="px-3 py-2">
                     <InvoiceStatusBadge status={inv.invoiceStatus} />
                   </td>
