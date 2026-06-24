@@ -172,6 +172,10 @@ Route::prefix('v1')->group(function () {
             // Late payment registration — cashier marks a "cobrar al
             // retirar" service as paid + captures method + bank.
             Route::post('service-logs/{id}/payment', [ServiceLogController::class, 'recordPayment']);
+            // Billing: manually trigger invoice emission or re-emit a rejected one.
+            Route::post('service-logs/{id}/invoice', [ServiceLogController::class, 'invoice']);
+            // Billing: list all invoiced service logs for the tenant.
+            Route::get('invoices', [ServiceLogController::class, 'indexInvoiced']);
 
             // Client Resources
             Route::get('client-resources', [ClientResourceController::class, 'index']);

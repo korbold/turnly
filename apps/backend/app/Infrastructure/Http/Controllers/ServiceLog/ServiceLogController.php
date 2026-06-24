@@ -10,6 +10,7 @@ use App\Domain\ServiceLog\Contracts\ServiceLogRepositoryInterface;
 use App\Infrastructure\Http\Controllers\Controller;
 use App\Infrastructure\Http\Requests\ServiceLog\CreateServiceLogRequest;
 use App\Infrastructure\Http\Resources\ServiceLogResource;
+use App\Infrastructure\Jobs\EmitServiceLogInvoiceJob;
 use App\Infrastructure\Persistence\Models\ServiceLogModel;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
@@ -271,9 +272,54 @@ class ServiceLogController extends Controller
             'notes'          => trim(($log->notes ?? '') . ($data['reference'] ?? '' ? "\nRef: {$data['reference']}" : '')) ?: null,
         ]);
 
+        EmitServiceLogInvoiceJob::dispatch($log->id);
+
         return (new ServiceLogResource(
             $log->load(['clientResource', 'service', 'attendant'])
         ))->response()->setStatusCode(200);
+    }
+
+    public function invoice(string $id): JsonResponse
+    {
+        $log = ServiceLogModel::findOrFail($id);
+
+        if ($log->invoice_status === 'autorizada') {
+            return response()->json([
+                'error' => [
+                    'code'    => 'ALREADY_INVOICED',
+                    'message' => 'Esta factura ya fue autorizada por el SRI.',
+                ],
+            ], 422);
+        }
+
+        EmitServiceLogInvoiceJob::dispatch($id);
+
+        return response()->json([
+            'data' => ['message' => 'Facturación iniciada.'],
+        ], 202);
+    }
+
+    public function indexInvoiced(Request $request): \Illuminate\Http\Resources\Json\AnonymousResourceCollection
+    {
+        $query = ServiceLogModel::with(['clientResource', 'service', 'attendant'])
+            ->whereNotNull('invoice_status');
+
+        if ($request->has('status')) {
+            $query->where('invoice_status', $request->status);
+        }
+
+        if ($request->has('date_from')) {
+            $query->whereDate('log_date', '>=', $request->date_from);
+        }
+
+        if ($request->has('date_to')) {
+            $query->whereDate('log_date', '<=', $request->date_to);
+        }
+
+        $logs = $query->orderBy('invoiced_at', 'desc')
+            ->paginate($request->get('per_page', 50));
+
+        return ServiceLogResource::collection($logs);
     }
 
     public function complete(string $id): JsonResponse
