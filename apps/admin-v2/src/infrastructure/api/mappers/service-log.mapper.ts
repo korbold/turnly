@@ -60,6 +60,10 @@ function mapServiceLogItem(raw: Record<string, unknown>): ServiceLogItem {
     id: raw.id as string,
     itemType: (raw.item_type as ServiceLogItem['itemType']) ?? 'service_variant',
     refId: raw.ref_id as string,
+    // service_id is exposed by the API alongside ref_id so variant items
+    // carry the parent service UUID (ref_id holds the variant UUID for those).
+    // Falls back to ref_id for plain service items (where ref_id IS the service_id).
+    serviceId: (raw.service_id as string | undefined) ?? (raw.ref_id as string),
     label: raw.label as string,
     qty: Number(raw.qty ?? 1),
     unitPrice: Number(raw.unit_price ?? 0),

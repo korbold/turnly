@@ -121,16 +121,16 @@ export function EditServiceLogDialog({ log, open, onClose }: Props) {
     if (log.items && log.items.length > 0) {
       setLineItems(
         log.items.map((it) => {
-          // The mapper defaults itemType to 'service_variant' when the backend
-          // omits item_type (legacy rows). Use the label separator as the reliable
-          // discriminator instead: 'ServiceName · VariantLabel' means it IS a
-          // variant; a plain name with no ' · ' is a bare service item.
+          // it.serviceId is the real service UUID (the backend now exposes
+          // it per-item via the items.variant eager-load). it.refId is the
+          // variant UUID for variant items, service UUID for plain items.
+          // The label separator ' · ' tells us whether a variant was picked.
           const parts = it.label.split(' · ');
           const hasVariantLabel = parts.length > 1;
           const variantId = hasVariantLabel ? it.refId : null;
           return {
-            key:               rowKey(it.refId, variantId),
-            serviceId:         it.refId,
+            key:               rowKey(it.serviceId, variantId),
+            serviceId:         it.serviceId,
             serviceName:       parts[0] ?? it.label,
             variantId,
             variantLabel:      hasVariantLabel ? (parts[1] ?? null) : null,

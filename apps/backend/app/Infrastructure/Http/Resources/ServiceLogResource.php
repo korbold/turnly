@@ -51,6 +51,12 @@ class ServiceLogResource extends JsonResource
                 'id'         => $it->id,
                 'item_type'  => $it->item_type,
                 'ref_id'     => $it->ref_id,
+                // For variant items ref_id is the variant UUID; expose the
+                // parent service_id so the edit dialog can send service_id
+                // to the updateItems endpoint without a separate lookup.
+                'service_id' => $it->relationLoaded('variant') && $it->variant
+                    ? $it->variant->service_id
+                    : $it->ref_id,
                 'label'      => $it->label,
                 'qty'        => (float) $it->qty,
                 'unit_price' => (float) $it->unit_price,

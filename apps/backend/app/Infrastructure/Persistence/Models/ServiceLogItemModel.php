@@ -34,4 +34,12 @@ class ServiceLogItemModel extends Model
     {
         return $this->belongsTo(ServiceLogModel::class, 'service_log_id');
     }
+
+    /** When item_type = 'service_variant', ref_id holds the variant UUID.
+        This relationship resolves the parent service so the API can expose
+        service_id per item for the edit dialog. */
+    public function variant(): BelongsTo
+    {
+        return $this->belongsTo(ServiceVariantModel::class, 'ref_id');
+    }
 }

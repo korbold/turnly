@@ -20,6 +20,11 @@ export interface ServiceLogItem {
   id: string;
   itemType: 'service_variant' | 'product';
   refId: string;
+  /** The service UUID that owns this item. For variant items refId is the
+      variant UUID — serviceId is exposed separately by the API (via the
+      items.variant eager-load) so the edit dialog can send a correct
+      service_id to the updateItems endpoint without a secondary lookup. */
+  serviceId: string;
   label: string;
   qty: number;
   unitPrice: number;

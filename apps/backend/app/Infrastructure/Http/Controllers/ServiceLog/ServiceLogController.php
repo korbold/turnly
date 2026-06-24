@@ -134,7 +134,7 @@ class ServiceLogController extends Controller
             }
         }
 
-        $model = ServiceLogModel::with(['clientResource', 'service', 'attendant', 'items'])
+        $model = ServiceLogModel::with(['clientResource', 'service', 'attendant', 'items.variant'])
             ->find($serviceLog->id);
 
         return (new ServiceLogResource($model))
@@ -145,7 +145,7 @@ class ServiceLogController extends Controller
     public function show(string $id): ServiceLogResource
     {
         $serviceLog = ServiceLogModel::with([
-            'clientResource', 'service', 'attendant', 'reservation', 'items',
+            'clientResource', 'service', 'attendant', 'reservation', 'items.variant',
         ])->findOrFail($id);
         return new ServiceLogResource($serviceLog);
     }
@@ -225,7 +225,7 @@ class ServiceLogController extends Controller
         });
 
         return new ServiceLogResource(
-            $serviceLog->load(['clientResource', 'service', 'attendant', 'items'])
+            $serviceLog->load(['clientResource', 'service', 'attendant', 'items.variant'])
         );
     }
 
