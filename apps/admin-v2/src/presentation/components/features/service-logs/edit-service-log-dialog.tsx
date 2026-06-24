@@ -112,13 +112,17 @@ export function EditServiceLogDialog({ log, open, onClose }: Props) {
     if (log.items && log.items.length > 0) {
       setLineItems(
         log.items.map((it) => {
-          const hasVariant = it.itemType === 'service_variant';
+          // NOTE: the mapper defaults itemType to 'service_variant' when the
+          // backend omits item_type (legacy rows). For such rows the label won't
+          // contain ' · ', so we use that as the reliable discriminator: if
+          // there's a variant segment in the label the item IS a variant.
           const parts = it.label.split(' · ');
+          const hasVariantLabel = parts.length > 1;
           return {
             serviceId:         it.refId,
             serviceName:       parts[0] ?? it.label,
-            variantId:         hasVariant ? it.refId : null,
-            variantLabel:      parts.length > 1 ? parts[1] : null,
+            variantId:         hasVariantLabel ? it.refId : null,
+            variantLabel:      hasVariantLabel ? parts[1] : null,
             qty:               it.qty,
             unitPrice:         it.unitPrice,
             availableVariants: [],
@@ -169,11 +173,13 @@ export function EditServiceLogDialog({ log, open, onClose }: Props) {
     ]);
 
     const variants = await fetchVariantsForService(svc.id);
-    setLineItems((prev) =>
-      prev.map((it) =>
+    // Guard against race: user may have removed the item while variants were loading.
+    setLineItems((prev) => {
+      if (!prev.some((it) => it.serviceId === svc.id)) return prev;
+      return prev.map((it) =>
         it.serviceId === svc.id ? { ...it, availableVariants: variants } : it
-      )
-    );
+      );
+    });
   }
 
   function handleRemoveLineItem(serviceId: string) {
