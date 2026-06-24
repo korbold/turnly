@@ -176,6 +176,8 @@ Route::prefix('v1')->group(function () {
             Route::post('service-logs/{id}/invoice', [ServiceLogController::class, 'invoice']);
             // Billing: list all invoiced service logs for the tenant.
             Route::get('invoices', [ServiceLogController::class, 'indexInvoiced']);
+            // Billing: proxy XML download through backend to enforce auth.
+            Route::get('service-logs/{id}/invoice/xml', [ServiceLogController::class, 'downloadInvoiceXml']);
 
             // Client Resources
             Route::get('client-resources', [ClientResourceController::class, 'index']);

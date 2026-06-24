@@ -50,4 +50,24 @@ class BillingServiceClient
             );
         }
     }
+
+    /**
+     * GET /api/invoices/{id}/xml — returns raw XML string
+     * @throws RuntimeException on HTTP error
+     */
+    public function getInvoiceXml(string $id): string
+    {
+        try {
+            return Http::timeout(15)
+                ->get("{$this->baseUrl}/api/invoices/{$id}/xml")
+                ->throw()
+                ->body();
+        } catch (RequestException $e) {
+            throw new RuntimeException(
+                'Billing service XML error: ' . $e->response->body(),
+                $e->getCode(),
+                $e
+            );
+        }
+    }
 }

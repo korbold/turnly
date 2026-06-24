@@ -7,6 +7,7 @@ use App\Application\UseCases\ServiceLog\CreateServiceLogUseCase;
 use App\Application\UseCases\ServiceLog\GetDailyLogUseCase;
 use App\Domain\Inventory\ConsumptionEngine;
 use App\Domain\ServiceLog\Contracts\ServiceLogRepositoryInterface;
+use App\Infrastructure\Billing\BillingServiceClient;
 use App\Infrastructure\Http\Controllers\Controller;
 use App\Infrastructure\Http\Requests\ServiceLog\CreateServiceLogRequest;
 use App\Infrastructure\Http\Resources\ServiceLogResource;
@@ -272,7 +273,10 @@ class ServiceLogController extends Controller
             'notes'          => trim(($log->notes ?? '') . ($data['reference'] ?? '' ? "\nRef: {$data['reference']}" : '')) ?: null,
         ]);
 
-        EmitServiceLogInvoiceJob::dispatch($log->id);
+        // Only dispatch invoice job if not already successfully invoiced
+        if ($log->invoice_status !== 'autorizada') {
+            EmitServiceLogInvoiceJob::dispatch($log->id);
+        }
 
         return (new ServiceLogResource(
             $log->load(['clientResource', 'service', 'attendant'])
@@ -301,7 +305,7 @@ class ServiceLogController extends Controller
 
     public function indexInvoiced(Request $request): \Illuminate\Http\Resources\Json\AnonymousResourceCollection
     {
-        $query = ServiceLogModel::with(['clientResource', 'service', 'attendant'])
+        $query = ServiceLogModel::with(['clientResource.client', 'service', 'attendant'])
             ->whereNotNull('invoice_status');
 
         if ($request->has('status')) {
@@ -337,6 +341,25 @@ class ServiceLogController extends Controller
             'data' => ['message' => 'Service log completed'],
             'meta' => ['timestamp' => now()->toIso8601String()],
         ]);
+    }
+
+    public function downloadInvoiceXml(string $id): \Symfony\Component\HttpFoundation\StreamedResponse|\Illuminate\Http\JsonResponse
+    {
+        $log = ServiceLogModel::findOrFail($id);
+
+        if (! $log->invoice_external_id) {
+            return response()->json(['error' => ['code' => 'NO_INVOICE', 'message' => 'No hay factura para este registro.']], 404);
+        }
+
+        /** @var BillingServiceClient $billingClient */
+        $billingClient = app(BillingServiceClient::class);
+        $xml = $billingClient->getInvoiceXml($log->invoice_external_id);
+
+        return response()->streamDownload(
+            fn () => print($xml),
+            "{$log->invoice_clave_acceso}.xml",
+            ['Content-Type' => 'application/xml']
+        );
     }
 
     public function summary(Request $request): JsonResponse

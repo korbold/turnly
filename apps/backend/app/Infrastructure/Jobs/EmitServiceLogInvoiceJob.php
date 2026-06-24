@@ -30,11 +30,10 @@ class EmitServiceLogInvoiceJob implements ShouldQueue
         $billingProfile = $this->resolveBillingProfile($log->clientResource);
 
         $formaPago = match ($log->payment_method) {
-            'cash'        => '01',
-            'card'        => '16',
-            'transfer'    => '16',
-            'credit_card' => '19',
-            default       => '20',
+            'cash'     => '01',
+            'card'     => '16',
+            'transfer' => '16',
+            default    => '20',
         };
 
         $items = $this->buildItems($log);
@@ -67,6 +66,7 @@ class EmitServiceLogInvoiceJob implements ShouldQueue
                 'invoice_status' => 'rechazada',
                 'invoice_error'  => $e->getMessage(),
             ]);
+            throw $e;
         }
     }
 

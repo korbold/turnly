@@ -76,7 +76,12 @@ test('job sets invoice_status to rechazada when billing service returns 500', fu
         'price_charged'      => 15.00,
     ]);
 
-    EmitServiceLogInvoiceJob::dispatchSync($log->id);
+    // The job now re-throws after recording the error so the queue can retry.
+    try {
+        EmitServiceLogInvoiceJob::dispatchSync($log->id);
+    } catch (\Throwable) {
+        // Expected: job records rechazada then re-throws.
+    }
 
     $log->refresh();
     expect($log->invoice_status)->toBe('rechazada')

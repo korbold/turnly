@@ -4,6 +4,7 @@ import { Suspense, useState } from 'react';
 import { format } from 'date-fns';
 import { es } from 'date-fns/locale';
 import { CalendarIcon, Download } from 'lucide-react';
+import { toast } from 'sonner';
 import { Button } from '@/presentation/components/ui/button';
 import { Calendar } from '@/presentation/components/ui/calendar';
 import {
@@ -23,9 +24,6 @@ import { InvoiceStatusBadge } from '@/presentation/components/features/service-l
 import { useInvoices } from '@/presentation/hooks/use-invoices';
 import type { InvoiceFilters, InvoiceStatus } from '@/domain/entities/invoice';
 
-const BILLING_SERVICE_URL =
-  process.env.NEXT_PUBLIC_BILLING_SERVICE_URL ?? 'http://localhost:8100';
-
 const fmtCurrency = new Intl.NumberFormat('es-EC', {
   style: 'currency',
   currency: 'USD',
@@ -37,6 +35,36 @@ function FacturasContent() {
   const [dateTo, setDateTo] = useState<Date | undefined>(undefined);
   const [status, setStatus] = useState<InvoiceStatus | undefined>(undefined);
   const [page, setPage] = useState(1);
+
+  async function handleDownloadXml(serviceLogId: string) {
+    const token = typeof window !== 'undefined'
+      ? localStorage.getItem('auth_token')
+      : null;
+    const tenantSlug = typeof window !== 'undefined'
+      ? localStorage.getItem('tenant_slug')
+      : null;
+
+    const apiUrl = process.env.NEXT_PUBLIC_API_URL ?? 'http://localhost:8000/api/v1';
+    const res = await fetch(`${apiUrl}/service-logs/${serviceLogId}/invoice/xml`, {
+      headers: {
+        ...(token ? { Authorization: `Bearer ${token}` } : {}),
+        ...(tenantSlug ? { 'X-Tenant': tenantSlug } : {}),
+      },
+    });
+
+    if (!res.ok) {
+      toast.error('No se pudo descargar el XML');
+      return;
+    }
+
+    const blob = await res.blob();
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `factura-${serviceLogId}.xml`;
+    a.click();
+    URL.revokeObjectURL(url);
+  }
 
   const filters: InvoiceFilters = {
     dateFrom: dateFrom ? format(dateFrom, 'yyyy-MM-dd') : undefined,
@@ -153,17 +181,15 @@ function FacturasContent() {
                     {inv.claveAcceso ?? '—'}
                   </td>
                   <td className="px-3 py-2 text-center">
-                    {inv.invoiceStatus === 'autorizada' && inv.externalId ? (
-                      <a
-                        href={`${BILLING_SERVICE_URL}/api/invoices/${inv.externalId}/xml`}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        download
+                    {inv.invoiceStatus === 'autorizada' && inv.serviceLogId ? (
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        className="h-7 w-7"
+                        onClick={() => handleDownloadXml(inv.serviceLogId)}
                       >
-                        <Button variant="ghost" size="icon" className="h-7 w-7">
-                          <Download className="h-4 w-4" />
-                        </Button>
-                      </a>
+                        <Download className="h-4 w-4" />
+                      </Button>
                     ) : (
                       <span className="text-muted-foreground">—</span>
                     )}

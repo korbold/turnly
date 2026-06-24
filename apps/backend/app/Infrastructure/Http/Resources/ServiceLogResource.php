@@ -25,6 +25,11 @@ class ServiceLogResource extends JsonResource
             'paid_at'        => $this->paid_at?->toIso8601String(),
             'invoiced'       => (bool) $this->invoiced,
             'invoiced_at'    => $this->invoiced_at?->toIso8601String(),
+            'invoice_external_id'         => $this->invoice_external_id,
+            'invoice_status'              => $this->invoice_status,
+            'invoice_clave_acceso'        => $this->invoice_clave_acceso,
+            'invoice_numero_autorizacion' => $this->invoice_numero_autorizacion,
+            'invoice_error'               => $this->invoice_error,
             'status'         => $this->status,
             'notes'          => $this->notes,
             'log_date'       => $this->log_date,
@@ -34,6 +39,10 @@ class ServiceLogResource extends JsonResource
                 'id'    => $this->clientResource->id,
                 'label' => ClientResourceResource::labelFrom($this->clientResource->data),
                 'data'  => $this->clientResource->data,
+                'plate' => $this->clientResource->plate,
+                'client' => $this->clientResource->relationLoaded('client') && $this->clientResource->client
+                    ? ['name' => $this->clientResource->client->name, 'email' => $this->clientResource->client->email]
+                    : null,
             ]),
 
             'service' => $this->whenLoaded('service', fn () => [
