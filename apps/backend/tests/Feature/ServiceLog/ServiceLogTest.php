@@ -159,7 +159,7 @@ test('can update service log items — replaces existing items', function () {
         ]);
 
     $response->assertOk()
-        ->assertJsonPath('data.price_charged', 40.0)
+        ->assertJsonPath('data.price_charged', fn ($v) => (float) $v === 40.0)
         ->assertJsonPath('data.service_id', $this->service->id)
         ->assertJsonCount(2, 'data.items');
 
@@ -205,7 +205,8 @@ test('update items replaces all — old items are gone', function () {
                     'unit_price'  => 20.00,
                 ],
             ],
-        ]);
+        ])
+        ->assertOk();
 
     $this->assertDatabaseMissing('service_log_items', ['label' => 'Old item']);
     $this->assertDatabaseHas('service_log_items', ['label' => 'New item']);

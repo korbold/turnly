@@ -68,15 +68,6 @@ class ServiceLogResource extends JsonResource
         ];
     }
 
-    /**
-     * Preserve decimal notation for whole-number floats (e.g. 40.0 not 40)
-     * so assertJsonPath comparisons with float literals work correctly.
-     */
-    public function jsonOptions(): int
-    {
-        return JSON_PRESERVE_ZERO_FRACTION;
-    }
-
     public function with(Request $request): array
     {
         return [

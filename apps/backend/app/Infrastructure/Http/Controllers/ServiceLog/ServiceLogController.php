@@ -186,38 +186,43 @@ class ServiceLogController extends Controller
         $items = $request->input('items');
         $tenantId = app('current_tenant_id');
 
-        // Replace all items atomically — delete then re-insert so sort
-        // order resets cleanly and orphaned rows can never accumulate.
-        $serviceLog->items()->delete();
+        // Wrap the delete + insert + parent-update in a single transaction
+        // so a mid-loop constraint failure can never leave the log in a
+        // corrupt state (old items gone, new items half-written).
+        \Illuminate\Support\Facades\DB::transaction(function () use ($serviceLog, $items, $tenantId) {
+            // Replace all items atomically — delete then re-insert so sort
+            // order resets cleanly and orphaned rows can never accumulate.
+            $serviceLog->items()->delete();
 
-        $sort = 0;
-        foreach ($items as $line) {
-            $unit   = (float) $line['unit_price'];
-            $qty    = (float) $line['qty'];
-            $refId  = !empty($line['variant_id']) ? $line['variant_id'] : $line['service_id'];
+            $sort = 0;
+            foreach ($items as $line) {
+                $unit   = (float) $line['unit_price'];
+                $qty    = (float) $line['qty'];
+                $refId  = !empty($line['variant_id']) ? $line['variant_id'] : $line['service_id'];
 
-            \App\Infrastructure\Persistence\Models\ServiceLogItemModel::create([
-                'tenant_id'      => $tenantId,
-                'service_log_id' => $serviceLog->id,
-                'item_type'      => 'service_variant',
-                'ref_id'         => $refId,
-                'label'          => $line['label'],
-                'qty'            => $qty,
-                'unit_price'     => $unit,
-                'line_total'     => $unit * $qty,
-                'sort_order'     => $sort++,
+                \App\Infrastructure\Persistence\Models\ServiceLogItemModel::create([
+                    'tenant_id'      => $tenantId,
+                    'service_log_id' => $serviceLog->id,
+                    'item_type'      => 'service_variant',
+                    'ref_id'         => $refId,
+                    'label'          => $line['label'],
+                    'qty'            => $qty,
+                    'unit_price'     => $unit,
+                    'line_total'     => $unit * $qty,
+                    'sort_order'     => $sort++,
+                ]);
+            }
+
+            // Re-derive parent columns from the new item list so legacy
+            // queries (reports grouping by service_id) remain correct.
+            $newTotal       = array_sum(array_map(fn ($it) => (float) $it['unit_price'] * (float) $it['qty'], $items));
+            $firstVariantId = $items[0]['variant_id'] ?? null;
+            $serviceLog->update([
+                'service_id'         => $items[0]['service_id'],
+                'price_charged'      => $newTotal,
+                'service_variant_id' => $firstVariantId,
             ]);
-        }
-
-        // Re-derive parent columns from the new item list so legacy
-        // queries (reports grouping by service_id) remain correct.
-        $newTotal       = array_sum(array_map(fn ($it) => (float) $it['unit_price'] * (float) $it['qty'], $items));
-        $firstVariantId = $items[0]['variant_id'] ?? null;
-        $serviceLog->update([
-            'service_id'         => $items[0]['service_id'],
-            'price_charged'      => $newTotal,
-            'service_variant_id' => $firstVariantId,
-        ]);
+        });
 
         return new ServiceLogResource(
             $serviceLog->load(['clientResource', 'service', 'attendant', 'items'])
