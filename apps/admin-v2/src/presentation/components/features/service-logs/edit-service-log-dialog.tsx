@@ -163,17 +163,15 @@ export function EditServiceLogDialog({ log, open, onClose }: Props) {
   // ── line item mutations ──────────────────────────────────────────────────
 
   async function handleAddLineItem(svc: Service) {
-    // Use functional updater so the duplicate check reads current state, not
-    // a stale closure — important if two rapid selects arrive before re-render.
-    let alreadyPresent = false;
+    let isNew = false;
     setLineItems((prev) => {
       const existing = prev.find((it) => it.serviceId === svc.id && it.variantId === null);
       if (existing) {
-        alreadyPresent = true;
         return prev.map((it) =>
           it.serviceId === svc.id && it.variantId === null ? { ...it, qty: it.qty + 1 } : it
         );
       }
+      isNew = true;
       return [
         ...prev,
         {
@@ -189,7 +187,7 @@ export function EditServiceLogDialog({ log, open, onClose }: Props) {
       ];
     });
 
-    if (alreadyPresent) return;
+    if (!isNew) return;
 
     const variants = await fetchVariantsForService(svc.id);
     // Guard against race: user may have removed the item while variants were loading.
