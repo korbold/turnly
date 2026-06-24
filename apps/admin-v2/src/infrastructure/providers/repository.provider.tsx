@@ -18,6 +18,7 @@ import type { NotificationRepository } from '@/domain/repositories/notification.
 import type { ProductRepository } from '@/domain/repositories/product.repository';
 import type { ServiceVariantRepository } from '@/domain/repositories/service-variant.repository';
 import type { BusinessResourceRepository } from '@/domain/repositories/business-resource.repository';
+import type { InvoiceRepository } from '@/domain/repositories/invoice.repository';
 
 import { ApiAuthRepository } from '../api/repositories/api-auth.repository';
 import { ApiOnboardingRepository } from '../api/repositories/api-onboarding.repository';
@@ -36,6 +37,7 @@ import { ApiNotificationRepository } from '../api/repositories/api-notification.
 import { ApiProductRepository } from '../api/repositories/api-product.repository';
 import { ApiServiceVariantRepository } from '../api/repositories/api-service-variant.repository';
 import { ApiBusinessResourceRepository } from '../api/repositories/api-business-resource.repository';
+import { ApiInvoiceRepository } from '../api/repositories/api-invoice.repository';
 
 interface Repositories {
   auth: AuthRepository;
@@ -55,6 +57,7 @@ interface Repositories {
   product: ProductRepository;
   serviceVariant: ServiceVariantRepository;
   businessResource: BusinessResourceRepository;
+  invoice: InvoiceRepository;
 }
 
 const RepositoryContext = createContext<Repositories | null>(null);
@@ -79,6 +82,7 @@ export function RepositoryProvider({ children }: { children: ReactNode }) {
       product: new ApiProductRepository(),
       serviceVariant: new ApiServiceVariantRepository(),
       businessResource: new ApiBusinessResourceRepository(),
+      invoice: new ApiInvoiceRepository(),
     }),
     [],
   );

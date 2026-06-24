@@ -24,6 +24,11 @@ export function mapServiceLog(raw: Record<string, unknown>): ServiceLog {
     paidAt: raw.paid_at ? new Date(raw.paid_at as string) : null,
     invoiced: Boolean(raw.invoiced ?? false),
     invoicedAt: raw.invoiced_at ? new Date(raw.invoiced_at as string) : null,
+    invoiceStatus: (raw.invoice_status as ServiceLog['invoiceStatus']) ?? null,
+    invoiceExternalId: (raw.invoice_external_id as string | null) ?? null,
+    invoiceClaveAcceso: (raw.invoice_clave_acceso as string | null) ?? null,
+    invoiceNumeroAutorizacion: (raw.invoice_numero_autorizacion as string | null) ?? null,
+    invoiceError: (raw.invoice_error as string | null) ?? null,
     items: Array.isArray(raw.items)
       ? (raw.items as Record<string, unknown>[]).map(mapServiceLogItem)
       : undefined,

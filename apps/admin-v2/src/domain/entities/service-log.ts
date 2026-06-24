@@ -48,6 +48,11 @@ export interface ServiceLog {
   paidAt: Date | null;
   invoiced: boolean;
   invoicedAt: Date | null;
+  invoiceStatus: 'pendiente' | 'enviada' | 'autorizada' | 'rechazada' | null;
+  invoiceExternalId: string | null;
+  invoiceClaveAcceso: string | null;
+  invoiceNumeroAutorizacion: string | null;
+  invoiceError: string | null;
   status: ServiceLogStatus;
   notes: string | null;
   logDate: string;
