@@ -17,6 +17,7 @@ class ServiceLogModel extends Model
         'tenant_id', 'client_resource_id', 'service_id', 'service_variant_id', 'reservation_id',
         'attended_by', 'created_by', 'started_at', 'finished_at',
         'price_charged', 'payment_method', 'payment_bank', 'payment_status', 'paid_at',
+        'invoiced', 'invoiced_at',
         'status', 'notes', 'log_date',
         'consumption_applied_at',
     ];
@@ -30,6 +31,8 @@ class ServiceLogModel extends Model
             'log_date' => 'date',
             'consumption_applied_at' => 'datetime',
             'paid_at' => 'datetime',
+            'invoiced' => 'boolean',
+            'invoiced_at' => 'datetime',
         ];
     }
 

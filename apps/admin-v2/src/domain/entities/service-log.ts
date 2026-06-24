@@ -46,6 +46,8 @@ export interface ServiceLog {
   paymentBank: string | null;
   paymentStatus: 'paid' | 'unpaid';
   paidAt: Date | null;
+  invoiced: boolean;
+  invoicedAt: Date | null;
   status: ServiceLogStatus;
   notes: string | null;
   logDate: string;

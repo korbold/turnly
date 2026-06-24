@@ -115,6 +115,10 @@ export function EditServiceLogDialog({ log, open, onClose }: Props) {
   const [notes, setNotes] = useState('');
   const [lineItems, setLineItems] = useState<LineItem[]>([]);
 
+  // Items are locked once the log is invoiced — changing prices would
+  // require a nota de crédito + new invoice, which the billing service handles.
+  const itemsLocked = log?.invoiced === true;
+
   const updateLog = useUpdateServiceLog();
   const updateItems = useUpdateServiceLogItems();
   const { data: teamData } = useTeam({ excludeRole: 'client' as const });
@@ -332,6 +336,11 @@ export function EditServiceLogDialog({ log, open, onClose }: Props) {
                     ({lineItems.length})
                   </span>
                 )}
+                {itemsLocked && (
+                  <span className="ml-2 inline-flex items-center gap-1 rounded-full bg-[var(--warning-100)] px-2 py-0.5 text-[10.5px] font-semibold uppercase tracking-[0.05em] text-[var(--warning-700)]">
+                    Facturado · solo lectura
+                  </span>
+                )}
               </Label>
               {lineItems.length > 0 && (
                 <span
@@ -343,14 +352,16 @@ export function EditServiceLogDialog({ log, open, onClose }: Props) {
               )}
             </div>
 
-            <ServiceCombobox
-              services={services}
-              selected={null}
-              recentIds={[]}
-              isLoading={servicesLoading}
-              onSelect={handleAddLineItem}
-              placeholder={lineItems.length === 0 ? 'Selecciona un servicio…' : 'Agregar otro servicio…'}
-            />
+            {!itemsLocked && (
+              <ServiceCombobox
+                services={services}
+                selected={null}
+                recentIds={[]}
+                isLoading={servicesLoading}
+                onSelect={handleAddLineItem}
+                placeholder={lineItems.length === 0 ? 'Selecciona un servicio…' : 'Agregar otro servicio…'}
+              />
+            )}
 
             {lineItems.length > 0 && (
               <ul className="mt-2 space-y-1.5 rounded-lg border border-[var(--border)] bg-[var(--bg-surface)] p-2">
@@ -378,6 +389,7 @@ export function EditServiceLogDialog({ log, open, onClose }: Props) {
                           min={1}
                           step="1"
                           value={it.qty}
+                          disabled={itemsLocked}
                           onChange={(e) =>
                             handleUpdateLineItem(it.key, {
                               qty: Math.max(1, Number(e.target.value) || 1),
@@ -391,6 +403,7 @@ export function EditServiceLogDialog({ log, open, onClose }: Props) {
                           min={0}
                           step="0.01"
                           value={it.unitPrice}
+                          disabled={itemsLocked}
                           onChange={(e) =>
                             handleUpdateLineItem(it.key, {
                               unitPrice: Math.max(0, Number(e.target.value) || 0),
@@ -400,14 +413,16 @@ export function EditServiceLogDialog({ log, open, onClose }: Props) {
                           style={{ fontFamily: 'var(--font-mono)' }}
                           aria-label="Precio unitario"
                         />
-                        <button
-                          type="button"
-                          onClick={() => handleRemoveLineItem(it.key)}
-                          className="rounded-md p-1.5 text-[var(--fg-muted)] transition-colors hover:bg-[var(--danger-50)] hover:text-[var(--danger-600)] cursor-pointer"
-                          aria-label={`Quitar ${it.serviceName}`}
-                        >
-                          <X className="h-3.5 w-3.5" />
-                        </button>
+                        {!itemsLocked && (
+                          <button
+                            type="button"
+                            onClick={() => handleRemoveLineItem(it.key)}
+                            className="rounded-md p-1.5 text-[var(--fg-muted)] transition-colors hover:bg-[var(--danger-50)] hover:text-[var(--danger-600)] cursor-pointer"
+                            aria-label={`Quitar ${it.serviceName}`}
+                          >
+                            <X className="h-3.5 w-3.5" />
+                          </button>
+                        )}
                       </div>
 
                       {needsVariantPick && (

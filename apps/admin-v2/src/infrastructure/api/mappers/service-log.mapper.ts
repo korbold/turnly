@@ -22,6 +22,8 @@ export function mapServiceLog(raw: Record<string, unknown>): ServiceLog {
     paymentBank: (raw.payment_bank as string | null) ?? null,
     paymentStatus: ((raw.payment_status as 'paid' | 'unpaid' | null) ?? 'paid') as ServiceLog['paymentStatus'],
     paidAt: raw.paid_at ? new Date(raw.paid_at as string) : null,
+    invoiced: Boolean(raw.invoiced ?? false),
+    invoicedAt: raw.invoiced_at ? new Date(raw.invoiced_at as string) : null,
     items: Array.isArray(raw.items)
       ? (raw.items as Record<string, unknown>[]).map(mapServiceLogItem)
       : undefined,
