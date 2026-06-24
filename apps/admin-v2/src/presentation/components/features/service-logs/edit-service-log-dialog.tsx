@@ -74,6 +74,23 @@ async function fetchVariantsForService(serviceId: string): Promise<ServiceVarian
     }));
 }
 
+async function fetchSuggestedVariant(
+  serviceId: string,
+  resourceId: string,
+): Promise<ServiceVariantSlim | null> {
+  const { default: api } = await import('@/infrastructure/api/client');
+  try {
+    const { data: res } = await api.get(`/public/services/${serviceId}/suggested-variant`, {
+      params: { resource_id: resourceId },
+    });
+    const d = res.data;
+    if (!d || !d.variant_id) return null;
+    return { id: String(d.variant_id), label: String(d.label ?? ''), price: Number(d.price ?? 0) };
+  } catch {
+    return null;
+  }
+}
+
 // ─── constants ────────────────────────────────────────────────────────────────
 
 const METHODS: { value: PaymentMethod; label: string; icon: typeof Banknote }[] = [
@@ -163,12 +180,14 @@ export function EditServiceLogDialog({ log, open, onClose }: Props) {
   // ── line item mutations ──────────────────────────────────────────────────
 
   async function handleAddLineItem(svc: Service) {
+    // Dedup by serviceId only — if the service already exists (any variant),
+    // increment qty instead of adding a duplicate row.
     let isNew = false;
     setLineItems((prev) => {
-      const existing = prev.find((it) => it.serviceId === svc.id && it.variantId === null);
+      const existing = prev.find((it) => it.serviceId === svc.id);
       if (existing) {
         return prev.map((it) =>
-          it.serviceId === svc.id && it.variantId === null ? { ...it, qty: it.qty + 1 } : it
+          it.serviceId === svc.id ? { ...it, qty: it.qty + 1 } : it
         );
       }
       isNew = true;
@@ -189,13 +208,29 @@ export function EditServiceLogDialog({ log, open, onClose }: Props) {
 
     if (!isNew) return;
 
-    const variants = await fetchVariantsForService(svc.id);
-    // Guard against race: user may have removed the item while variants were loading.
+    // Fetch variants + suggested variant (based on vehicle type) in parallel.
+    const [variants, suggested] = await Promise.all([
+      fetchVariantsForService(svc.id),
+      log ? fetchSuggestedVariant(svc.id, log.clientResourceId) : Promise.resolve(null),
+    ]);
+
+    // Guard against race: user may have removed the item while loading.
     setLineItems((prev) => {
       if (!prev.some((it) => it.serviceId === svc.id && it.variantId === null)) return prev;
-      return prev.map((it) =>
-        it.serviceId === svc.id && it.variantId === null ? { ...it, availableVariants: variants } : it
-      );
+      return prev.map((it) => {
+        if (it.serviceId !== svc.id || it.variantId !== null) return it;
+        if (suggested) {
+          return {
+            ...it,
+            key:               rowKey(svc.id, suggested.id),
+            variantId:         suggested.id,
+            variantLabel:      suggested.label,
+            unitPrice:         suggested.price,
+            availableVariants: variants,
+          };
+        }
+        return { ...it, availableVariants: variants };
+      });
     });
   }
 
