@@ -18,6 +18,8 @@ class ServiceLogModel extends Model
         'attended_by', 'created_by', 'started_at', 'finished_at',
         'price_charged', 'payment_method', 'payment_bank', 'payment_status', 'paid_at',
         'invoiced', 'invoiced_at',
+        'invoice_external_id', 'invoice_status', 'invoice_clave_acceso',
+        'invoice_numero_autorizacion', 'invoice_error',
         'status', 'notes', 'log_date',
         'consumption_applied_at',
     ];
