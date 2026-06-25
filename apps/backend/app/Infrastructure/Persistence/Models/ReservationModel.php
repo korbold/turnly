@@ -22,6 +22,8 @@ class ReservationModel extends Model
         'checked_in_at', 'billing_snapshot',
         'client_rescheduled_at',
         'payment_status', 'payment_method', 'paid_at', 'payment_reference', 'payment_bank',
+        'invoiced', 'invoiced_at', 'invoice_external_id', 'invoice_status',
+        'invoice_clave_acceso', 'invoice_numero_autorizacion', 'invoice_error',
     ];
 
     protected function casts(): array
@@ -34,7 +36,9 @@ class ReservationModel extends Model
             'checked_in_at' => 'datetime',
             'client_rescheduled_at' => 'datetime',
             'billing_snapshot' => 'array',
-            'paid_at' => 'datetime',
+            'paid_at'      => 'datetime',
+            'invoiced'     => 'boolean',
+            'invoiced_at'  => 'datetime',
         ];
     }
 

@@ -8,6 +8,7 @@ use App\Domain\Reservation\Enums\ReservationStatus;
 use App\Domain\Reservation\Exceptions\InvalidStatusTransitionException;
 use App\Domain\Reservation\Exceptions\ReservationNotFoundException;
 use App\Events\ReservationUpdated;
+use App\Infrastructure\Jobs\EmitReservationInvoiceJob;
 use App\Infrastructure\Notifications\Notifications\ReservationCompleted;
 use App\Infrastructure\Persistence\Models\ReservationModel;
 use App\Infrastructure\Persistence\Models\UserModel;
@@ -50,6 +51,8 @@ class CompleteWashUseCase
             } catch (\Throwable $e) {
                 \Illuminate\Support\Facades\Log::error('Failed to send reservation completed notification', ['error' => $e->getMessage()]);
             }
+
+            EmitReservationInvoiceJob::dispatch($model->id)->delay(now()->addSeconds(3));
         }
     }
 }

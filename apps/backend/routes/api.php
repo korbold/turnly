@@ -156,6 +156,7 @@ Route::prefix('v1')->group(function () {
             // records method + reference when the customer pays —
             // sometimes upfront, sometimes at pickup.
             Route::post('reservations/{id}/payment', [\App\Infrastructure\Http\Controllers\Reservation\ReservationPaymentController::class, 'record']);
+            Route::post('reservations/{id}/invoice', [ReservationController::class, 'invoice']);
 
             // Polymorphic line items + audit log.
             Route::get('reservations/{id}/items', [ReservationItemController::class, 'index']);

@@ -16,6 +16,7 @@ use App\Infrastructure\Http\Controllers\Controller;
 use App\Infrastructure\Http\Requests\Reservation\CancelReservationRequest;
 use App\Infrastructure\Http\Requests\Reservation\CreateReservationRequest;
 use App\Infrastructure\Http\Resources\ReservationResource;
+use App\Infrastructure\Jobs\EmitReservationInvoiceJob;
 use App\Infrastructure\Persistence\Models\ReservationModel;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
@@ -373,6 +374,26 @@ class ReservationController extends Controller
             'data' => ['message' => 'Wash completed'],
             'meta' => ['timestamp' => now()->toIso8601String()],
         ]);
+    }
+
+    public function invoice(string $id): JsonResponse
+    {
+        $reservation = ReservationModel::findOrFail($id);
+
+        if ($reservation->invoice_status === 'autorizada') {
+            return response()->json([
+                'error' => [
+                    'code'    => 'ALREADY_INVOICED',
+                    'message' => 'Esta factura ya fue autorizada por el SRI.',
+                ],
+            ], 422);
+        }
+
+        EmitReservationInvoiceJob::dispatch($id);
+
+        return response()->json([
+            'data' => ['message' => 'Facturación iniciada.'],
+        ], 202);
     }
 
     public function cancel(CancelReservationRequest $request, string $id): JsonResponse
