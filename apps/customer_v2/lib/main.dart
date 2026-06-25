@@ -62,9 +62,11 @@ Future<void> bootstrap({required String env}) async {
   // GoogleService-Info.plist (iOS) carry the right project for this env.
   await Firebase.initializeApp();
 
-  // Crashlytics: disable in debug to avoid noise during development.
-  await FirebaseCrashlytics.instance.setCrashlyticsCollectionEnabled(!kDebugMode);
-  if (!kDebugMode) _setupCrashlytics();
+  // Dev: always enabled so crashes surface in dev Firebase project.
+  // Prod: release builds only.
+  final enableCrashlytics = env == 'dev' || !kDebugMode;
+  await FirebaseCrashlytics.instance.setCrashlyticsCollectionEnabled(enableCrashlytics);
+  if (enableCrashlytics) _setupCrashlytics();
 
   // Init Hive for local storage (favorites, etc.)
   await Hive.initFlutter();

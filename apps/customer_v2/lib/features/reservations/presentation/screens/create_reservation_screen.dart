@@ -435,7 +435,6 @@ class _CreateReservationViewState extends State<_CreateReservationView> {
                           _selectedBusinessResourceId = id;
                           _businessResourceStepCompleted = true;
                         });
-                        context.read<CreateReservationCubit>().selectBusinessResource(id);
                       },
                       onNext: () {
                         if (_businessResourceStepCompleted) _nextStep();
