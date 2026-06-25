@@ -103,7 +103,7 @@ class BillingProfileController extends Controller
     public function uploadCert(Request $request): JsonResponse
     {
         $request->validate([
-            'p12_file'               => ['required', 'file', 'max:500', 'mimetypes:application/x-pkcs12,application/octet-stream,application/pkcs12'],
+            'p12_file'               => ['required', 'file', 'max:1024'],
             'p12_password'           => ['required', 'string'],
             'ambiente'               => ['required', 'integer', 'in:1,2'],
             'obligado_contabilidad'  => ['boolean'],
