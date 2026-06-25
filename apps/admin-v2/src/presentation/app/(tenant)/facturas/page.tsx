@@ -3,7 +3,7 @@
 import { Suspense, useState } from 'react';
 import { format } from 'date-fns';
 import { es } from 'date-fns/locale';
-import { CalendarIcon, Download } from 'lucide-react';
+import { CalendarIcon, Download, FileText } from 'lucide-react';
 import { toast } from 'sonner';
 import { Button } from '@/presentation/components/ui/button';
 import { Calendar } from '@/presentation/components/ui/calendar';
@@ -36,27 +36,21 @@ function FacturasContent() {
   const [status, setStatus] = useState<InvoiceStatus | undefined>(undefined);
   const [page, setPage] = useState(1);
 
-  async function handleDownloadXml(serviceLogId: string) {
-    const token = typeof window !== 'undefined'
-      ? localStorage.getItem('auth_token')
-      : null;
-    const tenantSlug = typeof window !== 'undefined'
-      ? localStorage.getItem('tenant_slug')
-      : null;
+  function getAuthHeaders(): Record<string, string> {
+    const token = typeof window !== 'undefined' ? localStorage.getItem('auth_token') : null;
+    const tenantSlug = typeof window !== 'undefined' ? localStorage.getItem('tenant_slug') : null;
+    return {
+      ...(token ? { Authorization: `Bearer ${token}` } : {}),
+      ...(tenantSlug ? { 'X-Tenant': tenantSlug } : {}),
+    };
+  }
 
+  async function handleDownloadXml(serviceLogId: string) {
     const apiUrl = process.env.NEXT_PUBLIC_API_URL ?? 'http://localhost:8000/api/v1';
     const res = await fetch(`${apiUrl}/service-logs/${serviceLogId}/invoice/xml`, {
-      headers: {
-        ...(token ? { Authorization: `Bearer ${token}` } : {}),
-        ...(tenantSlug ? { 'X-Tenant': tenantSlug } : {}),
-      },
+      headers: getAuthHeaders(),
     });
-
-    if (!res.ok) {
-      toast.error('No se pudo descargar el XML');
-      return;
-    }
-
+    if (!res.ok) { toast.error('No se pudo descargar el XML'); return; }
     const blob = await res.blob();
     const url = URL.createObjectURL(blob);
     const a = document.createElement('a');
@@ -64,6 +58,19 @@ function FacturasContent() {
     a.download = `factura-${serviceLogId}.xml`;
     a.click();
     URL.revokeObjectURL(url);
+  }
+
+  async function handleOpenRide(externalId: string) {
+    const apiUrl = process.env.NEXT_PUBLIC_API_URL ?? 'http://localhost:8000/api/v1';
+    const res = await fetch(`${apiUrl}/billing/invoices/${externalId}/ride`, {
+      headers: getAuthHeaders(),
+    });
+    if (!res.ok) { toast.error('No se pudo obtener el PDF'); return; }
+    const blob = await res.blob();
+    const url = URL.createObjectURL(blob);
+    window.open(url, '_blank');
+    // Revoke after a short delay to let the new tab load the blob
+    setTimeout(() => URL.revokeObjectURL(url), 10_000);
   }
 
   const filters: InvoiceFilters = {
@@ -159,7 +166,7 @@ function FacturasContent() {
                 <th className="px-3 py-2 text-right font-medium">Total</th>
                 <th className="px-3 py-2 text-left font-medium">Estado</th>
                 <th className="px-3 py-2 text-left font-medium">Clave acceso</th>
-                <th className="px-3 py-2 text-center font-medium">XML</th>
+                <th className="px-3 py-2 text-center font-medium">Docs</th>
               </tr>
             </thead>
             <tbody>
@@ -181,15 +188,29 @@ function FacturasContent() {
                     {inv.claveAcceso ?? '—'}
                   </td>
                   <td className="px-3 py-2 text-center">
-                    {inv.invoiceStatus === 'autorizada' && inv.serviceLogId ? (
-                      <Button
-                        variant="ghost"
-                        size="icon"
-                        className="h-7 w-7"
-                        onClick={() => handleDownloadXml(inv.serviceLogId)}
-                      >
-                        <Download className="h-4 w-4" />
-                      </Button>
+                    {inv.invoiceStatus === 'autorizada' ? (
+                      <div className="flex items-center justify-center gap-1">
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          className="h-7 w-7"
+                          title="Descargar XML"
+                          onClick={() => handleDownloadXml(inv.serviceLogId)}
+                        >
+                          <Download className="h-4 w-4" />
+                        </Button>
+                        {inv.externalId && (
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            className="h-7 w-7"
+                            title="Ver PDF (RIDE)"
+                            onClick={() => handleOpenRide(inv.externalId)}
+                          >
+                            <FileText className="h-4 w-4" />
+                          </Button>
+                        )}
+                      </div>
                     ) : (
                       <span className="text-muted-foreground">—</span>
                     )}
