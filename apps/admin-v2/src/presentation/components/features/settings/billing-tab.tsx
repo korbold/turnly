@@ -41,12 +41,6 @@ import {
 import api from '@/infrastructure/api/client';
 import type { BillingProfileInput, TaxIdType } from '@/domain/entities/tenant';
 
-const ID_TYPES: { value: TaxIdType; label: string }[] = [
-  { value: 'ruc', label: 'RUC' },
-  { value: 'cedula', label: 'Cédula' },
-  { value: 'pasaporte', label: 'Pasaporte' },
-];
-
 function useDebounced<T>(value: T, delay = 600): T {
   const [debounced, setDebounced] = useState(value);
   useEffect(() => {
@@ -132,7 +126,6 @@ export function BillingTab() {
   useEffect(() => {
     if (profile) {
       setForm({
-        taxIdType: profile.taxIdType ?? 'ruc',
         taxId: profile.taxId ?? '',
         legalName: profile.legalName ?? '',
         billingEmail: profile.billingEmail ?? '',
@@ -143,8 +136,7 @@ export function BillingTab() {
   }, [profile]);
 
   const debouncedTaxId = useDebounced(form.taxId ?? '');
-  const lookupEnabled =
-    !!form.taxIdType && form.taxIdType !== 'pasaporte' && debouncedTaxId.length >= 10;
+  const lookupEnabled = debouncedTaxId.length >= 10;
 
   const { data: lookup, isFetching: isLookingUp } = useLookupTaxId(
     form.taxIdType ?? null,
@@ -165,7 +157,7 @@ export function BillingTab() {
 
   function validate(): boolean {
     const e: Record<string, string> = {};
-    if (!form.taxIdType) e.taxIdType = 'Selecciona un tipo';
+
     if (!form.taxId) e.taxId = 'Requerido';
     if (!form.legalName) e.legalName = 'Requerido';
     if (!form.billingEmail) {
@@ -182,7 +174,7 @@ export function BillingTab() {
     if (!validate()) return;
     try {
       await update.mutateAsync({
-        taxIdType: form.taxIdType!,
+        taxIdType: 'ruc',
         taxId: form.taxId!.trim(),
         legalName: form.legalName!.trim(),
         billingEmail: form.billingEmail!.trim(),
@@ -271,47 +263,16 @@ export function BillingTab() {
           </CardDescription>
         </CardHeader>
         <CardContent className="space-y-4">
-          <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
-            <div className="space-y-1.5">
-              <Label>Tipo identificación</Label>
-              <Select
-                value={form.taxIdType ?? ''}
-                onValueChange={(v) => handle('taxIdType', v as TaxIdType)}
-              >
-                <SelectTrigger>
-                  <SelectValue placeholder="Seleccionar" />
-                </SelectTrigger>
-                <SelectContent>
-                  {ID_TYPES.map((t) => (
-                    <SelectItem key={t.value} value={t.value}>
-                      {t.label}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-              {errors.taxIdType && (
-                <p className="text-xs text-[var(--danger-500)]">{errors.taxIdType}</p>
-              )}
-            </div>
-
-            <div className="sm:col-span-2 space-y-1.5">
-              <Label>Número</Label>
-              <Input
-                value={form.taxId ?? ''}
-                onChange={(e) => handle('taxId', e.target.value.replace(/\s/g, ''))}
-                placeholder={
-                  form.taxIdType === 'ruc'
-                    ? '13 dígitos (...001)'
-                    : form.taxIdType === 'cedula'
-                      ? '10 dígitos'
-                      : form.taxIdType === 'pasaporte'
-                        ? 'Número de pasaporte'
-                        : 'Número'
-                }
-              />
-              {errors.taxId && <p className="text-xs text-[var(--danger-500)]">{errors.taxId}</p>}
-              {lookupBadge}
-            </div>
+          <div className="space-y-1.5">
+            <Label>RUC del emisor</Label>
+            <Input
+              value={form.taxId ?? ''}
+              onChange={(e) => handle('taxId', e.target.value.replace(/\s/g, ''))}
+              placeholder="13 dígitos (...001)"
+              maxLength={13}
+            />
+            {errors.taxId && <p className="text-xs text-[var(--danger-500)]">{errors.taxId}</p>}
+            {lookupBadge}
           </div>
 
           <div className="space-y-1.5">
