@@ -108,7 +108,7 @@ export function BillingTab() {
       queryClient.invalidateQueries({ queryKey: ['billing-cert'] });
     },
     onError: (err: unknown) => {
-      const msg = (err as { response?: { data?: { message?: string } } })?.response?.data?.message;
+      const msg = (err as { message?: string })?.message;
       toast.error(msg ?? 'Error al subir el certificado');
     },
   });
@@ -183,16 +183,16 @@ export function BillingTab() {
       });
       toast.success('Datos del emisor guardados');
     } catch (err) {
-      const msg = err instanceof Error ? err.message : 'Error al guardar';
+      const msg = (err as { message?: string })?.message ?? 'Error al guardar';
       toast.error(msg);
     }
   }
 
   const profileComplete = !!(
-    form.taxId &&
-    form.legalName &&
-    form.billingEmail &&
-    form.billingAddress
+    profile?.taxId &&
+    profile?.legalName &&
+    profile?.billingEmail &&
+    profile?.billingAddress
   );
   const certConfigured = certData?.cert_configured ?? false;
 
