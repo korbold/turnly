@@ -6,6 +6,7 @@ use App\Infrastructure\Persistence\Models\ServiceModel;
 use App\Infrastructure\Persistence\Models\TenantModel;
 use App\Infrastructure\Persistence\Models\UserModel;
 use App\Infrastructure\Persistence\Models\ClientResourceModel;
+use Illuminate\Support\Facades\Queue;
 
 beforeEach(function () {
     $this->tenant = TenantModel::factory()->create(['status' => 'active']);
@@ -132,6 +133,10 @@ test('can start a wash from confirmed reservation', function () {
 });
 
 test('can complete a reservation in progress', function () {
+    // Queue::fake so EmitReservationInvoiceJob does not attempt a real HTTP
+    // call to the billing service during the test run.
+    Queue::fake();
+
     $reservation = ReservationModel::factory()->create([
         'tenant_id' => $this->tenant->id,
         'client_id' => $this->user->id,
@@ -151,6 +156,8 @@ test('can complete a reservation in progress', function () {
         'id' => $reservation->id,
         'status' => 'completed',
     ]);
+
+    Queue::assertPushed(\App\Infrastructure\Jobs\EmitReservationInvoiceJob::class);
 });
 
 test('can cancel a reservation', function () {
