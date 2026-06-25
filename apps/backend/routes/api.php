@@ -27,6 +27,7 @@ use App\Infrastructure\Http\Controllers\Report\ReportController;
 use App\Infrastructure\Http\Controllers\SuperAdmin\SuperAdminController;
 use App\Infrastructure\Http\Controllers\Upload\UploadController;
 use App\Infrastructure\Http\Controllers\PublicController;
+use App\Infrastructure\Http\Controllers\InvoiceProxyController;
 use Illuminate\Support\Facades\Route;
 
 // Public business pages
@@ -183,6 +184,9 @@ Route::prefix('v1')->group(function () {
             Route::get('invoices', [ServiceLogController::class, 'indexInvoiced']);
             // Billing: proxy XML download through backend to enforce auth.
             Route::get('service-logs/{id}/invoice/xml', [ServiceLogController::class, 'downloadInvoiceXml']);
+            // Billing: proxy direct access to billing service invoice list + RIDE PDF.
+            Route::get('billing/invoices', [InvoiceProxyController::class, 'index']);
+            Route::get('billing/invoices/{id}/ride', [InvoiceProxyController::class, 'ride']);
 
             // Client Resources
             Route::get('client-resources', [ClientResourceController::class, 'index']);

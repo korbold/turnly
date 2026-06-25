@@ -17,6 +17,23 @@ class BillingServiceClient
         $this->baseUrl = rtrim((string) config('services.billing.url'), '/');
     }
 
+    public function getInvoices(string $tenantId, array $filters = []): array
+    {
+        try {
+            $response = Http::timeout(10)
+                ->get("{$this->baseUrl}/api/invoices", array_merge(['tenant_id' => $tenantId], $filters))
+                ->throw();
+
+            return $response->json() ?? [];
+        } catch (RequestException $e) {
+            throw new RuntimeException(
+                'Billing service error: ' . $e->response->body(),
+                $e->getCode(),
+                $e
+            );
+        }
+    }
+
     public function emitInvoice(array $data): array
     {
         try {
@@ -55,6 +72,22 @@ class BillingServiceClient
      * GET /api/invoices/{id}/xml — returns raw XML string
      * @throws RuntimeException on HTTP error
      */
+    public function getInvoiceRide(string $id): string
+    {
+        try {
+            return Http::timeout(20)
+                ->get("{$this->baseUrl}/api/invoices/{$id}/ride")
+                ->throw()
+                ->body();
+        } catch (RequestException $e) {
+            throw new RuntimeException(
+                'Billing service RIDE error: ' . $e->response->body(),
+                $e->getCode(),
+                $e
+            );
+        }
+    }
+
     public function getInvoiceXml(string $id): string
     {
         try {

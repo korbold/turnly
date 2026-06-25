@@ -39,6 +39,15 @@ class ReservationResource extends JsonResource
             'payment_reference' => $this->payment_reference,
             'payment_bank'      => $this->payment_bank,
 
+            // SRI invoice fields
+            'invoiced'                    => (bool) $this->invoiced,
+            'invoiced_at'                 => $this->invoiced_at?->toIso8601String(),
+            'invoice_external_id'         => $this->invoice_external_id,
+            'invoice_status'              => $this->invoice_status,
+            'invoice_clave_acceso'        => $this->invoice_clave_acceso,
+            'invoice_numero_autorizacion' => $this->invoice_numero_autorizacion,
+            'invoice_error'               => $this->invoice_error,
+
             'client_resource' => $this->whenLoaded('clientResource', fn () => [
                 'id'    => $this->clientResource->id,
                 'label' => ClientResourceResource::labelFrom($this->clientResource->data),
