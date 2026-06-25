@@ -123,17 +123,19 @@ class EmitServiceLogInvoiceJob implements ShouldQueue
     private function buildItems(ServiceLogModel $log): array
     {
         $tenant = TenantModel::find($log->tenant_id);
-        $pricesIncludeIva = (bool) ($tenant?->settings['prices_include_iva'] ?? false);
+        $ivaMode = $tenant?->settings['iva_mode'] ?? 'excluded';
+
+        $codIva = $ivaMode === 'zero' ? '0' : '4';
 
         if ($log->items && $log->items->isNotEmpty()) {
-            return $log->items->map(function ($item) use ($pricesIncludeIva) {
+            return $log->items->map(function ($item) use ($ivaMode, $codIva) {
                 $unit = (float) $item->unit_price;
                 return [
                     'descripcion'           => (string) $item->label,
                     'cantidad'              => (float) $item->qty,
-                    'precio_unitario'       => $pricesIncludeIva ? round($unit / 1.15, 6) : $unit,
+                    'precio_unitario'       => $ivaMode === 'included' ? round($unit / 1.15, 6) : $unit,
                     'descuento'             => 0.0,
-                    'codigo_porcentaje_iva' => '4',
+                    'codigo_porcentaje_iva' => $codIva,
                 ];
             })->values()->all();
         }
@@ -144,9 +146,9 @@ class EmitServiceLogInvoiceJob implements ShouldQueue
         return [[
             'descripcion'           => $description,
             'cantidad'              => 1.0,
-            'precio_unitario'       => $pricesIncludeIva ? round($unitPrice / 1.15, 6) : $unitPrice,
+            'precio_unitario'       => $ivaMode === 'included' ? round($unitPrice / 1.15, 6) : $unitPrice,
             'descuento'             => 0.0,
-            'codigo_porcentaje_iva' => '4',
+            'codigo_porcentaje_iva' => $codIva,
         ]];
     }
 }

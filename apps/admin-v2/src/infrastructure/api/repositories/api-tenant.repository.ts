@@ -39,8 +39,8 @@ export class ApiTenantRepository implements TenantRepository {
     if (settings.allowClientResourceSelection !== undefined) {
       body.allow_client_resource_selection = settings.allowClientResourceSelection;
     }
-    if (settings.pricesIncludeIva !== undefined) {
-      body.prices_include_iva = settings.pricesIncludeIva;
+    if (settings.ivaMode !== undefined) {
+      body.iva_mode = settings.ivaMode;
     }
 
     const { data: res } = await api.patch('/tenant/settings', body);

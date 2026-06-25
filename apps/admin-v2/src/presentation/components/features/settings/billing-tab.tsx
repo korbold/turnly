@@ -254,28 +254,31 @@ export function BillingTab() {
       {/* IVA pricing mode */}
       <Card>
         <CardContent className="flex items-center justify-between gap-4 py-4">
-          <div>
-            <p className="text-[14px] font-medium leading-snug">Precios incluyen IVA</p>
+          <div className="flex-1">
+            <p className="text-[14px] font-medium leading-snug">Modo IVA de tus precios</p>
             <p className="text-[12px] text-[var(--fg-muted)] mt-0.5">
-              Activa esto si tus precios ya tienen el 15% de IVA incluido (ej. $60 = $52.17 + IVA).
-              El sistema descontará el IVA antes de enviar la factura al SRI para evitar doble cálculo.
+              Define cómo el sistema trata el IVA al generar facturas electrónicas para el SRI.
             </p>
           </div>
-          <label className="relative inline-flex cursor-pointer items-center">
-            <input
-              type="checkbox"
-              className="peer sr-only"
-              checked={tenantSettings?.pricesIncludeIva ?? false}
-              disabled={updateSettings.isPending}
-              onChange={(e) => {
-                updateSettings.mutate(
-                  { pricesIncludeIva: e.target.checked },
-                  { onSuccess: () => toast.success(e.target.checked ? 'Precios con IVA incluido activado' : 'Precios sin IVA incluido') },
-                );
-              }}
-            />
-            <span className="h-6 w-11 rounded-full bg-[var(--ink-100)] transition-colors peer-checked:bg-[var(--brand-600)] after:absolute after:left-[2px] after:top-[2px] after:h-5 after:w-5 after:rounded-full after:bg-white after:transition-transform after:content-[''] peer-checked:after:translate-x-5" />
-          </label>
+          <Select
+            value={tenantSettings?.ivaMode ?? 'excluded'}
+            disabled={updateSettings.isPending}
+            onValueChange={(value) => {
+              updateSettings.mutate(
+                { ivaMode: value as 'excluded' | 'included' | 'zero' },
+                { onSuccess: () => toast.success('Modo IVA guardado') },
+              );
+            }}
+          >
+            <SelectTrigger className="w-52 shrink-0">
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="excluded">Precio sin IVA (se agrega 15%)</SelectItem>
+              <SelectItem value="included">Precio incluye IVA 15%</SelectItem>
+              <SelectItem value="zero">IVA 0%</SelectItem>
+            </SelectContent>
+          </Select>
         </CardContent>
       </Card>
 
