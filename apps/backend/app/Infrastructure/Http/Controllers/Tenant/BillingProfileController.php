@@ -112,6 +112,12 @@ class BillingProfileController extends Controller
 
         $tenant = TenantModel::findOrFail(app('current_tenant_id'));
 
+        if (empty($tenant->tax_id) || empty($tenant->legal_name)) {
+            return response()->json([
+                'message' => 'Completa los datos del emisor (RUC y razón social) antes de subir el certificado.',
+            ], 422);
+        }
+
         $p12Base64 = base64_encode(file_get_contents($request->file('p12_file')->path()));
 
         $billingUrl = rtrim((string) config('services.billing.url'), '/');
