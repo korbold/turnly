@@ -19,6 +19,7 @@ import {
   ChevronsLeft,
   ChevronsRight,
   LogOut,
+  Receipt,
 } from 'lucide-react';
 import { cn } from '@/shared/utils/cn';
 import { Separator } from '@/presentation/components/ui/separator';
@@ -48,6 +49,7 @@ const mainNavItems: NavItem[] = [
   { label: 'Inventario', href: '/inventory', icon: Package },
   { label: 'Equipo', href: '/team', icon: UserPlus },
   { label: 'Reportes', href: '/reports', icon: BarChart3 },
+  { label: 'Facturas', href: '/facturas', icon: Receipt },
   { label: 'Mi Plan', href: '/plan', icon: CreditCard },
 ];
 
