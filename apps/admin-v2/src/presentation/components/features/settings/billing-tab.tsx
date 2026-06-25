@@ -132,7 +132,7 @@ export function BillingTab() {
   useEffect(() => {
     if (profile) {
       setForm({
-        taxIdType: profile.taxIdType ?? undefined,
+        taxIdType: profile.taxIdType ?? 'ruc',
         taxId: profile.taxId ?? '',
         legalName: profile.legalName ?? '',
         billingEmail: profile.billingEmail ?? '',
@@ -304,7 +304,9 @@ export function BillingTab() {
                     ? '13 dígitos (...001)'
                     : form.taxIdType === 'cedula'
                       ? '10 dígitos'
-                      : 'Pasaporte'
+                      : form.taxIdType === 'pasaporte'
+                        ? 'Número de pasaporte'
+                        : 'Número'
                 }
               />
               {errors.taxId && <p className="text-xs text-[var(--danger-500)]">{errors.taxId}</p>}
