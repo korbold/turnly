@@ -5,12 +5,14 @@ declare(strict_types=1);
 namespace App\Infrastructure\Jobs;
 
 use App\Infrastructure\Billing\BillingServiceClient;
+use App\Infrastructure\Mail\InvoiceMail;
 use App\Infrastructure\Persistence\Models\ReservationModel;
 use Illuminate\Bus\Queueable;
 use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Foundation\Bus\Dispatchable;
 use Illuminate\Queue\InteractsWithQueue;
 use Illuminate\Queue\SerializesModels;
+use Illuminate\Support\Facades\Mail;
 use Throwable;
 
 class EmitReservationInvoiceJob implements ShouldQueue
@@ -23,7 +25,7 @@ class EmitReservationInvoiceJob implements ShouldQueue
 
     public function handle(BillingServiceClient $client): void
     {
-        $reservation = ReservationModel::with(['items', 'service', 'variant'])->findOrFail($this->reservationId);
+        $reservation = ReservationModel::with(['items', 'service', 'variant', 'client'])->findOrFail($this->reservationId);
 
         $billingProfile = $this->resolveBillingProfile($reservation->billing_snapshot);
 
@@ -57,6 +59,18 @@ class EmitReservationInvoiceJob implements ShouldQueue
                 'invoiced'                    => true,
                 'invoiced_at'                 => now(),
             ]);
+
+            if (($result['estado'] ?? '') === 'autorizada') {
+                $email = $reservation->client?->email;
+                if ($email && !empty($result['id'])) {
+                    Mail::to($email)->queue(new InvoiceMail(
+                        clientEmail:       $email,
+                        externalInvoiceId: $result['id'],
+                        invoiceNumber:     $result['numero_autorizacion'] ?? $result['id'],
+                        issuedAt:          now()->format('d/m/Y'),
+                    ));
+                }
+            }
         } catch (Throwable $e) {
             $reservation->update([
                 'invoice_status' => 'rechazada',

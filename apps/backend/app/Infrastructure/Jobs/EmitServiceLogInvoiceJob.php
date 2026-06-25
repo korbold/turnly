@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Infrastructure\Jobs;
 
 use App\Infrastructure\Billing\BillingServiceClient;
+use App\Infrastructure\Mail\InvoiceMail;
 use App\Infrastructure\Persistence\Models\ClientResourceModel;
 use App\Infrastructure\Persistence\Models\ServiceLogModel;
 use App\Infrastructure\Persistence\Models\UserBillingProfileModel;
@@ -13,6 +14,7 @@ use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Foundation\Bus\Dispatchable;
 use Illuminate\Queue\InteractsWithQueue;
 use Illuminate\Queue\SerializesModels;
+use Illuminate\Support\Facades\Mail;
 use Throwable;
 
 class EmitServiceLogInvoiceJob implements ShouldQueue
@@ -61,6 +63,18 @@ class EmitServiceLogInvoiceJob implements ShouldQueue
                 'invoiced'                    => true,
                 'invoiced_at'                 => now(),
             ]);
+
+            if (($result['estado'] ?? '') === 'autorizada') {
+                $email = $log->clientResource?->client?->email;
+                if ($email && !empty($result['id'])) {
+                    Mail::to($email)->queue(new InvoiceMail(
+                        clientEmail:       $email,
+                        externalInvoiceId: $result['id'],
+                        invoiceNumber:     $result['numero_autorizacion'] ?? $result['id'],
+                        issuedAt:          now()->format('d/m/Y'),
+                    ));
+                }
+            }
         } catch (Throwable $e) {
             $log->update([
                 'invoice_status' => 'rechazada',

@@ -8,9 +8,11 @@ use App\Infrastructure\Persistence\Models\TenantModel;
 use App\Infrastructure\Persistence\Models\UserBillingProfileModel;
 use App\Infrastructure\Persistence\Models\UserModel;
 use Illuminate\Support\Facades\Http;
+use Illuminate\Support\Facades\Mail;
 use Illuminate\Support\Facades\Queue;
 
 beforeEach(function () {
+    Mail::fake();
     $this->tenant = TenantModel::factory()->create(['status' => 'active']);
     $this->user = UserModel::factory()->create();
     $this->service = ServiceModel::factory()->create(['tenant_id' => $this->tenant->id]);
