@@ -29,6 +29,14 @@ class ClientResourceController extends Controller
 
         if (!$request->boolean('all')) {
             $query->where('client_id', $request->user()->id);
+        } else {
+            $tenantId = app('current_tenant_id');
+            $staffIds = TenantUserModel::where('tenant_id', $tenantId)
+                ->pluck('user_id');
+            $query->where(function ($q) use ($staffIds) {
+                $q->whereNotIn('client_id', $staffIds)
+                    ->orWhereNull('client_id');
+            });
         }
 
         // Free-form search across the most-likely customer identifiers
