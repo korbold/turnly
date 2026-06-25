@@ -182,6 +182,9 @@ class _CreateReservationViewState extends State<_CreateReservationView> {
   // Scroll controller for step 1
   final _step1ScrollController = ScrollController();
 
+  // Prevents re-triggering the auto-redirect when user cancels /resources/add
+  bool _hasAutoRedirectedToAddResource = false;
+
   @override
   void initState() {
     super.initState();
@@ -378,14 +381,41 @@ class _CreateReservationViewState extends State<_CreateReservationView> {
         ),
         BlocListener<ResourcesCubit, ResourcesState>(
           listener: (context, state) {
-            if (state is ResourcesLoaded &&
-                state.resources.isNotEmpty &&
-                _selectedResource == null) {
+            if (state is ResourcesLoaded && state.resources.isNotEmpty && _selectedResource == null) {
               final first = state.resources.first;
-              setState(() {
-                _selectedResource = first;
-              });
+              setState(() => _selectedResource = first);
               _resolveVariantForResource(first);
+            } else if (state is ResourcesLoaded &&
+                state.resources.isEmpty &&
+                !_skipResourceStep &&
+                !_hasAutoRedirectedToAddResource) {
+              _hasAutoRedirectedToAddResource = true;
+              WidgetsBinding.instance.addPostFrameCallback((_) async {
+                if (!mounted) return;
+                final result = await context.push<bool>(
+                  '/resources/add',
+                  extra: {
+                    'customFields': widget.customFields,
+                    'businessType': widget.businessType,
+                  },
+                );
+                if (result == true && mounted) {
+                  context.read<ResourcesCubit>().loadResources();
+                  await Future.delayed(const Duration(milliseconds: 500));
+                  if (mounted) {
+                    final s = context.read<ResourcesCubit>().state;
+                    if (s is ResourcesLoaded && s.resources.isNotEmpty) {
+                      final last = s.resources.last;
+                      setState(() {
+                        _selectedResource = last;
+                        _resolvedVariant = null;
+                        _lastResolvedFor = null;
+                      });
+                      _resolveVariantForResource(last);
+                    }
+                  }
+                }
+              });
             }
           },
         ),
@@ -693,15 +723,12 @@ class _Step1ResourceSelection extends StatelessWidget {
 
               if (state is ResourcesLoaded) {
                 if (state.resources.isEmpty) {
-                  return Column(
-                    children: [
-                      const EmptyState(
-                        icon: Icons.badge_outlined,
-                        title: 'Sin registros',
-                        subtitle:
-                            'Crea un registro para poder hacer una reserva',
-                      ),
-                    ],
+                  return EmptyState(
+                    icon: Icons.badge_outlined,
+                    title: 'Sin registros',
+                    subtitle: 'Necesitas crear un registro antes de reservar.',
+                    actionLabel: 'Crear registro',
+                    onAction: onCreateResource,
                   );
                 }
 
