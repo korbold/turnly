@@ -162,4 +162,8 @@ export class ApiReservationRepository implements ReservationRepository {
     const { data: res } = await api.get(`/reservations/${id}/changes`);
     return (res.data as Record<string, unknown>[]).map(mapReservationItemChange);
   }
+
+  async emitInvoice(id: string): Promise<void> {
+    await api.post(`/reservations/${id}/invoice`);
+  }
 }

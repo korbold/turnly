@@ -95,6 +95,13 @@ export interface Reservation {
   /** Bank slug (`pichincha`, `pacifico`…) when paid via transfer. Null
       otherwise. Free-form string so tenants can add regional banks. */
   paymentBank: string | null;
+  invoiced: boolean;
+  invoicedAt: Date | null;
+  invoiceExternalId: string | null;
+  invoiceStatus: string | null;
+  invoiceClaveAcceso: string | null;
+  invoiceNumeroAutorizacion: string | null;
+  invoiceError: string | null;
   clientResource?: ReservationClientResource;
   service?: ReservationService;
   client?: ReservationClient;

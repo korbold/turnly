@@ -34,6 +34,13 @@ export function mapReservation(raw: Record<string, unknown>): Reservation {
     paidAt: raw.paid_at ? new Date(raw.paid_at as string) : null,
     paymentReference: (raw.payment_reference as string | null) ?? null,
     paymentBank: (raw.payment_bank as string | null) ?? null,
+    invoiced: (raw.invoiced as boolean) ?? false,
+    invoicedAt: raw.invoiced_at ? new Date(raw.invoiced_at as string) : null,
+    invoiceExternalId: (raw.invoice_external_id as string | null) ?? null,
+    invoiceStatus: (raw.invoice_status as string | null) ?? null,
+    invoiceClaveAcceso: (raw.invoice_clave_acceso as string | null) ?? null,
+    invoiceNumeroAutorizacion: (raw.invoice_numero_autorizacion as string | null) ?? null,
+    invoiceError: (raw.invoice_error as string | null) ?? null,
     clientResource: clientResource
       ? {
           label: (clientResource.label as string) ?? null,

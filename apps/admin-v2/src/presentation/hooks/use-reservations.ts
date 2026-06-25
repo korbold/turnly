@@ -193,3 +193,15 @@ export function useOverrideReservationItemPrice(id: string) {
     },
   });
 }
+
+export function useEmitReservationInvoice() {
+  const repo = useRepository('reservation');
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (id: string) => repo.emitInvoice(id),
+    onSuccess: (_data, id) => {
+      qc.invalidateQueries({ queryKey: ['reservation', id] });
+      qc.invalidateQueries({ queryKey: ['reservations'] });
+    },
+  });
+}

@@ -66,4 +66,5 @@ export interface ReservationRepository {
   removeItem(itemId: string, reason?: string): Promise<void>;
   overrideItemPrice(itemId: string, unitPrice: number, reason: string): Promise<ReservationItem>;
   listChanges(id: string): Promise<ReservationItemChange[]>;
+  emitInvoice(id: string): Promise<void>;
 }

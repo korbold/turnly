@@ -4,7 +4,7 @@ import { useState } from 'react';
 import { format } from 'date-fns';
 import { es } from 'date-fns/locale';
 import { toast } from 'sonner';
-import { Calendar as CalendarIcon, CheckCircle2, MoreHorizontal, Play, Trophy, UserX, X } from 'lucide-react';
+import { Calendar as CalendarIcon, CheckCircle2, FileText, MoreHorizontal, Play, Trophy, UserX, X } from 'lucide-react';
 import {
   Sheet,
   SheetContent,
@@ -36,6 +36,7 @@ import {
   useCancelReservation,
   useRescheduleReservation,
   useAvailableSlots,
+  useEmitReservationInvoice,
 } from '@/presentation/hooks/use-reservations';
 import { Input } from '@/presentation/components/ui/input';
 import { Label } from '@/presentation/components/ui/label';
@@ -73,6 +74,7 @@ function InfoRow({ label, value }: { label: string; value: React.ReactNode }) {
 export function DetailPanel({ reservation, open, onClose, embedded = false }: DetailPanelProps) {
   const transition = useTransitionReservation();
   const cancel = useCancelReservation();
+  const emitInvoice = useEmitReservationInvoice();
   const { data: settings } = useSettings();
   const [cancelOpen, setCancelOpen] = useState(false);
   const [cancelReason, setCancelReason] = useState('');
@@ -322,6 +324,65 @@ export function DetailPanel({ reservation, open, onClose, embedded = false }: De
                   )}
                 </div>
               )}
+
+            {/* Invoice section — shown once service is completed */}
+            {reservation.status === 'completed' && (
+              <div className="rounded-lg border border-[var(--border)] bg-[var(--bg-sunken)] p-3 space-y-2">
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-1.5">
+                    <FileText className="h-3.5 w-3.5 text-[var(--fg-muted)]" />
+                    <span className="text-[12px] font-semibold uppercase tracking-wider text-[var(--fg-muted)]">
+                      Factura SRI
+                    </span>
+                  </div>
+                  {reservation.invoiceStatus === 'autorizada' ? (
+                    <span className="inline-flex items-center gap-1 rounded-full bg-emerald-100 px-2 py-0.5 text-[11px] font-semibold text-emerald-700">
+                      Autorizada
+                    </span>
+                  ) : reservation.invoiceStatus === 'enviada' ? (
+                    <span className="inline-flex items-center gap-1 rounded-full bg-sky-100 px-2 py-0.5 text-[11px] font-semibold text-sky-700">
+                      Procesando…
+                    </span>
+                  ) : reservation.invoiceStatus === 'rechazada' ? (
+                    <span className="inline-flex items-center gap-1 rounded-full bg-rose-100 px-2 py-0.5 text-[11px] font-semibold text-rose-700">
+                      Rechazada
+                    </span>
+                  ) : (
+                    <span className="inline-flex items-center gap-1 rounded-full bg-zinc-100 px-2 py-0.5 text-[11px] font-semibold text-zinc-500">
+                      Pendiente
+                    </span>
+                  )}
+                </div>
+
+                {reservation.invoiceClaveAcceso && (
+                  <p className="break-all font-mono text-[10px] text-[var(--fg-muted)]">
+                    {reservation.invoiceClaveAcceso}
+                  </p>
+                )}
+
+                {reservation.invoiceError && (
+                  <p className="text-[11px] text-rose-600">{reservation.invoiceError}</p>
+                )}
+
+                {reservation.invoiceStatus !== 'autorizada' && (
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    className="w-full gap-1.5 text-[12px]"
+                    disabled={emitInvoice.isPending || reservation.invoiceStatus === 'enviada'}
+                    onClick={() =>
+                      emitInvoice.mutate(reservation!.id, {
+                        onSuccess: () => toast.success('Facturación iniciada'),
+                        onError: () => toast.error('Error al facturar'),
+                      })
+                    }
+                  >
+                    <FileText className="h-3.5 w-3.5" />
+                    {reservation.invoiceStatus === 'rechazada' ? 'Reintentar factura' : 'Emitir factura'}
+                  </Button>
+                )}
+              </div>
+            )}
 
             <Separator />
 
