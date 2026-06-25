@@ -32,6 +32,7 @@ class ClientResourceController extends Controller
         } else {
             $tenantId = app('current_tenant_id');
             $staffIds = TenantUserModel::where('tenant_id', $tenantId)
+                ->where('role', '!=', 'client')
                 ->pluck('user_id');
             $query->where(function ($q) use ($staffIds) {
                 $q->whereNotIn('client_id', $staffIds)
