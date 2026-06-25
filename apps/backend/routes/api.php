@@ -132,6 +132,10 @@ Route::prefix('v1')->group(function () {
             Route::patch('tenant/billing-profile', [\App\Infrastructure\Http\Controllers\Tenant\BillingProfileController::class, 'update']);
             Route::get('tenant/billing-profile/lookup', [\App\Infrastructure\Http\Controllers\Tenant\BillingProfileController::class, 'lookup']);
 
+            // Tenant billing cert (SRI electronic invoicing certificate)
+            Route::get('settings/billing-cert', [\App\Infrastructure\Http\Controllers\Tenant\BillingProfileController::class, 'showCert']);
+            Route::post('settings/billing-cert', [\App\Infrastructure\Http\Controllers\Tenant\BillingProfileController::class, 'uploadCert']);
+
             // Reservations
             Route::get('reservations/available-slots', [ReservationController::class, 'availableSlots']);
             Route::get('reservations', [ReservationController::class, 'index']);

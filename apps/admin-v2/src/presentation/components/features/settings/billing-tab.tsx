@@ -1,12 +1,21 @@
 'use client';
 
 import { useEffect, useMemo, useState } from 'react';
-import { Save, ShieldCheck, ShieldAlert, ShieldX, Loader2 } from 'lucide-react';
+import { Save, ShieldCheck, ShieldAlert, ShieldX, Loader2, KeyRound } from 'lucide-react';
 import { toast } from 'sonner';
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { Button } from '@/presentation/components/ui/button';
 import { Input } from '@/presentation/components/ui/input';
 import { Label } from '@/presentation/components/ui/label';
 import { Skeleton } from '@/presentation/components/ui/skeleton';
+import { Badge } from '@/presentation/components/ui/badge';
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+} from '@/presentation/components/ui/card';
 import {
   Select,
   SelectContent,
@@ -19,6 +28,7 @@ import {
   useUpdateBillingProfile,
   useLookupTaxId,
 } from '@/presentation/hooks/use-settings';
+import api from '@/infrastructure/api/client';
 import type {
   BillingProfileInput,
   TaxIdType,
@@ -39,12 +49,60 @@ function useDebounced<T>(value: T, delay = 600): T {
   return debounced;
 }
 
+interface CertData {
+  cert_configured: boolean;
+  ruc?: string;
+  ambiente?: number;
+}
+
 export function BillingTab() {
   const { data: profile, isLoading } = useBillingProfile();
   const update = useUpdateBillingProfile();
+  const queryClient = useQueryClient();
 
   const [form, setForm] = useState<Partial<BillingProfileInput>>({});
   const [errors, setErrors] = useState<Record<string, string>>({});
+  const [selectedAmbiente, setSelectedAmbiente] = useState<number>(1);
+
+  const { data: certData, isLoading: certLoading } = useQuery<CertData | null>({
+    queryKey: ['billing-cert'],
+    queryFn: async () => {
+      const { data } = await api.get('/settings/billing-cert');
+      return data?.data ?? null;
+    },
+  });
+
+  const uploadCertMutation = useMutation({
+    mutationFn: async (formData: FormData) => {
+      const { data } = await api.post('/settings/billing-cert', formData, {
+        headers: { 'Content-Type': 'multipart/form-data' },
+      });
+      return data;
+    },
+    onSuccess: () => {
+      toast.success('Certificado guardado correctamente');
+      queryClient.invalidateQueries({ queryKey: ['billing-cert'] });
+    },
+    onError: (err: unknown) => {
+      const msg = (err as { response?: { data?: { message?: string } } })?.response?.data?.message;
+      toast.error(msg ?? 'Error al guardar el certificado');
+    },
+  });
+
+  function handleCertSubmit(e: React.FormEvent<HTMLFormElement>) {
+    e.preventDefault();
+    const form = e.currentTarget;
+    const fileInput = form.querySelector<HTMLInputElement>('input[type="file"]');
+    const passwordInput = form.querySelector<HTMLInputElement>('input[type="password"]');
+
+    if (!fileInput?.files?.[0]) return;
+    const fd = new FormData();
+    fd.append('p12_file', fileInput.files[0]);
+    fd.append('p12_password', passwordInput?.value ?? '');
+    fd.append('ambiente', selectedAmbiente.toString());
+
+    uploadCertMutation.mutate(fd);
+  }
 
   useEffect(() => {
     if (profile) {
@@ -285,6 +343,67 @@ export function BillingTab() {
           )}
         </Button>
       </div>
+
+      <Card>
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2">
+            <KeyRound className="h-4 w-4" aria-hidden="true" />
+            Certificado Digital SRI
+          </CardTitle>
+          <CardDescription>
+            Sube el certificado .p12 para firmar facturas electrónicas
+          </CardDescription>
+        </CardHeader>
+        <CardContent className="space-y-4">
+          {!certLoading && (
+            <div className="flex items-center gap-2">
+              {certData?.cert_configured ? (
+                <>
+                  <Badge className="bg-green-100 text-green-800 border-green-200">
+                    <ShieldCheck className="mr-1 h-3 w-3" aria-hidden="true" /> Configurado
+                  </Badge>
+                  <span className="text-sm text-muted-foreground">
+                    RUC: {certData.ruc} · {certData.ambiente === 1 ? 'Pruebas' : 'Producción'}
+                  </span>
+                </>
+              ) : (
+                <Badge variant="outline" className="text-muted-foreground">
+                  Sin certificado
+                </Badge>
+              )}
+            </div>
+          )}
+
+          <form onSubmit={handleCertSubmit} className="space-y-3">
+            <div className="space-y-1">
+              <Label htmlFor="p12_file">Archivo .p12</Label>
+              <Input id="p12_file" type="file" accept=".p12,.pfx" />
+            </div>
+            <div className="space-y-1">
+              <Label htmlFor="p12_password">Contraseña del certificado</Label>
+              <Input id="p12_password" type="password" autoComplete="off" />
+            </div>
+            <div className="space-y-1">
+              <Label>Ambiente</Label>
+              <Select
+                value={String(selectedAmbiente)}
+                onValueChange={(v) => setSelectedAmbiente(Number(v))}
+              >
+                <SelectTrigger>
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="1">Pruebas (SRI)</SelectItem>
+                  <SelectItem value="2">Producción (SRI)</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+            <Button type="submit" disabled={uploadCertMutation.isPending} size="sm">
+              {uploadCertMutation.isPending ? 'Guardando...' : 'Guardar certificado'}
+            </Button>
+          </form>
+        </CardContent>
+      </Card>
     </div>
   );
 }
