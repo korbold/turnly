@@ -8,6 +8,7 @@ use App\Infrastructure\Billing\BillingServiceClient;
 use App\Infrastructure\Mail\InvoiceMail;
 use App\Infrastructure\Persistence\Models\ClientResourceModel;
 use App\Infrastructure\Persistence\Models\ServiceLogModel;
+use App\Infrastructure\Persistence\Models\TenantModel;
 use App\Infrastructure\Persistence\Models\UserBillingProfileModel;
 use Illuminate\Bus\Queueable;
 use Illuminate\Contracts\Queue\ShouldQueue;
@@ -121,22 +122,29 @@ class EmitServiceLogInvoiceJob implements ShouldQueue
 
     private function buildItems(ServiceLogModel $log): array
     {
+        $tenant = TenantModel::find($log->tenant_id);
+        $pricesIncludeIva = (bool) ($tenant?->settings['prices_include_iva'] ?? false);
+
         if ($log->items && $log->items->isNotEmpty()) {
-            return $log->items->map(fn ($item) => [
-                'descripcion'           => (string) $item->label,
-                'cantidad'              => (float) $item->qty,
-                'precio_unitario'       => (float) $item->unit_price,
-                'descuento'             => 0.0,
-                'codigo_porcentaje_iva' => '4',
-            ])->values()->all();
+            return $log->items->map(function ($item) use ($pricesIncludeIva) {
+                $unit = (float) $item->unit_price;
+                return [
+                    'descripcion'           => (string) $item->label,
+                    'cantidad'              => (float) $item->qty,
+                    'precio_unitario'       => $pricesIncludeIva ? round($unit / 1.15, 6) : $unit,
+                    'descuento'             => 0.0,
+                    'codigo_porcentaje_iva' => '4',
+                ];
+            })->values()->all();
         }
 
         $description = $log->service?->name ?? 'Servicio';
+        $unitPrice = (float) $log->price_charged;
 
         return [[
             'descripcion'           => $description,
             'cantidad'              => 1.0,
-            'precio_unitario'       => (float) $log->price_charged,
+            'precio_unitario'       => $pricesIncludeIva ? round($unitPrice / 1.15, 6) : $unitPrice,
             'descuento'             => 0.0,
             'codigo_porcentaje_iva' => '4',
         ]];

@@ -46,6 +46,9 @@ export interface TenantSettings {
   /** When true, clients can choose a preferred resource (e.g. barber, therapist)
       during public booking. Auto-assigns when false. */
   allowClientResourceSelection: boolean;
+  /** When true, service prices already include 15% IVA. The billing job
+      back-calculates the net price before sending to SRI to avoid double-taxing. */
+  pricesIncludeIva: boolean;
   socialLinks: {
     instagram: string | null;
     facebook: string | null;

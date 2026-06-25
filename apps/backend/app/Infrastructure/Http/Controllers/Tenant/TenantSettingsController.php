@@ -40,6 +40,7 @@ class TenantSettingsController extends Controller
             'auto_confirm_reservations' => 'sometimes|boolean',
             'allow_client_resource_selection' => 'sometimes|boolean',
             'payment_timing' => 'sometimes|string|in:prepay_required,at_pickup,at_completion,flexible,none',
+            'prices_include_iva' => 'sometimes|boolean',
         ]);
 
         $tenant = TenantModel::findOrFail(app('current_tenant_id'));
@@ -77,6 +78,9 @@ class TenantSettingsController extends Controller
         }
         if ($request->has('payment_timing')) {
             $settings['payment_timing'] = (string) $request->payment_timing;
+        }
+        if ($request->has('prices_include_iva')) {
+            $settings['prices_include_iva'] = (bool) $request->prices_include_iva;
         }
         if ($request->has('settings')) {
             $settings = array_merge($settings, $request->settings);

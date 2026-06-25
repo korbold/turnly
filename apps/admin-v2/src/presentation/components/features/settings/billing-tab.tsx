@@ -37,6 +37,8 @@ import {
   useBillingProfile,
   useUpdateBillingProfile,
   useLookupTaxId,
+  useSettings,
+  useUpdateSettings,
 } from '@/presentation/hooks/use-settings';
 import api from '@/infrastructure/api/client';
 import type { BillingProfileInput, TaxIdType } from '@/domain/entities/tenant';
@@ -77,6 +79,8 @@ export function BillingTab() {
   const { data: profile, isLoading } = useBillingProfile();
   const update = useUpdateBillingProfile();
   const queryClient = useQueryClient();
+  const { data: tenantSettings } = useSettings();
+  const updateSettings = useUpdateSettings();
 
   const [form, setForm] = useState<Partial<BillingProfileInput>>({});
   const [errors, setErrors] = useState<Record<string, string>>({});
@@ -247,6 +251,34 @@ export function BillingTab() {
 
   return (
     <div className="max-w-2xl space-y-3">
+      {/* IVA pricing mode */}
+      <Card>
+        <CardContent className="flex items-center justify-between gap-4 py-4">
+          <div>
+            <p className="text-[14px] font-medium leading-snug">Precios incluyen IVA</p>
+            <p className="text-[12px] text-[var(--fg-muted)] mt-0.5">
+              Activa esto si tus precios ya tienen el 15% de IVA incluido (ej. $60 = $52.17 + IVA).
+              El sistema descontará el IVA antes de enviar la factura al SRI para evitar doble cálculo.
+            </p>
+          </div>
+          <label className="relative inline-flex cursor-pointer items-center">
+            <input
+              type="checkbox"
+              className="peer sr-only"
+              checked={tenantSettings?.pricesIncludeIva ?? false}
+              disabled={updateSettings.isPending}
+              onChange={(e) => {
+                updateSettings.mutate(
+                  { pricesIncludeIva: e.target.checked },
+                  { onSuccess: () => toast.success(e.target.checked ? 'Precios con IVA incluido activado' : 'Precios sin IVA incluido') },
+                );
+              }}
+            />
+            <span className="h-6 w-11 rounded-full bg-[var(--ink-100)] transition-colors peer-checked:bg-[var(--brand-600)] after:absolute after:left-[2px] after:top-[2px] after:h-5 after:w-5 after:rounded-full after:bg-white after:transition-transform after:content-[''] peer-checked:after:translate-x-5" />
+          </label>
+        </CardContent>
+      </Card>
+
       {/* Progress steps */}
       <div className="flex items-center gap-4 rounded-lg border border-[var(--border-default)] bg-[var(--bg-subtle,#F9FAFB)] px-4 py-3">
         <StepIndicator step={1} done={profileComplete} label="Datos del emisor" />

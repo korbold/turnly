@@ -41,6 +41,7 @@ export function mapTenantSettings(raw: Record<string, unknown>): TenantSettings 
     paymentTiming: (raw.payment_timing as TenantSettings['paymentTiming']) ?? 'flexible',
     autoConfirmReservations: Boolean(raw.auto_confirm_reservations ?? false),
     allowClientResourceSelection: Boolean(raw.allow_client_resource_selection ?? false),
+    pricesIncludeIva: Boolean(raw.prices_include_iva ?? false),
     socialLinks: {
       instagram: socialLinks.instagram ?? null,
       facebook: socialLinks.facebook ?? null,
