@@ -27,17 +27,25 @@ class ClientResourceController extends Controller
         $query = ClientResourceModel::with('client')
             ->orderBy('created_at', 'desc');
 
+        $search = trim((string) $request->get('search', ''));
+
         if (!$request->boolean('all')) {
             $query->where('client_id', $request->user()->id);
         } else {
             $tenantId = app('current_tenant_id');
-            $staffIds = TenantUserModel::where('tenant_id', $tenantId)
-                ->where('role', '!=', 'client')
-                ->pluck('user_id');
-            $query->where(function ($q) use ($staffIds) {
-                $q->whereNotIn('client_id', $staffIds)
-                    ->orWhereNull('client_id');
-            });
+            // When browsing without a search term, hide staff-owned resources
+            // so the clients list doesn't surface employees as customers.
+            // When actively searching, include all resources so the cashier
+            // can find any resource by owner name (e.g. an admin's own vehicle).
+            if ($search === '') {
+                $staffIds = TenantUserModel::where('tenant_id', $tenantId)
+                    ->where('role', '!=', 'client')
+                    ->pluck('user_id');
+                $query->where(function ($q) use ($staffIds) {
+                    $q->whereNotIn('client_id', $staffIds)
+                        ->orWhereNull('client_id');
+                });
+            }
         }
 
         // Free-form search across the most-likely customer identifiers
@@ -46,14 +54,14 @@ class ClientResourceController extends Controller
         // pass — MySQL evaluates each key/value pair as text, which is
         // good enough for the realistic cardinality (hundreds, not
         // millions) without forcing a JSON_TABLE rewrite.
-        $search = trim((string) $request->get('search', ''));
         if ($search !== '') {
             $like = '%' . $search . '%';
             $query->where(function ($q) use ($like) {
                 $q->where('data', 'like', $like)
                     ->orWhereHas('client', function ($c) use ($like) {
                         $c->where('name', 'like', $like)
-                            ->orWhere('email', 'like', $like);
+                            ->orWhere('email', 'like', $like)
+                            ->orWhere('phone', 'like', $like);
                     });
             });
         }
