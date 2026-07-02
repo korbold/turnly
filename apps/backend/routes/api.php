@@ -104,6 +104,22 @@ Route::prefix('v1')->group(function () {
             Route::delete('device-tokens/{token}', [\App\Infrastructure\Http\Controllers\Notification\DeviceTokenController::class, 'destroy']);
         });
 
+        // Customer booking flow (tenant-scoped, email verification NOT required).
+        // The booking action itself (/public/tenants/{slug}/book) is public, so
+        // its supporting reads/writes must not be gated stricter than the action
+        // they serve. Gating these behind verified.email silently tore down the
+        // mobile booking screen for any customer whose email_verified_at was null.
+        Route::middleware('tenant')->group(function () {
+            Route::get('reservations/available-slots', [ReservationController::class, 'availableSlots']);
+
+            Route::get('client-resources', [ClientResourceController::class, 'index']);
+            Route::post('client-resources', [ClientResourceController::class, 'store']);
+            Route::get('client-resources/{id}', [ClientResourceController::class, 'show']);
+            Route::patch('client-resources/{id}', [ClientResourceController::class, 'update']);
+            Route::delete('client-resources/{id}', [ClientResourceController::class, 'destroy']);
+            Route::get('client-resources/{id}/history', [ClientResourceController::class, 'history']);
+        });
+
         // Billing profiles (customer-facing, not tenant scoped).
         Route::get('billing-profiles', [UserBillingProfileController::class, 'index']);
         Route::post('billing-profiles', [UserBillingProfileController::class, 'store']);
@@ -138,7 +154,8 @@ Route::prefix('v1')->group(function () {
             Route::post('settings/billing-cert', [\App\Infrastructure\Http\Controllers\Tenant\BillingProfileController::class, 'uploadCert']);
 
             // Reservations
-            Route::get('reservations/available-slots', [ReservationController::class, 'availableSlots']);
+            // NOTE: reservations/available-slots moved to the customer booking
+            // group above (no email gate) — it backs the public booking screen.
             Route::get('reservations', [ReservationController::class, 'index']);
             Route::post('reservations', [ReservationController::class, 'store']);
             Route::get('reservations/{id}', [ReservationController::class, 'show']);
@@ -188,13 +205,8 @@ Route::prefix('v1')->group(function () {
             Route::get('billing/invoices', [InvoiceProxyController::class, 'index']);
             Route::get('billing/invoices/{id}/ride', [InvoiceProxyController::class, 'ride']);
 
-            // Client Resources
-            Route::get('client-resources', [ClientResourceController::class, 'index']);
-            Route::post('client-resources', [ClientResourceController::class, 'store']);
-            Route::get('client-resources/{id}', [ClientResourceController::class, 'show']);
-            Route::patch('client-resources/{id}', [ClientResourceController::class, 'update']);
-            Route::delete('client-resources/{id}', [ClientResourceController::class, 'destroy']);
-            Route::get('client-resources/{id}/history', [ClientResourceController::class, 'history']);
+            // NOTE: client-resources routes moved to the customer booking group
+            // above (no email gate) — they back the public booking screen.
 
             // Business Resources (stations, chairs, rooms)
             Route::get('business-resources', [BusinessResourceController::class, 'index']);
