@@ -33,7 +33,11 @@ jobs:
             # Backup DB before migrate (prod safety net)
             STAMP=$(date +%Y%m%d-%H%M%S)
             mkdir -p ~/backups
-            mysqldump --single-transaction --quick \
+            # --no-tablespaces: the app DB user lacks the PROCESS privilege
+            # (needed to dump tablespace metadata). Skipping it avoids the
+            # "Access denied ... PROCESS privilege" warning without granting
+            # extra rights; row/schema data is still fully backed up.
+            mysqldump --single-transaction --quick --no-tablespaces \
               -u "$(grep ^DB_USERNAME apps/backend/.env | cut -d= -f2)" \
               -p"$(grep ^DB_PASSWORD apps/backend/.env | cut -d= -f2)" \
               "$(grep ^DB_DATABASE apps/backend/.env | cut -d= -f2)" \
