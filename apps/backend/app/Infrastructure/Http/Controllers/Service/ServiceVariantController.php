@@ -26,17 +26,18 @@ class ServiceVariantController extends Controller
     public function store(Request $request, string $serviceId): JsonResponse
     {
         $service = ServiceModel::findOrFail($serviceId);
-
         $data = $request->validate($this->rules());
+        $this->assertVehicleTypesAllowed($service->tenant_id, $data['vehicle_types'] ?? []);
 
         $variant = ServiceVariantModel::create([
-            'tenant_id'    => $service->tenant_id,
-            'service_id'   => $service->id,
-            'label'        => $data['label'],
-            'price'        => $data['price'] ?? 0,
-            'duration_min' => $data['duration_min'] ?? 30,
-            'sort_order'   => $data['sort_order'] ?? 0,
-            'is_active'    => $data['is_active'] ?? true,
+            'tenant_id'     => $service->tenant_id,
+            'service_id'    => $service->id,
+            'label'         => $data['label'],
+            'vehicle_types' => $data['vehicle_types'] ?? [],
+            'price'         => $data['price'] ?? 0,
+            'duration_min'  => $data['duration_min'] ?? 30,
+            'sort_order'    => $data['sort_order'] ?? 0,
+            'is_active'     => $data['is_active'] ?? true,
         ]);
 
         $variant->load('consumption.product');
@@ -48,6 +49,9 @@ class ServiceVariantController extends Controller
     {
         $variant = ServiceVariantModel::findOrFail($variantId);
         $data = $request->validate($this->rules());
+        if (array_key_exists('vehicle_types', $data)) {
+            $this->assertVehicleTypesAllowed($variant->tenant_id, $data['vehicle_types'] ?? []);
+        }
 
         $variant->update($data);
         $variant->load('consumption.product');
@@ -69,11 +73,28 @@ class ServiceVariantController extends Controller
     private function rules(): array
     {
         return [
-            'label'        => ['required', 'string', 'max:80'],
-            'price'        => ['nullable', 'numeric', 'min:0', 'max:99999999.99'],
-            'duration_min' => ['nullable', 'integer', 'min:1', 'max:1440'],
-            'sort_order'   => ['nullable', 'integer'],
-            'is_active'    => ['boolean'],
+            'label'           => ['required', 'string', 'max:80'],
+            'vehicle_types'   => ['nullable', 'array'],
+            'vehicle_types.*' => ['string', 'max:80'],
+            'price'           => ['nullable', 'numeric', 'min:0', 'max:99999999.99'],
+            'duration_min'    => ['nullable', 'integer', 'min:1', 'max:1440'],
+            'sort_order'      => ['nullable', 'integer'],
+            'is_active'       => ['boolean'],
         ];
+    }
+
+    private function assertVehicleTypesAllowed(string $tenantId, array $types): void
+    {
+        if (empty($types)) return;
+        $tenant = \App\Infrastructure\Persistence\Models\TenantModel::find($tenantId);
+        $fields = is_array($tenant?->custom_fields) ? $tenant->custom_fields : [];
+        $field = collect($fields)->first(fn ($f) => ($f['affects_variant'] ?? false) === true);
+        $allowed = is_array($field['options'] ?? null) ? $field['options'] : [];
+        $invalid = array_values(array_diff($types, $allowed));
+        if (!empty($invalid)) {
+            throw \Illuminate\Validation\ValidationException::withMessages([
+                'vehicle_types' => 'Tipos no válidos: ' . implode(', ', $invalid),
+            ]);
+        }
     }
 }
