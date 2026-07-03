@@ -38,3 +38,31 @@ it('leaves non-locked fields untouched', function () {
     $result = LockedCustomFields::reconcile($incoming, $existing);
     expect($result)->toHaveCount(2)->and($result[1]['key'])->toBe('plate');
 });
+
+// HTTP-level tests
+
+use App\Infrastructure\Persistence\Models\TenantModel;
+use App\Infrastructure\Persistence\Models\UserModel;
+
+it('rejects deleting a locked field via the settings endpoint', function () {
+    $tenant = TenantModel::factory()->create([
+        'business_type' => 'car_wash',
+        'custom_fields' => [lcfLockedField(['Sedán', 'SUV'])],
+    ]);
+    $user = UserModel::factory()->create();
+
+    app()->instance('current_tenant', $tenant);
+    app()->instance('current_tenant_id', $tenant->id);
+
+    // Attempt to overwrite custom_fields without the locked field
+    $this->actingAs($user)
+        ->withHeader('X-Tenant', $tenant->slug)
+        ->patchJson('/api/v1/tenant/settings', [
+            'custom_fields' => [['key' => 'plate', 'label' => 'Placa', 'type' => 'text', 'required' => true]],
+        ])
+        ->assertOk();
+
+    $tenant->refresh();
+    $keys = collect($tenant->custom_fields)->pluck('key');
+    expect($keys)->toContain('vehicle_type'); // re-injected, not dropped
+});
