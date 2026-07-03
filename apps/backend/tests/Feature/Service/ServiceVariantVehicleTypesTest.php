@@ -1,11 +1,10 @@
 <?php
 
 use App\Infrastructure\Persistence\Models\ServiceModel;
-use App\Infrastructure\Persistence\Models\ServiceVariantModel;
 use App\Infrastructure\Persistence\Models\TenantModel;
 use App\Infrastructure\Persistence\Models\UserModel;
 
-function carWashTenant(): TenantModel {
+function variantTenant(): TenantModel {
     return TenantModel::factory()->create([
         'business_type' => 'car_wash',
         'custom_fields' => [[
@@ -17,7 +16,7 @@ function carWashTenant(): TenantModel {
 }
 
 it('persists valid vehicle_types on a variant', function () {
-    $tenant = carWashTenant();
+    $tenant = variantTenant();
     $service = ServiceModel::factory()->create(['tenant_id' => $tenant->id]);
     $user = UserModel::factory()->create();
 
@@ -36,7 +35,7 @@ it('persists valid vehicle_types on a variant', function () {
 });
 
 it('rejects a vehicle_type not in the tenant options', function () {
-    $tenant = carWashTenant();
+    $tenant = variantTenant();
     $service = ServiceModel::factory()->create(['tenant_id' => $tenant->id]);
     $user = UserModel::factory()->create();
 

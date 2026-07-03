@@ -89,6 +89,7 @@ class ServiceVariantController extends Controller
         $tenant = \App\Infrastructure\Persistence\Models\TenantModel::find($tenantId);
         $fields = is_array($tenant?->custom_fields) ? $tenant->custom_fields : [];
         $field = collect($fields)->first(fn ($f) => ($f['affects_variant'] ?? false) === true);
+        // No affects_variant field configured -> no valid options -> reject any provided types.
         $allowed = is_array($field['options'] ?? null) ? $field['options'] : [];
         $invalid = array_values(array_diff($types, $allowed));
         if (!empty($invalid)) {
