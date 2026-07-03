@@ -16,11 +16,12 @@ class BusinessTypeTemplates
      *   - required:   bool
      *   - options:    string[] (only for `select`) — human labels
      *   - capitalize: 'uppercase' | 'capitalize' | 'lowercase' (optional)
-     *   - affects_variant: bool — if true, the value of this field is
-     *                      matched against `variant_map` to pre-select
-     *                      a service variant for the customer
-     *   - variant_map: { string => string[] } — value → keywords searched
-     *                  inside service_variants.label
+     *   - affects_variant: bool — if true, this field drives variant matching;
+     *                      the field is system-locked (locked === true) so its
+     *                      option labels never change (add-only via LockedCustomFields).
+     *                      Matching now uses service_variants.vehicle_types directly.
+     *   - locked:     bool — if true, options are add-only; field cannot be dropped.
+     *                  Always true when affects_variant === true.
      */
     public static function getCustomFields(string $type): array
     {
@@ -37,13 +38,7 @@ class BusinessTypeTemplates
                     'required' => true,
                     'options' => ['Sedán', 'Hatchback', 'SUV', 'Camioneta', 'Camión / Van'],
                     'affects_variant' => true,
-                    'variant_map' => [
-                        'Sedán'         => ['pequeño', 'small', 'sedan'],
-                        'Hatchback'     => ['pequeño', 'small', 'hatchback'],
-                        'SUV'           => ['mediano', 'medium', 'suv'],
-                        'Camioneta'     => ['camioneta', 'grande', 'large'],
-                        'Camión / Van'  => ['grande', 'extra', 'large', 'camion', 'van'],
-                    ],
+                    'locked' => true,
                 ],
             ],
             'barbershop' => [
@@ -54,11 +49,7 @@ class BusinessTypeTemplates
                     'required' => false,
                     'options' => ['Niño', 'Adulto', 'Adulto mayor'],
                     'affects_variant' => true,
-                    'variant_map' => [
-                        'Niño'         => ['niño', 'kids', 'infantil'],
-                        'Adulto'       => ['adulto', 'adult'],
-                        'Adulto mayor' => ['adulto mayor', 'senior', 'mayor'],
-                    ],
+                    'locked' => true,
                 ],
             ],
             'spa' => [
@@ -69,11 +60,7 @@ class BusinessTypeTemplates
                     'required' => false,
                     'options' => ['Mujer', 'Hombre', 'Unisex'],
                     'affects_variant' => true,
-                    'variant_map' => [
-                        'Mujer'   => ['mujer', 'femenino', 'women'],
-                        'Hombre'  => ['hombre', 'masculino', 'men'],
-                        'Unisex'  => ['unisex', 'general'],
-                    ],
+                    'locked' => true,
                 ],
             ],
             'medical' => [
@@ -86,11 +73,7 @@ class BusinessTypeTemplates
                     'required' => true,
                     'options' => ['Pediátrico', 'Adulto', 'Geriátrico'],
                     'affects_variant' => true,
-                    'variant_map' => [
-                        'Pediátrico' => ['pediátrico', 'niño', 'kids'],
-                        'Adulto'     => ['adulto', 'general'],
-                        'Geriátrico' => ['geriátrico', 'adulto mayor', 'senior'],
-                    ],
+                    'locked' => true,
                 ],
             ],
             'gym' => [
