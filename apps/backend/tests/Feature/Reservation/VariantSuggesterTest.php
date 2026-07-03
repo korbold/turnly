@@ -1,110 +1,52 @@
 <?php
 
 use App\Domain\Reservation\VariantSuggester;
-use App\Domain\Tenant\BusinessTypeTemplates;
 use App\Infrastructure\Persistence\Models\ClientResourceModel;
-use App\Infrastructure\Persistence\Models\ServiceModel;
 use App\Infrastructure\Persistence\Models\ServiceVariantModel;
-use App\Infrastructure\Persistence\Models\TenantModel;
-use App\Infrastructure\Persistence\Models\UserModel;
 use Illuminate\Support\Collection;
 
-beforeEach(function () {
-    $this->tenant = TenantModel::factory()->create([
-        'status' => 'active',
-        'business_type' => 'car_wash',
-    ]);
-    $this->service = ServiceModel::factory()->create(['tenant_id' => $this->tenant->id]);
-    $this->suggester = app(VariantSuggester::class);
-});
+function suggesterFields(): array {
+    return [[
+        'key' => 'vehicle_type', 'affects_variant' => true,
+        'options' => ['Sedán', 'Hatchback', 'SUV', 'Camioneta'],
+    ]];
+}
 
-function vsMakeVariant(string $tenantId, string $serviceId, string $label, float $price, int $sort = 0): ServiceVariantModel
-{
-    return ServiceVariantModel::create([
-        'tenant_id' => $tenantId,
-        'service_id' => $serviceId,
-        'label' => $label,
-        'price' => $price,
-        'duration_min' => 30,
-        'sort_order' => $sort,
-        'is_active' => true,
+function vsVariant(string $label, array $types, int $sort = 0, bool $active = true): ServiceVariantModel {
+    return new ServiceVariantModel([
+        'label' => $label, 'vehicle_types' => $types, 'sort_order' => $sort, 'is_active' => $active,
     ]);
 }
 
-function vsMakeResource(string $tenantId, array $data): ClientResourceModel
-{
-    return ClientResourceModel::factory()->create([
-        'tenant_id' => $tenantId,
-        'client_id' => UserModel::factory()->create()->id,
-        'data' => $data,
-    ]);
-}
-
-test('sedán resource suggests the Pequeño variant on a car_wash service', function () {
-    $resource = vsMakeResource($this->tenant->id, ['vehicle_type' => 'Sedán']);
+it('matches a variant whose vehicle_types contains the resource value', function () {
+    $resource = new ClientResourceModel(['data' => ['vehicle_type' => 'Hatchback']]);
     $variants = new Collection([
-        vsMakeVariant($this->tenant->id, $this->service->id, 'Pequeño', 5, 0),
-        vsMakeVariant($this->tenant->id, $this->service->id, 'Mediano', 8, 1),
-        vsMakeVariant($this->tenant->id, $this->service->id, 'Grande', 12, 2),
+        vsVariant('Auto', ['Sedán', 'Hatchback'], 0),
+        vsVariant('Camioneta/SUV', ['SUV', 'Camioneta'], 1),
     ]);
 
-    // Refresh from DB so casts ('array') apply identically to a real
-    // request, not the in-memory factory state.
-    $fresh = $resource->fresh();
-
-    $picked = $this->suggester->suggest(
-        $fresh,
-        $variants,
-        BusinessTypeTemplates::getCustomFields('car_wash'),
-    );
-
-    expect($picked)->not->toBeNull();
-    expect($picked->label)->toBe('Pequeño');
+    $result = (new VariantSuggester())->suggest($resource, $variants, suggesterFields());
+    expect($result?->label)->toBe('Auto');
 });
 
-test('camioneta resource prefers the Camioneta variant when present', function () {
-    $resource = vsMakeResource($this->tenant->id, ['vehicle_type' => 'Camioneta']);
-    $variants = new Collection([
-        vsMakeVariant($this->tenant->id, $this->service->id, 'Pequeño', 5, 0),
-        vsMakeVariant($this->tenant->id, $this->service->id, 'Grande', 12, 1),
-        vsMakeVariant($this->tenant->id, $this->service->id, 'Camioneta', 18, 2),
-    ]);
-
-    $picked = $this->suggester->suggest(
-        $resource,
-        $variants,
-        BusinessTypeTemplates::getCustomFields('car_wash'),
-    );
-
-    expect($picked->label)->toBe('Camioneta');
+it('returns null when no variant covers the value', function () {
+    $resource = new ClientResourceModel(['data' => ['vehicle_type' => 'Camión / Van']]);
+    $variants = new Collection([vsVariant('Auto', ['Sedán'], 0)]);
+    expect((new VariantSuggester())->suggest($resource, $variants, suggesterFields()))->toBeNull();
 });
 
-test('returns null when the customer has not filled the affects_variant field yet', function () {
-    $resource = vsMakeResource($this->tenant->id, ['plate' => 'XYZ-1234']); // no vehicle_type
-    $variants = new Collection([
-        vsMakeVariant($this->tenant->id, $this->service->id, 'Pequeño', 5),
-    ]);
-
-    $picked = $this->suggester->suggest(
-        $resource,
-        $variants,
-        BusinessTypeTemplates::getCustomFields('car_wash'),
-    );
-
-    expect($picked)->toBeNull();
+it('returns null when the resource has no segmentation value', function () {
+    $resource = new ClientResourceModel(['data' => ['brand' => 'Kia']]);
+    $variants = new Collection([vsVariant('Auto', ['Sedán'], 0)]);
+    expect((new VariantSuggester())->suggest($resource, $variants, suggesterFields()))->toBeNull();
 });
 
-test('returns null when no variant label matches any of the mapped keywords', function () {
-    $resource = vsMakeResource($this->tenant->id, ['vehicle_type' => 'SUV']);
+it('skips inactive variants and prefers lower sort_order', function () {
+    $resource = new ClientResourceModel(['data' => ['vehicle_type' => 'SUV']]);
     $variants = new Collection([
-        vsMakeVariant($this->tenant->id, $this->service->id, 'Edición Limitada', 50),
+        vsVariant('Inactiva', ['SUV'], 0, false),
+        vsVariant('Grande', ['SUV'], 2),
+        vsVariant('Mediano', ['SUV'], 1),
     ]);
-
-    $picked = $this->suggester->suggest(
-        $resource,
-        $variants,
-        BusinessTypeTemplates::getCustomFields('car_wash'),
-    );
-
-    expect($picked)->toBeNull();
+    expect((new VariantSuggester())->suggest($resource, $variants, suggesterFields())?->label)->toBe('Mediano');
 });
