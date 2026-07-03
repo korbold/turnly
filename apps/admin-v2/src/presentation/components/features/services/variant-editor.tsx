@@ -21,6 +21,7 @@ import {
   useUpdateVariant,
   useDeleteVariant,
 } from '@/presentation/hooks/use-service-variants';
+import { useSettings } from '@/presentation/hooks/use-settings';
 import { BomEditor } from './bom-editor';
 import type { ServiceVariant } from '@/domain/entities/service-variant';
 
@@ -32,10 +33,11 @@ interface VariantFormState {
   label: string;
   price: string;
   durationMin: string;
+  vehicleTypes: string[];
 }
 
 function emptyForm(): VariantFormState {
-  return { label: '', price: '0', durationMin: '30' };
+  return { label: '', price: '0', durationMin: '30', vehicleTypes: [] };
 }
 
 function formatMoney(v: number) {
@@ -47,6 +49,9 @@ export function VariantEditor({ serviceId }: Props) {
   const create = useCreateVariant(serviceId);
   const update = useUpdateVariant(serviceId);
   const remove = useDeleteVariant(serviceId);
+  const { data: settings } = useSettings();
+  const variantField = settings?.customFields?.find((f) => f.affectsVariant === true);
+  const vehicleOptions = variantField?.options ?? [];
 
   const [open, setOpen] = useState(false);
   const [editing, setEditing] = useState<ServiceVariant | null>(null);
@@ -61,7 +66,7 @@ export function VariantEditor({ serviceId }: Props) {
   }
   function startEdit(v: ServiceVariant) {
     setEditing(v);
-    setForm({ label: v.label, price: String(v.price), durationMin: String(v.durationMin) });
+    setForm({ label: v.label, price: String(v.price), durationMin: String(v.durationMin), vehicleTypes: v.vehicleTypes ?? [] });
     setOpen(true);
   }
 
@@ -71,6 +76,7 @@ export function VariantEditor({ serviceId }: Props) {
       label: form.label.trim(),
       price: parseFloat(form.price) || 0,
       durationMin: parseInt(form.durationMin, 10) || 30,
+      vehicleTypes: form.vehicleTypes,
     };
     const onError = () => toast.error('Error al guardar variante');
     if (editing) {
@@ -107,6 +113,16 @@ export function VariantEditor({ serviceId }: Props) {
           <Plus className="mr-1.5 h-4 w-4" /> Nueva variante
         </Button>
       </div>
+
+      {(() => {
+        const covered = new Set((variants ?? []).flatMap((v) => v.vehicleTypes ?? []));
+        const uncovered = vehicleOptions.filter((o) => !covered.has(o));
+        return uncovered.length > 0 ? (
+          <div className="rounded-lg border border-[var(--warning-200,#f5d5a8)] bg-[var(--warning-50,#fff8ec)] p-2 text-[12px] text-[var(--fg-secondary)]">
+            Sin variante para: <strong>{uncovered.join(', ')}</strong>. Esos clientes verán el selector manual.
+          </div>
+        ) : null;
+      })()}
 
       {isLoading ? (
         <div className="space-y-2">
@@ -209,6 +225,36 @@ export function VariantEditor({ serviceId }: Props) {
                 />
               </div>
             </div>
+            {vehicleOptions.length > 0 && (
+              <div>
+                <Label className="mb-1.5">Tipos de vehículo que cubre</Label>
+                <div className="flex flex-wrap gap-2">
+                  {vehicleOptions.map((opt) => {
+                    const active = form.vehicleTypes.includes(opt);
+                    return (
+                      <button
+                        key={opt}
+                        type="button"
+                        onClick={() => setForm((f) => ({
+                          ...f,
+                          vehicleTypes: active
+                            ? f.vehicleTypes.filter((t) => t !== opt)
+                            : [...f.vehicleTypes, opt],
+                        }))}
+                        className={active
+                          ? 'rounded-full border border-[var(--brand-600)] bg-[var(--brand-50)] px-3 py-1 text-[12px] text-[var(--brand-700)]'
+                          : 'rounded-full border border-[var(--border)] px-3 py-1 text-[12px] text-[var(--fg-secondary)]'}
+                      >
+                        {opt}
+                      </button>
+                    );
+                  })}
+                </div>
+                <p className="mt-1 text-[11px] text-[var(--fg-muted)]">
+                  Sin selección, esta variante nunca se auto-sugiere.
+                </p>
+              </div>
+            )}
           </div>
           <DialogFooter>
             <Button variant="outline" onClick={() => setOpen(false)}>Cancelar</Button>
