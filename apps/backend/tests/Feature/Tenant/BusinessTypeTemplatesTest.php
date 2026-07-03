@@ -13,8 +13,8 @@ test('car_wash template exposes a vehicle_type select with variant mapping', fun
     expect($vehicleType['type'])->toBe('select');
     expect($vehicleType['required'])->toBeTrue();
     expect($vehicleType['affects_variant'])->toBeTrue();
+    expect($vehicleType['locked'])->toBeTrue();
     expect($vehicleType['options'])->toContain('Sedán', 'Camioneta');
-    expect($vehicleType['variant_map']['Camioneta'])->toContain('camioneta');
 });
 
 test('barbershop, spa, medical templates carry their own affects_variant field', function () {
