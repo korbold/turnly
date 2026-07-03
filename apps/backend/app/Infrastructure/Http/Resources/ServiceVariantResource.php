@@ -15,6 +15,7 @@ class ServiceVariantResource extends JsonResource
             'id'           => $this->id,
             'service_id'   => $this->service_id,
             'label'        => $this->label,
+            'vehicle_types' => $this->vehicle_types ?? [],
             'price'        => (float) $this->price,
             'duration_min' => (int) $this->duration_min,
             'sort_order'   => (int) $this->sort_order,
