@@ -56,6 +56,7 @@ export function mapTenantSettings(raw: Record<string, unknown>): TenantSettings 
       options: (cf.options as string[] | undefined) ?? undefined,
       capitalize: cf.capitalize as import('@/domain/entities/tenant').CustomField['capitalize'] | undefined,
       affectsVariant: (cf.affects_variant ?? cf.affectsVariant) ? true : undefined,
+      locked: cf.locked ? true : undefined,
     })),
     permissions: (raw.permissions ?? {}) as Record<string, Record<string, string>>,
   };
