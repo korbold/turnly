@@ -1,2 +1,5 @@
 #include? "Pods/Target Support Files/Pods-Runner/Pods-Runner.debug.xcconfig"
 #include "Generated.xcconfig"
+
+// APNs entitlement env: sandbox for local debug builds. Release = production (see Release.xcconfig).
+APS_ENVIRONMENT=development
