@@ -74,6 +74,21 @@ class ReservationResource extends JsonResource
             'client' => $this->whenLoaded('client', fn () => [
                 'name'  => $this->client->name,
                 'email' => $this->client->email,
+                // The client's default SRI billing profile, so the check-in
+                // dialog can prefill documento / razón social / dirección /
+                // teléfono from what was captured on a prior visit.
+                'default_billing_profile' => $this->client->relationLoaded('defaultBillingProfile')
+                    && $this->client->defaultBillingProfile
+                    ? [
+                        'id'         => $this->client->defaultBillingProfile->id,
+                        'doc_type'   => $this->client->defaultBillingProfile->doc_type,
+                        'doc_number' => $this->client->defaultBillingProfile->doc_number,
+                        'legal_name' => $this->client->defaultBillingProfile->legal_name,
+                        'email'      => $this->client->defaultBillingProfile->email,
+                        'address'    => $this->client->defaultBillingProfile->address,
+                        'phone'      => $this->client->defaultBillingProfile->phone,
+                    ]
+                    : null,
             ]),
 
             'tenant' => $this->whenLoaded('tenant', fn () => [
