@@ -523,6 +523,7 @@ export function DetailPanel({ reservation, open, onClose, embedded = false }: De
           reservationId={reservation.id}
           defaultEmail={reservation.client?.email}
           defaultName={reservation.client?.name}
+          defaultProfile={reservation.client?.defaultBillingProfile}
           onClose={() => setCheckInOpen(false)}
           onSuccess={() => {
             setCheckInOpen(false);

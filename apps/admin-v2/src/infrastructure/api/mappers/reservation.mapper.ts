@@ -4,6 +4,7 @@ import type {
   ReservationItem,
   ReservationItemChange,
   BillingSnapshot,
+  ClientBillingProfile,
 } from '@/domain/entities/reservation';
 
 export function mapReservation(raw: Record<string, unknown>): Reservation {
@@ -62,6 +63,7 @@ export function mapReservation(raw: Record<string, unknown>): Reservation {
       ? {
           name: client.name as string,
           email: client.email as string,
+          defaultBillingProfile: mapClientBillingProfile(client.default_billing_profile),
         }
       : undefined,
     servicesSummary: raw.services_summary
@@ -78,6 +80,19 @@ export function mapAvailableSlot(raw: Record<string, unknown>): AvailableSlot {
     start: new Date(raw.start as string),
     end: new Date(raw.end as string),
     available: raw.available as number,
+  };
+}
+
+function mapClientBillingProfile(raw: unknown): ClientBillingProfile | null {
+  if (!raw || typeof raw !== 'object') return null;
+  const o = raw as Record<string, unknown>;
+  return {
+    docType: o.doc_type as ClientBillingProfile['docType'],
+    docNumber: (o.doc_number as string) ?? '',
+    legalName: (o.legal_name as string) ?? '',
+    email: (o.email as string | null) ?? null,
+    address: (o.address as string | null) ?? null,
+    phone: (o.phone as string | null) ?? null,
   };
 }
 

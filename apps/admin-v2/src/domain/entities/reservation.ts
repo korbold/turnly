@@ -65,9 +65,21 @@ export interface ReservationService {
   price: string;
 }
 
+/** The client's saved default SRI billing profile, used to prefill the
+    check-in dialog from data captured on a prior visit. */
+export interface ClientBillingProfile {
+  docType: 'ruc' | 'cedula' | 'passport' | 'final_consumer';
+  docNumber: string;
+  legalName: string;
+  email: string | null;
+  address: string | null;
+  phone: string | null;
+}
+
 export interface ReservationClient {
   name: string;
   email: string;
+  defaultBillingProfile?: ClientBillingProfile | null;
 }
 
 export interface Reservation {

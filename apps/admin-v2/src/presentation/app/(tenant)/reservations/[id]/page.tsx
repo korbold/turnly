@@ -862,6 +862,7 @@ export default function ReservationDetailPage({ params }: { params: Promise<{ id
         reservationId={id}
         defaultEmail={reservation.client?.email}
         defaultName={reservation.client?.name}
+        defaultProfile={reservation.client?.defaultBillingProfile}
         onClose={() => setCheckInOpen(false)}
         onSuccess={() => setCheckInOpen(false)}
       />

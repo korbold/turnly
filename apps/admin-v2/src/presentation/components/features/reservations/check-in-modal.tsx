@@ -27,11 +27,17 @@ import {
   useReservationItems,
 } from '@/presentation/hooks/use-reservations';
 
+import type { ClientBillingProfile } from '@/domain/entities/reservation';
+
 interface Props {
   open: boolean;
   reservationId: string;
   defaultEmail?: string | null;
   defaultName?: string | null;
+  /** The client's saved default billing profile. When present, the
+      dialog prefills documento / razón social / dirección / teléfono from
+      what was captured on a prior visit. */
+  defaultProfile?: ClientBillingProfile | null;
   onClose: () => void;
   onSuccess: () => void;
 }
@@ -45,7 +51,7 @@ const DOC_TYPES: { value: DocType; label: string }[] = [
   { value: 'passport', label: 'Pasaporte' },
 ];
 
-export function CheckInModal({ open, reservationId, defaultEmail, defaultName, onClose, onSuccess }: Props) {
+export function CheckInModal({ open, reservationId, defaultEmail, defaultName, defaultProfile, onClose, onSuccess }: Props) {
   const router = useRouter();
   const [docType, setDocType] = useState<DocType>('final_consumer');
   const [docNumber, setDocNumber] = useState('');
@@ -66,7 +72,18 @@ export function CheckInModal({ open, reservationId, defaultEmail, defaultName, o
   const mutation = useCheckInReservation(reservationId);
 
   useEffect(() => {
-    if (open) {
+    if (!open) return;
+    // Prefill from the client's saved billing profile when they registered
+    // fiscal data on a prior visit; otherwise fall back to consumidor final
+    // with the client's name/email seeded.
+    if (defaultProfile && defaultProfile.docType !== 'final_consumer') {
+      setDocType(defaultProfile.docType);
+      setDocNumber(defaultProfile.docNumber ?? '');
+      setLegalName(defaultProfile.legalName || (defaultName ?? ''));
+      setEmail(defaultProfile.email || (defaultEmail ?? ''));
+      setAddress(defaultProfile.address ?? '');
+      setPhone(defaultProfile.phone ?? '');
+    } else {
       setDocType('final_consumer');
       setDocNumber('');
       setLegalName(defaultName ?? '');
@@ -74,7 +91,7 @@ export function CheckInModal({ open, reservationId, defaultEmail, defaultName, o
       setAddress('');
       setPhone('');
     }
-  }, [open, defaultEmail, defaultName]);
+  }, [open, defaultEmail, defaultName, defaultProfile]);
 
   function submit() {
     const billing = docType === 'final_consumer'
