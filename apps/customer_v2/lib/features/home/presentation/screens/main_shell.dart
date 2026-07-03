@@ -35,23 +35,35 @@ class MainShell extends StatelessWidget {
     return Scaffold(
       body: child,
       extendBody: true,
-      bottomNavigationBar: ClipRect(
-        child: BackdropFilter(
-          filter: ImageFilter.blur(sigmaX: 18, sigmaY: 18),
+      bottomNavigationBar: SafeArea(
+        top: false,
+        child: Padding(
+          padding: const EdgeInsets.fromLTRB(16, 0, 16, 12),
           child: Container(
             decoration: BoxDecoration(
-              color: AppColors.surface.withValues(alpha: 0.85),
-              border: const Border(
-                top: BorderSide(color: AppColors.border, width: 1),
-              ),
+              borderRadius: BorderRadius.circular(28),
+              boxShadow: [
+                BoxShadow(
+                  color: Colors.black.withValues(alpha: 0.12),
+                  blurRadius: 24,
+                  offset: const Offset(0, 8),
+                ),
+              ],
             ),
-            child: SafeArea(
-              top: false,
-              minimum: const EdgeInsets.only(bottom: 8),
-              child: SizedBox(
-                height: 64,
-                child: Row(
-                  children: [
+            child: ClipRRect(
+              borderRadius: BorderRadius.circular(28),
+              child: BackdropFilter(
+                filter: ImageFilter.blur(sigmaX: 18, sigmaY: 18),
+                child: Container(
+                  decoration: BoxDecoration(
+                    color: AppColors.surface.withValues(alpha: 0.9),
+                    borderRadius: BorderRadius.circular(28),
+                    border: Border.all(color: AppColors.border, width: 1),
+                  ),
+                  child: SizedBox(
+                    height: 64,
+                    child: Row(
+                      children: [
                     _NavItem(
                       icon: Icons.explore_outlined,
                       activeIcon: Icons.explore,
@@ -77,7 +89,9 @@ class MainShell extends StatelessWidget {
                       primaryColor: primary,
                       onTap: () => context.go('/profile'),
                     ),
-                  ],
+                      ],
+                    ),
+                  ),
                 ),
               ),
             ),
