@@ -33,6 +33,16 @@ export class ApiClientResourceRepository implements ClientResourceRepository {
     if (data.model) body.model = data.model;
     if (data.color) body.color = data.color;
     if (data.type) body.type = data.type;
+    if (data.billingProfile) {
+      body.billing_profile = {
+        doc_type:   data.billingProfile.docType,
+        doc_number: data.billingProfile.docNumber ?? null,
+        legal_name: data.billingProfile.legalName ?? null,
+        email:      data.billingProfile.email ?? null,
+        address:    data.billingProfile.address ?? null,
+        phone:      data.billingProfile.phone ?? null,
+      };
+    }
 
     const { data: res } = await api.post('/client-resources', body);
     return mapClientResource(res.id ? res : res.data);

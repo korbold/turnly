@@ -19,6 +19,7 @@ import {
   ChevronsLeft,
   ChevronsRight,
   LogOut,
+  Receipt,
 } from 'lucide-react';
 import { cn } from '@/shared/utils/cn';
 import { Separator } from '@/presentation/components/ui/separator';
@@ -30,6 +31,7 @@ import {
 } from '@/presentation/components/ui/tooltip';
 import { Avatar, AvatarFallback } from '@/presentation/components/ui/avatar';
 import { useMe, useLogout } from '@/presentation/hooks/use-auth';
+import { usePermissions } from '@/presentation/hooks/use-permissions';
 
 interface NavItem {
   label: string;
@@ -47,6 +49,7 @@ const mainNavItems: NavItem[] = [
   { label: 'Inventario', href: '/inventory', icon: Package },
   { label: 'Equipo', href: '/team', icon: UserPlus },
   { label: 'Reportes', href: '/reports', icon: BarChart3 },
+  { label: 'Facturas', href: '/facturas', icon: Receipt },
   { label: 'Mi Plan', href: '/plan', icon: CreditCard },
 ];
 
@@ -78,6 +81,7 @@ export function Sidebar({ collapsed = false, onToggle }: SidebarProps) {
   const pathname = usePathname();
   const { data: me } = useMe();
   const logout = useLogout();
+  const { canAccess } = usePermissions();
   const { data: planData } = useQuery({
     queryKey: ['tenant', 'plan'],
     queryFn: async () => {
@@ -164,7 +168,7 @@ export function Sidebar({ collapsed = false, onToggle }: SidebarProps) {
 
         {/* Main nav */}
         <nav className="flex-1 overflow-y-auto px-2 py-3 space-y-1">
-          {mainNavItems.map((item) => (
+          {mainNavItems.filter((item) => canAccess(item.href)).map((item) => (
             <NavLink
               key={item.href}
               item={item}
@@ -178,7 +182,7 @@ export function Sidebar({ collapsed = false, onToggle }: SidebarProps) {
 
         {/* Bottom nav */}
         <div className="px-2 py-3 space-y-1">
-          {bottomNavItems.map((item) => (
+          {bottomNavItems.filter((item) => canAccess(item.href)).map((item) => (
             <NavLink
               key={item.href}
               item={item}

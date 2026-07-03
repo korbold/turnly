@@ -4,7 +4,7 @@ import { useState } from 'react';
 import { format } from 'date-fns';
 import { es } from 'date-fns/locale';
 import { toast } from 'sonner';
-import { Calendar as CalendarIcon, CheckCircle2, MoreHorizontal, Play, Trophy, UserX, X } from 'lucide-react';
+import { Calendar as CalendarIcon, CheckCircle2, FileText, MoreHorizontal, Play, Trophy, UserX, X } from 'lucide-react';
 import {
   Sheet,
   SheetContent,
@@ -36,6 +36,7 @@ import {
   useCancelReservation,
   useRescheduleReservation,
   useAvailableSlots,
+  useEmitReservationInvoice,
 } from '@/presentation/hooks/use-reservations';
 import { Input } from '@/presentation/components/ui/input';
 import { Label } from '@/presentation/components/ui/label';
@@ -51,6 +52,13 @@ interface DetailPanelProps {
   reservation: Reservation | null;
   open: boolean;
   onClose: () => void;
+  /**
+   * When true, render as an inline master-detail card (no Sheet wrapper,
+   * no backdrop) so the timeline next to it stays interactive. Used by
+   * the desktop layout. On smaller viewports we keep the Sheet because a
+   * sliding overlay fits the touch ergonomics better.
+   */
+  embedded?: boolean;
 }
 
 function InfoRow({ label, value }: { label: string; value: React.ReactNode }) {
@@ -63,9 +71,10 @@ function InfoRow({ label, value }: { label: string; value: React.ReactNode }) {
   );
 }
 
-export function DetailPanel({ reservation, open, onClose }: DetailPanelProps) {
+export function DetailPanel({ reservation, open, onClose, embedded = false }: DetailPanelProps) {
   const transition = useTransitionReservation();
   const cancel = useCancelReservation();
+  const emitInvoice = useEmitReservationInvoice();
   const { data: settings } = useSettings();
   const [cancelOpen, setCancelOpen] = useState(false);
   const [cancelReason, setCancelReason] = useState('');
@@ -162,35 +171,49 @@ export function DetailPanel({ reservation, open, onClose }: DetailPanelProps) {
     );
   }
 
-  return (
-    <>
-      <Sheet open={open} onOpenChange={(o) => !o && onClose()}>
-        <SheetContent className="w-full overflow-y-auto sm:max-w-[400px]">
-          <SheetHeader>
-            <SheetTitle className="flex items-center gap-2">
-              Reserva #{reservation.id.slice(0, 8)}
-              <Badge
-                className={cn(
-                  'border-0 text-xs',
-                  statusCfg.bgColor,
-                  statusCfg.color
-                )}
-              >
-                {statusCfg.label}
-              </Badge>
-            </SheetTitle>
-            <SheetDescription>
-              Detalle de la reserva
-            </SheetDescription>
-            <a
-              href={`/reservations/${reservation.id}`}
-              className="mt-2 inline-flex w-fit text-[12px] font-medium text-[var(--brand-700)] hover:underline"
-            >
-              Abrir vista completa →
-            </a>
-          </SheetHeader>
+  const header = (
+    <div className="flex items-start justify-between gap-3">
+      <div className="min-w-0">
+        <div className="flex flex-wrap items-center gap-2">
+          <h2 className="text-[16px] font-semibold text-[var(--fg-strong)]">
+            Reserva #{reservation.id.slice(0, 8)}
+          </h2>
+          <Badge
+            className={cn(
+              'border-0 text-xs',
+              statusCfg.bgColor,
+              statusCfg.color
+            )}
+          >
+            {statusCfg.label}
+          </Badge>
+        </div>
+        <p className="mt-1 text-[12px] text-[var(--fg-muted)]">
+          Detalle de la reserva
+        </p>
+        <a
+          href={`/reservations/${reservation.id}`}
+          className="mt-2 inline-flex w-fit text-[12px] font-medium text-[var(--brand-700)] hover:underline"
+        >
+          Abrir vista completa →
+        </a>
+      </div>
+      {embedded && (
+        <Button
+          variant="ghost"
+          size="icon"
+          onClick={onClose}
+          className="h-8 w-8 shrink-0 cursor-pointer text-[var(--fg-muted)] hover:bg-[var(--bg-sunken)] hover:text-[var(--fg-strong)]"
+          aria-label="Cerrar detalle"
+        >
+          <X className="h-4 w-4" />
+        </Button>
+      )}
+    </div>
+  );
 
-          <div className="mt-6 space-y-5">
+  const body = (
+    <div className={cn('space-y-5', embedded ? 'mt-4' : 'mt-6')}>
             {/* Actions — one tap-friendly primary CTA per state; alternative
                 paths sit as outlined secondaries; destructive / no-show land
                 in the overflow menu so they don't compete for attention. */}
@@ -302,6 +325,65 @@ export function DetailPanel({ reservation, open, onClose }: DetailPanelProps) {
                 </div>
               )}
 
+            {/* Invoice section — shown once service is completed */}
+            {reservation.status === 'completed' && (
+              <div className="rounded-lg border border-[var(--border)] bg-[var(--bg-sunken)] p-3 space-y-2">
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-1.5">
+                    <FileText className="h-3.5 w-3.5 text-[var(--fg-muted)]" />
+                    <span className="text-[12px] font-semibold uppercase tracking-wider text-[var(--fg-muted)]">
+                      Factura SRI
+                    </span>
+                  </div>
+                  {reservation.invoiceStatus === 'autorizada' ? (
+                    <span className="inline-flex items-center gap-1 rounded-full bg-emerald-100 px-2 py-0.5 text-[11px] font-semibold text-emerald-700">
+                      Autorizada
+                    </span>
+                  ) : reservation.invoiceStatus === 'enviada' ? (
+                    <span className="inline-flex items-center gap-1 rounded-full bg-sky-100 px-2 py-0.5 text-[11px] font-semibold text-sky-700">
+                      Procesando…
+                    </span>
+                  ) : reservation.invoiceStatus === 'rechazada' ? (
+                    <span className="inline-flex items-center gap-1 rounded-full bg-rose-100 px-2 py-0.5 text-[11px] font-semibold text-rose-700">
+                      Rechazada
+                    </span>
+                  ) : (
+                    <span className="inline-flex items-center gap-1 rounded-full bg-zinc-100 px-2 py-0.5 text-[11px] font-semibold text-zinc-500">
+                      Pendiente
+                    </span>
+                  )}
+                </div>
+
+                {reservation.invoiceClaveAcceso && (
+                  <p className="break-all font-mono text-[10px] text-[var(--fg-muted)]">
+                    {reservation.invoiceClaveAcceso}
+                  </p>
+                )}
+
+                {reservation.invoiceError && (
+                  <p className="text-[11px] text-rose-600">{reservation.invoiceError}</p>
+                )}
+
+                {reservation.invoiceStatus !== 'autorizada' && (
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    className="w-full gap-1.5 text-[12px]"
+                    disabled={emitInvoice.isPending || reservation.invoiceStatus === 'enviada'}
+                    onClick={() =>
+                      emitInvoice.mutate(reservation!.id, {
+                        onSuccess: () => toast.success('Facturación iniciada'),
+                        onError: () => toast.error('Error al facturar'),
+                      })
+                    }
+                  >
+                    <FileText className="h-3.5 w-3.5" />
+                    {reservation.invoiceStatus === 'rechazada' ? 'Reintentar factura' : 'Emitir factura'}
+                  </Button>
+                )}
+              </div>
+            )}
+
             <Separator />
 
             {/* Resource + Client */}
@@ -383,9 +465,57 @@ export function DetailPanel({ reservation, open, onClose }: DetailPanelProps) {
                 </div>
               </>
             )}
-          </div>
-        </SheetContent>
-      </Sheet>
+    </div>
+  );
+
+  return (
+    <>
+      {embedded ? (
+        // Master-detail: render as a sticky card next to the timeline. No
+        // backdrop, no Sheet, so the surrounding view stays interactive.
+        // Parent grid is responsible for visibility (hidden on mobile).
+        <div
+          className={cn(
+            'rounded-xl border border-[var(--border)] bg-[var(--bg-surface)] p-5',
+            'max-h-[calc(100dvh-2rem)] overflow-y-auto',
+            // Subtle enter animation — slide in from the right edge of the
+            // grid column. Exit is handled by the parent unmounting us.
+            'animate-in fade-in slide-in-from-right-3 duration-200 ease-out',
+          )}
+        >
+          {header}
+          {body}
+        </div>
+      ) : (
+        <Sheet open={open} onOpenChange={(o) => !o && onClose()}>
+          <SheetContent className="w-full overflow-y-auto sm:max-w-[400px]">
+            <SheetHeader>
+              <SheetTitle className="flex items-center gap-2">
+                Reserva #{reservation.id.slice(0, 8)}
+                <Badge
+                  className={cn(
+                    'border-0 text-xs',
+                    statusCfg.bgColor,
+                    statusCfg.color
+                  )}
+                >
+                  {statusCfg.label}
+                </Badge>
+              </SheetTitle>
+              <SheetDescription>
+                Detalle de la reserva
+              </SheetDescription>
+              <a
+                href={`/reservations/${reservation.id}`}
+                className="mt-2 inline-flex w-fit text-[12px] font-medium text-[var(--brand-700)] hover:underline"
+              >
+                Abrir vista completa →
+              </a>
+            </SheetHeader>
+            {body}
+          </SheetContent>
+        </Sheet>
+      )}
 
       {reservation && (
         <CheckInModal
@@ -393,6 +523,7 @@ export function DetailPanel({ reservation, open, onClose }: DetailPanelProps) {
           reservationId={reservation.id}
           defaultEmail={reservation.client?.email}
           defaultName={reservation.client?.name}
+          defaultProfile={reservation.client?.defaultBillingProfile}
           onClose={() => setCheckInOpen(false)}
           onSuccess={() => {
             setCheckInOpen(false);

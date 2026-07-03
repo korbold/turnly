@@ -55,9 +55,19 @@ enum ReservationStatus {
     ReservationStatus.noShow => const Color(0xFFEEF0F3),
   };
 
+  /// Active states where the booking is still "alive" on the schedule —
+  /// used by the listing screen to bucket between upcoming and history.
   bool get isUpcoming =>
       this == pending ||
       this == confirmed ||
       this == checkedIn ||
       this == inProgress;
+
+  /// Self-service window for the customer. Once the negocio confirma la
+  /// llegada (checked_in) or arranca el servicio (in_progress) el
+  /// cliente ya no puede cancelar ni reagendar desde la app — el
+  /// backend rechaza la transición y el botón pierde sentido. Lo
+  /// dejamos visible sólo para pending + confirmed.
+  bool get allowsCustomerEdit =>
+      this == pending || this == confirmed;
 }

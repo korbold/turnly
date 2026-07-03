@@ -15,12 +15,15 @@ class ReservationModel extends Model
     protected $table = 'reservations';
 
     protected $fillable = [
-        'tenant_id', 'client_id', 'client_resource_id', 'service_id', 'service_variant_id',
+        'tenant_id', 'client_id', 'client_resource_id', 'business_resource_id', 'service_id', 'service_variant_id',
         'assigned_to', 'scheduled_at', 'estimated_end', 'status',
         'notes', 'cancelled_at', 'cancel_reason', 'created_by',
         'consumption_applied_at',
         'checked_in_at', 'billing_snapshot',
         'client_rescheduled_at',
+        'payment_status', 'payment_method', 'paid_at', 'payment_reference', 'payment_bank',
+        'invoiced', 'invoiced_at', 'invoice_external_id', 'invoice_status',
+        'invoice_clave_acceso', 'invoice_numero_autorizacion', 'invoice_error',
     ];
 
     protected function casts(): array
@@ -33,6 +36,9 @@ class ReservationModel extends Model
             'checked_in_at' => 'datetime',
             'client_rescheduled_at' => 'datetime',
             'billing_snapshot' => 'array',
+            'paid_at'      => 'datetime',
+            'invoiced'     => 'boolean',
+            'invoiced_at'  => 'datetime',
         ];
     }
 

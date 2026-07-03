@@ -16,6 +16,7 @@ use App\Infrastructure\Http\Controllers\ClientResource\ClientResourceLookupContr
 use App\Infrastructure\Http\Controllers\Billing\UserBillingProfileController;
 use App\Infrastructure\Http\Controllers\ServiceLog\ServiceLogController;
 use App\Infrastructure\Http\Controllers\ClientResource\ClientResourceController;
+use App\Infrastructure\Http\Controllers\BusinessResource\BusinessResourceController;
 use App\Infrastructure\Http\Controllers\Service\ServiceController;
 use App\Infrastructure\Http\Controllers\Service\ServiceVariantController;
 use App\Infrastructure\Http\Controllers\Service\BomController;
@@ -26,6 +27,7 @@ use App\Infrastructure\Http\Controllers\Report\ReportController;
 use App\Infrastructure\Http\Controllers\SuperAdmin\SuperAdminController;
 use App\Infrastructure\Http\Controllers\Upload\UploadController;
 use App\Infrastructure\Http\Controllers\PublicController;
+use App\Infrastructure\Http\Controllers\InvoiceProxyController;
 use Illuminate\Support\Facades\Route;
 
 // Public business pages
@@ -102,6 +104,22 @@ Route::prefix('v1')->group(function () {
             Route::delete('device-tokens/{token}', [\App\Infrastructure\Http\Controllers\Notification\DeviceTokenController::class, 'destroy']);
         });
 
+        // Customer booking flow (tenant-scoped, email verification NOT required).
+        // The booking action itself (/public/tenants/{slug}/book) is public, so
+        // its supporting reads/writes must not be gated stricter than the action
+        // they serve. Gating these behind verified.email silently tore down the
+        // mobile booking screen for any customer whose email_verified_at was null.
+        Route::middleware('tenant')->group(function () {
+            Route::get('reservations/available-slots', [ReservationController::class, 'availableSlots']);
+
+            Route::get('client-resources', [ClientResourceController::class, 'index']);
+            Route::post('client-resources', [ClientResourceController::class, 'store']);
+            Route::get('client-resources/{id}', [ClientResourceController::class, 'show']);
+            Route::patch('client-resources/{id}', [ClientResourceController::class, 'update']);
+            Route::delete('client-resources/{id}', [ClientResourceController::class, 'destroy']);
+            Route::get('client-resources/{id}/history', [ClientResourceController::class, 'history']);
+        });
+
         // Billing profiles (customer-facing, not tenant scoped).
         Route::get('billing-profiles', [UserBillingProfileController::class, 'index']);
         Route::post('billing-profiles', [UserBillingProfileController::class, 'store']);
@@ -131,8 +149,13 @@ Route::prefix('v1')->group(function () {
             Route::patch('tenant/billing-profile', [\App\Infrastructure\Http\Controllers\Tenant\BillingProfileController::class, 'update']);
             Route::get('tenant/billing-profile/lookup', [\App\Infrastructure\Http\Controllers\Tenant\BillingProfileController::class, 'lookup']);
 
+            // Tenant billing cert (SRI electronic invoicing certificate)
+            Route::get('settings/billing-cert', [\App\Infrastructure\Http\Controllers\Tenant\BillingProfileController::class, 'showCert']);
+            Route::post('settings/billing-cert', [\App\Infrastructure\Http\Controllers\Tenant\BillingProfileController::class, 'uploadCert']);
+
             // Reservations
-            Route::get('reservations/available-slots', [ReservationController::class, 'availableSlots']);
+            // NOTE: reservations/available-slots moved to the customer booking
+            // group above (no email gate) — it backs the public booking screen.
             Route::get('reservations', [ReservationController::class, 'index']);
             Route::post('reservations', [ReservationController::class, 'store']);
             Route::get('reservations/{id}', [ReservationController::class, 'show']);
@@ -147,6 +170,12 @@ Route::prefix('v1')->group(function () {
             Route::post('reservations/{id}/check-in', [ReservationCheckInController::class, 'checkIn']);
             Route::patch('reservations/{id}/billing', [ReservationCheckInController::class, 'updateBilling']);
 
+            // Phase 1 pago: independent of lifecycle status. Cashier
+            // records method + reference when the customer pays —
+            // sometimes upfront, sometimes at pickup.
+            Route::post('reservations/{id}/payment', [\App\Infrastructure\Http\Controllers\Reservation\ReservationPaymentController::class, 'record']);
+            Route::post('reservations/{id}/invoice', [ReservationController::class, 'invoice']);
+
             // Polymorphic line items + audit log.
             Route::get('reservations/{id}/items', [ReservationItemController::class, 'index']);
             Route::post('reservations/{id}/items', [ReservationItemController::class, 'store']);
@@ -160,16 +189,30 @@ Route::prefix('v1')->group(function () {
             Route::post('service-logs', [ServiceLogController::class, 'store']);
             Route::get('service-logs/{id}', [ServiceLogController::class, 'show']);
             Route::patch('service-logs/{id}', [ServiceLogController::class, 'update']);
+            Route::put('service-logs/{id}/items', [ServiceLogController::class, 'updateItems']);
             Route::delete('service-logs/{id}', [ServiceLogController::class, 'destroy']);
             Route::patch('service-logs/{id}/complete', [ServiceLogController::class, 'complete']);
+            // Late payment registration — cashier marks a "cobrar al
+            // retirar" service as paid + captures method + bank.
+            Route::post('service-logs/{id}/payment', [ServiceLogController::class, 'recordPayment']);
+            // Billing: manually trigger invoice emission or re-emit a rejected one.
+            Route::post('service-logs/{id}/invoice', [ServiceLogController::class, 'invoice']);
+            // Billing: list all invoiced service logs for the tenant.
+            Route::get('invoices', [ServiceLogController::class, 'indexInvoiced']);
+            // Billing: proxy XML download through backend to enforce auth.
+            Route::get('service-logs/{id}/invoice/xml', [ServiceLogController::class, 'downloadInvoiceXml']);
+            // Billing: proxy direct access to billing service invoice list + RIDE PDF.
+            Route::get('billing/invoices', [InvoiceProxyController::class, 'index']);
+            Route::get('billing/invoices/{id}/ride', [InvoiceProxyController::class, 'ride']);
 
-            // Client Resources
-            Route::get('client-resources', [ClientResourceController::class, 'index']);
-            Route::post('client-resources', [ClientResourceController::class, 'store']);
-            Route::get('client-resources/{id}', [ClientResourceController::class, 'show']);
-            Route::patch('client-resources/{id}', [ClientResourceController::class, 'update']);
-            Route::delete('client-resources/{id}', [ClientResourceController::class, 'destroy']);
-            Route::get('client-resources/{id}/history', [ClientResourceController::class, 'history']);
+            // NOTE: client-resources routes moved to the customer booking group
+            // above (no email gate) — they back the public booking screen.
+
+            // Business Resources (stations, chairs, rooms)
+            Route::get('business-resources', [BusinessResourceController::class, 'index']);
+            Route::post('business-resources', [BusinessResourceController::class, 'store']);
+            Route::patch('business-resources/{id}', [BusinessResourceController::class, 'update']);
+            Route::delete('business-resources/{id}', [BusinessResourceController::class, 'destroy']);
 
             // Services
             Route::get('services', [ServiceController::class, 'index']);

@@ -11,7 +11,10 @@ class AppServiceProvider extends ServiceProvider
 {
     public function register(): void
     {
-        //
+        $this->app->bind(
+            \App\Domain\BusinessResource\Contracts\BusinessResourceRepositoryInterface::class,
+            \App\Infrastructure\Persistence\Repositories\EloquentBusinessResourceRepository::class,
+        );
     }
 
     public function boot(): void

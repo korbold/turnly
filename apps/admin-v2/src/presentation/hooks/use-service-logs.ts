@@ -7,9 +7,11 @@ import { CreateServiceLogUseCase } from '@/application/use-cases/service-logs/cr
 import { UpdateServiceLogUseCase } from '@/application/use-cases/service-logs/update-service-log.use-case';
 import { DeleteServiceLogUseCase } from '@/application/use-cases/service-logs/delete-service-log.use-case';
 import { CompleteServiceLogUseCase } from '@/application/use-cases/service-logs/complete-service-log.use-case';
+import { RecordServiceLogPaymentUseCase } from '@/application/use-cases/service-logs/record-service-log-payment.use-case';
 import { GetDailySummaryUseCase } from '@/application/use-cases/service-logs/get-daily-summary.use-case';
+import { UpdateServiceLogItemsUseCase } from '@/application/use-cases/service-logs/update-service-log-items.use-case';
 import type { ServiceLogFilters } from '@/domain/entities/service-log';
-import type { CreateServiceLogData, UpdateServiceLogData } from '@/domain/repositories/service-log.repository';
+import type { CreateServiceLogData, UpdateServiceLogData, RecordPaymentData, UpdateServiceLogItemsData } from '@/domain/repositories/service-log.repository';
 
 export function useServiceLogs(filters: ServiceLogFilters) {
   const repo = useRepository('serviceLog');
@@ -43,6 +45,18 @@ export function useUpdateServiceLog() {
   });
 }
 
+export function useUpdateServiceLogItems() {
+  const repo = useRepository('serviceLog');
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: ({ id, items }: { id: string; items: UpdateServiceLogItemsData }) =>
+      new UpdateServiceLogItemsUseCase(repo).execute(id, items),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['service-logs'] });
+    },
+  });
+}
+
 export function useDeleteServiceLog() {
   const repo = useRepository('serviceLog');
   const queryClient = useQueryClient();
@@ -59,6 +73,18 @@ export function useCompleteServiceLog() {
   const queryClient = useQueryClient();
   return useMutation({
     mutationFn: (id: string) => new CompleteServiceLogUseCase(repo).execute(id),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['service-logs'] });
+    },
+  });
+}
+
+export function useRecordServiceLogPayment() {
+  const repo = useRepository('serviceLog');
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: ({ id, data }: { id: string; data: RecordPaymentData }) =>
+      new RecordServiceLogPaymentUseCase(repo).execute(id, data),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['service-logs'] });
     },

@@ -2,6 +2,8 @@ import type {
   ServiceLogRepository,
   CreateServiceLogData,
   UpdateServiceLogData,
+  UpdateServiceLogItemsData,
+  RecordPaymentData,
 } from '@/domain/repositories/service-log.repository';
 import type { ServiceLog, ServiceLogFilters, DailySummary } from '@/domain/entities/service-log';
 import type { PaginatedResult } from '@/shared/types/api';
@@ -25,13 +27,42 @@ export class ApiServiceLogRepository implements ServiceLogRepository {
   }
 
   async create(data: CreateServiceLogData): Promise<ServiceLog> {
-    const { data: res } = await api.post('/service-logs', {
+    const body: Record<string, unknown> = {
       client_resource_id: data.clientResourceId,
-      service_id: data.serviceId,
       attended_by: data.attendedBy,
-      price_charged: data.priceCharged,
       payment_method: data.paymentMethod,
+      payment_bank: data.paymentBank ?? null,
+      payment_status: data.paymentStatus ?? 'paid',
       notes: data.notes,
+    };
+    if (data.items && data.items.length > 0) {
+      body.items = data.items.map((it) => ({
+        service_id: it.serviceId,
+        variant_id: it.variantId ?? null,
+        label: it.label,
+        qty: it.qty,
+        unit_price: it.unitPrice,
+      }));
+      // Backend derives service_id + price_charged from items[0] +
+      // sum; we still echo them so older request paths can read.
+      body.service_id = data.items[0].serviceId;
+      body.price_charged = data.items.reduce(
+        (acc, it) => acc + it.unitPrice * it.qty,
+        0,
+      );
+    } else {
+      body.service_id = data.serviceId;
+      body.price_charged = data.priceCharged;
+    }
+    const { data: res } = await api.post('/service-logs', body);
+    return mapServiceLog(res.data);
+  }
+
+  async recordPayment(id: string, data: RecordPaymentData): Promise<ServiceLog> {
+    const { data: res } = await api.post(`/service-logs/${id}/payment`, {
+      method: data.method,
+      bank: data.bank ?? null,
+      reference: data.reference ?? null,
     });
     return mapServiceLog(res.data);
   }
@@ -42,9 +73,23 @@ export class ApiServiceLogRepository implements ServiceLogRepository {
     if (data.attendedBy !== undefined) body.attended_by = data.attendedBy;
     if (data.priceCharged !== undefined) body.price_charged = data.priceCharged;
     if (data.paymentMethod !== undefined) body.payment_method = data.paymentMethod;
+    if (data.paymentBank !== undefined) body.payment_bank = data.paymentBank;
     if (data.notes !== undefined) body.notes = data.notes;
 
     const { data: res } = await api.patch(`/service-logs/${id}`, body);
+    return mapServiceLog(res.data);
+  }
+
+  async updateItems(id: string, items: UpdateServiceLogItemsData): Promise<ServiceLog> {
+    const { data: res } = await api.put(`/service-logs/${id}/items`, {
+      items: items.map((it) => ({
+        service_id:  it.serviceId,
+        variant_id:  it.variantId ?? null,
+        label:       it.label,
+        qty:         it.qty,
+        unit_price:  it.unitPrice,
+      })),
+    });
     return mapServiceLog(res.data);
   }
 

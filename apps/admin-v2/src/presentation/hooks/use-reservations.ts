@@ -139,6 +139,22 @@ export function useUpdateReservationBilling(id: string) {
   });
 }
 
+export function useRecordReservationPayment(id: string) {
+  const repo = useRepository('reservation');
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (input: {
+      method: 'transfer' | 'card' | 'cash';
+      reference?: string | null;
+      bank?: string | null;
+    }) => repo.recordPayment(id, input),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ['reservation', id] });
+      qc.invalidateQueries({ queryKey: ['reservations'] });
+    },
+  });
+}
+
 export function useAddReservationItem(id: string) {
   const repo = useRepository('reservation');
   const qc = useQueryClient();
@@ -174,6 +190,18 @@ export function useOverrideReservationItemPrice(id: string) {
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ['reservation-items', id] });
       qc.invalidateQueries({ queryKey: ['reservation-changes', id] });
+    },
+  });
+}
+
+export function useEmitReservationInvoice() {
+  const repo = useRepository('reservation');
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (id: string) => repo.emitInvoice(id),
+    onSuccess: (_data, id) => {
+      qc.invalidateQueries({ queryKey: ['reservation', id] });
+      qc.invalidateQueries({ queryKey: ['reservations'] });
     },
   });
 }

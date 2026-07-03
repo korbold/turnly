@@ -4,12 +4,15 @@ import { useQuery } from '@tanstack/react-query';
 import { useRepository } from '@/infrastructure/providers/repository.provider';
 import { GetRangeReportUseCase } from '@/application/use-cases/reports/get-range-report.use-case';
 import { GetDailyReportUseCase } from '@/application/use-cases/reports/get-daily-report.use-case';
+import type { RangeReportFilters } from '@/domain/repositories/report.repository';
 
-export function useRangeReport(from: string, to: string) {
+export function useRangeReport(from: string, to: string, filters?: RangeReportFilters) {
   const repo = useRepository('report');
+  const method = filters?.paymentMethod ?? null;
+  const bank = filters?.paymentBank ?? null;
   return useQuery({
-    queryKey: ['reports', 'range', from, to],
-    queryFn: () => new GetRangeReportUseCase(repo).execute(from, to),
+    queryKey: ['reports', 'range', from, to, method, bank],
+    queryFn: () => new GetRangeReportUseCase(repo).execute(from, to, { paymentMethod: method, paymentBank: bank }),
     enabled: !!from && !!to,
   });
 }

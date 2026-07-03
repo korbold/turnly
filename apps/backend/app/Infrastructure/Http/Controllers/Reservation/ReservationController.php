@@ -16,6 +16,7 @@ use App\Infrastructure\Http\Controllers\Controller;
 use App\Infrastructure\Http\Requests\Reservation\CancelReservationRequest;
 use App\Infrastructure\Http\Requests\Reservation\CreateReservationRequest;
 use App\Infrastructure\Http\Resources\ReservationResource;
+use App\Infrastructure\Jobs\EmitReservationInvoiceJob;
 use App\Infrastructure\Persistence\Models\ReservationModel;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
@@ -168,7 +169,7 @@ class ReservationController extends Controller
 
     public function index(Request $request)
     {
-        $query = ReservationModel::with(['clientResource', 'service', 'client', 'items']);
+        $query = ReservationModel::with(['clientResource', 'service', 'client.defaultBillingProfile', 'items']);
 
         if ($request->has('date_from') && $request->has('date_to')) {
             $query->whereDate('scheduled_at', '>=', $request->date_from)
@@ -225,6 +226,7 @@ class ReservationController extends Controller
             assignedTo: $request->assigned_to,
             notes: $request->notes,
             serviceVariantId: $variantId,
+            businessResourceId: $request->business_resource_id,
         );
 
         $reservation = $this->createReservation->execute($dto);
@@ -343,7 +345,7 @@ class ReservationController extends Controller
 
     public function show(string $id): ReservationResource
     {
-        $reservation = ReservationModel::with(['clientResource', 'service', 'client', 'assignedEmployee'])->findOrFail($id);
+        $reservation = ReservationModel::with(['clientResource', 'service', 'client.defaultBillingProfile', 'assignedEmployee'])->findOrFail($id);
         return new ReservationResource($reservation);
     }
 
@@ -372,6 +374,26 @@ class ReservationController extends Controller
             'data' => ['message' => 'Wash completed'],
             'meta' => ['timestamp' => now()->toIso8601String()],
         ]);
+    }
+
+    public function invoice(string $id): JsonResponse
+    {
+        $reservation = ReservationModel::findOrFail($id);
+
+        if ($reservation->invoice_status === 'autorizada') {
+            return response()->json([
+                'error' => [
+                    'code'    => 'ALREADY_INVOICED',
+                    'message' => 'Esta factura ya fue autorizada por el SRI.',
+                ],
+            ], 422);
+        }
+
+        EmitReservationInvoiceJob::dispatch($id);
+
+        return response()->json([
+            'data' => ['message' => 'Facturación iniciada.'],
+        ], 202);
     }
 
     public function cancel(CancelReservationRequest $request, string $id): JsonResponse
@@ -456,14 +478,16 @@ class ReservationController extends Controller
     public function availableSlots(Request $request): JsonResponse
     {
         $request->validate([
-            'date' => 'required|date',
-            'service_id' => 'required|uuid',
+            'date'                 => 'required|date',
+            'service_id'           => 'required|uuid',
+            'business_resource_id' => 'nullable|uuid|exists:business_resources,id,tenant_id,' . app('current_tenant_id'),
         ]);
 
         $dto = new AvailableSlotsQueryDTO(
-            tenantId: app('current_tenant_id'),
-            date: $request->date,
-            serviceId: $request->service_id,
+            tenantId:           app('current_tenant_id'),
+            date:               $request->date,
+            serviceId:          $request->service_id,
+            businessResourceId: $request->business_resource_id,
         );
 
         $slots = $this->getAvailableSlots->execute($dto);
@@ -471,7 +495,7 @@ class ReservationController extends Controller
         return response()->json([
             'data' => $slots,
             'meta' => [
-                'tenant' => app('current_tenant')->slug ?? null,
+                'tenant'    => app('current_tenant')->slug ?? null,
                 'timestamp' => now()->toIso8601String(),
             ],
         ]);

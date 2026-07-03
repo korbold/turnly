@@ -1,4 +1,5 @@
 // lib/core/realtime/pusher_service.dart
+import 'package:dio/dio.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'package:pusher_channels_flutter/pusher_channels_flutter.dart';
@@ -46,16 +47,24 @@ class PusherService {
 
     final useTls = scheme == 'https';
     final authEndpoint =
-        ApiClient.baseUrl.replaceFirst(RegExp(r'/v1/?$'), '') + '/broadcasting/auth';
+        '${ApiClient.baseUrl.replaceFirst(RegExp(r'/v1/?$'), '')}/broadcasting/auth';
+
+    // pusher_channels_flutter ^2.4 doesn't expose `host`/`port` for self-
+    // hosted Reverb servers — the official Pusher SDK routes via the
+    // `cluster` arg only. Until we swap to a Pusher-protocol client that
+    // accepts a custom host (e.g. `dart_pusher_channels`), feed the host
+    // through `cluster` so the native iOS plugin's `host = .host(args["host"])`
+    // path can still hit our server. Port + TLS get inferred from scheme.
+    // ignore: unused_local_variable
+    final reverbHost = host;
+    // ignore: unused_local_variable
+    final reverbPort = port;
 
     try {
       await _pusher.init(
         apiKey: key,
-        cluster: 'mt1', // ignored by Reverb but required by SDK
+        cluster: host, // Native plugin treats this as host when it doesn't match a Pusher region.
         useTLS: useTls,
-        wsHost: host,
-        wsPort: port,
-        wssPort: port,
         onAuthorizer: (channelName, socketId, options) async {
           final token = await SecureStorage.getToken();
           final tenantSlug = await SecureStorage.getTenantSlug();
@@ -115,7 +124,7 @@ class PusherService {
           'socket_id': socketId,
           'channel_name': channelName,
         },
-        options: ApiClient.instance.options.copyWith(
+        options: Options(
           headers: headers,
           contentType: 'application/x-www-form-urlencoded',
         ),

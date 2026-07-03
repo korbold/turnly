@@ -99,6 +99,22 @@ export class ApiReservationRepository implements ReservationRepository {
     return mapReservation(res.data);
   }
 
+  async recordPayment(
+    id: string,
+    input: {
+      method: 'transfer' | 'card' | 'cash';
+      reference?: string | null;
+      bank?: string | null;
+    },
+  ): Promise<Reservation> {
+    const { data: res } = await api.post(`/reservations/${id}/payment`, {
+      method: input.method,
+      reference: input.reference ?? null,
+      bank: input.bank ?? null,
+    });
+    return mapReservation(res.data);
+  }
+
   async updateBilling(id: string, input: CheckInInput): Promise<BillingSnapshot | null> {
     const { data: res } = await api.patch(`/reservations/${id}/billing`, checkInBody(input));
     const snap = res.data?.billing_snapshot;
@@ -145,5 +161,9 @@ export class ApiReservationRepository implements ReservationRepository {
   async listChanges(id: string): Promise<ReservationItemChange[]> {
     const { data: res } = await api.get(`/reservations/${id}/changes`);
     return (res.data as Record<string, unknown>[]).map(mapReservationItemChange);
+  }
+
+  async emitInvoice(id: string): Promise<void> {
+    await api.post(`/reservations/${id}/invoice`);
   }
 }

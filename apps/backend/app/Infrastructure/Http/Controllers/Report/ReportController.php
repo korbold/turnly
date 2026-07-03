@@ -71,62 +71,163 @@ class ReportController extends Controller
     {
         $this->ensureFeature();
         $request->validate([
-            'from' => 'required|date',
-            'to' => 'required|date|after_or_equal:from',
+            'date_from'      => 'sometimes|date',
+            'date_to'        => 'sometimes|date|after_or_equal:date_from',
+            // Legacy param names still accepted so older clients keep working.
+            'from'           => 'sometimes|date',
+            'to'             => 'sometimes|date|after_or_equal:from',
+            'payment_method' => 'sometimes|nullable|in:cash,card,transfer',
+            'payment_bank'   => 'sometimes|nullable|string|max:40',
         ]);
 
-        $from = $request->get('from');
-        $to = $request->get('to');
-        $tenantId = app('current_tenant_id');
+        $from = $request->get('date_from', $request->get('from', now()->toDateString()));
+        $to   = $request->get('date_to',   $request->get('to',   $from));
 
-        $washLogs = ServiceLogModel::whereBetween('log_date', [$from, $to])->get();
-        $reservations = ReservationModel::whereBetween('scheduled_at', [
-            $from . ' 00:00:00',
-            $to . ' 23:59:59',
-        ])->with('service')->get();
+        $methodFilter = $request->get('payment_method');
+        $bankFilter   = $request->get('payment_bank');
 
-        $completedReservations = $reservations->whereNotIn('status', ['cancelled', 'no_show']);
-        $serviceRevenue = (float) $washLogs->sum('price_charged');
-        $reservationRevenue = (float) $completedReservations->sum(fn ($r) => $r->service?->price ?? 0);
+        // Legacy wash logs (kept around for tenants migrated from the
+        // standalone "registro diario" surface).
+        $washLogsQuery = ServiceLogModel::whereBetween('log_date', [$from, $to]);
+        if ($methodFilter) {
+            $washLogsQuery->where('payment_method', $methodFilter);
+        }
+        // Wash logs don't carry payment_bank — filtering by bank means
+        // we're slicing to transferencia detail, so any non-reservation
+        // legacy row drops out of the result by definition.
+        if ($bankFilter) {
+            $washLogsQuery->whereRaw('1 = 0');
+        }
+        $washLogs = $washLogsQuery->get();
 
-        // Daily breakdown
+        // Reservations are the source of truth now. We compute revenue
+        // off the persisted items[] (sum of line_total) because the
+        // legacy `service.price` doesn't reflect multi-service bookings
+        // or per-line overrides captured at check-in.
+        $reservationsQuery = ReservationModel::whereBetween('scheduled_at', [
+                $from . ' 00:00:00',
+                $to . ' 23:59:59',
+            ])
+            ->whereNotIn('status', ['cancelled', 'no_show'])
+            ->with(['service', 'items']);
+
+        if ($methodFilter) {
+            // Filtering by method only makes sense on rows actually paid
+            // with that method; unpaid reservations have NULL columns.
+            $reservationsQuery
+                ->where('payment_status', 'paid')
+                ->where('payment_method', $methodFilter);
+        }
+        if ($bankFilter) {
+            $reservationsQuery->where('payment_bank', $bankFilter);
+        }
+
+        $reservations = $reservationsQuery->get();
+
+        // A reservation's total = sum(items.line_total) when items exist,
+        // otherwise fall back to the single-service price for legacy rows.
+        $totalForReservation = function ($reservation): float {
+            if ($reservation->items && $reservation->items->isNotEmpty()) {
+                return (float) $reservation->items->sum('line_total');
+            }
+            return (float) ($reservation->service?->price ?? 0);
+        };
+
+        $serviceRevenue     = (float) $washLogs->sum('price_charged');
+        $reservationRevenue = (float) $reservations->sum($totalForReservation);
+        $totalRevenue       = $serviceRevenue + $reservationRevenue;
+        $totalServices      = $washLogs->count() + $reservations->count();
+
+        // Per-method buckets (Phase 1 payments live on the reservation
+        // row; the older wash logs still carry their own payment_method).
+        $paidReservations = $reservations->where('payment_status', 'paid');
+        $methodTotal = function (string $method) use ($washLogs, $paidReservations, $totalForReservation): array {
+            $logs = $washLogs->where('payment_method', $method);
+            $res  = $paidReservations->where('payment_method', $method);
+            return [
+                'count' => $logs->count() + $res->count(),
+                'total' => (float) $logs->sum('price_charged') + (float) $res->sum($totalForReservation),
+            ];
+        };
+        $byPaymentMethod = [
+            'cash'     => $methodTotal('cash'),
+            'card'     => $methodTotal('card'),
+            'transfer' => $methodTotal('transfer'),
+        ];
+
+        // Bank-level breakdown for the transfer slice. Only computed off
+        // reservations because wash logs don't track bank. Grouped on
+        // the slug so the UI can decorate each entry with the bank's
+        // brand chip / logo from its own constants table.
+        $transferReservations = $paidReservations
+            ->where('payment_method', 'transfer')
+            ->whereNotNull('payment_bank');
+        $byBank = [];
+        foreach ($transferReservations->groupBy('payment_bank') as $slug => $rows) {
+            $byBank[$slug] = [
+                'count' => $rows->count(),
+                'total' => (float) $rows->sum($totalForReservation),
+            ];
+        }
+
+        // Daily breakdown over every date in the range, even days with
+        // zero activity, so the chart's x-axis stays continuous.
         $dailyBreakdown = [];
         $current = new \DateTime($from);
-        $end = new \DateTime($to);
+        $end     = new \DateTime($to);
+        $activeDays = 0;
         while ($current <= $end) {
-            $dayStr = $current->format('Y-m-d');
+            $dayStr  = $current->format('Y-m-d');
             $dayLogs = $washLogs->where('log_date', $dayStr);
-            $dayRes = $completedReservations->filter(fn ($r) => str_starts_with($r->scheduled_at, $dayStr));
+            $dayRes  = $reservations->filter(fn ($r) => str_starts_with((string) $r->scheduled_at, $dayStr));
+            $dayResPaid = $dayRes->where('payment_status', 'paid');
+
             $dayServiceRev = (float) $dayLogs->sum('price_charged');
-            $dayResRev = (float) $dayRes->sum(fn ($r) => $r->service?->price ?? 0);
+            $dayResRev     = (float) $dayRes->sum($totalForReservation);
+            $dayRevenue    = $dayServiceRev + $dayResRev;
+
+            if ($dayRevenue > 0 || $dayLogs->count() + $dayRes->count() > 0) {
+                $activeDays++;
+            }
+
             $dailyBreakdown[] = [
-                'date' => $dayStr,
-                'services' => $dayLogs->count(),
+                'date'         => $dayStr,
+                'services'     => $dayLogs->count() + $dayRes->count(),
                 'reservations' => $dayRes->count(),
-                'revenue' => $dayServiceRev + $dayResRev,
+                'revenue'      => $dayRevenue,
+                'by_cash'      => (float) $dayLogs->where('payment_method', 'cash')->sum('price_charged')
+                    + (float) $dayResPaid->where('payment_method', 'cash')->sum($totalForReservation),
+                'by_card'      => (float) $dayLogs->where('payment_method', 'card')->sum('price_charged')
+                    + (float) $dayResPaid->where('payment_method', 'card')->sum($totalForReservation),
+                'by_transfer'  => (float) $dayLogs->where('payment_method', 'transfer')->sum('price_charged')
+                    + (float) $dayResPaid->where('payment_method', 'transfer')->sum($totalForReservation),
             ];
             $current->modify('+1 day');
         }
 
+        $averageDailyRevenue = $activeDays > 0 ? $totalRevenue / $activeDays : 0.0;
+
         return response()->json([
             'data' => [
                 'from' => $from,
-                'to' => $to,
-                'total_services' => $washLogs->count() + $completedReservations->count(),
-                'total_revenue' => $serviceRevenue + $reservationRevenue,
-                'services_count' => $washLogs->count(),
-                'reservations_count' => $completedReservations->count(),
-                'reservations_total' => $reservations->count(),
-                'reservations_cancelled' => $reservations->where('status', 'cancelled')->count(),
-                'by_payment_method' => [
-                    'cash' => (float) $washLogs->where('payment_method', 'cash')->sum('price_charged'),
-                    'card' => (float) $washLogs->where('payment_method', 'card')->sum('price_charged'),
-                    'transfer' => (float) $washLogs->where('payment_method', 'transfer')->sum('price_charged'),
+                'to'   => $to,
+                // Nested `stats` block matches the admin mapper contract.
+                'stats' => [
+                    'total_services'        => $totalServices,
+                    'total_revenue'         => $totalRevenue,
+                    'total_reservations'    => $reservations->count(),
+                    'average_daily_revenue' => round($averageDailyRevenue, 2),
                 ],
-                'daily' => $dailyBreakdown,
+                'daily_breakdown'   => $dailyBreakdown,
+                'by_payment_method' => $byPaymentMethod,
+                'by_bank'           => $byBank,
+                'filters' => [
+                    'payment_method' => $methodFilter,
+                    'payment_bank'   => $bankFilter,
+                ],
             ],
             'meta' => [
-                'tenant' => app('current_tenant')->slug ?? null,
+                'tenant'    => app('current_tenant')->slug ?? null,
                 'timestamp' => now()->toIso8601String(),
             ],
         ]);

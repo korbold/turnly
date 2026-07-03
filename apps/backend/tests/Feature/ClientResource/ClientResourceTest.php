@@ -67,6 +67,28 @@ test('can list client resources', function () {
         ->assertJsonCount(3, 'data');
 });
 
+// Regression: the mobile booking screen opened then immediately closed because
+// GET /client-resources sat behind the verified.email middleware while booking
+// itself (/public/tenants/{slug}/book) is public. A customer whose email was
+// not verified got a 403 EMAIL_NOT_VERIFIED, the app's interceptor bounced the
+// whole nav stack to /login, and the screen vanished. The booking-flow reads
+// must NOT require a verified email.
+test('unverified customer can list client resources (booking flow not email-gated)', function () {
+    $unverified = UserModel::factory()->create(['email_verified_at' => null]);
+
+    ClientResourceModel::factory()->count(2)->create([
+        'tenant_id' => $this->tenant->id,
+        'client_id' => $unverified->id,
+    ]);
+
+    $response = $this->actingAs($unverified)
+        ->withHeader('X-Tenant', $this->tenant->slug)
+        ->getJson('/api/v1/client-resources');
+
+    $response->assertOk()
+        ->assertJsonCount(2, 'data');
+});
+
 test('can show client resource detail', function () {
     $clientResource = ClientResourceModel::factory()->create([
         'tenant_id' => $this->tenant->id,

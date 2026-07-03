@@ -19,7 +19,12 @@ class EloquentReservationRepository implements ReservationRepositoryInterface
 
     public function findByTenantAndDate(string $tenantId, string $date): array
     {
-        return ReservationModel::whereDate('scheduled_at', $date)
+        return ReservationModel::forTenant($tenantId)
+            ->whereDate('scheduled_at', $date)
+            ->whereNotIn('status', [
+                ReservationStatus::Cancelled->value,
+                ReservationStatus::NoShow->value,
+            ])
             ->orderBy('scheduled_at')
             ->get()
             ->map(fn (ReservationModel $m) => $this->mapToEntity($m))
@@ -56,6 +61,7 @@ class EloquentReservationRepository implements ReservationRepositoryInterface
             'tenant_id'     => $reservation->tenantId,
             'client_id'     => $reservation->clientId,
             'client_resource_id'    => $reservation->clientResourceId,
+            'business_resource_id'  => $reservation->businessResourceId,
             'service_id'    => $reservation->serviceId,
             'assigned_to'   => $reservation->assignedTo,
             'scheduled_at'  => $reservation->scheduledAt->format('Y-m-d H:i:s'),
@@ -126,6 +132,7 @@ class EloquentReservationRepository implements ReservationRepositoryInterface
             tenantId: $model->tenant_id,
             clientId: $model->client_id,
             clientResourceId: $model->client_resource_id,
+            businessResourceId: $model->business_resource_id,
             serviceId: $model->service_id,
             assignedTo: $model->assigned_to,
             scheduledAt: \DateTimeImmutable::createFromMutable($model->scheduled_at->toDateTime()),

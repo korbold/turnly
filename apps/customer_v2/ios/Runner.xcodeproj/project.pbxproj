@@ -230,7 +230,7 @@
 				3B06AD1E1E4923F5004D2608 /* Thin Binary */,
 				CA9193FB49B4A63D8722EAED /* [CP] Embed Pods Frameworks */,
 				9FA05B4AC74DBDCB2C199D4C /* Copy GoogleService-Info.plist (per-flavor) */,
-				6505B8243D5FFC13202A9A2F /* [CP] Copy Pods Resources */,
+				A4D15FD117AB43318FB1FBEE /* Upload Crashlytics dSYMs */,
 			);
 			buildRules = (
 			);
@@ -346,23 +346,6 @@
 			shellPath = /bin/sh;
 			shellScript = "/bin/sh \"$FLUTTER_ROOT/packages/flutter_tools/bin/xcode_backend.sh\" embed_and_thin";
 		};
-		6505B8243D5FFC13202A9A2F /* [CP] Copy Pods Resources */ = {
-			isa = PBXShellScriptBuildPhase;
-			buildActionMask = 2147483647;
-			files = (
-			);
-			inputFileListPaths = (
-				"${PODS_ROOT}/Target Support Files/Pods-Runner/Pods-Runner-resources-${CONFIGURATION}-input-files.xcfilelist",
-			);
-			name = "[CP] Copy Pods Resources";
-			outputFileListPaths = (
-				"${PODS_ROOT}/Target Support Files/Pods-Runner/Pods-Runner-resources-${CONFIGURATION}-output-files.xcfilelist",
-			);
-			runOnlyForDeploymentPostprocessing = 0;
-			shellPath = /bin/sh;
-			shellScript = "\"${PODS_ROOT}/Target Support Files/Pods-Runner/Pods-Runner-resources.sh\"\n";
-			showEnvVarsInLog = 0;
-		};
 		9740EEB61CF901F6004384FC /* Run Script */ = {
 			isa = PBXShellScriptBuildPhase;
 			alwaysOutOfDate = 1;
@@ -398,6 +381,27 @@
 			runOnlyForDeploymentPostprocessing = 0;
 			shellPath = /bin/sh;
 			shellScript = "set -eo pipefail\nCONFIG_SUFFIX=\"${CONFIGURATION#*-}\"\nif [ \"$CONFIG_SUFFIX\" = \"$CONFIGURATION\" ]; then\n  echo \"warning: no flavor in $CONFIGURATION; falling back to Dev plist\"\n  CONFIG_SUFFIX=dev\nfi\nFLAVOR_DIR=$(echo \"$CONFIG_SUFFIX\" | awk '{print toupper(substr($0,1,1)) tolower(substr($0,2))}')\nSRC=\"${SRCROOT}/Runner/Firebase/$FLAVOR_DIR/GoogleService-Info.plist\"\nDST=\"${BUILT_PRODUCTS_DIR}/${PRODUCT_NAME}.app/GoogleService-Info.plist\"\nif [ ! -f \"$SRC\" ]; then\n  echo \"error: $SRC missing\"\n  exit 1\nfi\necho \"Copying $SRC -> $DST\"\ncp \"$SRC\" \"$DST\"\n";
+			showEnvVarsInLog = 0;
+		};
+		A4D15FD117AB43318FB1FBEE /* Upload Crashlytics dSYMs */ = {
+			isa = PBXShellScriptBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			inputFileListPaths = (
+			);
+			inputPaths = (
+				"${DWARF_DSYM_FOLDER_PATH}/${DWARF_DSYM_FILE_NAME}/Contents/Resources/DWARF/${TARGET_NAME}",
+				"$(SRCROOT)/$(BUILT_PRODUCTS_DIR)/$(INFOPLIST_PATH)",
+			);
+			name = "Upload Crashlytics dSYMs";
+			outputFileListPaths = (
+			);
+			outputPaths = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+			shellPath = /bin/sh;
+			shellScript = "\"${BUILD_DIR%/Build/*}/SourcePackages/checkouts/firebase-ios-sdk/Crashlytics/run\"\n";
 			showEnvVarsInLog = 0;
 		};
 		CA9193FB49B4A63D8722EAED /* [CP] Embed Pods Frameworks */ = {

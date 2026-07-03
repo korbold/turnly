@@ -35,6 +35,8 @@ function buildFormFromSettings(settings: TenantSettings | undefined): Partial<Te
     cancellationHours: settings.cancellationHours,
     defaultTaxRate: settings.defaultTaxRate,
     autoConfirmReservations: settings.autoConfirmReservations,
+    allowClientResourceSelection: settings.allowClientResourceSelection,
+    paymentTiming: settings.paymentTiming,
     socialLinks: settings.socialLinks ?? { instagram: null, facebook: null, whatsapp: null, maps_url: null },
     logoUrl: settings.logoUrl,
     coverUrl: settings.coverUrl,
@@ -130,6 +132,8 @@ export function GeneralTab() {
         cancellationHours: form.cancellationHours ?? 0,
         defaultTaxRate: form.defaultTaxRate ?? 15,
         autoConfirmReservations: form.autoConfirmReservations ?? false,
+        allowClientResourceSelection: form.allowClientResourceSelection ?? false,
+        paymentTiming: form.paymentTiming ?? 'flexible',
       };
       await update.mutateAsync(payload);
       setBaseline(form);
@@ -351,6 +355,44 @@ export function GeneralTab() {
             </div>
           </div>
 
+          {/* Payment timing — controls when the staff is prompted to
+              register the payment. The default is keyed off business
+              type by the backend (car_wash=at_pickup, barber=at_completion,
+              spa=prepay_required…), but tenants can override here. */}
+          <div className="mt-5 space-y-1.5">
+            <Label className="text-xs">Cuándo cobras a los clientes</Label>
+            <Select
+              value={form.paymentTiming ?? 'flexible'}
+              onValueChange={(v) =>
+                handleChange('paymentTiming', v as TenantSettings['paymentTiming'])
+              }
+            >
+              <SelectTrigger>
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="at_pickup">
+                  Al retirar — cliente paga cuando recoge (car wash)
+                </SelectItem>
+                <SelectItem value="at_completion">
+                  Al terminar — cliente paga al cerrar el servicio (barbería, spa)
+                </SelectItem>
+                <SelectItem value="prepay_required">
+                  Por adelantado — exigir pago antes de confirmar (spa con depósito)
+                </SelectItem>
+                <SelectItem value="flexible">
+                  Flexible — el cajero decide (médico, otros)
+                </SelectItem>
+                <SelectItem value="none">
+                  Sin pago en app — membresía o seguro (gym)
+                </SelectItem>
+              </SelectContent>
+            </Select>
+            <p className="text-[11px] leading-snug text-[var(--fg-muted)]">
+              El admin muestra el botón <strong>Registrar pago</strong> en el momento correcto del flujo.
+            </p>
+          </div>
+
           {/* Auto-confirm toggle. Off by default so the staff reviews
               each booking before it counts as Confirmada. */}
           <div className="mt-5 flex items-start justify-between gap-4 rounded-lg border border-[var(--border)] bg-[var(--bg-app)]/40 p-3">
@@ -370,6 +412,32 @@ export function GeneralTab() {
                 checked={Boolean(form.autoConfirmReservations)}
                 onChange={(e) =>
                   handleChange('autoConfirmReservations', e.target.checked as unknown as never)
+                }
+                className="peer sr-only"
+              />
+              <span className="h-6 w-11 rounded-full bg-[var(--ink-100)] transition-colors peer-checked:bg-[var(--brand-600)] after:absolute after:left-[2px] after:top-[2px] after:h-5 after:w-5 after:rounded-full after:bg-white after:transition-transform after:content-[''] peer-checked:after:translate-x-5" />
+            </label>
+          </div>
+
+          {/* Allow client resource selection toggle. When enabled, the public
+              booking flow presents a "¿Con quién?" step so clients can pick
+              their preferred barber, therapist, etc. */}
+          <div className="mt-3 flex items-start justify-between gap-4 rounded-lg border border-[var(--border)] bg-[var(--bg-app)]/40 p-3">
+            <div className="min-w-0">
+              <p className="text-[13px] font-semibold text-[var(--fg-strong)]">
+                Permitir elegir recurso al reservar
+              </p>
+              <p className="mt-0.5 text-[11px] leading-snug text-[var(--fg-muted)]">
+                Clientes pueden elegir barbero, terapeuta o sala al hacer una reserva.
+                Si está desactivado, el sistema asigna automáticamente.
+              </p>
+            </div>
+            <label className="relative inline-flex cursor-pointer items-center">
+              <input
+                type="checkbox"
+                checked={Boolean(form.allowClientResourceSelection)}
+                onChange={(e) =>
+                  handleChange('allowClientResourceSelection', e.target.checked as unknown as never)
                 }
                 className="peer sr-only"
               />

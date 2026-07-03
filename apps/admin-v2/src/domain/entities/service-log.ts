@@ -16,6 +16,22 @@ export interface ServiceLogAttendant {
   name: string;
 }
 
+export interface ServiceLogItem {
+  id: string;
+  itemType: 'service_variant' | 'product';
+  refId: string;
+  /** The service UUID that owns this item. For variant items refId is the
+      variant UUID — serviceId is exposed separately by the API (via the
+      items.variant eager-load) so the edit dialog can send a correct
+      service_id to the updateItems endpoint without a secondary lookup. */
+  serviceId: string;
+  label: string;
+  qty: number;
+  unitPrice: number;
+  lineTotal: number;
+  sortOrder: number;
+}
+
 export interface ServiceLog {
   id: string;
   clientResourceId: string;
@@ -26,7 +42,17 @@ export interface ServiceLog {
   startedAt: Date;
   finishedAt: Date | null;
   priceCharged: number;
-  paymentMethod: PaymentMethod;
+  paymentMethod: PaymentMethod | null;
+  paymentBank: string | null;
+  paymentStatus: 'paid' | 'unpaid';
+  paidAt: Date | null;
+  invoiced: boolean;
+  invoicedAt: Date | null;
+  invoiceStatus: 'pendiente' | 'enviada' | 'autorizada' | 'rechazada' | null;
+  invoiceExternalId: string | null;
+  invoiceClaveAcceso: string | null;
+  invoiceNumeroAutorizacion: string | null;
+  invoiceError: string | null;
   status: ServiceLogStatus;
   notes: string | null;
   logDate: string;
@@ -34,6 +60,10 @@ export interface ServiceLog {
   clientResource?: ServiceLogClientResource;
   service?: ServiceLogService;
   attendant?: ServiceLogAttendant;
+  /** Multi-service breakdown — populated when the backend eager-loaded
+      `items`. Empty for legacy single-service rows. */
+  items?: ServiceLogItem[];
+  servicesSummary?: { count: number; labels: string[] };
 }
 
 export interface DailySummary {

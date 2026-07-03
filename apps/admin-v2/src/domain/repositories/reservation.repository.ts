@@ -52,9 +52,19 @@ export interface ReservationRepository {
   // Phase 3
   checkIn(id: string, input: CheckInInput): Promise<Reservation>;
   updateBilling(id: string, input: CheckInInput): Promise<BillingSnapshot | null>;
+  // Phase 4 — pago independent of lifecycle.
+  recordPayment(
+    id: string,
+    input: {
+      method: 'transfer' | 'card' | 'cash';
+      reference?: string | null;
+      bank?: string | null;
+    },
+  ): Promise<Reservation>;
   listItems(id: string): Promise<ReservationItem[]>;
   addItem(id: string, input: AddItemInput): Promise<ReservationItem>;
   removeItem(itemId: string, reason?: string): Promise<void>;
   overrideItemPrice(itemId: string, unitPrice: number, reason: string): Promise<ReservationItem>;
   listChanges(id: string): Promise<ReservationItemChange[]>;
+  emitInvoice(id: string): Promise<void>;
 }

@@ -16,6 +16,7 @@ class CreateReservationRequest extends FormRequest
         return [
             'client_id'          => ['nullable', 'uuid'],
             'client_resource_id' => ['nullable', 'uuid'],
+            'business_resource_id' => ['nullable', 'uuid', 'exists:business_resources,id,tenant_id,' . app('current_tenant_id')],
             // service_id is required only when items[] is not provided.
             'service_id'         => ['required_without:items', 'nullable', 'uuid'],
             'service_variant_id' => ['nullable', 'uuid'],

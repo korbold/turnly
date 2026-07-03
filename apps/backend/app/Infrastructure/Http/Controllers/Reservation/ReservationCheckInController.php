@@ -56,12 +56,20 @@ class ReservationCheckInController extends Controller
 
         $snapshot = $this->resolveSnapshot($data);
 
-        DB::transaction(function () use ($reservation, $snapshot) {
+        DB::transaction(function () use ($reservation, $snapshot, $data) {
             $reservation->update([
                 'status'           => ReservationStatus::CheckedIn->value,
                 'checked_in_at'    => now(),
                 'billing_snapshot' => $snapshot,
             ]);
+
+            // Remember the fiscal data on the client so the next check-in
+            // prefills it. Only when the cashier typed it inline (no saved
+            // profile picked) and it's a real fiscal document — never the
+            // CONSUMIDOR FINAL fallback.
+            if (empty($data['billing_profile_id'])) {
+                $this->rememberBillingProfile($reservation->client_id, $data['billing'] ?? []);
+            }
 
             // Hold BOM stock now that the customer is in the building.
             // Reservation items are already in place from booking or
@@ -69,7 +77,7 @@ class ReservationCheckInController extends Controller
             $this->consumption->reserveForReservation($reservation->fresh('items'));
         });
 
-        $fresh = ReservationModel::with(['service', 'client', 'clientResource', 'items', 'tenant'])
+        $fresh = ReservationModel::with(['service', 'client.defaultBillingProfile', 'clientResource', 'items', 'tenant'])
             ->findOrFail($reservation->id);
 
         ReservationUpdated::dispatch($fresh);
@@ -110,6 +118,46 @@ class ReservationCheckInController extends Controller
             'data' => ['billing_snapshot' => $snapshot],
             'meta' => ['timestamp' => now()->toIso8601String()],
         ]);
+    }
+
+    /**
+     * Upsert the inline billing data as the client's default billing
+     * profile so future check-ins prefill it. No-op for CONSUMIDOR FINAL
+     * or when the document is incomplete.
+     */
+    private function rememberBillingProfile(?string $clientId, array $billing): void
+    {
+        if (!$clientId) {
+            return;
+        }
+
+        $docType = $billing['doc_type'] ?? null;
+        $docNumber = trim((string) ($billing['doc_number'] ?? ''));
+        $legalName = trim((string) ($billing['legal_name'] ?? ''));
+
+        // Only persist real fiscal identities the customer can reuse.
+        if (!in_array($docType, ['ruc', 'cedula', 'passport'], true)
+            || $docNumber === ''
+            || $legalName === '') {
+            return;
+        }
+
+        // The new/updated profile becomes the client's default; clear the
+        // flag on their other profiles first (matches store() semantics).
+        UserBillingProfileModel::where('user_id', $clientId)->update(['is_default' => false]);
+
+        UserBillingProfileModel::updateOrCreate(
+            ['user_id' => $clientId, 'doc_type' => $docType, 'doc_number' => $docNumber],
+            [
+                'legal_name' => $legalName,
+                // email column is NOT NULL; keep '' when the cashier left it
+                // blank (they can complete it before the SRI XML is sent).
+                'email'      => $billing['email'] ?? '',
+                'address'    => $billing['address'] ?? null,
+                'phone'      => $billing['phone'] ?? null,
+                'is_default' => true,
+            ],
+        );
     }
 
     private function resolveSnapshot(array $data): array

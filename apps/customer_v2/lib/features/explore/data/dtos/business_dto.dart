@@ -2,6 +2,7 @@
 import '../../domain/entities/business.dart';
 import '../../domain/entities/service.dart';
 import '../../domain/entities/business_hours.dart';
+import '../../domain/entities/business_resource.dart';
 
 class BusinessDto {
   final Map<String, dynamic> json;
@@ -11,9 +12,12 @@ class BusinessDto {
   Business toEntity() {
     final servicesJson = json['services'] as List<dynamic>? ?? [];
     final availabilityJson = json['availability'] as List<dynamic>? ?? [];
+    final businessResourcesJson = json['business_resources'] as List<dynamic>? ?? [];
     final tenantSlotDuration = (json['slot_duration'] as int?) ??
         (json['tenant'] as Map<String, dynamic>?)?['slot_duration'] as int? ??
         30;
+    final tenantSettings =
+        (json['tenant'] as Map<String, dynamic>?)?['settings'] as Map<String, dynamic>? ?? {};
 
     return Business(
       id: json['id'] as String? ?? json['slug'] as String? ?? '',
@@ -36,6 +40,9 @@ class BusinessDto {
               ?.map((e) => e as Map<String, dynamic>)
               .toList() ??
           [],
+      allowClientResourceSelection:
+          tenantSettings['allow_client_resource_selection'] as bool? ?? false,
+      businessResources: _parseBusinessResources(businessResourcesJson),
     );
   }
 
@@ -83,6 +90,22 @@ class BusinessDto {
     'Domingo', 'Lunes', 'Martes', 'Miercoles',
     'Jueves', 'Viernes', 'Sabado',
   ];
+
+  static List<BusinessResource> _parseBusinessResources(List<dynamic> raw) {
+    return raw
+        .whereType<Map<String, dynamic>>()
+        .map((r) {
+          final employee = r['employee'] as Map<String, dynamic>?;
+          return BusinessResource(
+            id: r['id'] as String? ?? '',
+            name: r['name'] as String? ?? '',
+            type: r['type'] as String? ?? 'physical',
+            employeeName: employee?['name'] as String?,
+            employeePhotoUrl: employee?['photo_url'] as String?,
+          );
+        })
+        .toList();
+  }
 
   /// API returns flat list: [{day_of_week, start_time, end_time}, ...]
   /// Group by day_of_week into BusinessHours with TimeRanges

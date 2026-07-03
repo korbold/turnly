@@ -1,43 +1,25 @@
 // lib/core/network/email_verification_interceptor.dart
 import 'package:dio/dio.dart';
-import 'package:go_router/go_router.dart';
 
-import '../../app/router.dart';
-
-/// Catches 403 EMAIL_NOT_VERIFIED responses on any protected request and
-/// redirects the user to /verify-email so they can finish onboarding,
-/// instead of getting stuck on a "verify tu email" snackbar.
+/// Previously this interceptor caught 403 EMAIL_NOT_VERIFIED on ANY request
+/// and did a global `ctx.go('/verify-email')`. That was harmful:
+///
+///   1. It hijacked navigation from BACKGROUND fetches (e.g. the booking
+///      screen auto-loading /client-resources on open). A `.go()` replaces
+///      the whole nav stack, so the screen the user just opened was torn
+///      down mid-frame — it looked like the screen "opened and closed".
+///   2. `/verify-email` is a legacy passwordless route that just redirects
+///      to `/login`, so the user was silently kicked out with no explanation.
+///
+/// Passwordless magic-link / Google / claim logins all set email_verified_at,
+/// so a 403 EMAIL_NOT_VERIFIED is a rare data-anomaly state, not a normal
+/// onboarding step. We let the error propagate to the calling cubit, which
+/// already surfaces the server message inline. No global navigation happens
+/// here. If a real "verify your email" screen is ever built, route to it from
+/// the specific screen that needs it — not from a global error interceptor.
 class EmailVerificationInterceptor extends Interceptor {
-  bool _redirecting = false;
-
   @override
   void onError(DioException err, ErrorInterceptorHandler handler) {
-    final status = err.response?.statusCode;
-    final body = err.response?.data;
-
-    if (status == 403 &&
-        body is Map &&
-        body['error'] is Map &&
-        body['error']['code'] == 'EMAIL_NOT_VERIFIED' &&
-        !_redirecting) {
-      _redirecting = true;
-      final email = body['error']['email']?.toString() ?? '';
-      final ctx = rootNavigatorKey.currentContext;
-      if (ctx != null) {
-        // Defer until current frame settles so we don't navigate from inside a build.
-        Future.microtask(() {
-          try {
-            // ignore: use_build_context_synchronously
-            ctx.go('/verify-email?email=${Uri.encodeComponent(email)}');
-          } finally {
-            _redirecting = false;
-          }
-        });
-      } else {
-        _redirecting = false;
-      }
-    }
-
     handler.next(err);
   }
 }

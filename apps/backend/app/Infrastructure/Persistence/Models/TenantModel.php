@@ -71,4 +71,27 @@ class TenantModel extends Model
     {
         return \Database\Factories\TenantModelFactory::new();
     }
+
+    /**
+     * Resolve the payment-capture moment this tenant wants the app to
+     * surface in the staff UI. Falls back to a sensible default keyed on
+     * `business_type` so brand-new tenants get the right experience
+     * before anybody opens settings.
+     */
+    public function getPaymentTiming(): string
+    {
+        $explicit = $this->settings['payment_timing'] ?? null;
+        if (is_string($explicit) && $explicit !== '') {
+            return $explicit;
+        }
+
+        return match ($this->business_type) {
+            'car_wash'   => 'at_pickup',
+            'barbershop' => 'at_completion',
+            'spa'        => 'prepay_required',
+            'medical'    => 'flexible',
+            'gym'        => 'none',
+            default      => 'flexible',
+        };
+    }
 }

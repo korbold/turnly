@@ -13,6 +13,7 @@ import '../features/reservations/presentation/screens/reservation_detail_screen.
 import '../features/profile/presentation/screens/profile_screen.dart';
 import '../features/resources/presentation/screens/resources_screen.dart';
 import '../features/explore/domain/entities/service.dart';
+import '../features/explore/domain/entities/business_resource.dart' as explore_resource;
 import '../features/resources/domain/entities/client_resource.dart';
 import '../features/resources/presentation/screens/add_resource_screen.dart';
 import '../features/resources/presentation/screens/resource_history_screen.dart';
@@ -202,6 +203,10 @@ final appRouter = GoRouter(
           services: services,
           customFields: customFields,
           businessType: extra?['businessType'] as String?,
+          allowClientResourceSelection:
+              extra?['allowClientResourceSelection'] as bool? ?? false,
+          businessResources:
+              (extra?['businessResources'] as List<explore_resource.BusinessResource>?) ?? [],
         );
       },
     ),

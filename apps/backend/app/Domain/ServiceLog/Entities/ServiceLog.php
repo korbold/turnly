@@ -15,7 +15,9 @@ final readonly class ServiceLog
         public \DateTimeImmutable $startedAt,
         public ?\DateTimeImmutable $finishedAt,
         public float $priceCharged,
-        public string $paymentMethod,
+        // Nullable since Fase B — "cobrar al retirar" leaves the
+        // method empty until the cashier registers the payment later.
+        public ?string $paymentMethod,
         public string $status,
         public ?string $notes,
         public string $logDate,

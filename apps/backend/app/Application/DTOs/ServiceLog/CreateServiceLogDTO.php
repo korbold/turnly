@@ -11,7 +11,9 @@ final readonly class CreateServiceLogDTO
         public string $attendedBy,
         public string $createdBy,
         public float $priceCharged,
-        public string $paymentMethod = 'cash',
+        // Nullable since Fase B — the cashier may defer cobro a la
+        // entrega and skip the method until later.
+        public ?string $paymentMethod = null,
         public ?string $reservationId = null,
         public ?string $notes = null,
     ) {}
@@ -25,7 +27,7 @@ final readonly class CreateServiceLogDTO
             attendedBy: $data['attended_by'],
             createdBy: $data['created_by'],
             priceCharged: (float) $data['price_charged'],
-            paymentMethod: $data['payment_method'] ?? 'cash',
+            paymentMethod: $data['payment_method'] ?? null,
             reservationId: $data['reservation_id'] ?? null,
             notes: $data['notes'] ?? null,
         );

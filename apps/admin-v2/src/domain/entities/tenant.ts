@@ -35,10 +35,21 @@ export interface TenantSettings {
   slotDuration: number;
   cancellationHours: number;
   defaultTaxRate: number;
+  /** When the staff captures payment in the lifecycle. Drives where the
+      "Registrar pago" CTA appears in the admin and whether the customer
+      app shows a prepay checkout step. */
+  paymentTiming: 'prepay_required' | 'at_pickup' | 'at_completion' | 'flexible' | 'none';
   /** When true, new public bookings land as `confirmed` instead of
       `pending`, skipping the manual review step in the dashboard.
       Useful for high-volume tenants (car wash, lavandería). */
   autoConfirmReservations: boolean;
+  /** When true, clients can choose a preferred resource (e.g. barber, therapist)
+      during public booking. Auto-assigns when false. */
+  allowClientResourceSelection: boolean;
+  /** How service prices relate to IVA before sending to SRI.
+      excluded = price has no IVA (SRI adds 15%), included = price already has 15% IVA
+      (job divides by 1.15), zero = 0% IVA (no tax added). */
+  ivaMode: 'excluded' | 'included' | 'zero';
   socialLinks: {
     instagram: string | null;
     facebook: string | null;

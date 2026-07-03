@@ -63,6 +63,20 @@ class UserModel extends Authenticatable
         return $this->hasMany(ClientResourceModel::class, 'client_id');
     }
 
+    public function billingProfiles()
+    {
+        return $this->hasMany(UserBillingProfileModel::class, 'user_id');
+    }
+
+    /// The profile a check-in should prefill from. Billing profiles are
+    /// global per user (a customer's RUC/cédula is the same everywhere), so
+    /// this is not tenant-scoped.
+    public function defaultBillingProfile()
+    {
+        return $this->hasOne(UserBillingProfileModel::class, 'user_id')
+            ->where('is_default', true);
+    }
+
     protected static function newFactory()
     {
         return \Database\Factories\UserModelFactory::new();

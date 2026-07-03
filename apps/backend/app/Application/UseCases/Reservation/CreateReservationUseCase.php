@@ -3,6 +3,7 @@
 namespace App\Application\UseCases\Reservation;
 
 use App\Application\DTOs\Reservation\CreateReservationDTO;
+use App\Application\Services\BusinessResourceAssigner;
 use App\Domain\Reservation\Contracts\ReservationRepositoryInterface;
 use App\Domain\Reservation\Entities\Reservation;
 use App\Domain\Reservation\Enums\ReservationStatus;
@@ -20,6 +21,7 @@ class CreateReservationUseCase
 {
     public function __construct(
         private ReservationRepositoryInterface $reservationRepository,
+        private BusinessResourceAssigner $resourceAssigner,
     ) {}
 
     public function execute(CreateReservationDTO $dto): Reservation
@@ -60,11 +62,20 @@ class CreateReservationUseCase
             throw new ReservationConflictException();
         }
 
+        $businessResourceId = $this->resourceAssigner->assign(
+            tenantId: $dto->tenantId,
+            tenantSettings: $tenant->settings ?? [],
+            scheduledAt: $scheduledAt,
+            estimatedEnd: $estimatedEnd,
+            clientSelectedResourceId: $dto->businessResourceId,
+        );
+
         $reservation = new Reservation(
             id: (string) Str::uuid(),
             tenantId: $dto->tenantId,
             clientId: $dto->clientId,
             clientResourceId: $dto->clientResourceId,
+            businessResourceId: $businessResourceId,
             serviceId: $dto->serviceId,
             assignedTo: $dto->assignedTo,
             scheduledAt: $scheduledAt,

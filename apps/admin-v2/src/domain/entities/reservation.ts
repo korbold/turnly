@@ -3,6 +3,15 @@ export type ReservationAction = 'confirm' | 'start' | 'complete' | 'cancel' | 'n
 
 export type ReservationItemType = 'service_variant' | 'product';
 
+export type ReservationPaymentStatus = 'unpaid' | 'paid';
+export type ReservationPaymentMethod = 'transfer' | 'card' | 'cash';
+export type ReservationPaymentTiming =
+  | 'prepay_required'
+  | 'at_pickup'
+  | 'at_completion'
+  | 'flexible'
+  | 'none';
+
 export interface ReservationItem {
   id: string;
   reservationId: string;
@@ -56,15 +65,28 @@ export interface ReservationService {
   price: string;
 }
 
+/** The client's saved default SRI billing profile, used to prefill the
+    check-in dialog from data captured on a prior visit. */
+export interface ClientBillingProfile {
+  docType: 'ruc' | 'cedula' | 'passport' | 'final_consumer';
+  docNumber: string;
+  legalName: string;
+  email: string | null;
+  address: string | null;
+  phone: string | null;
+}
+
 export interface ReservationClient {
   name: string;
   email: string;
+  defaultBillingProfile?: ClientBillingProfile | null;
 }
 
 export interface Reservation {
   id: string;
   clientId: string;
   clientResourceId: string;
+  businessResourceId: string | null;
   serviceId: string;
   serviceVariantId: string | null;
   assignedTo: string | null;
@@ -78,6 +100,20 @@ export interface Reservation {
   createdAt: Date;
   checkedInAt: Date | null;
   billingSnapshot: BillingSnapshot | null;
+  paymentStatus: ReservationPaymentStatus;
+  paymentMethod: ReservationPaymentMethod | null;
+  paidAt: Date | null;
+  paymentReference: string | null;
+  /** Bank slug (`pichincha`, `pacifico`…) when paid via transfer. Null
+      otherwise. Free-form string so tenants can add regional banks. */
+  paymentBank: string | null;
+  invoiced: boolean;
+  invoicedAt: Date | null;
+  invoiceExternalId: string | null;
+  invoiceStatus: string | null;
+  invoiceClaveAcceso: string | null;
+  invoiceNumeroAutorizacion: string | null;
+  invoiceError: string | null;
   clientResource?: ReservationClientResource;
   service?: ReservationService;
   client?: ReservationClient;

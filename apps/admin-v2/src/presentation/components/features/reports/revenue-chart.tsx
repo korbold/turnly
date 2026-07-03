@@ -80,48 +80,69 @@ export function RevenueChart({ data, isLoading }: RevenueChartProps) {
     );
   }
 
+  const ChartBody = ({ width, height }: { width: number | string; height: number }) => (
+    <AreaChart
+      data={chartData}
+      width={typeof width === 'number' ? width : undefined}
+      height={height}
+      margin={{ top: 5, right: 10, left: 0, bottom: 0 }}
+    >
+      <defs>
+        <linearGradient id="revenueGradient" x1="0" y1="0" x2="0" y2="1">
+          <stop offset="5%" stopColor="var(--brand-500)" stopOpacity={0.3} />
+          <stop offset="95%" stopColor="var(--brand-500)" stopOpacity={0} />
+        </linearGradient>
+      </defs>
+      <CartesianGrid strokeDasharray="3 3" stroke="var(--border)" />
+      <XAxis
+        dataKey="label"
+        tick={{ fontSize: 12, fill: 'var(--fg-secondary)' }}
+        tickLine={false}
+        axisLine={false}
+      />
+      <YAxis
+        tickFormatter={formatAxis}
+        tick={{ fontSize: 12, fill: 'var(--fg-secondary)' }}
+        tickLine={false}
+        axisLine={false}
+        width={60}
+      />
+      <Tooltip
+        formatter={(value) => [formatCurrency(Number(value)), 'Ingresos']}
+        labelStyle={{ fontWeight: 600 }}
+        contentStyle={{
+          borderRadius: 8,
+          border: '1px solid var(--border)',
+          boxShadow: 'var(--shadow-md)',
+        }}
+      />
+      <Area
+        type="monotone"
+        dataKey="revenue"
+        stroke="var(--brand-500)"
+        strokeWidth={2}
+        fill="url(#revenueGradient)"
+      />
+    </AreaChart>
+  );
+
   return (
     <ChartShell>
-      <ResponsiveContainer width="100%" height={280}>
-        <AreaChart data={chartData} margin={{ top: 5, right: 10, left: 0, bottom: 0 }}>
-          <defs>
-            <linearGradient id="revenueGradient" x1="0" y1="0" x2="0" y2="1">
-              <stop offset="5%" stopColor="var(--brand-500)" stopOpacity={0.3} />
-              <stop offset="95%" stopColor="var(--brand-500)" stopOpacity={0} />
-            </linearGradient>
-          </defs>
-          <CartesianGrid strokeDasharray="3 3" stroke="var(--border)" />
-          <XAxis
-            dataKey="label"
-            tick={{ fontSize: 12, fill: 'var(--fg-secondary)' }}
-            tickLine={false}
-            axisLine={false}
-          />
-          <YAxis
-            tickFormatter={formatAxis}
-            tick={{ fontSize: 12, fill: 'var(--fg-secondary)' }}
-            tickLine={false}
-            axisLine={false}
-            width={60}
-          />
-          <Tooltip
-            formatter={(value) => [formatCurrency(Number(value)), 'Ingresos']}
-            labelStyle={{ fontWeight: 600 }}
-            contentStyle={{
-              borderRadius: 8,
-              border: '1px solid var(--border)',
-              boxShadow: 'var(--shadow-md)',
-            }}
-          />
-          <Area
-            type="monotone"
-            dataKey="revenue"
-            stroke="var(--brand-500)"
-            strokeWidth={2}
-            fill="url(#revenueGradient)"
-          />
-        </AreaChart>
-      </ResponsiveContainer>
+      {/* Screen render — responsive container measures live and reflows
+          with the column. */}
+      <div className="print:hidden">
+        <ResponsiveContainer width="100%" height={280}>
+          <ChartBody width="100%" height={280} />
+        </ResponsiveContainer>
+      </div>
+      {/* Print render — Recharts ResponsiveContainer depends on a
+          ResizeObserver that doesn't fire reliably during print, so for
+          paper we feed an explicit pixel width that fits the Letter
+          margin (12mm × 2). Renders to a static SVG, picked up by the
+          browser PDF engine without measuring. */}
+      <div className="hidden print:block">
+        <ChartBody width={680} height={240} />
+      </div>
     </ChartShell>
   );
 }

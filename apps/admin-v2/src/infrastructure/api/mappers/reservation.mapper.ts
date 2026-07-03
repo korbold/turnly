@@ -4,6 +4,7 @@ import type {
   ReservationItem,
   ReservationItemChange,
   BillingSnapshot,
+  ClientBillingProfile,
 } from '@/domain/entities/reservation';
 
 export function mapReservation(raw: Record<string, unknown>): Reservation {
@@ -15,6 +16,7 @@ export function mapReservation(raw: Record<string, unknown>): Reservation {
     id: raw.id as string,
     clientId: raw.client_id as string,
     clientResourceId: raw.client_resource_id as string,
+    businessResourceId: (raw.business_resource_id as string | null) ?? null,
     serviceId: raw.service_id as string,
     serviceVariantId: (raw.service_variant_id as string | null) ?? null,
     assignedTo: (raw.assigned_to as string) ?? null,
@@ -28,6 +30,18 @@ export function mapReservation(raw: Record<string, unknown>): Reservation {
     createdAt: new Date(raw.created_at as string),
     checkedInAt: raw.checked_in_at ? new Date(raw.checked_in_at as string) : null,
     billingSnapshot: mapBillingSnapshot(raw.billing_snapshot),
+    paymentStatus: ((raw.payment_status as 'unpaid' | 'paid' | null) ?? 'unpaid') as Reservation['paymentStatus'],
+    paymentMethod: ((raw.payment_method as 'transfer' | 'card' | 'cash' | null) ?? null) as Reservation['paymentMethod'],
+    paidAt: raw.paid_at ? new Date(raw.paid_at as string) : null,
+    paymentReference: (raw.payment_reference as string | null) ?? null,
+    paymentBank: (raw.payment_bank as string | null) ?? null,
+    invoiced: (raw.invoiced as boolean) ?? false,
+    invoicedAt: raw.invoiced_at ? new Date(raw.invoiced_at as string) : null,
+    invoiceExternalId: (raw.invoice_external_id as string | null) ?? null,
+    invoiceStatus: (raw.invoice_status as string | null) ?? null,
+    invoiceClaveAcceso: (raw.invoice_clave_acceso as string | null) ?? null,
+    invoiceNumeroAutorizacion: (raw.invoice_numero_autorizacion as string | null) ?? null,
+    invoiceError: (raw.invoice_error as string | null) ?? null,
     clientResource: clientResource
       ? {
           label: (clientResource.label as string) ?? null,
@@ -49,6 +63,7 @@ export function mapReservation(raw: Record<string, unknown>): Reservation {
       ? {
           name: client.name as string,
           email: client.email as string,
+          defaultBillingProfile: mapClientBillingProfile(client.default_billing_profile),
         }
       : undefined,
     servicesSummary: raw.services_summary
@@ -65,6 +80,19 @@ export function mapAvailableSlot(raw: Record<string, unknown>): AvailableSlot {
     start: new Date(raw.start as string),
     end: new Date(raw.end as string),
     available: raw.available as number,
+  };
+}
+
+function mapClientBillingProfile(raw: unknown): ClientBillingProfile | null {
+  if (!raw || typeof raw !== 'object') return null;
+  const o = raw as Record<string, unknown>;
+  return {
+    docType: o.doc_type as ClientBillingProfile['docType'],
+    docNumber: (o.doc_number as string) ?? '',
+    legalName: (o.legal_name as string) ?? '',
+    email: (o.email as string | null) ?? null,
+    address: (o.address as string | null) ?? null,
+    phone: (o.phone as string | null) ?? null,
   };
 }
 

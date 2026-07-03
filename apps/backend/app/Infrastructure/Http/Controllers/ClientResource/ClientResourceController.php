@@ -27,8 +27,43 @@ class ClientResourceController extends Controller
         $query = ClientResourceModel::with('client')
             ->orderBy('created_at', 'desc');
 
+        $search = trim((string) $request->get('search', ''));
+
         if (!$request->boolean('all')) {
             $query->where('client_id', $request->user()->id);
+        } else {
+            $tenantId = app('current_tenant_id');
+            // When browsing without a search term, hide staff-owned resources
+            // so the clients list doesn't surface employees as customers.
+            // When actively searching, include all resources so the cashier
+            // can find any resource by owner name (e.g. an admin's own vehicle).
+            if ($search === '') {
+                $staffIds = TenantUserModel::where('tenant_id', $tenantId)
+                    ->where('role', '!=', 'client')
+                    ->pluck('user_id');
+                $query->where(function ($q) use ($staffIds) {
+                    $q->whereNotIn('client_id', $staffIds)
+                        ->orWhereNull('client_id');
+                });
+            }
+        }
+
+        // Free-form search across the most-likely customer identifiers
+        // staff types at the counter: plate, cédula/RUC, name, email.
+        // The custom-field data JSON is searched with a single LIKE %q%
+        // pass — MySQL evaluates each key/value pair as text, which is
+        // good enough for the realistic cardinality (hundreds, not
+        // millions) without forcing a JSON_TABLE rewrite.
+        if ($search !== '') {
+            $like = '%' . $search . '%';
+            $query->where(function ($q) use ($like) {
+                $q->where('data', 'like', $like)
+                    ->orWhereHas('client', function ($c) use ($like) {
+                        $c->where('name', 'like', $like)
+                            ->orWhere('email', 'like', $like)
+                            ->orWhere('phone', 'like', $like);
+                    });
+            });
         }
 
         $clientResources = $query->paginate($request->get('per_page', 15));
@@ -70,11 +105,72 @@ class ClientResourceController extends Controller
         );
 
         $clientResource = $this->createClientResource->execute($dto);
+
+        // Optional billing profile capture (Fase D). When the cashier
+        // ships the form with billing data, persist it on the just-
+        // created (or pre-existing) user so SRI invoicing has the
+        // identity ready. First profile lands as default so check-in
+        // auto-picks it without prompting.
+        if (is_array($request->billing_profile) && !empty($request->billing_profile)) {
+            $this->upsertBillingProfile($clientId, $request->billing_profile);
+        }
+
         $model = ClientResourceModel::with('client')->find($clientResource->id);
 
         return (new ClientResourceResource($model))
             ->response()
             ->setStatusCode(201);
+    }
+
+    /**
+     * Creates a billing profile for a user the admin is provisioning
+     * via "Crear nuevo registro". Idempotent on (user, doc_type,
+     * doc_number) — repeated cashiers don't end up with three copies
+     * of the same RUC; legal_name + contact info refresh in place.
+     */
+    private function upsertBillingProfile(string $userId, array $payload): void
+    {
+        $docType = $payload['doc_type'] ?? 'final_consumer';
+        if (!in_array($docType, ['ruc', 'cedula', 'passport', 'final_consumer'], true)) {
+            return;
+        }
+        $docNumber = trim((string) ($payload['doc_number'] ?? ''));
+        $legalName = trim((string) ($payload['legal_name'] ?? ''));
+
+        if ($docType === 'final_consumer') {
+            $docNumber = '9999999999999';
+            $legalName = $legalName !== '' ? $legalName : 'CONSUMIDOR FINAL';
+        } else {
+            if ($docType === 'cedula' && !\App\Domain\Identity\EcuadorIdValidator::isCedula($docNumber)) return;
+            if ($docType === 'ruc'    && !\App\Domain\Identity\EcuadorIdValidator::isRuc($docNumber))    return;
+            if ($docNumber === '' || $legalName === '') return;
+        }
+
+        $email   = trim((string) ($payload['email']   ?? ''));
+        $address = $payload['address'] ?? null;
+        $phone   = $payload['phone']   ?? null;
+        if ($email === '') return;
+
+        \Illuminate\Support\Facades\DB::transaction(function () use ($userId, $docType, $docNumber, $legalName, $email, $address, $phone) {
+            // First profile for this user becomes the default so the
+            // check-in flow can auto-pick without prompting.
+            $isFirst = !\App\Infrastructure\Persistence\Models\UserBillingProfileModel::where('user_id', $userId)->exists();
+
+            \App\Infrastructure\Persistence\Models\UserBillingProfileModel::updateOrCreate(
+                [
+                    'user_id'    => $userId,
+                    'doc_type'   => $docType,
+                    'doc_number' => $docNumber,
+                ],
+                [
+                    'legal_name' => $legalName,
+                    'email'      => $email,
+                    'address'    => $address,
+                    'phone'      => $phone,
+                    'is_default' => $isFirst,
+                ],
+            );
+        });
     }
 
     public function show(string $id): ClientResourceResource

@@ -2,7 +2,7 @@
 
 import { Suspense } from 'react';
 import { useQueryState, parseAsString } from 'nuqs';
-import { Settings, Clock, Image, List, Shield, Palette, Receipt } from 'lucide-react';
+import { Settings, Clock, Image, List, Shield, Palette, Receipt, Layers } from 'lucide-react';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/presentation/components/ui/tabs';
 import { Skeleton } from '@/presentation/components/ui/skeleton';
 import { GeneralTab } from '@/presentation/components/features/settings/general-tab';
@@ -12,6 +12,7 @@ import { CustomFieldsTab } from '@/presentation/components/features/settings/cus
 import { PermissionsTab } from '@/presentation/components/features/settings/permissions-tab';
 import { BrandTab } from '@/presentation/components/features/settings/brand-tab';
 import { BillingTab } from '@/presentation/components/features/settings/billing-tab';
+import { ResourcesTab } from '@/presentation/components/features/settings/resources-tab';
 
 const TABS = [
   { value: 'general', label: 'General', icon: Settings },
@@ -21,6 +22,7 @@ const TABS = [
   { value: 'permissions', label: 'Permisos', icon: Shield },
   { value: 'brand', label: 'Marca', icon: Palette },
   { value: 'billing', label: 'Facturación', icon: Receipt },
+  { value: 'resources', label: 'Recursos', icon: Layers },
 ] as const;
 
 function SettingsContent() {
@@ -70,6 +72,7 @@ function SettingsContent() {
             <TabsContent value="permissions" className="mt-0"><PermissionsTab /></TabsContent>
             <TabsContent value="brand" className="mt-0"><BrandTab /></TabsContent>
             <TabsContent value="billing" className="mt-0"><BillingTab /></TabsContent>
+            <TabsContent value="resources" className="mt-0"><ResourcesTab /></TabsContent>
           </div>
         </div>
       </Tabs>
