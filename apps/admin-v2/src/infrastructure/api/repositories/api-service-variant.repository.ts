@@ -13,6 +13,7 @@ function buildVariantBody(input: Partial<VariantInput>): Record<string, unknown>
   if (input.durationMin !== undefined) body.duration_min = input.durationMin;
   if (input.sortOrder !== undefined) body.sort_order = input.sortOrder;
   if (input.isActive !== undefined) body.is_active = input.isActive;
+  if (input.vehicleTypes !== undefined) body.vehicle_types = input.vehicleTypes;
   return body;
 }
 

@@ -6,6 +6,7 @@ export function mapServiceVariant(raw: Record<string, unknown>): ServiceVariant 
     id: raw.id as string,
     serviceId: raw.service_id as string,
     label: raw.label as string,
+    vehicleTypes: (raw.vehicle_types as string[] | undefined) ?? [],
     price: Number(raw.price ?? 0),
     durationMin: Number(raw.duration_min ?? 30),
     sortOrder: Number(raw.sort_order ?? 0),

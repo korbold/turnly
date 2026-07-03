@@ -6,6 +6,7 @@ export interface VariantInput {
   durationMin?: number;
   sortOrder?: number;
   isActive?: boolean;
+  vehicleTypes?: string[];
 }
 
 export interface ServiceVariantRepository {
