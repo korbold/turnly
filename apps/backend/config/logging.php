@@ -70,6 +70,11 @@ return [
             'path' => storage_path('logs/laravel.log'),
             'level' => env('LOG_LEVEL', 'debug'),
             'days' => env('LOG_DAILY_DAYS', 14),
+            // Group-writable so both the php-fpm (www-data) and queue worker
+            // (deploy) users can append to the same daily file. Without this,
+            // 0644 files created by one user crash the other with
+            // "could not be opened in append mode", failing queued jobs (push).
+            'permission' => 0664,
             'replace_placeholders' => true,
         ],
 

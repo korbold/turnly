@@ -1,4 +1,4 @@
-// Firebase Messaging Service Worker - v2
+// Firebase Messaging Service Worker - v3
 // Config is automatically provided by the Firebase SDK when the service worker
 // is registered via getToken(). No manual firebase.initializeApp() needed
 // when using the modular SDK's getToken with vapidKey.
@@ -59,12 +59,28 @@ self.addEventListener('push', (event) => {
 self.addEventListener('notificationclick', (event) => {
   event.notification.close();
 
-  const data = event.notification.data;
+  const data = event.notification.data || {};
   let url = '/dashboard';
 
-  if (data?.action_type === 'reservation_detail') {
-    url = '/reservations';
+  if (data.action_type === 'reservation_detail') {
+    url = data.action_id ? `/reservations/${data.action_id}` : '/reservations';
   }
 
-  event.waitUntil(clients.openWindow(url));
+  event.waitUntil((async () => {
+    const target = new URL(url, self.location.origin).href;
+    const windows = await clients.matchAll({ type: 'window', includeUncontrolled: true });
+
+    // Reuse an already-open PWA window: focus it and navigate to the target.
+    for (const client of windows) {
+      if (new URL(client.url).origin === self.location.origin) {
+        await client.focus();
+        if ('navigate' in client) {
+          try { await client.navigate(target); } catch (_) { /* cross-doc nav may reject; window is focused */ }
+        }
+        return;
+      }
+    }
+
+    if (clients.openWindow) await clients.openWindow(target);
+  })());
 });

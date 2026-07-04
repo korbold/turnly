@@ -75,7 +75,10 @@ class FcmService
         $link = $base . '/dashboard';
 
         if (($data['action_type'] ?? null) === 'reservation_detail') {
-            $link = $base . '/reservations';
+            $reservationId = $data['action_id'] ?? null;
+            $link = $reservationId
+                ? $base . '/reservations/' . $reservationId
+                : $base . '/reservations';
         }
 
         return [
