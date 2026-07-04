@@ -5,14 +5,16 @@ import type { ServiceVariant } from '@/domain/entities/service-variant';
 
 /**
  * Suggests the variant that probably matches the vehicle currently
- * attached to a reservation, gated to car_wash tenants.
+ * attached to a reservation.
  *
- * Gating happens at the call site (`{businessType === 'car_wash' && ...}`)
- * so this component stays pure and tree-shakeable. Other verticals don't
- * have vehicles, so they should never render this.
+ * This component is not currently rendered anywhere. When wired (e.g. in
+ * reservation detail) it must be gated to car_wash tenants and passed
+ * `vehicle.type = resource.data.vehicle_type`. Other verticals don't have
+ * vehicles, so they should never render this.
  *
- * Match is exact membership: returns the first variant (sorted by sortOrder asc)
- * whose `vehicleTypes` array includes the vehicle's stored type value (e.g. "Hatchback").
+ * Match is exact membership: returns the first active variant (sorted by
+ * sortOrder asc) whose `vehicleTypes` array includes the vehicle's stored
+ * type value (e.g. "Hatchback").
  * No keyword overlap — single source of truth lives on the variant record.
  */
 type Vehicle = { type?: string | null; brand?: string | null; model?: string | null } | null;
@@ -28,6 +30,7 @@ function findSuggestedVariant(vehicle: Vehicle, variants: ServiceVariant[]): Ser
   const type = vehicle?.type?.trim();
   if (!type) return null;
   const match = [...variants]
+    .filter((v) => v.isActive)
     .sort((a, b) => a.sortOrder - b.sortOrder)
     .find((v) => (v.vehicleTypes ?? []).includes(type));
   return match ?? null;
