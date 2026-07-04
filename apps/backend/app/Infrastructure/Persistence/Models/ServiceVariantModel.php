@@ -18,13 +18,14 @@ class ServiceVariantModel extends Model
     protected $table = 'service_variants';
 
     protected $fillable = [
-        'tenant_id', 'service_id', 'label',
+        'tenant_id', 'service_id', 'label', 'vehicle_types',
         'price', 'duration_min', 'sort_order', 'is_active',
     ];
 
     protected function casts(): array
     {
         return [
+            'vehicle_types' => 'array',
             'price'        => 'decimal:2',
             'duration_min' => 'integer',
             'sort_order'   => 'integer',

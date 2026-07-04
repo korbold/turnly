@@ -45,6 +45,14 @@ class TenantSettingsController extends Controller
 
         $tenant = TenantModel::findOrFail(app('current_tenant_id'));
 
+        if ($request->has('custom_fields')) {
+            $reconciled = \App\Domain\Tenant\LockedCustomFields::reconcile(
+                $request->input('custom_fields') ?? [],
+                is_array($tenant->custom_fields) ? $tenant->custom_fields : [],
+            );
+            $request->merge(['custom_fields' => $reconciled]);
+        }
+
         $tenant->update($request->only([
             'name',
             'description',

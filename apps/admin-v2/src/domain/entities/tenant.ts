@@ -67,6 +67,8 @@ export interface CustomField {
   required: boolean;
   options?: string[];
   capitalize?: 'none' | 'uppercase' | 'capitalize' | 'lowercase';
+  affectsVariant?: boolean;
+  locked?: boolean;
 }
 
 export interface TenantImage {

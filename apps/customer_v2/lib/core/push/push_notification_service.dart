@@ -66,6 +66,12 @@ class PushNotificationService {
       _onMessageSub = FirebaseMessaging.onMessage.listen(
         _handleForegroundMessage,
       );
+      FirebaseMessaging.onMessageOpenedApp.listen((m) {
+        _log('onMessageOpenedApp (tapped from background): data=${m.data}');
+      });
+      unawaited(_messaging.getInitialMessage().then((m) {
+        if (m != null) _log('getInitialMessage (opened from terminated): data=${m.data}');
+      }));
       _onTokenRefreshSub = _messaging.onTokenRefresh.listen(_registerToken);
 
       _bootstrapped = true;
@@ -109,8 +115,13 @@ class PushNotificationService {
   }
 
   void _handleForegroundMessage(RemoteMessage message) {
+    _log('onMessage (foreground) received: '
+        'notif=${message.notification?.title} data=${message.data}');
     final notification = message.notification;
-    if (notification == null) return;
+    if (notification == null) {
+      _log('onMessage had no notification block — data-only message.');
+      return;
+    }
 
     _localNotifications.show(
       notification.hashCode,

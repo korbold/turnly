@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { Plus, Trash2, Save, GripVertical } from 'lucide-react';
 import { toast } from 'sonner';
 import { Button } from '@/presentation/components/ui/button';
@@ -46,6 +46,15 @@ export function CustomFieldsTab() {
       setFields(settings.customFields);
     }
   }, [settings]);
+
+  /** Returns the seeded options for a locked field from the originally loaded settings. */
+  const seededOptionsFor = useCallback(
+    (key: string): string[] => {
+      const original = settings?.customFields?.find((f) => f.key === key);
+      return original?.options ?? [];
+    },
+    [settings],
+  );
 
   function addField() {
     setFields((prev) => [...prev, newField()]);
@@ -111,80 +120,114 @@ export function CustomFieldsTab() {
         </div>
       )}
 
-      {fields.map((field, idx) => (
-        <Card key={field.key}>
-          <CardContent className="p-4">
-            <div className="flex items-start gap-3">
-              <GripVertical className="mt-2 h-4 w-4 shrink-0 text-zinc-400" />
-              <div className="flex-1 space-y-3">
-                <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-4">
-                  <div className="space-y-1">
-                    <Label className="text-xs">Nombre</Label>
-                    <Input
-                      value={field.label}
-                      onChange={(e) => updateField(idx, { label: e.target.value })}
-                      placeholder="Ej: Placa"
-                    />
-                  </div>
-                  <div className="space-y-1">
-                    <Label className="text-xs">Tipo</Label>
-                    <Select
-                      value={field.type}
-                      onValueChange={(v) => updateField(idx, { type: v as CustomField['type'] })}
-                    >
-                      <SelectTrigger><SelectValue /></SelectTrigger>
-                      <SelectContent>
-                        {FIELD_TYPES.map((ft) => (
-                          <SelectItem key={ft.value} value={ft.value}>{ft.label}</SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-                  </div>
-                  <div className="space-y-1">
-                    <Label className="text-xs">Formato</Label>
-                    <Select
-                      value={field.capitalize ?? 'none'}
-                      onValueChange={(v) => updateField(idx, { capitalize: v as CustomField['capitalize'] })}
-                    >
-                      <SelectTrigger><SelectValue /></SelectTrigger>
-                      <SelectContent>
-                        {CAPITALIZE_OPTIONS.map((opt) => (
-                          <SelectItem key={opt.value} value={opt.value}>{opt.label}</SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-                  </div>
-                  <div className="flex items-end gap-2">
-                    <label className="flex items-center gap-2 text-sm">
-                      <input
-                        type="checkbox"
-                        checked={field.required}
-                        onChange={(e) => updateField(idx, { required: e.target.checked })}
-                        className="h-4 w-4 rounded border-zinc-300"
-                      />
-                      Requerido
-                    </label>
-                  </div>
-                </div>
+      {fields.map((field, idx) => {
+        const locked = field.affectsVariant === true || field.locked === true;
 
-                {field.type === 'select' && (
-                  <div className="space-y-1">
-                    <Label className="text-xs">Opciones (separadas por coma)</Label>
-                    <Input
-                      value={field.options?.join(', ') ?? ''}
-                      onChange={(e) => updateOptions(idx, e.target.value)}
-                      placeholder="Opcion 1, Opcion 2, Opcion 3"
-                    />
+        return (
+          <Card key={field.key}>
+            <CardContent className="p-4">
+              <div className="flex items-start gap-3">
+                <GripVertical className="mt-2 h-4 w-4 shrink-0 text-zinc-400" />
+                <div className="flex-1 space-y-3">
+                  <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-4">
+                    <div className="space-y-1">
+                      <Label className="text-xs">Nombre</Label>
+                      <Input
+                        value={field.label}
+                        onChange={(e) => updateField(idx, { label: e.target.value })}
+                        placeholder="Ej: Placa"
+                        disabled={locked}
+                      />
+                    </div>
+                    <div className="space-y-1">
+                      <Label className="text-xs">Tipo</Label>
+                      <Select
+                        value={field.type}
+                        onValueChange={(v) => updateField(idx, { type: v as CustomField['type'] })}
+                        disabled={locked}
+                      >
+                        <SelectTrigger><SelectValue /></SelectTrigger>
+                        <SelectContent>
+                          {FIELD_TYPES.map((ft) => (
+                            <SelectItem key={ft.value} value={ft.value}>{ft.label}</SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    </div>
+                    <div className="space-y-1">
+                      <Label className="text-xs">Formato</Label>
+                      <Select
+                        value={field.capitalize ?? 'none'}
+                        onValueChange={(v) => updateField(idx, { capitalize: v as CustomField['capitalize'] })}
+                      >
+                        <SelectTrigger><SelectValue /></SelectTrigger>
+                        <SelectContent>
+                          {CAPITALIZE_OPTIONS.map((opt) => (
+                            <SelectItem key={opt.value} value={opt.value}>{opt.label}</SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    </div>
+                    <div className="flex items-end gap-2">
+                      <label className="flex items-center gap-2 text-sm">
+                        <input
+                          type="checkbox"
+                          checked={field.required}
+                          onChange={(e) => updateField(idx, { required: e.target.checked })}
+                          className="h-4 w-4 rounded border-zinc-300"
+                        />
+                        Requerido
+                      </label>
+                    </div>
                   </div>
+
+                  {field.type === 'select' && (
+                    <div className="space-y-1">
+                      <Label className="text-xs">Opciones (separadas por coma)</Label>
+                      {locked ? (
+                        <>
+                          <Input
+                            value={field.options?.join(', ') ?? ''}
+                            onChange={(e) => {
+                              const next = e.target.value.split(',').map((s) => s.trim()).filter(Boolean);
+                              const seeded = seededOptionsFor(field.key);
+                              const missing = seeded.filter((o) => !next.includes(o));
+                              if (missing.length) {
+                                toast.error(`No puedes quitar: ${missing.join(', ')}`);
+                                return;
+                              }
+                              updateField(idx, { options: next });
+                            }}
+                            placeholder="Opcion 1, Opcion 2, Opcion 3"
+                          />
+                          <p className="text-[11px] text-[var(--fg-muted)]">
+                            Opciones base fijas; puedes agregar nuevas.
+                          </p>
+                        </>
+                      ) : (
+                        <Input
+                          value={field.options?.join(', ') ?? ''}
+                          onChange={(e) => updateOptions(idx, e.target.value)}
+                          placeholder="Opcion 1, Opcion 2, Opcion 3"
+                        />
+                      )}
+                    </div>
+                  )}
+                </div>
+                {locked ? (
+                  <Button variant="ghost" size="sm" disabled aria-label="Eliminar campo">
+                    <Trash2 className="h-4 w-4 text-zinc-300" />
+                  </Button>
+                ) : (
+                  <Button variant="ghost" size="sm" onClick={() => removeField(idx)} aria-label="Eliminar campo">
+                    <Trash2 className="h-4 w-4 text-[var(--danger-500)]" />
+                  </Button>
                 )}
               </div>
-              <Button variant="ghost" size="sm" onClick={() => removeField(idx)} aria-label="Eliminar campo">
-                <Trash2 className="h-4 w-4 text-[var(--danger-500)]" />
-              </Button>
-            </div>
-          </CardContent>
-        </Card>
-      ))}
+            </CardContent>
+          </Card>
+        );
+      })}
 
       <Button onClick={handleSave} disabled={update.isPending}>
         <Save className="mr-1.5 h-4 w-4" aria-hidden="true" />

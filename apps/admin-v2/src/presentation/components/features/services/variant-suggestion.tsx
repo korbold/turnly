@@ -5,15 +5,17 @@ import type { ServiceVariant } from '@/domain/entities/service-variant';
 
 /**
  * Suggests the variant that probably matches the vehicle currently
- * attached to a reservation, gated to car_wash tenants.
+ * attached to a reservation.
  *
- * Gating happens at the call site (`{businessType === 'car_wash' && ...}`)
- * so this component stays pure and tree-shakeable. Other verticals don't
- * have vehicles, so they should never render this.
+ * This component is not currently rendered anywhere. When wired (e.g. in
+ * reservation detail) it must be gated to car_wash tenants and passed
+ * `vehicle.type = resource.data.vehicle_type`. Other verticals don't have
+ * vehicles, so they should never render this.
  *
- * Mapping is intentionally fuzzy — the source-of-truth label is whatever
- * the tenant typed (e.g. "Mediano" or "Suv pequeño"), so we look for
- * keyword overlap with the vehicle size category.
+ * Match is exact membership: returns the first active variant (sorted by
+ * sortOrder asc) whose `vehicleTypes` array includes the vehicle's stored
+ * type value (e.g. "Hatchback").
+ * No keyword overlap — single source of truth lives on the variant record.
  */
 type Vehicle = { type?: string | null; brand?: string | null; model?: string | null } | null;
 
@@ -24,28 +26,14 @@ interface Props {
   onApply: (variantId: string) => void;
 }
 
-const SIZE_BY_VEHICLE_TYPE: Record<string, string[]> = {
-  // Small vehicles
-  sedan:        ['pequeño', 'small', 'p', 'sedan'],
-  hatchback:    ['pequeño', 'small', 'p', 'hatchback'],
-  // Medium vehicles
-  suv:          ['mediano', 'medium', 'm', 'suv'],
-  // Large vehicles
-  camioneta:    ['grande', 'large', 'g', 'camioneta', 'pickup'],
-  pickup:       ['grande', 'large', 'g', 'pickup', 'camioneta'],
-  truck:        ['grande', 'large', 'g', 'truck', 'camion'],
-  van:          ['grande', 'large', 'g', 'van'],
-};
-
 function findSuggestedVariant(vehicle: Vehicle, variants: ServiceVariant[]): ServiceVariant | null {
-  if (!vehicle?.type) return null;
-  const keywords = SIZE_BY_VEHICLE_TYPE[vehicle.type.toLowerCase()];
-  if (!keywords) return null;
-
-  const lowerLabel = (v: ServiceVariant) => v.label.toLowerCase();
-  return (
-    variants.find((v) => v.isActive && keywords.some((k) => lowerLabel(v).includes(k))) ?? null
-  );
+  const type = vehicle?.type?.trim();
+  if (!type) return null;
+  const match = [...variants]
+    .filter((v) => v.isActive)
+    .sort((a, b) => a.sortOrder - b.sortOrder)
+    .find((v) => (v.vehicleTypes ?? []).includes(type));
+  return match ?? null;
 }
 
 export function VariantSuggestion({ vehicle, variants, selectedVariantId, onApply }: Props) {

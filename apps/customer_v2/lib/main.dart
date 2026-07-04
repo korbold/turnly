@@ -28,9 +28,24 @@ import 'features/reservations/domain/repositories/reservation_repository.dart';
 import 'features/reservations/presentation/cubit/reservations_cubit.dart';
 
 /// Default entry point. Kept for backward compat with tooling that ignores
-/// `--target`. Reads ENV from --dart-define, defaults to dev.
+/// `--target` (e.g. building lib/main.dart directly from Xcode instead of
+/// main_dev.dart / main_prod.dart).
+///
+/// Environment resolution order:
+///   1. `--dart-define=ENV=…` when explicitly passed (wins).
+///   2. otherwise derive from the build flavor — `flutter --flavor prod`
+///      injects `FLUTTER_APP_FLAVOR=prod`, so a prod build loads `.env.prod`
+///      even when the target is this default entry point.
+///   3. default `dev` when neither is set.
+///
+/// This prevents the "prod flavor + dev Dart config" mismatch (prod Firebase
+/// project talking to the dev API) that surfaces as a Google login failure.
 void main() async {
-  const env = String.fromEnvironment('ENV', defaultValue: 'dev');
+  const envDefine = String.fromEnvironment('ENV');
+  const flavor = String.fromEnvironment('FLUTTER_APP_FLAVOR');
+  final env = envDefine.isNotEmpty
+      ? envDefine
+      : (flavor == 'prod' ? 'prod' : 'dev');
   await bootstrap(env: env);
 }
 

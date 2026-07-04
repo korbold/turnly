@@ -48,7 +48,16 @@ export function mapTenantSettings(raw: Record<string, unknown>): TenantSettings 
       whatsapp: socialLinks.whatsapp ?? null,
       maps_url: socialLinks.maps_url ?? null,
     },
-    customFields: (raw.custom_fields ?? raw.customFields ?? []) as TenantSettings['customFields'],
+    customFields: ((raw.custom_fields ?? raw.customFields ?? []) as Record<string, unknown>[]).map((cf) => ({
+      key: cf.key as string,
+      label: cf.label as string,
+      type: cf.type as import('@/domain/entities/tenant').CustomField['type'],
+      required: Boolean(cf.required),
+      options: (cf.options as string[] | undefined) ?? undefined,
+      capitalize: cf.capitalize as import('@/domain/entities/tenant').CustomField['capitalize'] | undefined,
+      affectsVariant: (cf.affects_variant ?? cf.affectsVariant) ? true : undefined,
+      locked: cf.locked ? true : undefined,
+    })),
     permissions: (raw.permissions ?? {}) as Record<string, Record<string, string>>,
   };
 }

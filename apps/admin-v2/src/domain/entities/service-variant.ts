@@ -14,6 +14,7 @@ export interface ServiceVariant {
   id: string;
   serviceId: string;
   label: string;
+  vehicleTypes: string[];
   price: number;
   durationMin: number;
   sortOrder: number;

@@ -11,16 +11,17 @@ use Illuminate\Support\Collection;
 /**
  * Picks the variant that fits a customer's `client_resource` best.
  *
- * The mechanism is declarative: tenants store a list of custom fields
- * (see BusinessTypeTemplates), one of which can be flagged
- * `affects_variant: true` and carry a `variant_map` of value→keywords.
- * That keeps the engine vertical-agnostic — car_wash uses vehicle_type,
+ * The mechanism is declarative: tenants store a list of custom fields,
+ * one of which can be flagged `affects_variant: true`. That field's `key`
+ * is read from `resource.data` to obtain the segmentation value, which is
+ * then matched by exact membership against `service_variants.vehicle_types`.
+ * This keeps the engine vertical-agnostic — car_wash uses vehicle_type,
  * barbershop uses segment, médico uses patient_segment, etc.
  *
  * Returns null when:
  *   - The tenant has no segmentation field
  *   - The resource hasn't filled the segmentation value yet
- *   - No variant label matches any of the keywords
+ *   - No active variant's vehicle_types array contains the value
  */
 final class VariantSuggester
 {
@@ -39,8 +40,7 @@ final class VariantSuggester
         if (!$field) return null;
 
         $key = $field['key'] ?? null;
-        $variantMap = $field['variant_map'] ?? [];
-        if (!$key || empty($variantMap)) return null;
+        if (!$key) return null;
 
         $resourceData = $resource->data ?? [];
         if (!is_array($resourceData)) $resourceData = (array) $resourceData;
@@ -48,25 +48,12 @@ final class VariantSuggester
         $value = $resourceData[$key] ?? null;
         if (!is_string($value) || $value === '') return null;
 
-        $keywords = $variantMap[$value] ?? null;
-        if (!is_array($keywords) || empty($keywords)) return null;
-
-        // Keywords are listed in specificity order ("camioneta" before
-        // the more generic "grande"). Walk through them and return the
-        // first active variant whose label contains the keyword. That
-        // way an exact size match wins over a coarser bucket name.
-        $activeVariants = $variants->filter(fn ($v) => $v->is_active);
-
-        foreach ($keywords as $kw) {
-            $needle = mb_strtolower((string) $kw);
-            if ($needle === '') continue;
-            foreach ($activeVariants as $variant) {
-                if (str_contains(mb_strtolower($variant->label), $needle)) {
-                    return $variant;
-                }
-            }
-        }
-
-        return null;
+        return $variants
+            ->filter(fn ($v) => $v->is_active)
+            ->sortBy('sort_order')
+            ->first(function ($v) use ($value) {
+                $types = $v->vehicle_types ?? [];
+                return is_array($types) && in_array($value, $types, true);
+            });
     }
 }
