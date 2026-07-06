@@ -59,6 +59,8 @@ export interface ReservationRepository {
       method: 'transfer' | 'card' | 'cash';
       reference?: string | null;
       bank?: string | null;
+      billing?: CheckInInput['billing'];
+      billingProfileId?: string | null;
     },
   ): Promise<Reservation>;
   listItems(id: string): Promise<ReservationItem[]>;

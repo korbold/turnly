@@ -873,6 +873,10 @@ export default function ReservationDetailPage({ params }: { params: Promise<{ id
         open={paymentOpen}
         reservationId={id}
         total={total}
+        defaultEmail={reservation.client?.email}
+        defaultName={reservation.client?.name}
+        defaultProfile={reservation.client?.defaultBillingProfile}
+        currentBilling={reservation.billingSnapshot}
         onClose={() => setPaymentOpen(false)}
       />
 

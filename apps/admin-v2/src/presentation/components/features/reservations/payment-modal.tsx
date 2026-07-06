@@ -14,16 +14,42 @@ import {
 import { Button } from '@/presentation/components/ui/button';
 import { Input } from '@/presentation/components/ui/input';
 import { Label } from '@/presentation/components/ui/label';
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/presentation/components/ui/select';
 import { useRecordReservationPayment } from '@/presentation/hooks/use-reservations';
 import { cn } from '@/shared/utils/cn';
 import { ECUADOR_BANKS } from '@/shared/constants/banks';
 import { BankChip } from '@/presentation/components/features/reservations/bank-chip';
-import type { ReservationPaymentMethod } from '@/domain/entities/reservation';
+import type {
+  ReservationPaymentMethod,
+  ClientBillingProfile,
+  BillingSnapshot,
+} from '@/domain/entities/reservation';
+
+type DocType = 'final_consumer' | 'cedula' | 'ruc' | 'passport';
+
+const DOC_TYPES: { value: DocType; label: string }[] = [
+  { value: 'final_consumer', label: 'Consumidor final' },
+  { value: 'cedula', label: 'Cédula' },
+  { value: 'ruc', label: 'RUC' },
+  { value: 'passport', label: 'Pasaporte' },
+];
 
 interface Props {
   open: boolean;
   reservationId: string;
   total: number;
+  /** Client's saved default fiscal profile — prefills the billing fields. */
+  defaultProfile?: ClientBillingProfile | null;
+  /** Billing captured earlier (e.g. at check-in) — takes precedence for prefill. */
+  currentBilling?: BillingSnapshot | null;
+  defaultEmail?: string | null;
+  defaultName?: string | null;
   onClose: () => void;
   onSuccess?: () => void;
 }
@@ -54,19 +80,60 @@ const METHODS: {
   },
 ];
 
-export function PaymentModal({ open, reservationId, total, onClose, onSuccess }: Props) {
+export function PaymentModal({
+  open,
+  reservationId,
+  total,
+  defaultProfile,
+  currentBilling,
+  defaultEmail,
+  defaultName,
+  onClose,
+  onSuccess,
+}: Props) {
   const [method, setMethod] = useState<ReservationPaymentMethod>('cash');
   const [reference, setReference] = useState('');
   const [bank, setBank] = useState<string | null>(null);
+  const [docType, setDocType] = useState<DocType>('final_consumer');
+  const [docNumber, setDocNumber] = useState('');
+  const [legalName, setLegalName] = useState('');
+  const [email, setEmail] = useState('');
+  const [address, setAddress] = useState('');
+  const [phone, setPhone] = useState('');
   const mutation = useRecordReservationPayment(reservationId);
 
   useEffect(() => {
-    if (open) {
-      setMethod('cash');
-      setReference('');
-      setBank(null);
+    if (!open) return;
+    setMethod('cash');
+    setReference('');
+    setBank(null);
+
+    // Prefill fiscal data: billing already captured on this reservation
+    // (check-in) wins; otherwise the client's saved profile; else CONSUMIDOR
+    // FINAL with name/email seeded.
+    const src =
+      currentBilling && currentBilling.docType !== 'final_consumer'
+        ? currentBilling
+        : defaultProfile && defaultProfile.docType !== 'final_consumer'
+          ? defaultProfile
+          : null;
+
+    if (src) {
+      setDocType(src.docType);
+      setDocNumber(src.docNumber ?? '');
+      setLegalName(src.legalName || (defaultName ?? ''));
+      setEmail(src.email || (defaultEmail ?? ''));
+      setAddress(src.address ?? '');
+      setPhone(src.phone ?? '');
+    } else {
+      setDocType('final_consumer');
+      setDocNumber('');
+      setLegalName(defaultName ?? '');
+      setEmail(defaultEmail ?? '');
+      setAddress('');
+      setPhone('');
     }
-  }, [open]);
+  }, [open, currentBilling, defaultProfile, defaultEmail, defaultName]);
 
   // Clear bank selection if cashier switches away from transfer.
   useEffect(() => {
@@ -78,11 +145,22 @@ export function PaymentModal({ open, reservationId, total, onClose, onSuccess }:
       toast.error('Selecciona el banco emisor');
       return;
     }
+    if (docType !== 'final_consumer' && (!docNumber.trim() || !legalName.trim())) {
+      toast.error('Documento y nombre legal son obligatorios');
+      return;
+    }
+
+    const billing =
+      docType === 'final_consumer'
+        ? { docType, docNumber: '9999999999999', legalName: 'CONSUMIDOR FINAL' }
+        : { docType, docNumber, legalName, email, address, phone };
+
     mutation.mutate(
       {
         method,
         reference: reference.trim() || null,
         bank: method === 'transfer' ? bank : null,
+        billing,
       },
       {
         onSuccess: () => {
@@ -235,6 +313,62 @@ export function PaymentModal({ open, reservationId, total, onClose, onSuccess }:
               }
               maxLength={100}
             />
+          </div>
+
+          {/* Fiscal data for the invoice — captured here (like check-in) so
+              the factura carries the buyer's identity. Defaults to consumidor
+              final; prefilled when known. */}
+          <div className="space-y-3 rounded-lg border border-[var(--border)] bg-[var(--bg-surface)] p-3">
+            <Label className="text-[12px] font-semibold uppercase tracking-[0.04em] text-[var(--fg-muted)]">
+              Datos de facturación
+            </Label>
+            <div>
+              <Label className="mb-1.5">Tipo de comprobante</Label>
+              <Select value={docType} onValueChange={(v) => setDocType(v as DocType)}>
+                <SelectTrigger><SelectValue /></SelectTrigger>
+                <SelectContent>
+                  {DOC_TYPES.map((t) => (
+                    <SelectItem key={t.value} value={t.value}>{t.label}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+
+            {docType !== 'final_consumer' && (
+              <>
+                <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+                  <div>
+                    <Label className="mb-1.5">Documento</Label>
+                    <Input
+                      value={docNumber}
+                      onChange={(e) => setDocNumber(e.target.value)}
+                      placeholder={docType === 'ruc' ? '13 dígitos' : '10 dígitos'}
+                    />
+                  </div>
+                  <div>
+                    <Label className="mb-1.5">Nombre / Razón social</Label>
+                    <Input value={legalName} onChange={(e) => setLegalName(e.target.value)} />
+                  </div>
+                </div>
+                <div>
+                  <Label className="mb-1.5">Email</Label>
+                  <Input type="email" value={email} onChange={(e) => setEmail(e.target.value)} />
+                  <p className="mt-1 text-[11px] text-[var(--fg-muted)]">
+                    Obligatorio SRI para envío del XML autorizado.
+                  </p>
+                </div>
+                <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+                  <div>
+                    <Label className="mb-1.5">Dirección</Label>
+                    <Input value={address} onChange={(e) => setAddress(e.target.value)} />
+                  </div>
+                  <div>
+                    <Label className="mb-1.5">Teléfono</Label>
+                    <Input value={phone} onChange={(e) => setPhone(e.target.value)} />
+                  </div>
+                </div>
+              </>
+            )}
           </div>
         </div>
 

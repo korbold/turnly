@@ -25,6 +25,10 @@ use Illuminate\Validation\Rule;
  */
 class ReservationPaymentController extends Controller
 {
+    public function __construct(
+        private \App\Domain\Reservation\ReservationBillingResolver $billing,
+    ) {}
+
     public function record(Request $request, string $reservationId): JsonResponse
     {
         $data = $request->validate([
@@ -34,6 +38,17 @@ class ReservationPaymentController extends Controller
             // free-form so tenants can add regional banks without a
             // schema change.
             'bank'      => ['nullable', 'string', 'max:40'],
+            // Fiscal data for the invoice, captured here just like check-in.
+            // Optional: absent → keep whatever check-in captured (or emit as
+            // CONSUMIDOR FINAL).
+            'billing_profile_id' => ['nullable', 'uuid', 'exists:user_billing_profiles,id'],
+            'billing'            => ['nullable', 'array'],
+            'billing.doc_type'   => ['nullable', Rule::in(['ruc', 'cedula', 'passport', 'final_consumer'])],
+            'billing.doc_number' => ['nullable', 'string', 'max:13'],
+            'billing.legal_name' => ['nullable', 'string', 'max:255'],
+            'billing.email'      => ['nullable', 'email', 'max:255'],
+            'billing.address'    => ['nullable', 'string', 'max:500'],
+            'billing.phone'      => ['nullable', 'string', 'max:30'],
         ]);
 
         $reservation = ReservationModel::with(['service', 'client', 'tenant'])
@@ -48,13 +63,25 @@ class ReservationPaymentController extends Controller
             ], 422);
         }
 
-        $reservation->update([
+        $updates = [
             'payment_status'    => 'paid',
             'payment_method'    => $data['method'],
             'payment_reference' => $data['reference'] ?? null,
             'payment_bank'      => $data['method'] === 'transfer' ? ($data['bank'] ?? null) : null,
             'paid_at'           => now(),
-        ]);
+        ];
+
+        // Capture fiscal data supplied at payment (mirrors check-in). Only
+        // overwrite the snapshot when real fiscal data is provided — otherwise
+        // keep whatever check-in already captured.
+        if ($this->billing->hasRealFiscalData($data)) {
+            $updates['billing_snapshot'] = $this->billing->resolveSnapshot($data);
+            if (empty($data['billing_profile_id'])) {
+                $this->billing->rememberBillingProfile($reservation->client_id, $data['billing'] ?? []);
+            }
+        }
+
+        $reservation->update($updates);
 
         // Payment locks the items and triggers the SRI invoice. Guard against
         // a second emission if the reservation was already invoiced (e.g. on

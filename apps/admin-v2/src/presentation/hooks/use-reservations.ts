@@ -147,6 +147,8 @@ export function useRecordReservationPayment(id: string) {
       method: 'transfer' | 'card' | 'cash';
       reference?: string | null;
       bank?: string | null;
+      billing?: CheckInInput['billing'];
+      billingProfileId?: string | null;
     }) => repo.recordPayment(id, input),
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ['reservation', id] });
