@@ -70,6 +70,11 @@ class EmitReservationInvoiceJob implements ShouldQueue
                         issuedAt:          now()->format('d/m/Y'),
                     ));
                 }
+            } elseif (!empty($result['id'])) {
+                // SRI authorization is async — poll the billing service until the
+                // invoice is authorized (or rejected) and then email the client.
+                SyncReservationInvoiceStatusJob::dispatch($reservation->id)
+                    ->delay(now()->addSeconds(15));
             }
         } catch (Throwable $e) {
             $reservation->update([
