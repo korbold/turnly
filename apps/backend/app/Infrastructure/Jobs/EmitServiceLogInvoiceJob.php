@@ -75,6 +75,10 @@ class EmitServiceLogInvoiceJob implements ShouldQueue
                         issuedAt:          now()->format('d/m/Y'),
                     ));
                 }
+            } elseif (!empty($result['id'])) {
+                // SRI authorization is async — poll until authorized, then email.
+                SyncServiceLogInvoiceStatusJob::dispatch($log->id)
+                    ->delay(now()->addSeconds(15));
             }
         } catch (Throwable $e) {
             $log->update([
