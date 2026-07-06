@@ -7,6 +7,7 @@ namespace App\Infrastructure\Jobs;
 use App\Infrastructure\Billing\BillingServiceClient;
 use App\Infrastructure\Mail\InvoiceMail;
 use App\Infrastructure\Persistence\Models\ReservationModel;
+use App\Infrastructure\Persistence\Models\TenantModel;
 use Illuminate\Bus\Queueable;
 use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Foundation\Bus\Dispatchable;
@@ -116,17 +117,25 @@ class EmitReservationInvoiceJob implements ShouldQueue
 
     private function buildItems(ReservationModel $reservation): array
     {
+        $tenant  = TenantModel::find($reservation->tenant_id);
+        $ivaMode = $tenant?->settings['iva_mode'] ?? 'excluded';
+        $codIva  = $ivaMode === 'zero' ? '0' : '4';
+
+        // When prices already include IVA, back-calculate the net unit price
+        // (price / 1.15) so SRI re-adds the tax to the same displayed total.
+        $netPrice = fn (float $unit): float => $ivaMode === 'included' ? round($unit / 1.15, 6) : $unit;
+
         if ($reservation->items && $reservation->items->isNotEmpty()) {
             return $reservation->items->map(fn ($item) => [
                 'descripcion'           => (string) $item->label,
                 'cantidad'              => (float) $item->qty,
-                'precio_unitario'       => (float) $item->unit_price,
+                'precio_unitario'       => $netPrice((float) $item->unit_price),
                 'descuento'             => 0.0,
-                'codigo_porcentaje_iva' => '4',
+                'codigo_porcentaje_iva' => $codIva,
             ])->values()->all();
         }
 
-        $price = $reservation->variant?->price ?? $reservation->service?->price ?? 0;
+        $price = (float) ($reservation->variant?->price ?? $reservation->service?->price ?? 0);
         $description = $reservation->variant
             ? ($reservation->service?->name . ' - ' . $reservation->variant->name)
             : ($reservation->service?->name ?? 'Servicio');
@@ -134,9 +143,9 @@ class EmitReservationInvoiceJob implements ShouldQueue
         return [[
             'descripcion'           => $description,
             'cantidad'              => 1.0,
-            'precio_unitario'       => (float) $price,
+            'precio_unitario'       => $netPrice($price),
             'descuento'             => 0.0,
-            'codigo_porcentaje_iva' => '4',
+            'codigo_porcentaje_iva' => $codIva,
         ]];
     }
 }
