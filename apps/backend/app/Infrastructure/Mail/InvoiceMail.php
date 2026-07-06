@@ -46,20 +46,34 @@ class InvoiceMail extends Mailable implements ShouldQueue
 
     public function attachments(): array
     {
-        try {
-            $pdfBytes = app(BillingServiceClient::class)->getInvoiceRide($this->externalInvoiceId);
-            $filename = 'factura-' . str_replace('/', '-', $this->invoiceNumber) . '.pdf';
+        $client   = app(BillingServiceClient::class);
+        $safeName = str_replace('/', '-', $this->invoiceNumber);
+        $items    = [];
 
-            return [
-                Attachment::fromData(fn () => $pdfBytes, $filename)
-                    ->withMime('application/pdf'),
-            ];
+        // RIDE PDF and XML are fetched independently — one failing must not
+        // drop the other from the email.
+        try {
+            $pdfBytes = $client->getInvoiceRide($this->externalInvoiceId);
+            $items[]  = Attachment::fromData(fn () => $pdfBytes, "factura-{$safeName}.pdf")
+                ->withMime('application/pdf');
         } catch (Throwable $e) {
             Log::warning('InvoiceMail: failed to fetch RIDE PDF', [
                 'invoice_id' => $this->externalInvoiceId,
                 'error'      => $e->getMessage(),
             ]);
-            return [];
         }
+
+        try {
+            $xmlBytes = $client->getInvoiceXml($this->externalInvoiceId);
+            $items[]  = Attachment::fromData(fn () => $xmlBytes, "factura-{$safeName}.xml")
+                ->withMime('application/xml');
+        } catch (Throwable $e) {
+            Log::warning('InvoiceMail: failed to fetch XML', [
+                'invoice_id' => $this->externalInvoiceId,
+                'error'      => $e->getMessage(),
+            ]);
+        }
+
+        return $items;
     }
 }
