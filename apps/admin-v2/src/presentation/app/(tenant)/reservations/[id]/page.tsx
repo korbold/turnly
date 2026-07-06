@@ -225,9 +225,12 @@ export default function ReservationDetailPage({ params }: { params: Promise<{ id
   const canCheckIn = status === 'confirmed';
   const canStart = status === 'checked_in' || status === 'confirmed';
   const canComplete = status === 'in_progress';
-  const isEditable = status !== 'completed' && status !== 'cancelled' && status !== 'no_show';
-  const canOverride = status === 'checked_in';
-  const canRemove = status !== 'in_progress' && isEditable;
+  // Paying locks the items — the SRI invoice is generated from them, so no
+  // adding, removing, or re-pricing once payment is recorded.
+  const isPaid = reservation.paymentStatus === 'paid';
+  const isEditable = !isPaid && status !== 'completed' && status !== 'cancelled' && status !== 'no_show';
+  const canOverride = !isPaid && status === 'checked_in';
+  const canRemove = !isPaid && status !== 'in_progress' && isEditable;
 
   function doRemove() {
     if (!removeTarget) return;
@@ -320,7 +323,6 @@ export default function ReservationDetailPage({ params }: { params: Promise<{ id
   const itemsCount = items?.length ?? 0;
   const hasResource = !!reservation.clientResource?.plate;
   const isTerminal = status === 'completed' || status === 'cancelled' || status === 'no_show';
-  const isPaid = reservation.paymentStatus === 'paid';
   // The "pending payment" banner only makes sense for live bookings —
   // a cancelled / no-show row never expects money, and a paid one is
   // already closed. Otherwise (pending → completed lifecycle), surface

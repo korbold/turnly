@@ -189,6 +189,8 @@ final class ReservationItemEditor
 
     private function assertCanAdd(ReservationModel $reservation): void
     {
+        $this->assertNotPaid($reservation);
+
         $status = $reservation->status instanceof ReservationStatus
             ? $reservation->status
             : ReservationStatus::from((string) $reservation->status);
@@ -200,6 +202,8 @@ final class ReservationItemEditor
 
     private function assertCanRemove(ReservationModel $reservation, ReservationItemModel $item): void
     {
+        $this->assertNotPaid($reservation);
+
         $status = $reservation->status instanceof ReservationStatus
             ? $reservation->status
             : ReservationStatus::from((string) $reservation->status);
@@ -219,12 +223,26 @@ final class ReservationItemEditor
 
     private function assertCanOverridePrice(ReservationModel $reservation): void
     {
+        $this->assertNotPaid($reservation);
+
         $status = $reservation->status instanceof ReservationStatus
             ? $reservation->status
             : ReservationStatus::from((string) $reservation->status);
 
         if ($status !== ReservationStatus::CheckedIn) {
             throw new RuntimeException('El precio sólo se puede ajustar durante el check-in.');
+        }
+    }
+
+    /**
+     * Once a reservation is paid the invoice is generated from its items, so
+     * they are frozen — no adding, removing, or re-pricing. Stays locked even
+     * if SRI rejects the invoice (fix via manual re-emit, not by editing).
+     */
+    private function assertNotPaid(ReservationModel $reservation): void
+    {
+        if ($reservation->payment_status === 'paid') {
+            throw new RuntimeException('La reserva ya está pagada; los items no se pueden modificar.');
         }
     }
 
