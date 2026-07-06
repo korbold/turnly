@@ -30,7 +30,10 @@ use Illuminate\Validation\Rule;
  */
 class ReservationCheckInController extends Controller
 {
-    public function __construct(private ConsumptionEngine $consumption) {}
+    public function __construct(
+        private ConsumptionEngine $consumption,
+        private \App\Domain\Reservation\ReservationBillingResolver $billing,
+    ) {}
 
     public function checkIn(Request $request, string $reservationId): JsonResponse
     {
@@ -54,7 +57,7 @@ class ReservationCheckInController extends Controller
             'billing.phone'      => ['nullable', 'string', 'max:30'],
         ]);
 
-        $snapshot = $this->resolveSnapshot($data);
+        $snapshot = $this->billing->resolveSnapshot($data);
 
         DB::transaction(function () use ($reservation, $snapshot, $data) {
             $reservation->update([
@@ -68,7 +71,7 @@ class ReservationCheckInController extends Controller
             // profile picked) and it's a real fiscal document — never the
             // CONSUMIDOR FINAL fallback.
             if (empty($data['billing_profile_id'])) {
-                $this->rememberBillingProfile($reservation->client_id, $data['billing'] ?? []);
+                $this->billing->rememberBillingProfile($reservation->client_id, $data['billing'] ?? []);
             }
 
             // Hold BOM stock now that the customer is in the building.
@@ -111,7 +114,7 @@ class ReservationCheckInController extends Controller
             'billing.phone'      => ['nullable', 'string', 'max:30'],
         ]);
 
-        $snapshot = $this->resolveSnapshot($data);
+        $snapshot = $this->billing->resolveSnapshot($data);
         $reservation->update(['billing_snapshot' => $snapshot]);
 
         return response()->json([
@@ -120,74 +123,4 @@ class ReservationCheckInController extends Controller
         ]);
     }
 
-    /**
-     * Upsert the inline billing data as the client's default billing
-     * profile so future check-ins prefill it. No-op for CONSUMIDOR FINAL
-     * or when the document is incomplete.
-     */
-    private function rememberBillingProfile(?string $clientId, array $billing): void
-    {
-        if (!$clientId) {
-            return;
-        }
-
-        $docType = $billing['doc_type'] ?? null;
-        $docNumber = trim((string) ($billing['doc_number'] ?? ''));
-        $legalName = trim((string) ($billing['legal_name'] ?? ''));
-
-        // Only persist real fiscal identities the customer can reuse.
-        if (!in_array($docType, ['ruc', 'cedula', 'passport'], true)
-            || $docNumber === ''
-            || $legalName === '') {
-            return;
-        }
-
-        // The new/updated profile becomes the client's default; clear the
-        // flag on their other profiles first (matches store() semantics).
-        UserBillingProfileModel::where('user_id', $clientId)->update(['is_default' => false]);
-
-        UserBillingProfileModel::updateOrCreate(
-            ['user_id' => $clientId, 'doc_type' => $docType, 'doc_number' => $docNumber],
-            [
-                'legal_name' => $legalName,
-                // email column is NOT NULL; keep '' when the cashier left it
-                // blank (they can complete it before the SRI XML is sent).
-                'email'      => $billing['email'] ?? '',
-                'address'    => $billing['address'] ?? null,
-                'phone'      => $billing['phone'] ?? null,
-                'is_default' => true,
-            ],
-        );
-    }
-
-    private function resolveSnapshot(array $data): array
-    {
-        if (!empty($data['billing_profile_id'])) {
-            $profile = UserBillingProfileModel::find($data['billing_profile_id']);
-            if ($profile) {
-                return [
-                    'doc_type'   => $profile->doc_type,
-                    'doc_number' => $profile->doc_number,
-                    'legal_name' => $profile->legal_name,
-                    'email'      => $profile->email,
-                    'address'    => $profile->address,
-                    'phone'      => $profile->phone,
-                    'source'     => 'profile',
-                    'captured_at' => now()->toIso8601String(),
-                ];
-            }
-        }
-
-        $b = $data['billing'] ?? [];
-        return [
-            'doc_type'   => $b['doc_type']   ?? 'final_consumer',
-            'doc_number' => $b['doc_number'] ?? '9999999999999',
-            'legal_name' => $b['legal_name'] ?? 'CONSUMIDOR FINAL',
-            'email'      => $b['email']      ?? null,
-            'address'    => $b['address']    ?? null,
-            'phone'      => $b['phone']      ?? null,
-            'source'     => 'manual',
-            'captured_at' => now()->toIso8601String(),
-        ];
-    }
 }

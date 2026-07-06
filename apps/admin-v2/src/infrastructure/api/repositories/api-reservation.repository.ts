@@ -105,12 +105,16 @@ export class ApiReservationRepository implements ReservationRepository {
       method: 'transfer' | 'card' | 'cash';
       reference?: string | null;
       bank?: string | null;
+      billing?: CheckInInput['billing'];
+      billingProfileId?: string | null;
     },
   ): Promise<Reservation> {
     const { data: res } = await api.post(`/reservations/${id}/payment`, {
       method: input.method,
       reference: input.reference ?? null,
       bank: input.bank ?? null,
+      // Fiscal data captured at payment (same shape as check-in).
+      ...checkInBody({ billing: input.billing, billingProfileId: input.billingProfileId }),
     });
     return mapReservation(res.data);
   }
