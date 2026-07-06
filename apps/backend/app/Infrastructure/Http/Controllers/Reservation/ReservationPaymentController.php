@@ -7,6 +7,7 @@ namespace App\Infrastructure\Http\Controllers\Reservation;
 use App\Events\ReservationUpdated;
 use App\Infrastructure\Http\Controllers\Controller;
 use App\Infrastructure\Http\Resources\ReservationResource;
+use App\Infrastructure\Jobs\EmitReservationInvoiceJob;
 use App\Infrastructure\Persistence\Models\ReservationModel;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
@@ -54,6 +55,13 @@ class ReservationPaymentController extends Controller
             'payment_bank'      => $data['method'] === 'transfer' ? ($data['bank'] ?? null) : null,
             'paid_at'           => now(),
         ]);
+
+        // Payment locks the items and triggers the SRI invoice. Guard against
+        // a second emission if the reservation was already invoiced (e.g. on
+        // completion) — whichever happens first wins.
+        if (!$reservation->invoiced) {
+            EmitReservationInvoiceJob::dispatch($reservation->id);
+        }
 
         ReservationUpdated::dispatch($reservation->fresh(['service', 'client', 'tenant']));
 

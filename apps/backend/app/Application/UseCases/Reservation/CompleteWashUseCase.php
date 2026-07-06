@@ -52,7 +52,11 @@ class CompleteWashUseCase
                 \Illuminate\Support\Facades\Log::error('Failed to send reservation completed notification', ['error' => $e->getMessage()]);
             }
 
-            EmitReservationInvoiceJob::dispatch($model->id)->delay(now()->addSeconds(3));
+            // Skip if payment already triggered the invoice — whichever
+            // (payment or completion) happens first emits exactly once.
+            if (!$model->invoiced) {
+                EmitReservationInvoiceJob::dispatch($model->id)->delay(now()->addSeconds(3));
+            }
         }
     }
 }
