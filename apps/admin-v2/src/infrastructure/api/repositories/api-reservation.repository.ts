@@ -114,7 +114,7 @@ export class ApiReservationRepository implements ReservationRepository {
       reference: input.reference ?? null,
       bank: input.bank ?? null,
       // Fiscal data captured at payment (same shape as check-in).
-      ...checkInBody({ billing: input.billing, billingProfileId: input.billingProfileId }),
+      ...checkInBody({ billing: input.billing, billingProfileId: input.billingProfileId ?? undefined }),
     });
     return mapReservation(res.data);
   }
