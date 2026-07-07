@@ -8,7 +8,6 @@ use App\Domain\Reservation\Enums\ReservationStatus;
 use App\Domain\Reservation\Exceptions\InvalidStatusTransitionException;
 use App\Domain\Reservation\Exceptions\ReservationNotFoundException;
 use App\Events\ReservationUpdated;
-use App\Infrastructure\Jobs\EmitReservationInvoiceJob;
 use App\Infrastructure\Notifications\Notifications\ReservationCompleted;
 use App\Infrastructure\Persistence\Models\ReservationModel;
 use App\Infrastructure\Persistence\Models\UserModel;
@@ -52,11 +51,9 @@ class CompleteWashUseCase
                 \Illuminate\Support\Facades\Log::error('Failed to send reservation completed notification', ['error' => $e->getMessage()]);
             }
 
-            // Skip if payment already triggered the invoice — whichever
-            // (payment or completion) happens first emits exactly once.
-            if (!$model->invoiced) {
-                EmitReservationInvoiceJob::dispatch($model->id)->delay(now()->addSeconds(3));
-            }
+            // Completing the wash no longer emits the invoice — billing happens
+            // only when payment is recorded (see ReservationPaymentController).
+            // This keeps one mental model: cobrar = facturar.
         }
     }
 }

@@ -187,8 +187,8 @@ export function PaymentModal({
         <DialogHeader>
           <DialogTitle>Registrar pago</DialogTitle>
           <DialogDescription>
-            Confirma el método con el que el cliente pagó. La reserva queda
-            marcada como pagada y el momento se guarda para conciliación.
+            Confirma el método con el que el cliente pagó. Al marcar pagado se
+            emite la factura electrónica y los items quedan bloqueados.
           </DialogDescription>
         </DialogHeader>
 
@@ -371,6 +371,11 @@ export function PaymentModal({
             )}
           </div>
         </div>
+
+        <p className="mt-3 rounded-md bg-[var(--warning-50,#fef9ec)] px-3 py-2 text-[12px] text-[var(--warning-700,#92640a)]">
+          Al marcar pagado se emite la factura electrónica al SRI y ya no se
+          pueden modificar los servicios. Esta acción no se puede deshacer.
+        </p>
 
         <DialogFooter>
           <Button variant="outline" onClick={onClose} disabled={mutation.isPending}>
