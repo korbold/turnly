@@ -88,7 +88,8 @@ export function ServiceForm({ open, onClose, service }: ServiceFormProps) {
       name: values.name,
       price: values.price,
       description: values.description || undefined,
-      imageUrl: values.imageUrl || undefined,
+      // Send '' explicitly (not undefined) so clearing the image reaches the API — repo maps '' → null
+      imageUrl: values.imageUrl ?? '',
       isActive: values.isActive,
       sortOrder: values.sortOrder,
     };
