@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useEffect, useRef, useMemo } from 'react';
-import { Loader2, Save, Upload, X, Undo2 } from 'lucide-react';
+import { Loader2, Save, Upload, X, Undo2, Lock } from 'lucide-react';
 import { toast } from 'sonner';
 import api from '@/infrastructure/api/client';
 import { Button } from '@/presentation/components/ui/button';
@@ -252,14 +252,22 @@ export function GeneralTab() {
             </div>
             <div className="space-y-1.5">
               <Label>Tipo de negocio</Label>
-              <Select value={form.businessType ?? ''} onValueChange={(v) => handleChange('businessType', v)}>
-                <SelectTrigger><SelectValue placeholder="Seleccionar" /></SelectTrigger>
+              {/* Locked: el tipo de negocio define recursos, variantes y menú.
+                  Cambiarlo en vivo rompe esos vínculos, así que es de solo lectura. */}
+              <Select value={form.businessType ?? ''} disabled>
+                <SelectTrigger className="cursor-not-allowed opacity-70">
+                  <SelectValue placeholder="Seleccionar" />
+                  <Lock className="ml-auto h-3.5 w-3.5 shrink-0 text-[var(--fg-muted)]" aria-hidden="true" />
+                </SelectTrigger>
                 <SelectContent>
                   {BUSINESS_TYPES.map((bt) => (
                     <SelectItem key={bt.value} value={bt.value}>{bt.label}</SelectItem>
                   ))}
                 </SelectContent>
               </Select>
+              <p className="text-[11px] text-[var(--fg-muted)]">
+                No se puede cambiar después de crear el negocio.
+              </p>
             </div>
           </div>
 
