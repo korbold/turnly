@@ -39,7 +39,6 @@ function buildFormFromSettings(settings: TenantSettings | undefined): Partial<Te
     paymentTiming: settings.paymentTiming,
     socialLinks: settings.socialLinks ?? { instagram: null, facebook: null, whatsapp: null, maps_url: null },
     logoUrl: settings.logoUrl,
-    coverUrl: settings.coverUrl,
   };
 }
 
@@ -49,9 +48,8 @@ export function GeneralTab() {
 
   const [form, setForm] = useState<Partial<TenantSettings>>({});
   const [baseline, setBaseline] = useState<Partial<TenantSettings>>({});
-  const [uploading, setUploading] = useState<'logo' | 'cover' | null>(null);
+  const [uploading, setUploading] = useState<'logo' | null>(null);
   const logoInputRef = useRef<HTMLInputElement>(null);
-  const coverInputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
     if (settings) {
@@ -70,17 +68,17 @@ export function GeneralTab() {
     setForm(baseline);
   }
 
-  async function uploadImage(file: File, folder: 'logos' | 'covers'): Promise<string> {
+  async function uploadImage(file: File): Promise<string> {
     const fd = new FormData();
     fd.append('file', file);
-    fd.append('folder', folder);
+    fd.append('folder', 'logos');
     const { data } = await api.post<{ data: { url: string } }>('/uploads', fd, {
       headers: { 'Content-Type': 'multipart/form-data' },
     });
     return data.data.url;
   }
 
-  async function handleFile(kind: 'logo' | 'cover', file: File | null) {
+  async function handleFile(kind: 'logo', file: File | null) {
     if (!file) return;
     if (file.size > 5 * 1024 * 1024) {
       toast.error('Imagen muy grande (máx 5MB)');
@@ -88,13 +86,11 @@ export function GeneralTab() {
     }
     setUploading(kind);
     try {
-      const folder = kind === 'logo' ? 'logos' : 'covers';
-      const url = await uploadImage(file, folder);
-      const key = kind === 'logo' ? 'logoUrl' : 'coverUrl';
-      setForm((prev) => ({ ...prev, [key]: url }));
-      setBaseline((prev) => ({ ...prev, [key]: url }));
-      await update.mutateAsync({ [key]: url });
-      toast.success(kind === 'logo' ? 'Logo actualizado' : 'Portada actualizada');
+      const url = await uploadImage(file);
+      setForm((prev) => ({ ...prev, logoUrl: url }));
+      setBaseline((prev) => ({ ...prev, logoUrl: url }));
+      await update.mutateAsync({ logoUrl: url });
+      toast.success('Logo actualizado');
     } catch {
       toast.error('Error al subir imagen');
     } finally {
@@ -102,12 +98,12 @@ export function GeneralTab() {
     }
   }
 
-  async function clearImage(kind: 'logo' | 'cover') {
-    const key = kind === 'logo' ? 'logoUrl' : 'coverUrl';
-    setForm((prev) => ({ ...prev, [key]: null }));
-    setBaseline((prev) => ({ ...prev, [key]: null }));
+  async function clearImage(kind: 'logo') {
+    void kind;
+    setForm((prev) => ({ ...prev, logoUrl: null }));
+    setBaseline((prev) => ({ ...prev, logoUrl: null }));
     try {
-      await update.mutateAsync({ [key]: null });
+      await update.mutateAsync({ logoUrl: null });
     } catch {
       toast.error('Error al eliminar imagen');
     }
@@ -162,87 +158,45 @@ export function GeneralTab() {
           <p className="text-xs text-[var(--fg-muted)]">Cómo se ve tu negocio en la página pública.</p>
         </CardHeader>
         <CardContent className="space-y-5">
-          <div className="grid grid-cols-2 gap-4">
-            <div>
-              <div className="flex items-baseline justify-between">
-                <Label>Logo</Label>
-                <span className="text-[11px] text-[var(--fg-muted)]">PNG · JPG · 5 MB</span>
-              </div>
-              <input
-                ref={logoInputRef}
-                type="file"
-                accept="image/png,image/jpeg,image/webp"
-                className="hidden"
-                onChange={(e) => handleFile('logo', e.target.files?.[0] ?? null)}
-              />
+          <div>
+            <div className="flex items-baseline justify-between">
+              <Label>Logo</Label>
+              <span className="text-[11px] text-[var(--fg-muted)]">PNG · JPG · 5 MB</span>
+            </div>
+            <input
+              ref={logoInputRef}
+              type="file"
+              accept="image/png,image/jpeg,image/webp"
+              className="hidden"
+              onChange={(e) => handleFile('logo', e.target.files?.[0] ?? null)}
+            />
+            <button
+              type="button"
+              onClick={() => logoInputRef.current?.click()}
+              aria-label="Subir logo"
+              className="group relative mt-1.5 flex h-28 w-full items-center justify-center overflow-hidden rounded-lg border border-dashed border-[var(--border-soft)] bg-[var(--niebla-clara,#F4F5F7)] transition-[border-color,background-color] duration-150 ease-out hover:border-[var(--brand-500)] hover:bg-[var(--brand-50)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[rgba(42,109,244,0.20)] focus-visible:ring-offset-1"
+            >
+              {form.logoUrl ? (
+                <img src={form.logoUrl} alt="Logo" className="h-full w-full object-contain p-2" />
+              ) : (
+                <Upload className="h-5 w-5 text-[var(--fg-muted)] transition-colors duration-150 group-hover:text-[var(--brand-500)]" aria-hidden="true" />
+              )}
+              {uploading === 'logo' && (
+                <span className="absolute inset-0 flex items-center justify-center bg-white/70 backdrop-blur-[1px]">
+                  <Loader2 className="h-5 w-5 animate-spin text-[var(--brand-500)]" aria-hidden="true" />
+                </span>
+              )}
+            </button>
+            {form.logoUrl && uploading !== 'logo' && (
               <button
                 type="button"
-                onClick={() => logoInputRef.current?.click()}
-                aria-label="Subir logo"
-                className="group relative mt-1.5 flex h-24 w-full items-center justify-center overflow-hidden rounded-lg border border-dashed border-[var(--border-soft)] bg-[var(--niebla-clara,#F4F5F7)] transition-[border-color,background-color] duration-150 ease-out hover:border-[var(--brand-500)] hover:bg-[var(--brand-50)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[rgba(42,109,244,0.20)] focus-visible:ring-offset-1"
+                onClick={() => clearImage('logo')}
+                className="mt-1.5 inline-flex items-center gap-1 text-[11.5px] text-[var(--fg-muted)] transition-colors duration-150 hover:text-[var(--danger-500)]"
               >
-                {form.logoUrl ? (
-                  <img src={form.logoUrl} alt="Logo" className="h-full w-full object-contain p-2" />
-                ) : (
-                  <Upload className="h-5 w-5 text-[var(--fg-muted)] transition-colors duration-150 group-hover:text-[var(--brand-500)]" aria-hidden="true" />
-                )}
-                {uploading === 'logo' && (
-                  <span className="absolute inset-0 flex items-center justify-center bg-white/70 backdrop-blur-[1px]">
-                    <Loader2 className="h-5 w-5 animate-spin text-[var(--brand-500)]" aria-hidden="true" />
-                  </span>
-                )}
+                <X className="h-3 w-3" aria-hidden="true" />
+                Quitar
               </button>
-              {form.logoUrl && uploading !== 'logo' && (
-                <button
-                  type="button"
-                  onClick={() => clearImage('logo')}
-                  className="mt-1.5 inline-flex items-center gap-1 text-[11.5px] text-[var(--fg-muted)] transition-colors duration-150 hover:text-[var(--danger-500)]"
-                >
-                  <X className="h-3 w-3" aria-hidden="true" />
-                  Quitar
-                </button>
-              )}
-            </div>
-            <div>
-              <div className="flex items-baseline justify-between">
-                <Label>Portada</Label>
-                <span className="text-[11px] text-[var(--fg-muted)]">PNG · JPG · 5 MB</span>
-              </div>
-              <input
-                ref={coverInputRef}
-                type="file"
-                accept="image/png,image/jpeg,image/webp"
-                className="hidden"
-                onChange={(e) => handleFile('cover', e.target.files?.[0] ?? null)}
-              />
-              <button
-                type="button"
-                onClick={() => coverInputRef.current?.click()}
-                aria-label="Subir portada"
-                className="group relative mt-1.5 flex h-24 w-full items-center justify-center overflow-hidden rounded-lg border border-dashed border-[var(--border-soft)] bg-[var(--niebla-clara,#F4F5F7)] transition-[border-color,background-color] duration-150 ease-out hover:border-[var(--brand-500)] hover:bg-[var(--brand-50)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[rgba(42,109,244,0.20)] focus-visible:ring-offset-1"
-              >
-                {form.coverUrl ? (
-                  <img src={form.coverUrl} alt="Portada" className="h-full w-full object-cover" />
-                ) : (
-                  <Upload className="h-5 w-5 text-[var(--fg-muted)] transition-colors duration-150 group-hover:text-[var(--brand-500)]" aria-hidden="true" />
-                )}
-                {uploading === 'cover' && (
-                  <span className="absolute inset-0 flex items-center justify-center bg-white/70 backdrop-blur-[1px]">
-                    <Loader2 className="h-5 w-5 animate-spin text-[var(--brand-500)]" aria-hidden="true" />
-                  </span>
-                )}
-              </button>
-              {form.coverUrl && uploading !== 'cover' && (
-                <button
-                  type="button"
-                  onClick={() => clearImage('cover')}
-                  className="mt-1.5 inline-flex items-center gap-1 text-[11.5px] text-[var(--fg-muted)] transition-colors duration-150 hover:text-[var(--danger-500)]"
-                >
-                  <X className="h-3 w-3" aria-hidden="true" />
-                  Quitar
-                </button>
-              )}
-            </div>
+            )}
           </div>
 
           <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
