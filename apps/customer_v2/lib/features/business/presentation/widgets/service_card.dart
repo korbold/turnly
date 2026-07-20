@@ -31,9 +31,12 @@ class ServiceCard extends StatelessWidget {
     final hasImage =
         service.imageUrl != null && service.imageUrl!.isNotEmpty;
 
+    final priceText = service.hasVariants
+        ? 'Desde ${priceFormat.format(service.displayPrice)}'
+        : priceFormat.format(service.price);
+
     return Container(
       margin: const EdgeInsets.only(bottom: 12),
-      padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
         color: AppColors.surface,
         borderRadius: BorderRadius.circular(16),
@@ -45,52 +48,49 @@ class ServiceCard extends StatelessWidget {
           ),
         ],
       ),
-      child: Row(
+      clipBehavior: Clip.antiAlias,
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-          // Service thumbnail (image or icon fallback)
-          Container(
-            width: 56,
-            height: 56,
-            decoration: BoxDecoration(
-              color: tenantTheme.secondary,
-              borderRadius: BorderRadius.circular(14),
-            ),
-            clipBehavior: Clip.antiAlias,
-            child: hasImage
-                ? CachedNetworkImage(
-                    imageUrl: service.imageUrl!,
-                    fit: BoxFit.cover,
-                    errorWidget: (_, __, ___) => Icon(
+          // Full-width banner image on top (only when the service has one)
+          if (hasImage)
+            AspectRatio(
+              aspectRatio: 16 / 9,
+              child: Container(
+                color: tenantTheme.secondary,
+                child: CachedNetworkImage(
+                  imageUrl: service.imageUrl!,
+                  fit: BoxFit.cover,
+                  errorWidget: (_, __, ___) => Center(
+                    child: Icon(
                       Icons.miscellaneous_services_rounded,
                       color: tenantTheme.primary,
-                      size: 22,
+                      size: 28,
                     ),
-                  )
-                : Icon(
-                    Icons.miscellaneous_services_rounded,
-                    color: tenantTheme.primary,
-                    size: 22,
                   ),
-          ),
-          const SizedBox(width: 14),
+                ),
+              ),
+            ),
 
-          // Info
-          Expanded(
+          // Body: name, description, price + duration, reserve button
+          Padding(
+            padding: const EdgeInsets.all(16),
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text(
                   service.name,
                   style: const TextStyle(
-                    fontSize: 13,
-                    fontWeight: FontWeight.w600,
+                    fontSize: 15,
+                    fontWeight: FontWeight.w700,
                     color: AppColors.textPrimary,
                   ),
                   maxLines: 2,
+                  overflow: TextOverflow.ellipsis,
                 ),
                 if (service.description != null &&
                     service.description!.isNotEmpty) ...[
-                  const SizedBox(height: 2),
+                  const SizedBox(height: 3),
                   Text(
                     service.description!,
                     style: const TextStyle(
@@ -101,15 +101,13 @@ class ServiceCard extends StatelessWidget {
                     overflow: TextOverflow.ellipsis,
                   ),
                 ],
-                const SizedBox(height: 6),
+                const SizedBox(height: 10),
                 Row(
                   children: [
                     Text(
-                      service.hasVariants
-                          ? 'Desde ${priceFormat.format(service.displayPrice)}'
-                          : priceFormat.format(service.price),
+                      priceText,
                       style: TextStyle(
-                        fontSize: 15,
+                        fontSize: 16,
                         fontWeight: FontWeight.w700,
                         color: tenantTheme.primary,
                       ),
@@ -128,34 +126,33 @@ class ServiceCard extends StatelessWidget {
                         color: AppColors.textTertiary,
                       ),
                     ),
+                    const Spacer(),
+                    SizedBox(
+                      height: 36,
+                      child: ElevatedButton(
+                        onPressed: onReserve,
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: tenantTheme.accent,
+                          foregroundColor: Colors.white,
+                          elevation: 0,
+                          padding:
+                              const EdgeInsets.symmetric(horizontal: 16),
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(20),
+                          ),
+                        ),
+                        child: const Text(
+                          'Reservar',
+                          style: TextStyle(
+                            fontSize: 13,
+                            fontWeight: FontWeight.w600,
+                          ),
+                        ),
+                      ),
+                    ),
                   ],
                 ),
               ],
-            ),
-          ),
-          const SizedBox(width: 10),
-
-          // Reserve button
-          SizedBox(
-            height: 36,
-            child: ElevatedButton(
-              onPressed: onReserve,
-              style: ElevatedButton.styleFrom(
-                backgroundColor: tenantTheme.accent,
-                foregroundColor: Colors.white,
-                elevation: 0,
-                padding: const EdgeInsets.symmetric(horizontal: 14),
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(20),
-                ),
-              ),
-              child: const Text(
-                'Reservar',
-                style: TextStyle(
-                  fontSize: 13,
-                  fontWeight: FontWeight.w600,
-                ),
-              ),
             ),
           ),
         ],

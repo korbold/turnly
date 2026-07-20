@@ -40,207 +40,142 @@ class HeroHeader extends StatelessWidget {
         _typeLabels[business.businessType] ?? business.businessType ?? '';
     final typeEmoji = _typeEmojis[business.businessType] ?? '🏪';
     final hasLogo = business.logoUrl != null && business.logoUrl!.isNotEmpty;
-    final hasCover = business.coverUrl != null && business.coverUrl!.isNotEmpty;
 
     return Container(
       width: double.infinity,
       decoration: BoxDecoration(
-        color: tenantTheme.secondary,
+        gradient: LinearGradient(
+          begin: Alignment.topCenter,
+          end: Alignment.bottomCenter,
+          colors: [
+            tenantTheme.primary.withValues(alpha: 0.06),
+            tenantTheme.secondary,
+          ],
+        ),
       ),
       child: SafeArea(
         bottom: false,
         child: Stack(
           children: [
-            if (hasCover)
-              Positioned.fill(
-                child: CachedNetworkImage(
-                  imageUrl: business.coverUrl!,
-                  fit: BoxFit.cover,
-                  errorWidget: (_, __, ___) => const SizedBox.shrink(),
-                ),
-              ),
-            if (hasCover)
-              Positioned.fill(
-                child: DecoratedBox(
-                  decoration: BoxDecoration(
-                    gradient: LinearGradient(
-                      begin: Alignment.topCenter,
-                      end: Alignment.bottomCenter,
-                      colors: [
-                        Colors.black.withValues(alpha: 0.10),
-                        Colors.black.withValues(alpha: 0.55),
-                      ],
-                    ),
-                  ),
-                ),
-              ),
-            // Decorative blobs (only when no cover)
-            if (!hasCover) ...[
-              Positioned(
-                right: -30,
-                top: 20,
-                child: Container(
-                  width: 120,
-                  height: 120,
-                  decoration: BoxDecoration(
-                    shape: BoxShape.circle,
-                    color: tenantTheme.primary.withValues(alpha: 0.08),
-                  ),
-                ),
-              ),
-              Positioned(
-                right: 40,
-                top: -20,
-                child: Container(
-                  width: 80,
-                  height: 80,
-                  decoration: BoxDecoration(
-                    shape: BoxShape.circle,
-                    color: tenantTheme.primary.withValues(alpha: 0.06),
-                  ),
-                ),
-              ),
-              Positioned(
-                left: -20,
-                bottom: 10,
-                child: Container(
-                  width: 60,
-                  height: 60,
-                  decoration: BoxDecoration(
-                    shape: BoxShape.circle,
-                    color: tenantTheme.primary.withValues(alpha: 0.05),
-                  ),
-                ),
-              ),
-            ],
-
-            // Logo or emoji decoration (right side)
+            // Subtle decorative blobs for depth
             Positioned(
-              right: 20,
-              bottom: 30,
-              child: hasLogo
-                  ? Container(
-                      width: 72,
-                      height: 72,
-                      decoration: BoxDecoration(
-                        color: Colors.white,
-                        borderRadius: BorderRadius.circular(18),
-                        boxShadow: [
-                          BoxShadow(
-                            color: Colors.black.withValues(alpha: 0.18),
-                            blurRadius: 14,
-                            offset: const Offset(0, 6),
-                          ),
-                        ],
-                      ),
-                      clipBehavior: Clip.antiAlias,
-                      child: CachedNetworkImage(
-                        imageUrl: business.logoUrl!,
-                        fit: BoxFit.cover,
-                        errorWidget: (_, __, ___) => Center(
-                          child: Text(
-                            typeEmoji,
-                            style: const TextStyle(fontSize: 40),
-                          ),
-                        ),
-                      ),
-                    ).animate().fadeIn(duration: 600.ms, delay: 200.ms).scale(
-                        begin: const Offset(0.5, 0.5),
-                        end: const Offset(1, 1),
-                        duration: 600.ms,
-                        delay: 200.ms,
-                        curve: Curves.elasticOut,
-                      )
-                  : Text(
-                      typeEmoji,
-                      style: const TextStyle(fontSize: 64),
-                    ).animate().fadeIn(duration: 600.ms, delay: 200.ms).scale(
-                          begin: const Offset(0.5, 0.5),
-                          end: const Offset(1, 1),
-                          duration: 600.ms,
-                          delay: 200.ms,
-                          curve: Curves.elasticOut,
-                        ),
+              right: -30,
+              top: 10,
+              child: _blob(120, tenantTheme.primary.withValues(alpha: 0.06)),
+            ),
+            Positioned(
+              left: -24,
+              bottom: 0,
+              child: _blob(70, tenantTheme.primary.withValues(alpha: 0.05)),
             ),
 
             Padding(
               padding: const EdgeInsets.fromLTRB(20, 8, 20, 24),
               child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
+                crossAxisAlignment: CrossAxisAlignment.stretch,
                 children: [
-                  // Back button
-                  Row(
-                    children: [
-                      GestureDetector(
-                        onTap: onBack ?? () => Navigator.of(context).pop(),
-                        child: Container(
-                          width: 40,
-                          height: 40,
-                          decoration: BoxDecoration(
-                            color: hasCover
-                                ? Colors.white.withValues(alpha: 0.92)
-                                : tenantTheme.primary.withValues(alpha: 0.1),
-                            borderRadius: BorderRadius.circular(12),
-                          ),
-                          child: Icon(
-                            Icons.arrow_back_ios_new_rounded,
-                            color: tenantTheme.primary,
-                            size: 18,
-                          ),
+                  // Back button (left-aligned)
+                  Align(
+                    alignment: Alignment.centerLeft,
+                    child: GestureDetector(
+                      onTap: onBack ?? () => Navigator.of(context).pop(),
+                      child: Container(
+                        width: 40,
+                        height: 40,
+                        decoration: BoxDecoration(
+                          color: tenantTheme.primary.withValues(alpha: 0.1),
+                          borderRadius: BorderRadius.circular(12),
+                        ),
+                        child: Icon(
+                          Icons.arrow_back_ios_new_rounded,
+                          color: tenantTheme.primary,
+                          size: 18,
                         ),
                       ),
-                    ],
+                    ),
                   ),
-                  const SizedBox(height: 24),
+                  const SizedBox(height: 8),
 
-                  // Business name
-                  SizedBox(
-                    width: MediaQuery.of(context).size.width * 0.6,
-                    child: Text(
-                      business.name,
-                      style: TextStyle(
-                        color: hasCover ? Colors.white : AppColors.textPrimary,
-                        fontSize: 24,
-                        fontWeight: FontWeight.w800,
-                        height: 1.2,
-                        shadows: hasCover
-                            ? [
-                                Shadow(
-                                  color: Colors.black.withValues(alpha: 0.45),
-                                  blurRadius: 8,
-                                  offset: const Offset(0, 2),
-                                ),
-                              ]
-                            : null,
+                  // Centered logo card (logo as cover)
+                  Center(
+                    child: Container(
+                      width: 96,
+                      height: 96,
+                      padding: const EdgeInsets.all(10),
+                      decoration: BoxDecoration(
+                        color: Colors.white,
+                        borderRadius: BorderRadius.circular(24),
+                        boxShadow: [
+                          BoxShadow(
+                            color: Colors.black.withValues(alpha: 0.12),
+                            blurRadius: 20,
+                            offset: const Offset(0, 8),
+                          ),
+                        ],
                       ),
-                    ).animate()
-                        .fadeIn(duration: 400.ms, delay: 100.ms)
-                        .slideX(begin: -0.03, end: 0),
+                      clipBehavior: Clip.antiAlias,
+                      child: hasLogo
+                          ? CachedNetworkImage(
+                              imageUrl: business.logoUrl!,
+                              fit: BoxFit.contain,
+                              errorWidget: (_, __, ___) => Center(
+                                child: Text(typeEmoji,
+                                    style: const TextStyle(fontSize: 44)),
+                              ),
+                            )
+                          : Center(
+                              child: Text(typeEmoji,
+                                  style: const TextStyle(fontSize: 44)),
+                            ),
+                    ).animate().fadeIn(duration: 600.ms, delay: 150.ms).scale(
+                          begin: const Offset(0.6, 0.6),
+                          end: const Offset(1, 1),
+                          duration: 600.ms,
+                          delay: 150.ms,
+                          curve: Curves.elasticOut,
+                        ),
                   ),
+                  const SizedBox(height: 14),
+
+                  // Business name (centered)
+                  Text(
+                    business.name,
+                    textAlign: TextAlign.center,
+                    style: const TextStyle(
+                      color: AppColors.textPrimary,
+                      fontSize: 24,
+                      fontWeight: FontWeight.w800,
+                      height: 1.2,
+                    ),
+                  ).animate().fadeIn(duration: 400.ms, delay: 100.ms),
                   const SizedBox(height: 10),
 
-                  // Type badge
+                  // Type badge (centered)
                   if (typeLabel.isNotEmpty)
-                    Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-                      decoration: BoxDecoration(
-                        color: tenantTheme.primary,
-                        borderRadius: BorderRadius.circular(20),
-                      ),
-                      child: Text(
-                        typeLabel,
-                        style: const TextStyle(
-                          color: Colors.white,
-                          fontSize: 12,
-                          fontWeight: FontWeight.w600,
+                    Center(
+                      child: Container(
+                        padding: const EdgeInsets.symmetric(
+                            horizontal: 12, vertical: 6),
+                        decoration: BoxDecoration(
+                          color: tenantTheme.primary,
+                          borderRadius: BorderRadius.circular(20),
                         ),
-                      ),
-                    ).animate().fadeIn(duration: 400.ms, delay: 200.ms),
+                        child: Text(
+                          typeLabel,
+                          style: const TextStyle(
+                            color: Colors.white,
+                            fontSize: 12,
+                            fontWeight: FontWeight.w600,
+                          ),
+                        ),
+                      ).animate().fadeIn(duration: 400.ms, delay: 200.ms),
+                    ),
 
                   const SizedBox(height: 16),
 
-                  // Stats row
+                  // Stats row (centered)
                   Wrap(
+                    alignment: WrapAlignment.center,
                     spacing: 8,
                     runSpacing: 8,
                     children: [
@@ -256,7 +191,8 @@ class HeroHeader extends StatelessWidget {
                         label: 'min',
                         color: tenantTheme.primary,
                       ),
-                      if (business.address != null && business.address!.isNotEmpty)
+                      if (business.address != null &&
+                          business.address!.isNotEmpty)
                         _StatChip(
                           icon: Icons.location_on_outlined,
                           value: '',
@@ -275,6 +211,12 @@ class HeroHeader extends StatelessWidget {
       ),
     );
   }
+
+  Widget _blob(double size, Color color) => Container(
+        width: size,
+        height: size,
+        decoration: BoxDecoration(shape: BoxShape.circle, color: color),
+      );
 }
 
 class _StatChip extends StatelessWidget {
