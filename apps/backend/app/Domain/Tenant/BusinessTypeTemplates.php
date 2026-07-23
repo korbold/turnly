@@ -23,9 +23,22 @@ class BusinessTypeTemplates
      *   - locked:     bool — if true, options are add-only; field cannot be dropped.
      *                  Always true when affects_variant === true.
      */
+    /**
+     * Client identity fields prepended to every non-vehicle business type.
+     * Optional and editable (not affects_variant/locked) so tenants can drop
+     * them; car_wash is excluded because the plate already identifies the client.
+     */
+    private static function baseFields(): array
+    {
+        return [
+            ['key' => 'nombre', 'label' => 'Nombre', 'type' => 'text', 'required' => false, 'options' => null, 'capitalize' => 'capitalize'],
+            ['key' => 'telefono', 'label' => 'Teléfono', 'type' => 'text', 'required' => false, 'options' => null],
+        ];
+    }
+
     public static function getCustomFields(string $type): array
     {
-        return match ($type) {
+        $fields = match ($type) {
             'car_wash' => [
                 ['key' => 'plate', 'label' => 'Placa', 'type' => 'text', 'required' => true, 'options' => null, 'capitalize' => 'uppercase'],
                 ['key' => 'brand', 'label' => 'Marca', 'type' => 'text', 'required' => false, 'options' => null, 'capitalize' => 'capitalize'],
@@ -81,6 +94,10 @@ class BusinessTypeTemplates
             ],
             default => [],
         };
+
+        return $type === 'car_wash'
+            ? $fields
+            : [...self::baseFields(), ...$fields];
     }
 
     public static function getSuggestedServices(string $type): array
