@@ -43,3 +43,33 @@ test('gym template stays flat and unrelated to variants', function () {
         expect($field['affects_variant'] ?? false)->toBeFalse();
     }
 });
+
+test('non-vehicle types get nombre + telefono base fields, editable and optional', function () {
+    foreach (['barbershop', 'spa', 'medical', 'gym', 'other'] as $type) {
+        $byKey = collect(BusinessTypeTemplates::getCustomFields($type))->keyBy('key')->all();
+
+        expect($byKey)->toHaveKey('nombre');
+        expect($byKey)->toHaveKey('telefono');
+
+        foreach (['nombre', 'telefono'] as $key) {
+            expect($byKey[$key]['type'])->toBe('text');
+            expect($byKey[$key]['required'])->toBeFalse();
+            expect($byKey[$key]['affects_variant'] ?? false)->toBeFalse();
+            expect($byKey[$key]['locked'] ?? false)->toBeFalse();
+        }
+
+        expect($byKey['nombre']['capitalize'])->toBe('capitalize');
+    }
+});
+
+test('base fields lead the field list so they render first', function () {
+    $fields = BusinessTypeTemplates::getCustomFields('barbershop');
+    expect($fields[0]['key'])->toBe('nombre');
+    expect($fields[1]['key'])->toBe('telefono');
+});
+
+test('car_wash is excluded from base fields (plate identifies the client)', function () {
+    $byKey = collect(BusinessTypeTemplates::getCustomFields('car_wash'))->keyBy('key')->all();
+    expect($byKey)->not->toHaveKey('nombre');
+    expect($byKey)->not->toHaveKey('telefono');
+});
