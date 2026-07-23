@@ -246,12 +246,19 @@ class ClientResourceController extends Controller
         }
 
         foreach ($customFields as $field) {
+            $key   = $field['key'] ?? '';
             $label = strtolower($field['label'] ?? '');
-            if (str_contains($label, 'nombre') && str_contains($label, 'cliente')) {
-                $key = $field['key'] ?? '';
-                if (!empty($data[$key])) {
-                    return $data[$key];
-                }
+
+            // The seeded base field uses key `nombre`; legacy tenants may
+            // instead have labelled a field "Nombre del cliente". Match
+            // either so the walk-in resolves to a real client user (and
+            // isn't saved under the admin's own staff id, which the browse
+            // filter then hides).
+            $isNameField = $key === 'nombre'
+                || (str_contains($label, 'nombre') && str_contains($label, 'cliente'));
+
+            if ($isNameField && !empty($data[$key])) {
+                return $data[$key];
             }
         }
 

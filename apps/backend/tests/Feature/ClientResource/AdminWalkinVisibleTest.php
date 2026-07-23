@@ -1,0 +1,50 @@
+<?php
+
+use App\Infrastructure\Persistence\Models\TenantModel;
+use App\Infrastructure\Persistence\Models\TenantUserModel;
+use App\Infrastructure\Persistence\Models\UserModel;
+
+beforeEach(function () {
+    $this->tenant = TenantModel::factory()->create([
+        'status' => 'active',
+        'business_type' => 'barbershop',
+        'custom_fields' => [
+            ['key' => 'nombre', 'label' => 'Nombre', 'type' => 'text', 'required' => false, 'options' => null, 'capitalize' => 'capitalize'],
+            ['key' => 'telefono', 'label' => 'Teléfono', 'type' => 'text', 'required' => false, 'options' => null],
+        ],
+    ]);
+
+    // The logged-in cashier is the tenant owner (staff role).
+    $this->owner = UserModel::factory()->create();
+    TenantUserModel::create([
+        'tenant_id' => $this->tenant->id,
+        'user_id' => $this->owner->id,
+        'role' => 'owner',
+        'is_active' => true,
+    ]);
+
+    app()->instance('current_tenant', $this->tenant);
+    app()->instance('current_tenant_id', $this->tenant->id);
+});
+
+// Regression: an admin registering a walk-in via "Nuevo cliente" (name in the
+// `nombre` custom field, no client_id) had the resource saved with the admin's
+// OWN staff user id, then the browse staff-exclusion filter hid it — the POST
+// succeeded (toast) but the client never appeared in the list.
+test('admin-created walk-in appears in the browse clients list', function () {
+    $create = $this->actingAs($this->owner)
+        ->withHeader('X-Tenant', $this->tenant->slug)
+        ->postJson('/api/v1/client-resources', [
+            'data' => ['nombre' => 'Juan Pérez', 'telefono' => '0999280376'],
+        ]);
+
+    $create->assertStatus(201);
+
+    $list = $this->actingAs($this->owner)
+        ->withHeader('X-Tenant', $this->tenant->slug)
+        ->getJson('/api/v1/client-resources?all=1');
+
+    $list->assertOk()
+        ->assertJsonCount(1, 'data')
+        ->assertJsonPath('data.0.client.name', 'Juan Pérez');
+});
