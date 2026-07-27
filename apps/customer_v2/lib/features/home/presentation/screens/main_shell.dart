@@ -1,9 +1,9 @@
 // lib/features/home/presentation/screens/main_shell.dart
-import 'dart:ui';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:go_router/go_router.dart';
 import '../../../../app/theme/app_colors.dart';
+import '../../../../shared/widgets/glass_surface.dart';
 import '../../../reservations/presentation/cubit/reservations_cubit.dart';
 import '../../../reservations/presentation/cubit/reservations_state.dart';
 
@@ -50,17 +50,14 @@ class MainShell extends StatelessWidget {
                 ),
               ],
             ),
-            child: ClipRRect(
-              borderRadius: BorderRadius.circular(28),
-              child: BackdropFilter(
-                filter: ImageFilter.blur(sigmaX: 18, sigmaY: 18),
-                child: Container(
-                  decoration: BoxDecoration(
-                    color: AppColors.surface.withValues(alpha: 0.9),
-                    borderRadius: BorderRadius.circular(28),
-                    border: Border.all(color: AppColors.border, width: 1),
-                  ),
-                  child: SizedBox(
+            child: GlassSurface(
+              radius: 28,
+              blur: 20,
+              tint: AppColors.surface,
+              tintOpacity: 0.72,
+              borderOpacity: 0.5,
+              highlight: false,
+              child: SizedBox(
                     height: 64,
                     child: Row(
                       children: [
@@ -92,8 +89,6 @@ class MainShell extends StatelessWidget {
                       ],
                     ),
                   ),
-                ),
-              ),
             ),
           ),
         ),
