@@ -419,7 +419,7 @@
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 			shellPath = /bin/sh;
-			shellScript = "\"${BUILD_DIR%/Build/*}/SourcePackages/checkouts/firebase-ios-sdk/Crashlytics/run\"\n";
+			shellScript = "SPM_RUN=\"${BUILD_DIR%/Build/*}/SourcePackages/checkouts/firebase-ios-sdk/Crashlytics/run\"\nPODS_RUN=\"${PODS_ROOT}/FirebaseCrashlytics/run\"\nif [ -f \"$SPM_RUN\" ]; then\n  \"$SPM_RUN\"\nelif [ -f \"$PODS_RUN\" ]; then\n  \"$PODS_RUN\"\nelse\n  echo \"warning: Crashlytics run script not found (SPM or Pods); skipping dSYM upload\"\nfi\n";
 			showEnvVarsInLog = 0;
 		};
 		CA9193FB49B4A63D8722EAED /* [CP] Embed Pods Frameworks */ = {
