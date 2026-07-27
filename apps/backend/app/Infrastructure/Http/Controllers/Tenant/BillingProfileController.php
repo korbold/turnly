@@ -47,9 +47,38 @@ class BillingProfileController extends Controller
             'billing_verified_at' => $verifiedAt,
         ]);
 
+        $this->syncEmisorToBilling($tenant->fresh());
+
         return response()->json([
             'data' => $this->serialize($tenant->fresh()),
         ]);
+    }
+
+    /**
+     * Push emisor identity changes to the billing service so edits made via
+     * "Guardar datos" reach the invoices without re-uploading the .p12.
+     * A 404 (no cert uploaded yet) is expected and ignored — uploadCert carries
+     * these values on first setup. Never blocks the profile save.
+     */
+    private function syncEmisorToBilling(TenantModel $tenant): void
+    {
+        if (empty($tenant->legal_name) || empty($tenant->billing_address)) {
+            return;
+        }
+
+        $billingUrl = rtrim((string) config('services.billing.url'), '/');
+
+        try {
+            Http::timeout(10)->put(
+                "{$billingUrl}/api/tenant-billing-configs/{$tenant->id}/emisor",
+                [
+                    'razon_social' => $tenant->legal_name,
+                    'dir_matriz'   => $tenant->billing_address,
+                ]
+            );
+        } catch (\Throwable) {
+            // Billing service unreachable — don't fail the profile save.
+        }
     }
 
     public function lookup(Request $request): JsonResponse
