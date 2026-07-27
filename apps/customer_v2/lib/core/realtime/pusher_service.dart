@@ -1,4 +1,6 @@
 // lib/core/realtime/pusher_service.dart
+import 'dart:async';
+
 import 'package:dio/dio.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter_dotenv/flutter_dotenv.dart';
@@ -20,6 +22,14 @@ class PusherService {
   bool _started = false;
   String? _currentUserId;
   ReservationUpdatedCallback? _onReservationUpdated;
+
+  final StreamController<Map<String, dynamic>> _reservationUpdatesController =
+      StreamController<Map<String, dynamic>>.broadcast();
+
+  /// Fires the full payload of every `reservation.updated` event. Multiple
+  /// widgets can listen (e.g. the reservations list AND an open detail screen).
+  Stream<Map<String, dynamic>> get reservationUpdates =>
+      _reservationUpdatesController.stream;
 
   Future<void> start({
     required String userId,
@@ -88,12 +98,17 @@ class PusherService {
         onEvent: (event) {
           if (event.eventName == 'reservation.updated') {
             final data = event.data;
+            Map<String, dynamic> payload;
             if (data is Map<String, dynamic>) {
-              _onReservationUpdated?.call(data);
+              payload = data;
             } else if (data is String) {
-              _onReservationUpdated?.call({'raw': data});
+              payload = {'raw': data};
             } else {
-              _onReservationUpdated?.call(<String, dynamic>{});
+              payload = <String, dynamic>{};
+            }
+            _onReservationUpdated?.call(payload);
+            if (!_reservationUpdatesController.isClosed) {
+              _reservationUpdatesController.add(payload);
             }
           }
         },
