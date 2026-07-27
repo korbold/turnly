@@ -4,15 +4,19 @@ use App\Events\InvoiceStatusUpdated;
 use App\Infrastructure\Billing\BillingServiceClient;
 use App\Infrastructure\Jobs\EmitReservationInvoiceJob;
 use App\Infrastructure\Jobs\SyncReservationInvoiceStatusJob;
+use App\Infrastructure\Notifications\Notifications\InvoiceAuthorized;
+use App\Infrastructure\Notifications\Notifications\InvoiceRejected;
 use App\Infrastructure\Persistence\Models\ClientResourceModel;
 use App\Infrastructure\Persistence\Models\ReservationModel;
 use App\Infrastructure\Persistence\Models\ServiceModel;
 use App\Infrastructure\Persistence\Models\TenantModel;
+use App\Infrastructure\Persistence\Models\TenantUserModel;
 use App\Infrastructure\Persistence\Models\UserModel;
 use Illuminate\Broadcasting\PrivateChannel;
 use Illuminate\Support\Facades\Event;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Mail;
+use Illuminate\Support\Facades\Notification;
 
 beforeEach(function () {
     Mail::fake();
@@ -121,4 +125,46 @@ test('sync job broadcasts InvoiceStatusUpdated on rechazada', function () {
 
     Event::assertDispatched(InvoiceStatusUpdated::class, fn ($e) =>
         $e->referenceId === (string) $reservation->id && $e->status === 'rechazada');
+});
+
+test('sync job notifies tenant admins on autorizada', function () {
+    Notification::fake();
+    $admin = UserModel::factory()->create();
+    TenantUserModel::create([
+        'id'        => (string) \Illuminate\Support\Str::uuid(),
+        'tenant_id' => $this->tenant->id,
+        'user_id'   => $admin->id,
+        'role'      => 'owner',
+        'is_active' => true,
+    ]);
+    $reservation = realtimeReservation($this);
+
+    Http::fake(['*/api/invoices/res-ext-1' => Http::response([
+        'data' => ['id' => 'res-ext-1', 'estado' => 'autorizada', 'numero_autorizacion' => 'AUTH-9'],
+    ], 200)]);
+
+    (new SyncReservationInvoiceStatusJob($reservation->id))->handle(new BillingServiceClient());
+
+    Notification::assertSentTo($admin, InvoiceAuthorized::class);
+});
+
+test('sync job notifies tenant admins on rechazada', function () {
+    Notification::fake();
+    $admin = UserModel::factory()->create();
+    TenantUserModel::create([
+        'id'        => (string) \Illuminate\Support\Str::uuid(),
+        'tenant_id' => $this->tenant->id,
+        'user_id'   => $admin->id,
+        'role'      => 'owner',
+        'is_active' => true,
+    ]);
+    $reservation = realtimeReservation($this);
+
+    Http::fake(['*/api/invoices/res-ext-1' => Http::response([
+        'data' => ['id' => 'res-ext-1', 'estado' => 'rechazada', 'mensajes' => [['mensaje' => 'RUC inválido']]],
+    ], 200)]);
+
+    (new SyncReservationInvoiceStatusJob($reservation->id))->handle(new BillingServiceClient());
+
+    Notification::assertSentTo($admin, InvoiceRejected::class);
 });
