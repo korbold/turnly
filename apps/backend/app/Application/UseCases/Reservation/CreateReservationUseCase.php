@@ -9,6 +9,7 @@ use App\Domain\Reservation\Entities\Reservation;
 use App\Domain\Reservation\Enums\ReservationStatus;
 use App\Domain\Reservation\Exceptions\OutsideBusinessHoursException;
 use App\Domain\Reservation\Exceptions\ReservationConflictException;
+use App\Events\ReservationUpdated;
 use App\Infrastructure\Persistence\Models\AvailabilitySlotModel;
 use App\Infrastructure\Notifications\Notifications\NewReservationForAdmin;
 use App\Infrastructure\Persistence\Models\ReservationModel;
@@ -102,6 +103,8 @@ class CreateReservationUseCase
                 if ($admins && $admins->isNotEmpty()) {
                     Notification::send($admins, new NewReservationForAdmin($model));
                 }
+
+                ReservationUpdated::dispatch($model);
             }
         } catch (\Throwable $e) {
             Log::error('Failed to send new reservation notification', ['error' => $e->getMessage()]);

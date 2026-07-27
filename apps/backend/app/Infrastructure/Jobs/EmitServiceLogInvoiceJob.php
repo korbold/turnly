@@ -4,8 +4,10 @@ declare(strict_types=1);
 
 namespace App\Infrastructure\Jobs;
 
+use App\Events\InvoiceStatusUpdated;
 use App\Infrastructure\Billing\BillingServiceClient;
 use App\Infrastructure\Mail\InvoiceMail;
+use App\Infrastructure\Notifications\Notifications\InvoiceAuthorized;
 use App\Infrastructure\Persistence\Models\ClientResourceModel;
 use App\Infrastructure\Persistence\Models\ServiceLogModel;
 use App\Infrastructure\Persistence\Models\TenantModel;
@@ -15,7 +17,9 @@ use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Foundation\Bus\Dispatchable;
 use Illuminate\Queue\InteractsWithQueue;
 use Illuminate\Queue\SerializesModels;
+use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Mail;
+use Illuminate\Support\Facades\Notification;
 use Throwable;
 
 class EmitServiceLogInvoiceJob implements ShouldQueue
@@ -65,6 +69,8 @@ class EmitServiceLogInvoiceJob implements ShouldQueue
                 'invoiced_at'                 => now(),
             ]);
 
+            $this->broadcast($log);
+
             if (($result['estado'] ?? '') === 'autorizada') {
                 $email = $log->clientResource?->client?->email;
                 if ($email && !empty($result['id'])) {
@@ -75,6 +81,14 @@ class EmitServiceLogInvoiceJob implements ShouldQueue
                         issuedAt:          now()->format('d/m/Y'),
                     ));
                 }
+
+                $this->notifyAdmins($log->tenant_id, new InvoiceAuthorized(
+                    (string) $log->tenant_id,
+                    $this->tenantName($log->tenant_id),
+                    'invoice',
+                    (string) $log->id,
+                    (string) ($result['numero_autorizacion'] ?? ''),
+                ));
             } elseif (!empty($result['id'])) {
                 // SRI authorization is async — poll until authorized, then email.
                 SyncServiceLogInvoiceStatusJob::dispatch($log->id)
@@ -87,6 +101,44 @@ class EmitServiceLogInvoiceJob implements ShouldQueue
             ]);
             throw $e;
         }
+    }
+
+    private function broadcast(ServiceLogModel $log): void
+    {
+        try {
+            InvoiceStatusUpdated::dispatch(
+                (string) $log->tenant_id,
+                'service_log',
+                (string) $log->id,
+                $log->invoice_external_id,
+                (string) $log->invoice_status,
+                $log->invoice_numero_autorizacion,
+                $log->invoice_clave_acceso,
+            );
+        } catch (Throwable $e) {
+            Log::warning('InvoiceStatusUpdated broadcast failed', ['error' => $e->getMessage()]);
+        }
+    }
+
+    private function notifyAdmins(string $tenantId, \Illuminate\Notifications\Notification $notification): void
+    {
+        try {
+            $admins = TenantModel::find($tenantId)?->users()
+                ->wherePivotIn('role', ['owner', 'tenant_admin', 'cashier'])
+                ->wherePivot('is_active', true)
+                ->get();
+
+            if ($admins && $admins->isNotEmpty()) {
+                Notification::send($admins, $notification);
+            }
+        } catch (\Throwable $e) {
+            Log::warning('Invoice admin notification failed', ['error' => $e->getMessage()]);
+        }
+    }
+
+    private function tenantName(string $tenantId): string
+    {
+        return (string) (TenantModel::find($tenantId)?->name ?? '');
     }
 
     private function resolveBillingProfile(?ClientResourceModel $clientResource): array

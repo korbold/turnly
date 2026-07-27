@@ -1,8 +1,12 @@
 // lib/features/reservations/presentation/screens/reservation_detail_screen.dart
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:flutter_animate/flutter_animate.dart';
 import 'package:go_router/go_router.dart';
 import 'package:intl/intl.dart';
+
+import '../../../../core/realtime/pusher_service.dart';
 
 import '../../../../app/theme/app_colors.dart';
 import '../../../../core/di/injection.dart';
@@ -32,11 +36,24 @@ class _ReservationDetailScreenState extends State<ReservationDetailScreen> {
   bool _loading = true;
   bool _cancelling = false;
   bool _rescheduling = false;
+  StreamSubscription<Map<String, dynamic>>? _updatesSub;
 
   @override
   void initState() {
     super.initState();
     _loadReservation();
+    _updatesSub = PusherService.instance.reservationUpdates.listen((payload) {
+      final id = payload['id']?.toString();
+      if (id == widget.reservationId && mounted) {
+        _loadReservation();
+      }
+    });
+  }
+
+  @override
+  void dispose() {
+    _updatesSub?.cancel();
+    super.dispose();
   }
 
   Future<void> _loadReservation() async {

@@ -13,11 +13,20 @@ interface ReservationUpdatedPayload {
   scheduledAt: string | null;
 }
 
+interface InvoiceStatusUpdatedPayload {
+  referenceType: 'reservation' | 'service_log';
+  referenceId: string;
+  invoiceExternalId: string | null;
+  status: string;
+  numeroAutorizacion: string | null;
+  claveAcceso: string | null;
+}
+
 /**
  * Subscribes the current staff session to `private-tenant.{id}` and
  * invalidates the reservation list + the specific reservation detail
- * whenever the backend broadcasts `reservation.updated`. Mount once at
- * an app shell level — repeat mounts share the same Echo instance.
+ * whenever the backend broadcasts `reservation.updated` and `invoice.status.updated`.
+ * Mount once at an app shell level — repeat mounts share the same Echo instance.
  */
 export function useReservationsRealtime() {
   const queryClient = useQueryClient();
@@ -36,6 +45,15 @@ export function useReservationsRealtime() {
         queryClient.invalidateQueries({ queryKey: ['reservation', payload.id] });
         queryClient.invalidateQueries({ queryKey: ['reservation-items', payload.id] });
         queryClient.invalidateQueries({ queryKey: ['reservation-changes', payload.id] });
+      }
+    });
+
+    channel.listen('.invoice.status.updated', (payload: InvoiceStatusUpdatedPayload) => {
+      queryClient.invalidateQueries({ queryKey: ['invoices'] });
+      queryClient.invalidateQueries({ queryKey: ['service-logs'] });
+      queryClient.invalidateQueries({ queryKey: ['reservations'] });
+      if (payload?.referenceType === 'reservation' && payload.referenceId) {
+        queryClient.invalidateQueries({ queryKey: ['reservation', payload.referenceId] });
       }
     });
 

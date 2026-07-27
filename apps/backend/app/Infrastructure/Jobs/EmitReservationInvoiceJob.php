@@ -4,8 +4,10 @@ declare(strict_types=1);
 
 namespace App\Infrastructure\Jobs;
 
+use App\Events\InvoiceStatusUpdated;
 use App\Infrastructure\Billing\BillingServiceClient;
 use App\Infrastructure\Mail\InvoiceMail;
+use App\Infrastructure\Notifications\Notifications\InvoiceAuthorized;
 use App\Infrastructure\Persistence\Models\ReservationModel;
 use App\Infrastructure\Persistence\Models\TenantModel;
 use Illuminate\Bus\Queueable;
@@ -13,7 +15,9 @@ use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Foundation\Bus\Dispatchable;
 use Illuminate\Queue\InteractsWithQueue;
 use Illuminate\Queue\SerializesModels;
+use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Mail;
+use Illuminate\Support\Facades\Notification;
 use Throwable;
 
 class EmitReservationInvoiceJob implements ShouldQueue
@@ -61,6 +65,8 @@ class EmitReservationInvoiceJob implements ShouldQueue
                 'invoiced_at'                 => now(),
             ]);
 
+            $this->broadcast($reservation);
+
             if (($result['estado'] ?? '') === 'autorizada') {
                 $email = $reservation->client?->email;
                 if ($email && !empty($result['id'])) {
@@ -71,6 +77,14 @@ class EmitReservationInvoiceJob implements ShouldQueue
                         issuedAt:          now()->format('d/m/Y'),
                     ));
                 }
+
+                $this->notifyAdmins($reservation->tenant_id, new InvoiceAuthorized(
+                    (string) $reservation->tenant_id,
+                    $this->tenantName($reservation->tenant_id),
+                    'reservation_detail',
+                    (string) $reservation->id,
+                    (string) ($result['numero_autorizacion'] ?? ''),
+                ));
             } elseif (!empty($result['id'])) {
                 // SRI authorization is async — poll the billing service until the
                 // invoice is authorized (or rejected) and then email the client.
@@ -84,6 +98,44 @@ class EmitReservationInvoiceJob implements ShouldQueue
             ]);
             throw $e;
         }
+    }
+
+    private function broadcast(ReservationModel $reservation): void
+    {
+        try {
+            InvoiceStatusUpdated::dispatch(
+                (string) $reservation->tenant_id,
+                'reservation',
+                (string) $reservation->id,
+                $reservation->invoice_external_id,
+                (string) $reservation->invoice_status,
+                $reservation->invoice_numero_autorizacion,
+                $reservation->invoice_clave_acceso,
+            );
+        } catch (Throwable $e) {
+            Log::warning('InvoiceStatusUpdated broadcast failed', ['error' => $e->getMessage()]);
+        }
+    }
+
+    private function notifyAdmins(string $tenantId, \Illuminate\Notifications\Notification $notification): void
+    {
+        try {
+            $admins = TenantModel::find($tenantId)?->users()
+                ->wherePivotIn('role', ['owner', 'tenant_admin', 'cashier'])
+                ->wherePivot('is_active', true)
+                ->get();
+
+            if ($admins && $admins->isNotEmpty()) {
+                Notification::send($admins, $notification);
+            }
+        } catch (\Throwable $e) {
+            Log::warning('Invoice admin notification failed', ['error' => $e->getMessage()]);
+        }
+    }
+
+    private function tenantName(string $tenantId): string
+    {
+        return (string) (TenantModel::find($tenantId)?->name ?? '');
     }
 
     private function resolveBillingProfile(?array $snapshot): array
