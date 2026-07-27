@@ -1,20 +1,17 @@
 export type InvoiceStatus = 'pendiente' | 'enviada' | 'autorizada' | 'rechazada';
 
 export interface Invoice {
+  /** Billing-service invoice id — used for RIDE (PDF) and XML downloads. */
   id: string;
-  serviceLogId: string;
-  externalId: string;
+  secuencial: string | null;
   claveAcceso: string | null;
   numeroAutorizacion: string | null;
   invoiceStatus: InvoiceStatus;
-  invoiceError: string | null;
-  logDate: string;
-  invoicedAt: Date | null;
-  priceCharged: number;
-  paymentMethod: string | null;
-  clientName: string | null;
-  clientPlate: string | null;
-  serviceName: string | null;
+  fechaEmision: string | null;
+  fechaAutorizacion: string | null;
+  importeTotal: number;
+  razonSocialComprador: string | null;
+  identificacionComprador: string | null;
 }
 
 export interface InvoiceFilters {

@@ -204,6 +204,7 @@ Route::prefix('v1')->group(function () {
             // Billing: proxy direct access to billing service invoice list + RIDE PDF.
             Route::get('billing/invoices', [InvoiceProxyController::class, 'index']);
             Route::get('billing/invoices/{id}/ride', [InvoiceProxyController::class, 'ride']);
+            Route::get('billing/invoices/{id}/xml', [InvoiceProxyController::class, 'xml']);
 
             // NOTE: client-resources routes moved to the customer booking group
             // above (no email gate) — they back the public booking screen.

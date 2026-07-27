@@ -13,7 +13,7 @@ export class ApiInvoiceRepository implements InvoiceRepository {
     if (filters.status) params.status = filters.status;
     if (filters.page) params.page = filters.page;
 
-    const { data: res } = await api.get('/invoices', { params });
+    const { data: res } = await api.get('/billing/invoices', { params });
     return mapPaginatedResponse(res, mapInvoice);
   }
 
