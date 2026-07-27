@@ -45,9 +45,9 @@ function FacturasContent() {
     };
   }
 
-  async function handleDownloadXml(serviceLogId: string) {
+  async function handleDownloadXml(invoiceId: string) {
     const apiUrl = process.env.NEXT_PUBLIC_API_URL ?? 'http://localhost:8000/api/v1';
-    const res = await fetch(`${apiUrl}/service-logs/${serviceLogId}/invoice/xml`, {
+    const res = await fetch(`${apiUrl}/billing/invoices/${invoiceId}/xml`, {
       headers: getAuthHeaders(),
     });
     if (!res.ok) { toast.error('No se pudo descargar el XML'); return; }
@@ -55,14 +55,14 @@ function FacturasContent() {
     const url = URL.createObjectURL(blob);
     const a = document.createElement('a');
     a.href = url;
-    a.download = `factura-${serviceLogId}.xml`;
+    a.download = `factura-${invoiceId}.xml`;
     a.click();
     URL.revokeObjectURL(url);
   }
 
-  async function handleOpenRide(externalId: string) {
+  async function handleOpenRide(invoiceId: string) {
     const apiUrl = process.env.NEXT_PUBLIC_API_URL ?? 'http://localhost:8000/api/v1';
-    const res = await fetch(`${apiUrl}/billing/invoices/${externalId}/ride`, {
+    const res = await fetch(`${apiUrl}/billing/invoices/${invoiceId}/ride`, {
       headers: getAuthHeaders(),
     });
     if (!res.ok) { toast.error('No se pudo obtener el PDF'); return; }
@@ -161,8 +161,8 @@ function FacturasContent() {
             <thead>
               <tr className="border-b bg-muted/50">
                 <th className="px-3 py-2 text-left font-medium">Fecha</th>
-                <th className="px-3 py-2 text-left font-medium">Cliente</th>
-                <th className="px-3 py-2 text-left font-medium">Servicio</th>
+                <th className="px-3 py-2 text-left font-medium">N°</th>
+                <th className="px-3 py-2 text-left font-medium">Comprador</th>
                 <th className="px-3 py-2 text-right font-medium">Total</th>
                 <th className="px-3 py-2 text-left font-medium">Estado</th>
                 <th className="px-3 py-2 text-left font-medium">Clave acceso</th>
@@ -172,15 +172,15 @@ function FacturasContent() {
             <tbody>
               {invoices.map((inv) => (
                 <tr key={inv.id} className="border-b last:border-0 hover:bg-muted/30">
-                  <td className="px-3 py-2 whitespace-nowrap">{inv.logDate}</td>
+                  <td className="px-3 py-2 whitespace-nowrap">{inv.fechaEmision ?? '—'}</td>
+                  <td className="px-3 py-2 font-mono text-xs whitespace-nowrap">{inv.secuencial ?? '—'}</td>
                   <td className="px-3 py-2">
-                    <div className="font-medium">{inv.clientName ?? '—'}</div>
-                    {inv.clientPlate && (
-                      <div className="text-xs text-muted-foreground">{inv.clientPlate}</div>
+                    <div className="font-medium">{inv.razonSocialComprador ?? '—'}</div>
+                    {inv.identificacionComprador && (
+                      <div className="text-xs text-muted-foreground">{inv.identificacionComprador}</div>
                     )}
                   </td>
-                  <td className="px-3 py-2">{inv.serviceName ?? '—'}</td>
-                  <td className="px-3 py-2 text-right tabular-nums">{fmtCurrency.format(inv.priceCharged)}</td>
+                  <td className="px-3 py-2 text-right tabular-nums">{fmtCurrency.format(inv.importeTotal)}</td>
                   <td className="px-3 py-2">
                     <InvoiceStatusBadge status={inv.invoiceStatus} />
                   </td>
@@ -195,21 +195,19 @@ function FacturasContent() {
                           size="icon"
                           className="h-7 w-7"
                           title="Descargar XML"
-                          onClick={() => handleDownloadXml(inv.serviceLogId)}
+                          onClick={() => handleDownloadXml(inv.id)}
                         >
                           <Download className="h-4 w-4" />
                         </Button>
-                        {inv.externalId && (
-                          <Button
-                            variant="ghost"
-                            size="icon"
-                            className="h-7 w-7"
-                            title="Ver PDF (RIDE)"
-                            onClick={() => handleOpenRide(inv.externalId)}
-                          >
-                            <FileText className="h-4 w-4" />
-                          </Button>
-                        )}
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          className="h-7 w-7"
+                          title="Ver PDF (RIDE)"
+                          onClick={() => handleOpenRide(inv.id)}
+                        >
+                          <FileText className="h-4 w-4" />
+                        </Button>
                       </div>
                     ) : (
                       <span className="text-muted-foreground">—</span>

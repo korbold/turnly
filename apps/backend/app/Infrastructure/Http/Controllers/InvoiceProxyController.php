@@ -40,4 +40,14 @@ class InvoiceProxyController extends Controller
             'Content-Disposition' => "inline; filename=\"factura-{$id}.pdf\"",
         ]);
     }
+
+    public function xml(string $id): Response
+    {
+        $xml = $this->billing->getInvoiceXml($id);
+
+        return response($xml, 200, [
+            'Content-Type'        => 'application/xml',
+            'Content-Disposition' => "attachment; filename=\"factura-{$id}.xml\"",
+        ]);
+    }
 }
