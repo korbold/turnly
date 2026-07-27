@@ -108,6 +108,11 @@ class AuthRepositoryImpl implements AuthRepository {
     try {
       await GoogleSignIn().signOut();
     } catch (_) {}
+    try {
+      // Clear the Firebase session too, otherwise currentUser (and its
+      // Google photoURL) leaks into the next account on this device.
+      await FirebaseAuth.instance.signOut();
+    } catch (_) {}
     await SecureStorage.clear();
     ApiClient.reset();
     return const Right(unit);

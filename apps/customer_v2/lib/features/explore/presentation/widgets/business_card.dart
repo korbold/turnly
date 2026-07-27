@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_animate/flutter_animate.dart';
 import '../../../../app/theme/app_colors.dart';
 import '../../../../app/theme/tenant_theme.dart';
+import '../../../../shared/widgets/logo_gradient_background.dart';
 import '../../../../shared/widgets/status_badge.dart';
 import '../../domain/entities/business.dart';
 
@@ -33,7 +34,6 @@ class BusinessCard extends StatelessWidget {
     final typeLabel =
         _typeLabels[business.businessType] ?? business.businessType ?? '';
     final hasLogo = business.logoUrl != null && business.logoUrl!.isNotEmpty;
-    final hasCover = business.coverUrl != null && business.coverUrl!.isNotEmpty;
 
     return GestureDetector(
       onTap: onTap,
@@ -48,72 +48,61 @@ class BusinessCard extends StatelessWidget {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            // Cover area — cover image (if available) + logo / monogram
-            Container(
-              height: 120,
-              width: double.infinity,
-              decoration: BoxDecoration(
-                color: tenantTheme.primary.withValues(alpha: 0.08),
-              ),
-              child: Stack(
-                fit: StackFit.expand,
-                children: [
-                  if (hasCover)
-                    CachedNetworkImage(
-                      imageUrl: business.coverUrl!,
-                      fit: BoxFit.cover,
-                      errorWidget: (_, __, ___) => const SizedBox.shrink(),
-                    ),
-                  // Subtle decorative dot in corner (only when no cover)
-                  if (!hasCover)
-                    Positioned(
-                      right: -24,
-                      top: -24,
-                      child: Container(
-                        width: 96,
-                        height: 96,
-                        decoration: BoxDecoration(
-                          shape: BoxShape.circle,
-                          color: tenantTheme.primary.withValues(alpha: 0.06),
-                        ),
-                      ),
-                    ),
-                  // Business logo / initial monogram
-                  Center(
-                    child: Container(
-                      width: 56,
-                      height: 56,
-                      decoration: BoxDecoration(
-                        color: hasLogo ? Colors.white : tenantTheme.primary,
-                        borderRadius: BorderRadius.circular(14),
-                        boxShadow: hasCover
-                            ? [
+            // Logo area: animated gradient pulled from the logo's own
+            // colors, with the logo shown BoxFit.contain in a white card
+            // so horizontal logos read fully instead of being cropped.
+            LogoGradientBackground(
+              logoUrl: business.logoUrl,
+              fallback: [tenantTheme.primary, tenantTheme.accent],
+              child: SizedBox(
+                height: 120,
+                width: double.infinity,
+                child: Center(
+                    child: hasLogo
+                        ? Container(
+                            constraints: const BoxConstraints(
+                              maxWidth: 210,
+                              minWidth: 96,
+                            ),
+                            height: 84,
+                            padding: const EdgeInsets.symmetric(
+                                horizontal: 16, vertical: 12),
+                            decoration: BoxDecoration(
+                              color: Colors.white,
+                              borderRadius: BorderRadius.circular(16),
+                              boxShadow: [
                                 BoxShadow(
-                                  color: Colors.black.withValues(alpha: 0.18),
+                                  color: Colors.black.withValues(alpha: 0.10),
                                   blurRadius: 12,
                                   offset: const Offset(0, 4),
                                 ),
-                              ]
-                            : null,
-                      ),
-                      clipBehavior: Clip.antiAlias,
-                      child: hasLogo
-                          ? CachedNetworkImage(
+                              ],
+                            ),
+                            clipBehavior: Clip.antiAlias,
+                            child: CachedNetworkImage(
                               imageUrl: business.logoUrl!,
-                              fit: BoxFit.cover,
+                              fit: BoxFit.contain,
                               errorWidget: (_, __, ___) => _MonogramFallback(
                                 name: business.name,
                                 color: tenantTheme.primary,
                               ),
-                            )
-                          : _MonogramFallback(
+                            ),
+                          )
+                        : Container(
+                            width: 56,
+                            height: 56,
+                            decoration: BoxDecoration(
+                              color: tenantTheme.primary,
+                              borderRadius: BorderRadius.circular(14),
+                            ),
+                            clipBehavior: Clip.antiAlias,
+                            child: _MonogramFallback(
                               name: business.name,
                               color: tenantTheme.primary,
                             ),
-                    ),
+                          ),
                   ),
-                ],
-              ),
+                ),
             ),
 
             // Info section

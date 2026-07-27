@@ -1,4 +1,5 @@
 // lib/features/explore/presentation/screens/explore_screen.dart
+import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:flutter_animate/flutter_animate.dart';
@@ -6,7 +7,9 @@ import 'package:go_router/go_router.dart';
 
 import '../../../../app/theme/app_colors.dart';
 import '../../../../core/di/injection.dart';
+import '../../../../shared/widgets/ambient_backdrop.dart';
 import '../../../../shared/widgets/avatar_circle.dart';
+import '../../../../shared/widgets/glass_surface.dart';
 import '../../../../shared/widgets/section_header.dart';
 import '../../../../shared/widgets/shimmer_loader.dart';
 import '../../../auth/presentation/cubit/auth_cubit.dart';
@@ -41,14 +44,21 @@ class _ExploreView extends StatelessWidget {
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: AppColors.background,
-      body: SafeArea(
-        bottom: false,
-        child: RefreshIndicator(
-          color: AppColors.accent,
-          onRefresh: () async {
-            context.read<ReservationsCubit>().loadReservations();
-          },
-          child: CustomScrollView(
+      body: AmbientBackdrop(
+        baseColor: AppColors.background,
+        colors: const [
+          Color(0xFFF2693A), // brand orange
+          Color(0xFF60A5FA), // soft blue
+          Color(0xFFA78BFA), // soft violet
+        ],
+        child: SafeArea(
+          bottom: false,
+          child: RefreshIndicator(
+            color: AppColors.accent,
+            onRefresh: () async {
+              context.read<ReservationsCubit>().loadReservations();
+            },
+            child: CustomScrollView(
             physics: const AlwaysScrollableScrollPhysics(
               parent: BouncingScrollPhysics(),
             ),
@@ -68,7 +78,8 @@ class _ExploreView extends StatelessWidget {
               const SliverToBoxAdapter(child: _CategoryGrid()),
               // Bottom spacing
               const SliverToBoxAdapter(child: SizedBox(height: 100)),
-            ],
+              ],
+            ),
           ),
         ),
       ),
@@ -119,6 +130,10 @@ class _ExploreView extends StatelessWidget {
               AvatarCircle(
                 name: userName.isNotEmpty ? userName : 'U',
                 size: 44,
+                // Google sign-in goes through Firebase, so currentUser holds
+                // the Google avatar. Email/password users have no Firebase
+                // user → null → falls back to initials.
+                imageUrl: FirebaseAuth.instance.currentUser?.photoURL,
               ),
             ],
           ),
@@ -284,25 +299,16 @@ class _CategoryGridState extends State<_CategoryGrid> with WidgetsBindingObserve
         itemBuilder: (context, index) {
           final cat = _categories![index];
           final isDark = cat.color.computeLuminance() < 0.15;
-          final bgColor = isDark
-              ? Color.lerp(cat.color, const Color(0xFFE5E7EB), 0.85)!
-              : cat.color.withValues(alpha: 0.1);
           final fgColor = isDark ? const Color(0xFF374151) : cat.color;
 
           return GestureDetector(
             onTap: () => context.push('/category/${cat.slug}'),
-            child: Container(
-              decoration: BoxDecoration(
-                color: bgColor,
-                borderRadius: BorderRadius.circular(20),
-                boxShadow: [
-                  BoxShadow(
-                    color: fgColor.withValues(alpha: 0.1),
-                    blurRadius: 12,
-                    offset: const Offset(0, 4),
-                  ),
-                ],
-              ),
+            child: GlassSurface(
+              radius: 20,
+              blur: 14,
+              tint: cat.color,
+              tintOpacity: 0.18,
+              borderOpacity: 0.30,
               child: Stack(
                 children: [
                   Positioned(
