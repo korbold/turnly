@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Infrastructure\Jobs;
 
+use App\Events\InvoiceStatusUpdated;
 use App\Infrastructure\Billing\BillingServiceClient;
 use App\Infrastructure\Mail\InvoiceMail;
 use App\Infrastructure\Persistence\Models\ReservationModel;
@@ -13,6 +14,7 @@ use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Foundation\Bus\Dispatchable;
 use Illuminate\Queue\InteractsWithQueue;
 use Illuminate\Queue\SerializesModels;
+use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Mail;
 use Throwable;
 
@@ -61,6 +63,8 @@ class EmitReservationInvoiceJob implements ShouldQueue
                 'invoiced_at'                 => now(),
             ]);
 
+            $this->broadcast($reservation);
+
             if (($result['estado'] ?? '') === 'autorizada') {
                 $email = $reservation->client?->email;
                 if ($email && !empty($result['id'])) {
@@ -83,6 +87,23 @@ class EmitReservationInvoiceJob implements ShouldQueue
                 'invoice_error'  => $e->getMessage(),
             ]);
             throw $e;
+        }
+    }
+
+    private function broadcast(ReservationModel $reservation): void
+    {
+        try {
+            InvoiceStatusUpdated::dispatch(
+                (string) $reservation->tenant_id,
+                'reservation',
+                (string) $reservation->id,
+                $reservation->invoice_external_id,
+                (string) $reservation->invoice_status,
+                $reservation->invoice_numero_autorizacion,
+                $reservation->invoice_clave_acceso,
+            );
+        } catch (Throwable $e) {
+            Log::warning('InvoiceStatusUpdated broadcast failed', ['error' => $e->getMessage()]);
         }
     }
 

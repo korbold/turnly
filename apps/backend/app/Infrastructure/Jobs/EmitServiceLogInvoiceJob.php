@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Infrastructure\Jobs;
 
+use App\Events\InvoiceStatusUpdated;
 use App\Infrastructure\Billing\BillingServiceClient;
 use App\Infrastructure\Mail\InvoiceMail;
 use App\Infrastructure\Persistence\Models\ClientResourceModel;
@@ -15,6 +16,7 @@ use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Foundation\Bus\Dispatchable;
 use Illuminate\Queue\InteractsWithQueue;
 use Illuminate\Queue\SerializesModels;
+use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Mail;
 use Throwable;
 
@@ -65,6 +67,8 @@ class EmitServiceLogInvoiceJob implements ShouldQueue
                 'invoiced_at'                 => now(),
             ]);
 
+            $this->broadcast($log);
+
             if (($result['estado'] ?? '') === 'autorizada') {
                 $email = $log->clientResource?->client?->email;
                 if ($email && !empty($result['id'])) {
@@ -86,6 +90,23 @@ class EmitServiceLogInvoiceJob implements ShouldQueue
                 'invoice_error'  => $e->getMessage(),
             ]);
             throw $e;
+        }
+    }
+
+    private function broadcast(ServiceLogModel $log): void
+    {
+        try {
+            InvoiceStatusUpdated::dispatch(
+                (string) $log->tenant_id,
+                'service_log',
+                (string) $log->id,
+                $log->invoice_external_id,
+                (string) $log->invoice_status,
+                $log->invoice_numero_autorizacion,
+                $log->invoice_clave_acceso,
+            );
+        } catch (Throwable $e) {
+            Log::warning('InvoiceStatusUpdated broadcast failed', ['error' => $e->getMessage()]);
         }
     }
 

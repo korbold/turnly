@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Infrastructure\Jobs;
 
+use App\Events\InvoiceStatusUpdated;
 use App\Infrastructure\Billing\BillingServiceClient;
 use App\Infrastructure\Mail\InvoiceMail;
 use App\Infrastructure\Persistence\Models\ReservationModel;
@@ -12,6 +13,7 @@ use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Foundation\Bus\Dispatchable;
 use Illuminate\Queue\InteractsWithQueue;
 use Illuminate\Queue\SerializesModels;
+use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Mail;
 use Throwable;
 
@@ -65,6 +67,8 @@ class SyncReservationInvoiceStatusJob implements ShouldQueue
                 'invoice_error'               => null,
             ]);
 
+            $this->broadcast($reservation);
+
             $email = $reservation->client?->email;
             if ($email && !empty($inv['id'])) {
                 Mail::to($email)->queue(new InvoiceMail(
@@ -84,6 +88,8 @@ class SyncReservationInvoiceStatusJob implements ShouldQueue
                 'invoice_error'  => $this->firstMessage($inv),
             ]);
 
+            $this->broadcast($reservation);
+
             return;
         }
 
@@ -99,6 +105,23 @@ class SyncReservationInvoiceStatusJob implements ShouldQueue
 
         self::dispatch($this->reservationId, $this->attempt + 1)
             ->delay(now()->addSeconds(min(60, 10 * $this->attempt)));
+    }
+
+    private function broadcast(ReservationModel $reservation): void
+    {
+        try {
+            InvoiceStatusUpdated::dispatch(
+                (string) $reservation->tenant_id,
+                'reservation',
+                (string) $reservation->id,
+                $reservation->invoice_external_id,
+                (string) $reservation->invoice_status,
+                $reservation->invoice_numero_autorizacion,
+                $reservation->invoice_clave_acceso,
+            );
+        } catch (Throwable $e) {
+            Log::warning('InvoiceStatusUpdated broadcast failed', ['error' => $e->getMessage()]);
+        }
     }
 
     private function firstMessage(array $inv): ?string
