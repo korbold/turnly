@@ -1,8 +1,9 @@
 'use client';
 
 import { useState } from 'react';
+import { useRouter } from 'next/navigation';
 import { format } from 'date-fns';
-import { MoreHorizontal, CheckCircle2, Pencil, Trash2, Plus, ClipboardList, Wallet, Play, Trophy, FileText, Receipt } from 'lucide-react';
+import { MoreHorizontal, CheckCircle2, Pencil, Trash2, Plus, ClipboardList, Wallet, Play, Trophy, FileText, Receipt, Eye } from 'lucide-react';
 import { toast } from 'sonner';
 import { motion } from 'framer-motion';
 import { Badge } from '@/presentation/components/ui/badge';
@@ -47,6 +48,7 @@ interface LogListProps {
 }
 
 export function LogList({ date, onEdit, onCreate }: LogListProps) {
+  const router = useRouter();
   const { data, isLoading } = useServiceLogs({ date });
   const completeMutation = useCompleteServiceLog();
   const deleteMutation = useDeleteServiceLog();
@@ -292,6 +294,11 @@ export function LogList({ date, onEdit, onCreate }: LogListProps) {
                   </Button>
                 </DropdownMenuTrigger>
                 <DropdownMenuContent align="end" className="min-w-[10rem]">
+                  <DropdownMenuItem onClick={() => router.push(`/service-logs/${log.id}`)}>
+                    <Eye className="mr-2 h-3.5 w-3.5" />
+                    Ver detalle
+                  </DropdownMenuItem>
+                  <DropdownMenuSeparator />
                   {log.status === 'in_progress' && (
                     <>
                       <DropdownMenuItem onClick={() => handleComplete(log.id)} disabled={completeMutation.isPending}>

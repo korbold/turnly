@@ -21,6 +21,16 @@ export function useServiceLogs(filters: ServiceLogFilters) {
   });
 }
 
+/** Single service log for the detail page (GET /service-logs/{id}). */
+export function useServiceLog(id: string) {
+  const repo = useRepository('serviceLog');
+  return useQuery({
+    queryKey: ['service-logs', 'detail', id],
+    queryFn: () => repo.getById(id),
+    enabled: !!id,
+  });
+}
+
 export function useCreateServiceLog() {
   const repo = useRepository('serviceLog');
   const queryClient = useQueryClient();
