@@ -258,3 +258,62 @@ test('can filter service logs by date', function () {
     $response->assertOk()
         ->assertJsonCount(2, 'data');
 });
+
+test('can delete an unpaid, uninvoiced service log', function () {
+    $log = ServiceLogModel::factory()->create([
+        'tenant_id' => $this->tenant->id,
+        'client_resource_id' => $this->clientResource->id,
+        'service_id' => $this->service->id,
+        'attended_by' => $this->user->id,
+        'created_by' => $this->user->id,
+        'payment_status' => 'unpaid',
+        'invoice_status' => null,
+    ]);
+
+    $this->actingAs($this->user)
+        ->withHeader('X-Tenant', $this->tenant->slug)
+        ->deleteJson("/api/v1/service-logs/{$log->id}")
+        ->assertOk();
+
+    $this->assertDatabaseMissing('service_logs', ['id' => $log->id]);
+});
+
+test('cannot delete a paid service log', function () {
+    $log = ServiceLogModel::factory()->create([
+        'tenant_id' => $this->tenant->id,
+        'client_resource_id' => $this->clientResource->id,
+        'service_id' => $this->service->id,
+        'attended_by' => $this->user->id,
+        'created_by' => $this->user->id,
+        'payment_status' => 'paid',
+        'invoice_status' => null,
+    ]);
+
+    $this->actingAs($this->user)
+        ->withHeader('X-Tenant', $this->tenant->slug)
+        ->deleteJson("/api/v1/service-logs/{$log->id}")
+        ->assertStatus(422)
+        ->assertJsonPath('error.code', 'LOG_LOCKED');
+
+    $this->assertDatabaseHas('service_logs', ['id' => $log->id]);
+});
+
+test('cannot delete an invoiced service log', function () {
+    $log = ServiceLogModel::factory()->create([
+        'tenant_id' => $this->tenant->id,
+        'client_resource_id' => $this->clientResource->id,
+        'service_id' => $this->service->id,
+        'attended_by' => $this->user->id,
+        'created_by' => $this->user->id,
+        'payment_status' => 'unpaid',
+        'invoice_status' => 'autorizada',
+    ]);
+
+    $this->actingAs($this->user)
+        ->withHeader('X-Tenant', $this->tenant->slug)
+        ->deleteJson("/api/v1/service-logs/{$log->id}")
+        ->assertStatus(422)
+        ->assertJsonPath('error.code', 'LOG_LOCKED');
+
+    $this->assertDatabaseHas('service_logs', ['id' => $log->id]);
+});

@@ -321,14 +321,20 @@ export function LogList({ date, onEdit, onCreate }: LogListProps) {
                       Datos de facturación
                     </DropdownMenuItem>
                   )}
-                  <DropdownMenuSeparator />
-                  <DropdownMenuItem
-                    className="text-[var(--status-cancelled-fg)] focus:bg-[var(--status-cancelled-bg)] focus:text-[var(--status-cancelled-fg)]"
-                    onClick={() => handleDelete(log.id)}
-                  >
-                    <Trash2 className="mr-2 h-3.5 w-3.5" />
-                    Eliminar
-                  </DropdownMenuItem>
+                  {/* A paid or invoiced log is a financial/fiscal record —
+                      deletion is blocked (backend enforces too). */}
+                  {log.paymentStatus !== 'paid' && log.invoiceStatus === null && (
+                    <>
+                      <DropdownMenuSeparator />
+                      <DropdownMenuItem
+                        className="text-[var(--status-cancelled-fg)] focus:bg-[var(--status-cancelled-bg)] focus:text-[var(--status-cancelled-fg)]"
+                        onClick={() => handleDelete(log.id)}
+                      >
+                        <Trash2 className="mr-2 h-3.5 w-3.5" />
+                        Eliminar
+                      </DropdownMenuItem>
+                    </>
+                  )}
                 </DropdownMenuContent>
               </DropdownMenu>
             </div>

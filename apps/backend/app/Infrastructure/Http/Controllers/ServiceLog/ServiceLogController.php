@@ -236,6 +236,19 @@ class ServiceLogController extends Controller
     public function destroy(string $id): JsonResponse
     {
         $serviceLog = ServiceLogModel::findOrFail($id);
+
+        // A paid or invoiced log is a financial/fiscal record — it must not
+        // be deleted (an emitted factura is corrected via nota de crédito,
+        // never by erasing the underlying sale).
+        if ($serviceLog->payment_status === 'paid' || $serviceLog->invoice_status !== null) {
+            return response()->json([
+                'error' => [
+                    'code'    => 'LOG_LOCKED',
+                    'message' => 'No se puede eliminar un registro pagado o facturado.',
+                ],
+            ], 422);
+        }
+
         $serviceLog->delete();
 
         return response()->json(['data' => ['message' => 'Registro eliminado']], 200);
