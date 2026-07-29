@@ -37,17 +37,33 @@
   --ink-900: #0E121A;
 
   /* ─────────── SEMANTIC ─────────── */
+  /* Scales expose 50/100/200/500/600/700/800 — components across the app
+     reference the intermediate 100/200/600/800 steps (e.g. the amber
+     "Cobrar" button uses --warning-600 for its fill); leaving them
+     undefined made those elements render transparent (white-on-white). */
   --success-50:  #E8F8F0;
+  --success-100: #D1F0E0;
+  --success-200: #A7E4C4;
   --success-500: #0F9D58;
+  --success-600: #0D8C4E;
   --success-700: #0B7A44;
+  --success-800: #085C33;
 
   --warning-50:  #FFF6E0;
+  --warning-100: #FCE9C4;
+  --warning-200: #F5D5A8;
   --warning-500: #E89320;
+  --warning-600: #CE821A;
   --warning-700: #B47114;
+  --warning-800: #8C580F;
 
   --danger-50:   #FCE9EB;
+  --danger-100:  #F8CDD1;
+  --danger-200:  #F2A6AD;
   --danger-500:  #DC2A3A;
+  --danger-600:  #C22333;
   --danger-700:  #A91D2C;
+  --danger-800:  #8A1523;
 
   --info-50:     #E4F1FE;
   --info-500:    #1E88F5;
