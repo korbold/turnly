@@ -84,9 +84,8 @@ function ServiceLogDetail({ id }: { id: string }) {
 
   const isUnpaid = log.paymentStatus === 'unpaid';
   const recurso =
-    log.clientResource?.plate ||
-    log.clientResource?.client?.name ||
     log.clientResource?.label ||
+    log.clientResource?.plate ||
     'Sin recurso';
   const items = log.items ?? [];
   const total = log.priceCharged;

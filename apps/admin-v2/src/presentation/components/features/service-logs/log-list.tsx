@@ -126,10 +126,11 @@ export function LogList({ date, onEdit, onCreate }: LogListProps) {
         const statusCfg = STATUS_CONFIG[log.status];
         const pmCfg = log.paymentMethod ? PAYMENT_METHOD_CONFIG[log.paymentMethod] : null;
         const isUnpaid = log.paymentStatus === 'unpaid';
+        // Recurso = the vehicle/resource, never the client name (the client
+        // has its own column/sub-line). Prefer the composed label, then plate.
         const recursoLabel =
-          log.clientResource?.plate ||
-          log.clientResource?.client?.name ||
           log.clientResource?.label ||
+          log.clientResource?.plate ||
           'Sin recurso';
         const serviceLabel = (() => {
           const summary = log.servicesSummary;
