@@ -11,7 +11,7 @@ import { RecordServiceLogPaymentUseCase } from '@/application/use-cases/service-
 import { GetDailySummaryUseCase } from '@/application/use-cases/service-logs/get-daily-summary.use-case';
 import { UpdateServiceLogItemsUseCase } from '@/application/use-cases/service-logs/update-service-log-items.use-case';
 import type { ServiceLogFilters } from '@/domain/entities/service-log';
-import type { CreateServiceLogData, UpdateServiceLogData, RecordPaymentData, UpdateServiceLogItemsData } from '@/domain/repositories/service-log.repository';
+import type { CreateServiceLogData, UpdateServiceLogData, RecordPaymentData, UpdateServiceLogItemsData, ServiceLogBillingProfile } from '@/domain/repositories/service-log.repository';
 
 export function useServiceLogs(filters: ServiceLogFilters) {
   const repo = useRepository('serviceLog');
@@ -96,5 +96,28 @@ export function useDailySummary(date: string) {
   return useQuery({
     queryKey: ['service-logs', 'summary', date],
     queryFn: () => new GetDailySummaryUseCase(repo).execute(date),
+  });
+}
+
+/** Fiscal profile prefill for the "Datos de facturación" dialog. Only
+    fetches while `enabled` (i.e. the dialog is open). */
+export function useServiceLogBilling(id: string, enabled: boolean) {
+  const repo = useRepository('serviceLog');
+  return useQuery({
+    queryKey: ['service-logs', 'billing', id],
+    queryFn: () => repo.getBilling(id),
+    enabled,
+  });
+}
+
+export function useUpdateServiceLogBilling() {
+  const repo = useRepository('serviceLog');
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: ({ id, data }: { id: string; data: ServiceLogBillingProfile }) =>
+      repo.updateBilling(id, data),
+    onSuccess: (_res, { id }) => {
+      queryClient.invalidateQueries({ queryKey: ['service-logs', 'billing', id] });
+    },
   });
 }

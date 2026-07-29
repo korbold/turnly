@@ -197,6 +197,10 @@ Route::prefix('v1')->group(function () {
             Route::post('service-logs/{id}/payment', [ServiceLogController::class, 'recordPayment']);
             // Billing: manually trigger invoice emission or re-emit a rejected one.
             Route::post('service-logs/{id}/invoice', [ServiceLogController::class, 'invoice']);
+            // Billing: view / correct the client's fiscal profile used for
+            // this log's factura (occasional correction, not per-emit).
+            Route::get('service-logs/{id}/billing', [ServiceLogController::class, 'showBilling']);
+            Route::put('service-logs/{id}/billing', [ServiceLogController::class, 'updateBilling']);
             // Billing: list all invoiced service logs for the tenant.
             Route::get('invoices', [ServiceLogController::class, 'indexInvoiced']);
             // Billing: proxy XML download through backend to enforce auth.

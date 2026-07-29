@@ -72,7 +72,9 @@ class EmitServiceLogInvoiceJob implements ShouldQueue
             $this->broadcast($log);
 
             if (($result['estado'] ?? '') === 'autorizada') {
-                $email = $log->clientResource?->client?->email;
+                // Prefer the fiscal profile's email (the one the cashier can
+                // correct), falling back to the client's account email.
+                $email = ($billingProfile['email'] ?? null) ?: $log->clientResource?->client?->email;
                 if ($email && !empty($result['id'])) {
                     Mail::to($email)->queue(new InvoiceMail(
                         clientEmail:       $email,
@@ -154,6 +156,7 @@ class EmitServiceLogInvoiceJob implements ShouldQueue
                     'doc_number' => $profile->doc_number,
                     'legal_name' => $profile->legal_name,
                     'address'    => $profile->address,
+                    'email'      => $profile->email,
                 ];
             }
         }
@@ -163,6 +166,7 @@ class EmitServiceLogInvoiceJob implements ShouldQueue
             'doc_number' => '9999999999999',
             'legal_name' => 'CONSUMIDOR FINAL',
             'address'    => null,
+            'email'      => null,
         ];
     }
 

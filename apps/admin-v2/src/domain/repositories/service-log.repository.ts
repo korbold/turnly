@@ -56,6 +56,17 @@ export interface ServiceLogItemDraft {
 
 export type UpdateServiceLogItemsData = ServiceLogItemDraft[];
 
+/** Client fiscal profile the factura reads at emit time. Mirrors the
+    admin BillingProfileForm draft shape. */
+export interface ServiceLogBillingProfile {
+  docType: 'final_consumer' | 'cedula' | 'ruc' | 'passport';
+  docNumber: string;
+  legalName: string;
+  email: string;
+  address: string;
+  phone: string;
+}
+
 export interface ServiceLogRepository {
   getAll(filters: ServiceLogFilters): Promise<PaginatedResult<ServiceLog>>;
   getById(id: string): Promise<ServiceLog>;
@@ -66,4 +77,6 @@ export interface ServiceLogRepository {
   complete(id: string): Promise<ServiceLog>;
   recordPayment(id: string, data: RecordPaymentData): Promise<ServiceLog>;
   getSummary(date: string): Promise<DailySummary>;
+  getBilling(id: string): Promise<ServiceLogBillingProfile>;
+  updateBilling(id: string, data: ServiceLogBillingProfile): Promise<ServiceLogBillingProfile>;
 }
