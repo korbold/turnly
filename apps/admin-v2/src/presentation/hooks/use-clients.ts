@@ -7,7 +7,7 @@ import { GetClientUseCase } from '@/application/use-cases/clients/get-client.use
 import { CreateClientUseCase } from '@/application/use-cases/clients/create-client.use-case';
 import { UpdateClientUseCase } from '@/application/use-cases/clients/update-client.use-case';
 import { GetClientHistoryUseCase } from '@/application/use-cases/clients/get-client-history.use-case';
-import type { CreateClientResourceData } from '@/domain/repositories/client-resource.repository';
+import type { CreateClientResourceData, ClientBillingProfile } from '@/domain/repositories/client-resource.repository';
 
 export function useClients(page?: number, search?: string) {
   const repo = useRepository('clientResource');
@@ -56,5 +56,27 @@ export function useClientHistory(id: string) {
     queryKey: ['clients', id, 'history'],
     queryFn: () => new GetClientHistoryUseCase(repo).execute(id),
     enabled: !!id,
+  });
+}
+
+/** Client's default fiscal profile for the "Datos de facturación" section. */
+export function useClientBilling(id: string) {
+  const repo = useRepository('clientResource');
+  return useQuery({
+    queryKey: ['clients', id, 'billing'],
+    queryFn: () => repo.getBilling(id),
+    enabled: !!id,
+  });
+}
+
+export function useUpdateClientBilling() {
+  const repo = useRepository('clientResource');
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: ({ id, data }: { id: string; data: ClientBillingProfile }) =>
+      repo.updateBilling(id, data),
+    onSuccess: (_res, { id }) => {
+      queryClient.invalidateQueries({ queryKey: ['clients', id, 'billing'] });
+    },
   });
 }

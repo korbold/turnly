@@ -19,6 +19,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/presentation/compone
 import { useClient, useClientHistory } from '@/presentation/hooks/use-clients';
 import { useSettings } from '@/presentation/hooks/use-settings';
 import { ClientForm } from '@/presentation/components/features/clients/client-form';
+import { ClientBillingSection } from '@/presentation/components/features/clients/client-billing-section';
 import { cn } from '@/shared/utils/cn';
 
 const fmt = (v: number) =>
@@ -252,6 +253,11 @@ function ClientDetailContent() {
           </section>
         </div>
       </div>
+
+      {/* Datos de facturación — the client's real fiscal identity, editable
+          here; this is the profile the SRI factura reads. Only for clients
+          with an associated person (billing is keyed to the user). */}
+      {client.client && <ClientBillingSection clientResourceId={id} />}
 
       {/* History tabs */}
       <Tabs defaultValue="services">

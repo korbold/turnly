@@ -1,6 +1,7 @@
 import type {
   ClientResourceRepository,
   CreateClientResourceData,
+  ClientBillingProfile,
 } from '@/domain/repositories/client-resource.repository';
 import type { ClientResource } from '@/domain/entities/client-resource';
 import type { PaginatedResult } from '@/shared/types/api';
@@ -66,4 +67,32 @@ export class ApiClientResourceRepository implements ClientResourceRepository {
     const { data: res } = await api.get(`/client-resources/${id}/history`);
     return Array.isArray(res) ? res : (res.data ?? []);
   }
+
+  async getBilling(id: string): Promise<ClientBillingProfile> {
+    const { data: res } = await api.get(`/client-resources/${id}/billing`);
+    return mapBilling(res.data);
+  }
+
+  async updateBilling(id: string, data: ClientBillingProfile): Promise<ClientBillingProfile> {
+    const { data: res } = await api.put(`/client-resources/${id}/billing`, {
+      doc_type:   data.docType,
+      doc_number: data.docNumber,
+      legal_name: data.legalName,
+      email:      data.email,
+      address:    data.address,
+      phone:      data.phone,
+    });
+    return mapBilling(res.data);
+  }
+}
+
+function mapBilling(raw: Record<string, unknown>): ClientBillingProfile {
+  return {
+    docType:   (raw.doc_type as ClientBillingProfile['docType']) ?? 'final_consumer',
+    docNumber: (raw.doc_number as string) ?? '',
+    legalName: (raw.legal_name as string) ?? '',
+    email:     (raw.email as string) ?? '',
+    address:   (raw.address as string) ?? '',
+    phone:     (raw.phone as string) ?? '',
+  };
 }

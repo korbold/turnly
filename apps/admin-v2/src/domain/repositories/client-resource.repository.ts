@@ -23,10 +23,22 @@ export interface CreateClientResourceData {
   billingProfile?: BillingProfileInput;
 }
 
+/** Full fiscal profile shape for the client-detail billing editor. */
+export interface ClientBillingProfile {
+  docType: 'final_consumer' | 'cedula' | 'ruc' | 'passport';
+  docNumber: string;
+  legalName: string;
+  email: string;
+  address: string;
+  phone: string;
+}
+
 export interface ClientResourceRepository {
   getAll(page?: number, search?: string): Promise<PaginatedResult<ClientResource>>;
   getById(id: string): Promise<ClientResource>;
   create(data: CreateClientResourceData): Promise<ClientResource>;
   update(id: string, data: Partial<CreateClientResourceData>): Promise<ClientResource>;
   getHistory(id: string): Promise<unknown[]>;
+  getBilling(id: string): Promise<ClientBillingProfile>;
+  updateBilling(id: string, data: ClientBillingProfile): Promise<ClientBillingProfile>;
 }

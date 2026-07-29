@@ -118,6 +118,9 @@ Route::prefix('v1')->group(function () {
             Route::patch('client-resources/{id}', [ClientResourceController::class, 'update']);
             Route::delete('client-resources/{id}', [ClientResourceController::class, 'destroy']);
             Route::get('client-resources/{id}/history', [ClientResourceController::class, 'history']);
+            // Fiscal data: view / edit the client's default billing profile.
+            Route::get('client-resources/{id}/billing', [ClientResourceController::class, 'showBilling']);
+            Route::put('client-resources/{id}/billing', [ClientResourceController::class, 'updateBilling']);
         });
 
         // Billing profiles (customer-facing, not tenant scoped).
