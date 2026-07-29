@@ -5,11 +5,13 @@ namespace App\Infrastructure\Http\Controllers\ClientResource;
 use App\Application\DTOs\ClientResource\CreateClientResourceDTO;
 use App\Application\UseCases\ClientResource\CreateClientResourceUseCase;
 use App\Application\UseCases\ClientResource\GetClientResourceHistoryUseCase;
+use App\Domain\Identity\EcuadorIdValidator;
 use App\Infrastructure\Http\Controllers\Controller;
 use App\Infrastructure\Http\Requests\ClientResource\CreateClientResourceRequest;
 use App\Infrastructure\Http\Resources\ClientResourceResource;
 use App\Infrastructure\Persistence\Models\ClientResourceModel;
 use App\Infrastructure\Persistence\Models\TenantUserModel;
+use App\Infrastructure\Persistence\Models\UserBillingProfileModel;
 use App\Infrastructure\Persistence\Models\UserModel;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
@@ -128,6 +130,108 @@ class ClientResourceController extends Controller
      * doc_number) — repeated cashiers don't end up with three copies
      * of the same RUC; legal_name + contact info refresh in place.
      */
+    /**
+     * Returns the client's default fiscal profile, mapped for the admin
+     * form. Falls back to CONSUMIDOR FINAL when none exists. Keyed by
+     * client_resource_id (matches the rest of client-resources/{id}/*).
+     */
+    public function showBilling(string $id): JsonResponse
+    {
+        $resource = ClientResourceModel::with('client')->findOrFail($id);
+        $client   = $resource->client;
+
+        $profile = $client
+            ? UserBillingProfileModel::where('user_id', $client->id)->where('is_default', true)->first()
+            : null;
+
+        return response()->json(['data' => [
+            'doc_type'   => $profile->doc_type   ?? 'final_consumer',
+            'doc_number' => $profile->doc_number ?? '',
+            'legal_name' => $profile->legal_name ?? ($client->name ?? ''),
+            'email'      => $profile->email      ?? ($client->email ?? ''),
+            'address'    => $profile->address    ?? '',
+            'phone'      => $profile->phone      ?? '',
+        ]]);
+    }
+
+    /**
+     * Edits the client's default fiscal profile in place (a typo fix must
+     * not spawn a duplicate); creates one when none exists. Mirrors
+     * ServiceLogController::updateBilling — same validation + response.
+     */
+    public function updateBilling(Request $request, string $id): JsonResponse
+    {
+        $resource = ClientResourceModel::with('client')->findOrFail($id);
+        $client   = $resource->client;
+
+        if (!$client) {
+            return response()->json([
+                'error' => ['code' => 'NO_CLIENT', 'message' => 'Este recurso no tiene cliente asociado.'],
+            ], 422);
+        }
+
+        $data = $request->validate([
+            'doc_type'   => ['required', 'in:final_consumer,cedula,ruc,passport'],
+            'doc_number' => ['nullable', 'string', 'max:20'],
+            'legal_name' => ['nullable', 'string', 'max:300'],
+            'email'      => ['nullable', 'email', 'max:190'],
+            'address'    => ['nullable', 'string', 'max:300'],
+            'phone'      => ['nullable', 'string', 'max:40'],
+        ]);
+
+        $docType   = $data['doc_type'];
+        $docNumber = trim((string) ($data['doc_number'] ?? ''));
+        $legalName = trim((string) ($data['legal_name'] ?? ''));
+        $email     = trim((string) ($data['email'] ?? ''));
+
+        if ($docType === 'final_consumer') {
+            $docNumber = '9999999999999';
+            $legalName = $legalName !== '' ? $legalName : 'CONSUMIDOR FINAL';
+        } else {
+            if ($docType === 'cedula' && !EcuadorIdValidator::isCedula($docNumber)) {
+                return response()->json(['error' => ['code' => 'INVALID_CEDULA', 'message' => 'Cédula inválida.']], 422);
+            }
+            if ($docType === 'ruc' && !EcuadorIdValidator::isRuc($docNumber)) {
+                return response()->json(['error' => ['code' => 'INVALID_RUC', 'message' => 'RUC inválido.']], 422);
+            }
+            if ($docNumber === '' || $legalName === '') {
+                return response()->json(['error' => ['code' => 'MISSING_FISCAL', 'message' => 'Documento y razón social son obligatorios.']], 422);
+            }
+            if ($email === '') {
+                return response()->json(['error' => ['code' => 'MISSING_EMAIL', 'message' => 'El email es obligatorio para enviar el XML autorizado.']], 422);
+            }
+        }
+
+        $attrs = [
+            'doc_type'   => $docType,
+            'doc_number' => $docNumber,
+            'legal_name' => $legalName,
+            'email'      => $email !== '' ? $email : null,
+            'address'    => $data['address'] ?? null,
+            'phone'      => $data['phone'] ?? null,
+        ];
+
+        $profile = UserBillingProfileModel::where('user_id', $client->id)->where('is_default', true)->first();
+
+        if ($profile) {
+            $profile->update($attrs);
+        } else {
+            $profile = UserBillingProfileModel::create($attrs + [
+                'user_id'    => $client->id,
+                'is_default' => true,
+            ]);
+        }
+
+        return response()->json(['data' => [
+            'doc_type'   => $profile->doc_type,
+            'doc_number' => $profile->doc_number,
+            'legal_name' => $profile->legal_name,
+            'email'      => $profile->email ?? '',
+            'address'    => $profile->address ?? '',
+            'phone'      => $profile->phone ?? '',
+        ]]);
+    }
+
     private function upsertBillingProfile(string $userId, array $payload): void
     {
         $docType = $payload['doc_type'] ?? 'final_consumer';

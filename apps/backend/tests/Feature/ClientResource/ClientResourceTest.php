@@ -133,3 +133,75 @@ test('can get client resource service history', function () {
     $response->assertOk()
         ->assertJsonStructure(['data']);
 });
+
+// ---------------------------------------------------------------------------
+// Fiscal profile (GET/PUT client-resources/{id}/billing)
+// ---------------------------------------------------------------------------
+
+test('GET client-resources/{id}/billing falls back to consumidor final', function () {
+    $resource = ClientResourceModel::factory()->create([
+        'tenant_id' => $this->tenant->id,
+        'client_id' => $this->user->id,
+    ]);
+
+    $this->actingAs($this->user)
+        ->withHeader('X-Tenant', $this->tenant->slug)
+        ->getJson("/api/v1/client-resources/{$resource->id}/billing")
+        ->assertOk()
+        ->assertJsonPath('data.doc_type', 'final_consumer');
+});
+
+test('PUT client-resources/{id}/billing creates then edits the default profile in place', function () {
+    $resource = ClientResourceModel::factory()->create([
+        'tenant_id' => $this->tenant->id,
+        'client_id' => $this->user->id,
+    ]);
+
+    // Create
+    $this->actingAs($this->user)
+        ->withHeader('X-Tenant', $this->tenant->slug)
+        ->putJson("/api/v1/client-resources/{$resource->id}/billing", [
+            'doc_type'   => 'cedula',
+            'doc_number' => '1710034065',
+            'legal_name' => 'Nombre Uno',
+            'email'      => 'uno@example.com',
+        ])
+        ->assertOk()
+        ->assertJsonPath('data.legal_name', 'Nombre Uno');
+
+    // Edit in place — no duplicate row
+    $this->actingAs($this->user)
+        ->withHeader('X-Tenant', $this->tenant->slug)
+        ->putJson("/api/v1/client-resources/{$resource->id}/billing", [
+            'doc_type'   => 'cedula',
+            'doc_number' => '1710034065',
+            'legal_name' => 'Nombre Dos',
+            'email'      => 'dos@example.com',
+        ])
+        ->assertOk();
+
+    expect(\App\Infrastructure\Persistence\Models\UserBillingProfileModel::where('user_id', $this->user->id)->count())->toBe(1);
+    $this->assertDatabaseHas('user_billing_profiles', [
+        'user_id'    => $this->user->id,
+        'legal_name' => 'Nombre Dos',
+        'is_default' => true,
+    ]);
+});
+
+test('PUT client-resources/{id}/billing rejects an invalid cedula', function () {
+    $resource = ClientResourceModel::factory()->create([
+        'tenant_id' => $this->tenant->id,
+        'client_id' => $this->user->id,
+    ]);
+
+    $this->actingAs($this->user)
+        ->withHeader('X-Tenant', $this->tenant->slug)
+        ->putJson("/api/v1/client-resources/{$resource->id}/billing", [
+            'doc_type'   => 'cedula',
+            'doc_number' => '1234567890',
+            'legal_name' => 'Bad',
+            'email'      => 'x@example.com',
+        ])
+        ->assertStatus(422)
+        ->assertJsonPath('error.code', 'INVALID_CEDULA');
+});
