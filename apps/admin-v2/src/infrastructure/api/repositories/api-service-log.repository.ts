@@ -4,6 +4,7 @@ import type {
   UpdateServiceLogData,
   UpdateServiceLogItemsData,
   RecordPaymentData,
+  ServiceLogBillingProfile,
 } from '@/domain/repositories/service-log.repository';
 import type { ServiceLog, ServiceLogFilters, DailySummary } from '@/domain/entities/service-log';
 import type { PaginatedResult } from '@/shared/types/api';
@@ -106,4 +107,32 @@ export class ApiServiceLogRepository implements ServiceLogRepository {
     const { data: res } = await api.get('/service-logs/summary', { params: { date } });
     return mapDailySummary(res.data);
   }
+
+  async getBilling(id: string): Promise<ServiceLogBillingProfile> {
+    const { data: res } = await api.get(`/service-logs/${id}/billing`);
+    return mapBilling(res.data);
+  }
+
+  async updateBilling(id: string, data: ServiceLogBillingProfile): Promise<ServiceLogBillingProfile> {
+    const { data: res } = await api.put(`/service-logs/${id}/billing`, {
+      doc_type:   data.docType,
+      doc_number: data.docNumber,
+      legal_name: data.legalName,
+      email:      data.email,
+      address:    data.address,
+      phone:      data.phone,
+    });
+    return mapBilling(res.data);
+  }
+}
+
+function mapBilling(raw: Record<string, unknown>): ServiceLogBillingProfile {
+  return {
+    docType:   (raw.doc_type as ServiceLogBillingProfile['docType']) ?? 'final_consumer',
+    docNumber: (raw.doc_number as string) ?? '',
+    legalName: (raw.legal_name as string) ?? '',
+    email:     (raw.email as string) ?? '',
+    address:   (raw.address as string) ?? '',
+    phone:     (raw.phone as string) ?? '',
+  };
 }

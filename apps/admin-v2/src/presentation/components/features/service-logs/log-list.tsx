@@ -2,7 +2,7 @@
 
 import { useState } from 'react';
 import { format } from 'date-fns';
-import { MoreHorizontal, CheckCircle2, Pencil, Trash2, Plus, ClipboardList, Wallet, Play, Trophy, FileText } from 'lucide-react';
+import { MoreHorizontal, CheckCircle2, Pencil, Trash2, Plus, ClipboardList, Wallet, Play, Trophy, FileText, Receipt } from 'lucide-react';
 import { toast } from 'sonner';
 import { motion } from 'framer-motion';
 import { Badge } from '@/presentation/components/ui/badge';
@@ -23,6 +23,7 @@ import {
 } from '@/presentation/hooks/use-service-logs';
 import { PAYMENT_METHOD_CONFIG } from '@/shared/constants/status';
 import { RegisterPaymentDialog } from '@/presentation/components/features/service-logs/register-payment-dialog';
+import { FiscalProfileDialog } from '@/presentation/components/features/service-logs/fiscal-profile-dialog';
 import { InvoiceStatusBadge } from '@/presentation/components/features/service-logs/invoice-status-badge';
 import { useEmitInvoice } from '@/presentation/hooks/use-invoices';
 import type { ServiceLog, ServiceLogStatus } from '@/domain/entities/service-log';
@@ -51,6 +52,7 @@ export function LogList({ date, onEdit, onCreate }: LogListProps) {
   const deleteMutation = useDeleteServiceLog();
   const emitInvoiceMutation = useEmitInvoice();
   const [payTarget, setPayTarget] = useState<ServiceLog | null>(null);
+  const [billingTarget, setBillingTarget] = useState<ServiceLog | null>(null);
 
   const logs = data?.data ?? [];
 
@@ -303,8 +305,15 @@ export function LogList({ date, onEdit, onCreate }: LogListProps) {
                     <Pencil className="mr-2 h-3.5 w-3.5" />
                     Editar
                   </DropdownMenuItem>
-                  {/* Facturar moved out to a visible row button (see the
-                      primary-actions block above); kebab keeps edit/delete. */}
+                  {/* Facturar itself is a visible row button (see the
+                      primary-actions block above). This is the occasional
+                      correction path for the client's fiscal data. */}
+                  {log.clientResource?.client && (
+                    <DropdownMenuItem onClick={() => setBillingTarget(log)}>
+                      <Receipt className="mr-2 h-3.5 w-3.5" />
+                      Datos de facturación
+                    </DropdownMenuItem>
+                  )}
                   <DropdownMenuSeparator />
                   <DropdownMenuItem
                     className="text-[var(--status-cancelled-fg)] focus:bg-[var(--status-cancelled-bg)] focus:text-[var(--status-cancelled-fg)]"
@@ -327,6 +336,16 @@ export function LogList({ date, onEdit, onCreate }: LogListProps) {
           total={payTarget.priceCharged}
           open
           onClose={() => setPayTarget(null)}
+        />
+      )}
+
+      {/* Datos de facturación — occasional fiscal-data correction. */}
+      {billingTarget && (
+        <FiscalProfileDialog
+          serviceLogId={billingTarget.id}
+          clientName={billingTarget.clientResource?.client?.name}
+          open
+          onClose={() => setBillingTarget(null)}
         />
       )}
     </div>
