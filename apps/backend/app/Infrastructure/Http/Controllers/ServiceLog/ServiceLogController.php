@@ -273,10 +273,10 @@ class ServiceLogController extends Controller
             'notes'          => trim(($log->notes ?? '') . ($data['reference'] ?? '' ? "\nRef: {$data['reference']}" : '')) ?: null,
         ]);
 
-        // Only dispatch invoice job if not already successfully invoiced
-        if ($log->invoice_status !== 'autorizada') {
-            EmitServiceLogInvoiceJob::dispatch($log->id);
-        }
+        // Facturación is now a manual step: recording payment only marks
+        // the log paid. The SRI invoice is emitted on demand via invoice()
+        // (POST /service-logs/{id}/invoice), surfaced as the "Facturar"
+        // button in the admin. Do NOT auto-dispatch here.
 
         return (new ServiceLogResource(
             $log->load(['clientResource', 'service', 'attendant'])

@@ -51,9 +51,9 @@ class CompleteWashUseCase
                 \Illuminate\Support\Facades\Log::error('Failed to send reservation completed notification', ['error' => $e->getMessage()]);
             }
 
-            // Completing the wash no longer emits the invoice — billing happens
-            // only when payment is recorded (see ReservationPaymentController).
-            // This keeps one mental model: cobrar = facturar.
+            // Completing the wash does not emit the invoice. Facturación is a
+            // manual step (the "Emitir factura" button) — neither completion
+            // nor payment auto-emits anymore; see ReservationController::invoice.
         }
     }
 }

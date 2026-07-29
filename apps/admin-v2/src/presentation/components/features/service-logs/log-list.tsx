@@ -231,9 +231,11 @@ export function LogList({ date, onEdit, onCreate }: LogListProps) {
                 {statusCfg.label}
               </Badge>
 
-              {/* Primary action — surfaced as a labeled button so the
-                  cashier doesn't fish for icons. Priority order:
-                  Cobrar (unpaid) > Completar (in_progress) > none. */}
+              {/* Primary actions — surfaced as labeled buttons so the
+                  cashier doesn't fish for icons. Unpaid → Cobrar. Once paid,
+                  facturación is a manual step: Completar (while in progress)
+                  and Facturar (until the SRI invoice is autorizada) can both
+                  show. */}
               {isUnpaid ? (
                 <Button
                   size="sm"
@@ -243,18 +245,38 @@ export function LogList({ date, onEdit, onCreate }: LogListProps) {
                   <Wallet className="h-3.5 w-3.5" aria-hidden="true" />
                   Cobrar
                 </Button>
-              ) : log.status === 'in_progress' ? (
-                <Button
-                  size="sm"
-                  variant="outline"
-                  onClick={() => handleComplete(log.id)}
-                  disabled={completeMutation.isPending}
-                  className="h-9 shrink-0 cursor-pointer gap-1.5 border-[var(--success-200)] px-3 text-[var(--success-700)] hover:bg-[var(--success-50)] hover:text-[var(--success-800)]"
-                >
-                  <CheckCircle2 className="h-3.5 w-3.5" aria-hidden="true" />
-                  Completar
-                </Button>
-              ) : null}
+              ) : (
+                <>
+                  {log.status === 'in_progress' && (
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      onClick={() => handleComplete(log.id)}
+                      disabled={completeMutation.isPending}
+                      className="h-9 shrink-0 cursor-pointer gap-1.5 border-[var(--success-200)] px-3 text-[var(--success-700)] hover:bg-[var(--success-50)] hover:text-[var(--success-800)]"
+                    >
+                      <CheckCircle2 className="h-3.5 w-3.5" aria-hidden="true" />
+                      Completar
+                    </Button>
+                  )}
+                  {log.invoiceStatus !== 'autorizada' && (
+                    <Button
+                      size="sm"
+                      onClick={() =>
+                        emitInvoiceMutation.mutate(log.id, {
+                          onSuccess: () => toast.success('Facturación iniciada'),
+                          onError: () => toast.error('Error al iniciar facturación'),
+                        })
+                      }
+                      disabled={emitInvoiceMutation.isPending}
+                      className="h-9 shrink-0 cursor-pointer gap-1.5 bg-[var(--info-500)] px-3 text-white hover:bg-[var(--info-700)]"
+                    >
+                      <FileText className="h-3.5 w-3.5" aria-hidden="true" />
+                      {log.invoiceStatus === 'rechazada' ? 'Reintentar factura' : 'Facturar'}
+                    </Button>
+                  )}
+                </>
+              )}
 
               <DropdownMenu>
                 <DropdownMenuTrigger asChild>
@@ -281,22 +303,8 @@ export function LogList({ date, onEdit, onCreate }: LogListProps) {
                     <Pencil className="mr-2 h-3.5 w-3.5" />
                     Editar
                   </DropdownMenuItem>
-                  {log.paymentStatus === 'paid' && log.invoiceStatus !== 'autorizada' && (
-                    <>
-                      <DropdownMenuSeparator />
-                      <DropdownMenuItem
-                        onClick={() =>
-                          emitInvoiceMutation.mutate(log.id, {
-                            onSuccess: () => toast.success('Facturación iniciada'),
-                            onError: () => toast.error('Error al iniciar facturación'),
-                          })
-                        }
-                      >
-                        <FileText className="mr-2 h-4 w-4" />
-                        {log.invoiceStatus === 'rechazada' ? 'Reintentar factura' : 'Facturar'}
-                      </DropdownMenuItem>
-                    </>
-                  )}
+                  {/* Facturar moved out to a visible row button (see the
+                      primary-actions block above); kebab keeps edit/delete. */}
                   <DropdownMenuSeparator />
                   <DropdownMenuItem
                     className="text-[var(--status-cancelled-fg)] focus:bg-[var(--status-cancelled-bg)] focus:text-[var(--status-cancelled-fg)]"

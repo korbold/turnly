@@ -7,7 +7,6 @@ namespace App\Infrastructure\Http\Controllers\Reservation;
 use App\Events\ReservationUpdated;
 use App\Infrastructure\Http\Controllers\Controller;
 use App\Infrastructure\Http\Resources\ReservationResource;
-use App\Infrastructure\Jobs\EmitReservationInvoiceJob;
 use App\Infrastructure\Persistence\Models\ReservationModel;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
@@ -83,12 +82,10 @@ class ReservationPaymentController extends Controller
 
         $reservation->update($updates);
 
-        // Payment locks the items and triggers the SRI invoice. Guard against
-        // a second emission if the reservation was already invoiced (e.g. on
-        // completion) — whichever happens first wins.
-        if (!$reservation->invoiced) {
-            EmitReservationInvoiceJob::dispatch($reservation->id);
-        }
+        // Payment locks the items but no longer triggers the SRI invoice.
+        // Facturación is now a manual step: the invoice is emitted on demand
+        // via ReservationController::invoice (the "Emitir factura" button in
+        // the reservation detail panel). Do NOT auto-dispatch here.
 
         ReservationUpdated::dispatch($reservation->fresh(['service', 'client', 'tenant']));
 

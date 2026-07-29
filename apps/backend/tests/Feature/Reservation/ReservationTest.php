@@ -133,8 +133,7 @@ test('can start a wash from confirmed reservation', function () {
 });
 
 test('can complete a reservation in progress', function () {
-    // Queue::fake so EmitReservationInvoiceJob does not attempt a real HTTP
-    // call to the billing service during the test run.
+    // Queue::fake to capture (and assert the absence of) any invoice job.
     Queue::fake();
 
     $reservation = ReservationModel::factory()->create([
@@ -157,7 +156,38 @@ test('can complete a reservation in progress', function () {
         'status' => 'completed',
     ]);
 
-    Queue::assertPushed(\App\Infrastructure\Jobs\EmitReservationInvoiceJob::class);
+    // Facturación is a manual step now — completing must NOT emit the invoice.
+    Queue::assertNotPushed(\App\Infrastructure\Jobs\EmitReservationInvoiceJob::class);
+});
+
+test('recording a reservation payment marks paid WITHOUT auto-dispatching invoice', function () {
+    Queue::fake();
+
+    $reservation = ReservationModel::factory()->create([
+        'tenant_id' => $this->tenant->id,
+        'client_id' => $this->user->id,
+        'client_resource_id' => $this->clientResource->id,
+        'service_id' => $this->service->id,
+        'created_by' => $this->user->id,
+        'status' => 'in_progress',
+        'payment_status' => 'unpaid',
+        'invoiced' => false,
+    ]);
+
+    $response = $this->actingAs($this->user)
+        ->withHeader('X-Tenant', $this->tenant->slug)
+        ->postJson("/api/v1/reservations/{$reservation->id}/payment", [
+            'method' => 'cash',
+        ]);
+
+    $response->assertOk();
+
+    $this->assertDatabaseHas('reservations', [
+        'id' => $reservation->id,
+        'payment_status' => 'paid',
+    ]);
+
+    Queue::assertNotPushed(\App\Infrastructure\Jobs\EmitReservationInvoiceJob::class);
 });
 
 test('can cancel a reservation', function () {
