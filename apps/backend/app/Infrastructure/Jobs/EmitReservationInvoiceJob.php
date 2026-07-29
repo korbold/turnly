@@ -34,10 +34,13 @@ class EmitReservationInvoiceJob implements ShouldQueue
 
         $billingProfile = $this->resolveBillingProfile($reservation->billing_snapshot);
 
+        // SRI Tabla 24 (formas de pago): 01 sin sistema financiero (efectivo),
+        // 16 tarjeta de débito/crédito, 20 otros con utilización del sistema
+        // financiero (transferencia). Transfer must be 20 — not 16.
         $formaPago = match ($reservation->payment_method) {
             'cash'     => '01',
             'card'     => '16',
-            'transfer' => '16',
+            'transfer' => '20',
             default    => '20',
         };
 
