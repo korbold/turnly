@@ -204,6 +204,39 @@ test('POST service-logs/{id}/invoice returns 202 and dispatches job', function (
     });
 });
 
+test('POST service-logs/{id}/payment marks paid WITHOUT auto-dispatching invoice', function () {
+    // Facturación is now a manual step (the "Facturar" button). Recording a
+    // payment must only mark the log paid — it must NOT auto-emit the SRI
+    // invoice the way it used to.
+    Queue::fake();
+
+    $log = ServiceLogModel::factory()->create([
+        'tenant_id'          => $this->tenant->id,
+        'client_resource_id' => $this->clientResource->id,
+        'service_id'         => $this->service->id,
+        'attended_by'        => $this->user->id,
+        'created_by'         => $this->user->id,
+        'payment_method'     => 'cash',
+        'payment_status'     => 'unpaid',
+        'invoice_status'     => null,
+    ]);
+
+    $response = $this->actingAs($this->user)
+        ->withHeader('X-Tenant', $this->tenant->slug)
+        ->postJson("/api/v1/service-logs/{$log->id}/payment", [
+            'method' => 'cash',
+        ]);
+
+    $response->assertStatus(200);
+
+    $this->assertDatabaseHas('service_logs', [
+        'id'             => $log->id,
+        'payment_status' => 'paid',
+    ]);
+
+    Queue::assertNotPushed(EmitServiceLogInvoiceJob::class);
+});
+
 test('POST service-logs/{id}/invoice returns 422 ALREADY_INVOICED when status is autorizada', function () {
     $log = ServiceLogModel::factory()->create([
         'tenant_id'          => $this->tenant->id,
