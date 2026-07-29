@@ -32,7 +32,7 @@ class ServiceLogController extends Controller
         // `items` is eager-loaded so the LogList row can render the
         // multi-service rollup ("Lavada + Pulido +1 más") off the
         // services_summary block in the resource without per-row queries.
-        $query = ServiceLogModel::with(['clientResource', 'service', 'attendant', 'items.variant']);
+        $query = ServiceLogModel::with(['clientResource.client', 'service', 'attendant', 'items.variant']);
 
         if ($request->has('date')) {
             $query->whereDate('log_date', $request->date);
@@ -149,7 +149,7 @@ class ServiceLogController extends Controller
     public function show(string $id): ServiceLogResource
     {
         $serviceLog = ServiceLogModel::with([
-            'clientResource', 'service', 'attendant', 'reservation', 'items.variant',
+            'clientResource.client', 'service', 'attendant', 'reservation', 'items.variant',
         ])->findOrFail($id);
         return new ServiceLogResource($serviceLog);
     }

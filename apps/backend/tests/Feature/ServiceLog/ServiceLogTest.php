@@ -73,7 +73,10 @@ test('can show a service log', function () {
         ->getJson("/api/v1/service-logs/{$serviceLog->id}");
 
     $response->assertOk()
-        ->assertJsonPath('data.id', $serviceLog->id);
+        ->assertJsonPath('data.id', $serviceLog->id)
+        // clientResource.client must be eager-loaded so the detail page's
+        // "Cliente" card isn't stuck on "Sin cliente".
+        ->assertJsonPath('data.client_resource.client.name', $this->user->name);
 });
 
 test('can complete a service log', function () {
