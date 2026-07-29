@@ -10,6 +10,8 @@ use App\Infrastructure\Http\Controllers\Controller;
 use App\Infrastructure\Http\Requests\ClientResource\CreateClientResourceRequest;
 use App\Infrastructure\Http\Resources\ClientResourceResource;
 use App\Infrastructure\Persistence\Models\ClientResourceModel;
+use App\Infrastructure\Persistence\Models\ReservationModel;
+use App\Infrastructure\Persistence\Models\ServiceLogModel;
 use App\Infrastructure\Persistence\Models\TenantUserModel;
 use App\Infrastructure\Persistence\Models\UserBillingProfileModel;
 use App\Infrastructure\Persistence\Models\UserModel;
@@ -327,7 +329,49 @@ class ClientResourceController extends Controller
 
     public function history(string $id): JsonResponse
     {
-        $history = $this->getClientResourceHistory->execute($id);
+        // Ensure the resource exists within the current tenant.
+        ClientResourceModel::findOrFail($id);
+
+        // Shape both service logs and reservations into the flat contract
+        // the client-detail page consumes: { id, type, date, serviceName,
+        // amount, status, paymentStatus }. The old use case returned raw
+        // ServiceLog entities (camelCase, no `type`), which the frontend
+        // silently discarded — and it never included reservations.
+        $services = ServiceLogModel::with(['service', 'items'])
+            ->where('client_resource_id', $id)
+            ->get()
+            ->map(function (ServiceLogModel $log) {
+                $items = $log->items;
+                $label = $items && $items->isNotEmpty()
+                    ? $items->first()->label . ($items->count() > 1 ? ' +' . ($items->count() - 1) . ' más' : '')
+                    : ($log->service?->name ?? 'Servicio');
+
+                return [
+                    'id'            => $log->id,
+                    'type'          => 'service',
+                    'date'          => ($log->started_at ?? $log->created_at)?->toIso8601String(),
+                    'serviceName'   => $label,
+                    'amount'        => (float) $log->price_charged,
+                    'status'        => $log->status,
+                    'paymentStatus' => $log->payment_status,
+                ];
+            });
+
+        $reservations = ReservationModel::with('service')
+            ->where('client_resource_id', $id)
+            ->get()
+            ->map(fn (ReservationModel $r) => [
+                'id'          => $r->id,
+                'type'        => 'reservation',
+                'date'        => $r->scheduled_at?->toIso8601String(),
+                'serviceName' => $r->service?->name ?? 'Reserva',
+                'status'      => $r->status,
+            ]);
+
+        $history = $services->concat($reservations)
+            ->sortByDesc('date')
+            ->values()
+            ->all();
 
         return response()->json([
             'data' => $history,
