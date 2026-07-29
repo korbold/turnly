@@ -205,3 +205,36 @@ test('PUT client-resources/{id}/billing rejects an invalid cedula', function () 
         ->assertStatus(422)
         ->assertJsonPath('error.code', 'INVALID_CEDULA');
 });
+
+test('client history returns typed service rows with serviceName + amount', function () {
+    $resource = ClientResourceModel::factory()->create([
+        'tenant_id' => $this->tenant->id,
+        'client_id' => $this->user->id,
+    ]);
+    $service = \App\Infrastructure\Persistence\Models\ServiceModel::factory()->create([
+        'tenant_id' => $this->tenant->id,
+        'name'      => 'Lavada Premium',
+    ]);
+    \App\Infrastructure\Persistence\Models\ServiceLogModel::factory()->create([
+        'tenant_id'          => $this->tenant->id,
+        'client_resource_id' => $resource->id,
+        'service_id'         => $service->id,
+        'attended_by'        => $this->user->id,
+        'created_by'         => $this->user->id,
+        'status'             => 'completed',
+        'payment_status'     => 'paid',
+        'price_charged'      => 20.00,
+        'started_at'         => now(),
+    ]);
+
+    $res = $this->actingAs($this->user)
+        ->withHeader('X-Tenant', $this->tenant->slug)
+        ->getJson("/api/v1/client-resources/{$resource->id}/history");
+
+    $res->assertOk()
+        ->assertJsonCount(1, 'data')
+        ->assertJsonPath('data.0.type', 'service')
+        ->assertJsonPath('data.0.serviceName', 'Lavada Premium')
+        ->assertJsonPath('data.0.amount', 20)
+        ->assertJsonPath('data.0.paymentStatus', 'paid');
+});

@@ -63,15 +63,22 @@ function ClientDetailContent() {
     serviceName?: string;
     amount?: number;
     status?: string;
+    paymentStatus?: 'paid' | 'unpaid';
   }>;
 
   const serviceHistory = historyItems.filter((h) => h.type === 'service');
   const reservationHistory = historyItems.filter((h) => h.type === 'reservation');
 
   const clientData = (client?.data as Record<string, unknown> | null) ?? {};
+  // Aggregates aren't persisted on the resource, so derive them from the
+  // history (backend returns it sorted newest-first).
   const totalVisits = (clientData.totalVisits as number) ?? serviceHistory.length;
-  const totalSpent = (clientData.totalSpent as number) ?? 0;
-  const lastVisit = (clientData.lastVisit as string) ?? null;
+  const totalSpent =
+    (clientData.totalSpent as number) ??
+    serviceHistory
+      .filter((h) => h.paymentStatus === 'paid')
+      .reduce((sum, h) => sum + (h.amount ?? 0), 0);
+  const lastVisit = (clientData.lastVisit as string) ?? (serviceHistory[0]?.date ?? null);
 
   if (isLoading) {
     return (
