@@ -78,6 +78,7 @@ class EmitReservationInvoiceJob implements ShouldQueue
                         externalInvoiceId: $result['id'],
                         invoiceNumber:     $result['numero_autorizacion'] ?? $result['id'],
                         issuedAt:          now()->format('d/m/Y'),
+                        businessName:      $this->tenantName($reservation->tenant_id),
                     ));
                 }
 

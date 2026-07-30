@@ -24,13 +24,16 @@ class InvoiceMail extends Mailable implements ShouldQueue
         public readonly string $externalInvoiceId,
         public readonly string $invoiceNumber,
         public readonly string $issuedAt,
+        public readonly string $businessName = '',
     ) {}
 
     public function envelope(): Envelope
     {
-        return new Envelope(
-            subject: "Tu factura electrónica {$this->invoiceNumber}",
-        );
+        $subject = $this->businessName !== ''
+            ? "Tu factura emitida por {$this->businessName}"
+            : 'Tu factura electrónica';
+
+        return new Envelope(subject: $subject);
     }
 
     public function content(): Content

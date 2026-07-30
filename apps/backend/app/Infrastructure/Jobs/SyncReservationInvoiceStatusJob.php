@@ -80,6 +80,7 @@ class SyncReservationInvoiceStatusJob implements ShouldQueue
                     externalInvoiceId: $inv['id'],
                     invoiceNumber:     $inv['numero_autorizacion'] ?? $inv['id'],
                     issuedAt:          now()->format('d/m/Y'),
+                    businessName:      $this->tenantName($reservation->tenant_id),
                 ));
             }
 
