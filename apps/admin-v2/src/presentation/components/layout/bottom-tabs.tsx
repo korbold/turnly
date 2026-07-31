@@ -15,8 +15,12 @@ import {
   Settings,
   Clock,
   ClipboardList,
+  Package,
+  Receipt,
+  CreditCard,
 } from 'lucide-react';
 import { cn } from '@/shared/utils/cn';
+import { usePermissions } from '@/presentation/hooks/use-permissions';
 import {
   Sheet,
   SheetContent,
@@ -45,20 +49,26 @@ const quickActions = [
 ];
 
 const moreItems = [
-  { label: 'Reportes', icon: BarChart3, href: '/reports' },
   { label: 'Clientes', icon: Users, href: '/clients' },
   { label: 'Servicios', icon: Scissors, href: '/services' },
+  { label: 'Inventario', icon: Package, href: '/inventory' },
   { label: 'Equipo', icon: UserPlus, href: '/team' },
+  { label: 'Reportes', icon: BarChart3, href: '/reports' },
+  { label: 'Facturas', icon: Receipt, href: '/facturas' },
+  { label: 'Mi Plan', icon: CreditCard, href: '/plan' },
   { label: 'Configuración', icon: Settings, href: '/settings' },
 ];
 
 export function BottomTabs() {
   const pathname = usePathname();
   const router = useRouter();
+  const { canAccess } = usePermissions();
   const [fabOpen, setFabOpen] = useState(false);
   const [moreOpen, setMoreOpen] = useState(false);
 
   const isActive = (href: string) => pathname?.startsWith(href);
+
+  const visibleMoreItems = moreItems.filter((item) => canAccess(item.href));
 
   return (
     <>
@@ -141,7 +151,7 @@ export function BottomTabs() {
             <SheetTitle>Más opciones</SheetTitle>
           </SheetHeader>
           <div className="mt-4 space-y-1">
-            {moreItems.map((item) => {
+            {visibleMoreItems.map((item) => {
               const Icon = item.icon;
               return (
                 <button
