@@ -7,6 +7,7 @@ import {
   CalendarX,
   CalendarClock,
   CalendarPlus,
+  PackageMinus,
   BellRing,
 } from 'lucide-react';
 import { formatDistanceToNow } from 'date-fns';
@@ -22,6 +23,7 @@ const ICON_MAP: Record<string, { icon: typeof BellRing; color: string; bg: strin
   cancel: { icon: CalendarX, color: 'text-red-600', bg: 'bg-red-50' },
   edit_calendar: { icon: CalendarClock, color: 'text-amber-600', bg: 'bg-amber-50' },
   calendar_today: { icon: CalendarPlus, color: 'text-[var(--color-primary)]', bg: 'bg-[var(--color-primary-muted)]' },
+  inventory: { icon: PackageMinus, color: 'text-amber-600', bg: 'bg-amber-50' },
 };
 
 export function NotificationItem({ notification, onClick }: NotificationItemProps) {

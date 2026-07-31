@@ -2,8 +2,11 @@
 
 namespace App\Providers;
 
+use App\Events\ProductStockedLow;
+use App\Infrastructure\Notifications\Listeners\SendLowStockNotification;
 use Illuminate\Cache\RateLimiting\Limit;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Event;
 use Illuminate\Support\Facades\RateLimiter;
 use Illuminate\Support\ServiceProvider;
 
@@ -19,6 +22,8 @@ class AppServiceProvider extends ServiceProvider
 
     public function boot(): void
     {
+        Event::listen(ProductStockedLow::class, SendLowStockNotification::class);
+
         // Magic link request limiter. Two keys at once: per-email blocks
         // bombing of a single inbox even when the attacker rotates IPs;
         // per-IP catches a script enumerating many emails from one host.

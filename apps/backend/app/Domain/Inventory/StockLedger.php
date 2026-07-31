@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Domain\Inventory;
 
+use App\Events\ProductStockedLow;
 use App\Infrastructure\Persistence\Models\ProductModel;
 use App\Infrastructure\Persistence\Models\ProductStockLevelModel;
 use App\Infrastructure\Persistence\Models\StockMovementModel;
@@ -98,7 +99,14 @@ final class StockLedger
         ?string $refId,
         ?string $note,
     ): StockMovementModel {
-        return DB::transaction(function () use ($product, $type, $signedQty, $unitCost, $userId, $refType, $refId, $note) {
+        $stockMin = (float) $product->stock_min;
+        $crossedLow = false;
+        $finalOnHand = 0.0;
+
+        $movement = DB::transaction(function () use (
+            $product, $type, $signedQty, $unitCost, $userId, $refType, $refId, $note,
+            $stockMin, &$crossedLow, &$finalOnHand
+        ) {
             $movement = StockMovementModel::create([
                 'tenant_id'  => $product->tenant_id,
                 'product_id' => $product->id,
@@ -135,8 +143,25 @@ final class StockLedger
             $level->updated_at = now();
             $level->save();
 
+            // Only the OK->low transition fires; already-low stays silent.
+            $crossedLow = $oldOnHand >= $stockMin && $newOnHand < $stockMin;
+            $finalOnHand = $newOnHand;
+
             return $movement;
         });
+
+        if ($crossedLow) {
+            ProductStockedLow::dispatch(
+                $product->tenant_id,
+                $product->id,
+                $product->name,
+                $finalOnHand,
+                $stockMin,
+                (string) $product->unit,
+            );
+        }
+
+        return $movement;
     }
 
     private function assertPositive(float $qty, string $label): void

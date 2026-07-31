@@ -22,6 +22,9 @@ export function NotificationDropdown() {
     if (notification.actionType === 'reservation_detail' && notification.actionId) {
       router.push(`/reservations?reservation=${notification.actionId}`);
     }
+    if (notification.actionType === 'inventory') {
+      router.push('/inventory');
+    }
   };
 
   return (

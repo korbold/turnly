@@ -22,6 +22,9 @@ export default function NotificationsPage() {
     if (notification.actionType === 'reservation_detail') {
       router.push('/reservations');
     }
+    if (notification.actionType === 'inventory') {
+      router.push('/inventory');
+    }
   };
 
   if (isLoading) {
