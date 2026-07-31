@@ -45,6 +45,7 @@ class TenantResource extends JsonResource
             'auto_confirm_reservations' => (bool) ($this->settings['auto_confirm_reservations'] ?? false),
             'allow_client_resource_selection' => (bool) ($this->settings['allow_client_resource_selection'] ?? false),
             'iva_mode'            => $this->settings['iva_mode'] ?? 'excluded',
+            'permissions'         => $this->settings['permissions'] ?? (object) [],
             'payment_timing'      => $this->getPaymentTiming(),
         ];
     }

@@ -41,6 +41,7 @@ class TenantSettingsController extends Controller
             'allow_client_resource_selection' => 'sometimes|boolean',
             'payment_timing' => 'sometimes|string|in:prepay_required,at_pickup,at_completion,flexible,none',
             'iva_mode' => 'sometimes|string|in:excluded,included,zero',
+            'permissions' => 'sometimes|array',
         ]);
 
         $tenant = TenantModel::findOrFail(app('current_tenant_id'));
@@ -89,6 +90,9 @@ class TenantSettingsController extends Controller
         }
         if ($request->has('iva_mode')) {
             $settings['iva_mode'] = (string) $request->iva_mode;
+        }
+        if ($request->has('permissions')) {
+            $settings['permissions'] = $request->input('permissions');
         }
         if ($request->has('settings')) {
             $settings = array_merge($settings, $request->settings);

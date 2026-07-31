@@ -7,6 +7,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/presentation/compone
 import { Skeleton } from '@/presentation/components/ui/skeleton';
 import { cn } from '@/shared/utils/cn';
 import { useSettings, useUpdateSettings } from '@/presentation/hooks/use-settings';
+import { DEFAULT_PERMISSIONS } from '@/shared/constants/permissions';
 
 const ROLES = ['Admin', 'Cajero', 'Lavador', 'Cliente'] as const;
 const SECTIONS = ['Dashboard', 'Reservas', 'Registro', 'Clientes', 'Servicios', 'Equipo', 'Reportes', 'Config'] as const;
@@ -47,7 +48,7 @@ function buildDefaultMatrix(): PermissionsMatrix {
   for (const role of ROLES) {
     matrix[role] = {};
     for (const section of SECTIONS) {
-      matrix[role][section] = role === 'Admin' ? 'full' : 'none';
+      matrix[role][section] = DEFAULT_PERMISSIONS[role]?.[section] ?? 'none';
     }
   }
   return matrix;

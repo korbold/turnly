@@ -3,6 +3,7 @@
 import { useMe } from '@/presentation/hooks/use-auth';
 import { useSettings } from '@/presentation/hooks/use-settings';
 import type { UserRole } from '@/domain/entities/user';
+import { DEFAULT_PERMISSIONS } from '@/shared/constants/permissions';
 
 // Maps UserRole code → permissions matrix display key
 const ROLE_TO_MATRIX: Partial<Record<UserRole, string>> = {
@@ -52,7 +53,10 @@ export function usePermissions() {
       // Section not in matrix (inventory, plan) → hide for restricted roles.
       if (!section) return false;
 
-      const permission = settings?.permissions?.[matrixKey]?.[section] ?? 'none';
+      const permission =
+        settings?.permissions?.[matrixKey]?.[section]
+        ?? DEFAULT_PERMISSIONS[matrixKey]?.[section]
+        ?? 'none';
       return permission === 'full' || permission === 'view';
     }
 
