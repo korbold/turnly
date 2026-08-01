@@ -71,9 +71,12 @@ class UserController extends Controller
             'email'    => $data['email'] ?? null,
             'phone'    => $data['phone'] ?? null,
             'is_super_admin' => false,
-            // Staff accounts created by admins are trusted: skip email verification.
-            'email_verified_at' => now(),
         ]);
+
+        // Admin-created staff are trusted; mark verified. forceFill because
+        // email_verified_at is intentionally not fillable (mass-assign guard,
+        // same rationale as is_super_admin).
+        $user->forceFill(['email_verified_at' => now()])->save();
 
         TenantUserModel::create([
             'tenant_id' => $tenantId,

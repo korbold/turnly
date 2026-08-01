@@ -13,7 +13,7 @@ class EnsureEmailVerifiedMiddleware
     public function handle(Request $request, Closure $next): mixed
     {
         $user = $request->user();
-        if ($user && $user->email_verified_at === null) {
+        if ($user && $user->email !== null && $user->email_verified_at === null) {
             return new JsonResponse([
                 'error' => [
                     'code' => 'EMAIL_NOT_VERIFIED',
