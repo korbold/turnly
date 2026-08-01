@@ -9,6 +9,14 @@ beforeEach(function () {
     $this->user = UserModel::factory()->create();
     app()->instance('current_tenant', $this->tenant);
     app()->instance('current_tenant_id', $this->tenant->id);
+
+    \App\Infrastructure\Persistence\Models\TenantUserModel::create([
+        'id'        => (string) \Illuminate\Support\Str::uuid(),
+        'tenant_id' => $this->tenant->id,
+        'user_id'   => $this->user->id,
+        'role'      => 'owner',
+        'is_active' => true,
+    ]);
 });
 
 test('can list products', function () {

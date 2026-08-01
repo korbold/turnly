@@ -135,11 +135,14 @@ Route::prefix('v1')->group(function () {
         Route::post('notifications/read-all', [\App\Infrastructure\Http\Controllers\Notification\NotificationController::class, 'markAllAsRead']);
         Route::post('notifications/{id}/read', [\App\Infrastructure\Http\Controllers\Notification\NotificationController::class, 'markAsRead']);
 
-        // Tenant-scoped routes (require verified email)
+        // auth/me stays unguarded: the customer app calls it pre-booking,
+        // and me() deliberately tolerates a non-member (returns tenant: null).
         Route::middleware(['verified.email', 'tenant'])->group(function () {
-            // Auth
             Route::get('auth/me', [AuthController::class, 'me']);
+        });
 
+        // Tenant-scoped routes (require verified email + active tenant membership)
+        Route::middleware(['verified.email', 'tenant', 'tenant.member'])->group(function () {
             // Tenant settings
             Route::get('tenant/settings', [TenantSettingsController::class, 'show']);
             Route::patch('tenant/settings', [TenantSettingsController::class, 'update']);

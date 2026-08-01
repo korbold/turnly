@@ -23,6 +23,7 @@ return Application::configure(basePath: dirname(__DIR__))
             'tenant' => \App\Infrastructure\Http\Middleware\ResolveTenantMiddleware::class,
             'super_admin' => \App\Infrastructure\Http\Middleware\EnsureSuperAdminMiddleware::class,
             'verified.email' => \App\Infrastructure\Http\Middleware\EnsureEmailVerifiedMiddleware::class,
+            'tenant.member' => \App\Infrastructure\Http\Middleware\EnsureTenantMemberMiddleware::class,
         ]);
     })
     ->withExceptions(function (Exceptions $exceptions): void {

@@ -54,6 +54,14 @@ it('rejects deleting a locked field via the settings endpoint', function () {
     app()->instance('current_tenant', $tenant);
     app()->instance('current_tenant_id', $tenant->id);
 
+    \App\Infrastructure\Persistence\Models\TenantUserModel::create([
+        'id'        => (string) \Illuminate\Support\Str::uuid(),
+        'tenant_id' => $tenant->id,
+        'user_id'   => $user->id,
+        'role'      => 'owner',
+        'is_active' => true,
+    ]);
+
     // Attempt to overwrite custom_fields without the locked field
     $this->actingAs($user)
         ->withHeader('X-Tenant', $tenant->slug)

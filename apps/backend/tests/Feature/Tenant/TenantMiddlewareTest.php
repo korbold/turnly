@@ -4,8 +4,16 @@ use App\Infrastructure\Persistence\Models\TenantModel;
 use App\Infrastructure\Persistence\Models\UserModel;
 
 test('resolves tenant from X-Tenant header', function () {
-    TenantModel::factory()->create(['slug' => 'demo', 'status' => 'active']);
+    $tenant = TenantModel::factory()->create(['slug' => 'demo', 'status' => 'active']);
     $user = UserModel::factory()->create();
+
+    \App\Infrastructure\Persistence\Models\TenantUserModel::create([
+        'id'        => (string) \Illuminate\Support\Str::uuid(),
+        'tenant_id' => $tenant->id,
+        'user_id'   => $user->id,
+        'role'      => 'owner',
+        'is_active' => true,
+    ]);
 
     $response = $this->actingAs($user)
         ->withHeader('X-Tenant', 'demo')
@@ -41,6 +49,14 @@ test('tenant scoped request only returns data for that tenant', function () {
     $tenant1 = TenantModel::factory()->create(['status' => 'active']);
     $tenant2 = TenantModel::factory()->create(['status' => 'active']);
     $user = UserModel::factory()->create();
+
+    \App\Infrastructure\Persistence\Models\TenantUserModel::create([
+        'id'        => (string) \Illuminate\Support\Str::uuid(),
+        'tenant_id' => $tenant1->id,
+        'user_id'   => $user->id,
+        'role'      => 'owner',
+        'is_active' => true,
+    ]);
 
     // Create services for both tenants (bypassing global scope)
     \App\Infrastructure\Persistence\Models\ServiceModel::withoutGlobalScopes()->insert([

@@ -23,6 +23,14 @@ it('persists valid vehicle_types on a variant', function () {
     app()->instance('current_tenant', $tenant);
     app()->instance('current_tenant_id', $tenant->id);
 
+    \App\Infrastructure\Persistence\Models\TenantUserModel::create([
+        'id'        => (string) \Illuminate\Support\Str::uuid(),
+        'tenant_id' => $tenant->id,
+        'user_id'   => $user->id,
+        'role'      => 'owner',
+        'is_active' => true,
+    ]);
+
     $res = $this->actingAs($user)
         ->withHeader('X-Tenant', $tenant->slug)
         ->postJson("/api/v1/services/{$service->id}/variants", [
@@ -41,6 +49,14 @@ it('rejects a vehicle_type not in the tenant options', function () {
 
     app()->instance('current_tenant', $tenant);
     app()->instance('current_tenant_id', $tenant->id);
+
+    \App\Infrastructure\Persistence\Models\TenantUserModel::create([
+        'id'        => (string) \Illuminate\Support\Str::uuid(),
+        'tenant_id' => $tenant->id,
+        'user_id'   => $user->id,
+        'role'      => 'owner',
+        'is_active' => true,
+    ]);
 
     $this->actingAs($user)
         ->withHeader('X-Tenant', $tenant->slug)
