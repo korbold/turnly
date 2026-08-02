@@ -265,8 +265,14 @@ export function LogList({ date, onEdit, onCreate }: LogListProps) {
                     </Button>
                   )}
                   {log.invoiceStatus !== 'autorizada' && (() => {
+                    // Spinner stays up from the click through the SRI verdict:
+                    // the mutation covers click→"enviada"; invoiceStatus
+                    // 'enviada' covers "enviada"→autorizada/rechazada (the list
+                    // polls meanwhile). FEDER-style immediate rejection settles
+                    // the mutation straight to 'rechazada' (never 'enviada').
                     const isEmitting =
-                      emitInvoiceMutation.isPending && emitInvoiceMutation.variables === log.id;
+                      (emitInvoiceMutation.isPending && emitInvoiceMutation.variables === log.id) ||
+                      log.invoiceStatus === 'enviada';
                     const isRetry = log.invoiceStatus === 'rechazada';
                     return (
                       <Button

@@ -18,6 +18,13 @@ export function useServiceLogs(filters: ServiceLogFilters) {
   return useQuery({
     queryKey: ['service-logs', filters],
     queryFn: () => new GetServiceLogsUseCase(repo).execute(filters),
+    // While an invoice is sent and awaiting the SRI verdict ('enviada'),
+    // poll so the row resolves to its final status (autorizada / rechazada)
+    // — and its loading spinner stops — without a manual refresh.
+    refetchInterval: (query) => {
+      const rows = query.state.data?.data ?? [];
+      return rows.some((r) => r.invoiceStatus === 'enviada') ? 4000 : false;
+    },
   });
 }
 
