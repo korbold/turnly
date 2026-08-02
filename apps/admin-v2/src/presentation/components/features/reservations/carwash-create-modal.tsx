@@ -241,7 +241,7 @@ export function CarwashReservationModal({ open, onClose }: CarwashReservationMod
   const { data: servicesData, isLoading: servicesLoading } = useServices();
   const { data: clientsData, isLoading: clientsLoading } = useClients(1, clientSearch || undefined);
   const { data: settings } = useSettings();
-  const { data: teamData } = useTeam();
+  const { data: teamData } = useTeam({ excludeRole: 'client' as const });
   const createClient = useCreateClient();
   const createMutation = useCreateReservation();
 
