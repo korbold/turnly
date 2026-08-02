@@ -32,6 +32,7 @@ import { RegisterPaymentDialog } from '@/presentation/components/features/servic
 import { FiscalProfileDialog } from '@/presentation/components/features/service-logs/fiscal-profile-dialog';
 import { EditServiceLogDialog } from '@/presentation/components/features/service-logs/edit-service-log-dialog';
 import type { PaymentMethod } from '@/domain/entities/service-log';
+import { formatInvoiceError } from '@/shared/utils/format-invoice-error';
 
 const fmt = (v: number) =>
   new Intl.NumberFormat('es-EC', { style: 'currency', currency: 'USD', minimumFractionDigits: 2 }).format(v);
@@ -244,8 +245,11 @@ function ServiceLogDetail({ id }: { id: string }) {
               <Row label="Emitida" value={format(new Date(log.invoicedAt), "d MMM yyyy, HH:mm", { locale: es })} />
             )}
             {log.invoiceStatus === 'rechazada' && log.invoiceError && (
-              <p className="mt-2 rounded-md bg-[var(--danger-50)] px-3 py-2 text-[12px] text-[var(--danger-700)]">
-                {log.invoiceError}
+              <p
+                className="mt-2 rounded-md bg-[var(--danger-50)] px-3 py-2 text-[12px] text-[var(--danger-700)]"
+                title={log.invoiceError}
+              >
+                {formatInvoiceError(log.invoiceError)}
               </p>
             )}
           </Card>

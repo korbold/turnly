@@ -46,6 +46,7 @@ import {
   RESERVATION_STATUS_CONFIG,
 } from '@/shared/constants/status';
 import { cn } from '@/shared/utils/cn';
+import { formatInvoiceError } from '@/shared/utils/format-invoice-error';
 import type { Reservation } from '@/domain/entities/reservation';
 
 interface DetailPanelProps {
@@ -361,7 +362,9 @@ export function DetailPanel({ reservation, open, onClose, embedded = false }: De
                 )}
 
                 {reservation.invoiceError && (
-                  <p className="text-[11px] text-rose-600">{reservation.invoiceError}</p>
+                  <p className="text-[11px] text-rose-600" title={reservation.invoiceError}>
+                    {formatInvoiceError(reservation.invoiceError)}
+                  </p>
                 )}
 
                 {reservation.invoiceStatus !== 'autorizada' && (
