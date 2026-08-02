@@ -19,7 +19,10 @@ export function useEmitInvoice() {
   return useMutation({
     mutationFn: (serviceLogId: string) =>
       new EmitInvoiceUseCase(repo).execute(serviceLogId),
-    onSuccess: () => {
+    // Refresh the row's invoice status after ANY outcome (autorizada,
+    // rechazada, or a billing error that still flipped the status), so the
+    // badge reflects the real result once the retry resolves.
+    onSettled: () => {
       queryClient.invalidateQueries({ queryKey: ['service-logs'] });
       queryClient.invalidateQueries({ queryKey: ['invoices'] });
     },

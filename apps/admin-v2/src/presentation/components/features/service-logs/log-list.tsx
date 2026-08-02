@@ -3,7 +3,7 @@
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { format } from 'date-fns';
-import { MoreHorizontal, CheckCircle2, Pencil, Trash2, Plus, ClipboardList, Wallet, Play, Trophy, FileText, Receipt, Eye } from 'lucide-react';
+import { MoreHorizontal, CheckCircle2, Pencil, Trash2, Plus, ClipboardList, Wallet, Play, Trophy, FileText, Receipt, Eye, Loader2 } from 'lucide-react';
 import { toast } from 'sonner';
 import { motion } from 'framer-motion';
 import { Badge } from '@/presentation/components/ui/badge';
@@ -264,22 +264,37 @@ export function LogList({ date, onEdit, onCreate }: LogListProps) {
                       Completar
                     </Button>
                   )}
-                  {log.invoiceStatus !== 'autorizada' && (
-                    <Button
-                      size="sm"
-                      onClick={() =>
-                        emitInvoiceMutation.mutate(log.id, {
-                          onSuccess: () => toast.success('Facturación iniciada'),
-                          onError: () => toast.error('Error al iniciar facturación'),
-                        })
-                      }
-                      disabled={emitInvoiceMutation.isPending}
-                      className="h-9 shrink-0 cursor-pointer gap-1.5 bg-[var(--info-500)] px-3 text-white hover:bg-[var(--info-700)]"
-                    >
-                      <FileText className="h-3.5 w-3.5" aria-hidden="true" />
-                      {log.invoiceStatus === 'rechazada' ? 'Reintentar factura' : 'Facturar'}
-                    </Button>
-                  )}
+                  {log.invoiceStatus !== 'autorizada' && (() => {
+                    const isEmitting =
+                      emitInvoiceMutation.isPending && emitInvoiceMutation.variables === log.id;
+                    const isRetry = log.invoiceStatus === 'rechazada';
+                    return (
+                      <Button
+                        size="sm"
+                        onClick={() =>
+                          emitInvoiceMutation.mutate(log.id, {
+                            onSuccess: () => toast.success('Facturación iniciada'),
+                            onError: () => toast.error('Error al iniciar facturación'),
+                          })
+                        }
+                        disabled={isEmitting}
+                        className="h-9 shrink-0 cursor-pointer gap-1.5 bg-[var(--info-500)] px-3 text-white hover:bg-[var(--info-700)] disabled:opacity-100"
+                      >
+                        {isEmitting ? (
+                          <Loader2 className="h-3.5 w-3.5 animate-spin" aria-hidden="true" />
+                        ) : (
+                          <FileText className="h-3.5 w-3.5" aria-hidden="true" />
+                        )}
+                        {isEmitting
+                          ? isRetry
+                            ? 'Reintentando…'
+                            : 'Facturando…'
+                          : isRetry
+                            ? 'Reintentar factura'
+                            : 'Facturar'}
+                      </Button>
+                    );
+                  })()}
                 </>
               )}
 
