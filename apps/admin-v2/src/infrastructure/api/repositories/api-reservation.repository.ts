@@ -65,6 +65,7 @@ export class ApiReservationRepository implements ReservationRepository {
       scheduled_at: data.scheduledAt,
       assigned_to: data.assignedTo,
       notes: data.notes,
+      items: data.items?.map((it) => ({ service_variant_id: it.serviceVariantId, qty: it.qty })),
     });
     return mapReservation(res.data);
   }
@@ -86,9 +87,9 @@ export class ApiReservationRepository implements ReservationRepository {
     return mapReservation(res.data);
   }
 
-  async getAvailableSlots(date: string, serviceId: string): Promise<AvailableSlot[]> {
+  async getAvailableSlots(date: string, serviceId: string, durationMin?: number): Promise<AvailableSlot[]> {
     const { data: res } = await api.get('/reservations/available-slots', {
-      params: { date, service_id: serviceId },
+      params: { date, service_id: serviceId, duration_min: durationMin },
     });
     return (res.data as Record<string, unknown>[]).map(mapAvailableSlot);
   }

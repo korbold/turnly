@@ -3,7 +3,7 @@ import type { ReservationRepository } from '@/domain/repositories/reservation.re
 export class GetAvailableSlotsUseCase {
   constructor(private repo: ReservationRepository) {}
 
-  execute(date: string, serviceId: string) {
-    return this.repo.getAvailableSlots(date, serviceId);
+  execute(date: string, serviceId: string, durationMin?: number) {
+    return this.repo.getAvailableSlots(date, serviceId, durationMin);
   }
 }

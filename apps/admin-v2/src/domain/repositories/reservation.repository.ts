@@ -16,6 +16,7 @@ export interface CreateReservationData {
   scheduledAt: string;
   assignedTo?: string;
   notes?: string;
+  items?: { serviceVariantId: string; qty: number }[];
 }
 
 export interface AddItemInput {
@@ -47,7 +48,7 @@ export interface ReservationRepository {
       `scheduledAt` is sent as "YYYY-MM-DD HH:mm:ss" to match the create
       endpoint's contract. */
   reschedule(id: string, scheduledAt: string): Promise<Reservation>;
-  getAvailableSlots(date: string, serviceId: string): Promise<AvailableSlot[]>;
+  getAvailableSlots(date: string, serviceId: string, durationMin?: number): Promise<AvailableSlot[]>;
 
   // Phase 3
   checkIn(id: string, input: CheckInInput): Promise<Reservation>;

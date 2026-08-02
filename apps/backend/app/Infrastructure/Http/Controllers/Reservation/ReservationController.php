@@ -227,6 +227,7 @@ class ReservationController extends Controller
             notes: $request->notes,
             serviceVariantId: $variantId,
             businessResourceId: $request->business_resource_id,
+            durationMinutes: $totalDurationMin,
         );
 
         $reservation = $this->createReservation->execute($dto);
@@ -481,6 +482,7 @@ class ReservationController extends Controller
             'date'                 => 'required|date',
             'service_id'           => 'required|uuid',
             'business_resource_id' => 'nullable|uuid|exists:business_resources,id,tenant_id,' . app('current_tenant_id'),
+            'duration_min'         => 'nullable|integer|min:1|max:600',
         ]);
 
         $dto = new AvailableSlotsQueryDTO(
@@ -488,6 +490,7 @@ class ReservationController extends Controller
             date:               $request->date,
             serviceId:          $request->service_id,
             businessResourceId: $request->business_resource_id,
+            durationMinutes:    $request->duration_min !== null ? (int) $request->duration_min : null,
         );
 
         $slots = $this->getAvailableSlots->execute($dto);

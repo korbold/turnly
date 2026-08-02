@@ -30,7 +30,9 @@ class CreateReservationUseCase
         $scheduledAt = new \DateTimeImmutable($dto->scheduledAt);
 
         $tenant = TenantModel::find($dto->tenantId);
-        $slotDuration = $tenant?->settings['slot_duration_minutes'] ?? 30;
+        $slotDuration = $dto->durationMinutes && $dto->durationMinutes > 0
+            ? (int) $dto->durationMinutes
+            : ($tenant?->settings['slot_duration_minutes'] ?? 30);
         $estimatedEnd = $scheduledAt->modify("+{$slotDuration} minutes");
 
         // Convert to app timezone for business hours comparison

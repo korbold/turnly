@@ -20,7 +20,8 @@ class GetAvailableSlotsUseCase
         $dayOfWeek = (int) $date->format('N') - 1; // 0=Monday
 
         $tenant = TenantModel::find($dto->tenantId);
-        $durationMinutes = $tenant?->settings['slot_duration_minutes'] ?? 30;
+        $step = (int) ($tenant?->settings['slot_duration_minutes'] ?? 30);
+        $length = $dto->durationMinutes && $dto->durationMinutes > 0 ? (int) $dto->durationMinutes : $step;
 
         // Get availability slots for this day
         $availabilitySlots = AvailabilitySlotModel::query()
@@ -54,12 +55,12 @@ class GetAvailableSlotsUseCase
 
             // Generate time intervals
             $current = $startTime;
-            while ($current->modify("+{$durationMinutes} minutes") <= $endTime) {
-                $slotEnd = $current->modify("+{$durationMinutes} minutes");
+            while ($current->modify("+{$length} minutes") <= $endTime) {
+                $slotEnd = $current->modify("+{$length} minutes");
 
                 // Skip past slots when date is today
                 if ($isToday && $current < $now) {
-                    $current = $current->modify("+{$durationMinutes} minutes");
+                    $current = $current->modify("+{$step} minutes");
                     continue;
                 }
 
@@ -82,7 +83,7 @@ class GetAvailableSlotsUseCase
                     ];
                 }
 
-                $current = $current->modify("+{$durationMinutes} minutes");
+                $current = $current->modify("+{$step} minutes");
             }
         }
 

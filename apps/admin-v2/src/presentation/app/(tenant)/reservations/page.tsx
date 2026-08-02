@@ -17,6 +17,7 @@ import { useRepository } from '@/infrastructure/providers/repository.provider';
 import { Button } from '@/presentation/components/ui/button';
 import { Skeleton } from '@/presentation/components/ui/skeleton';
 import { useReservations } from '@/presentation/hooks/use-reservations';
+import { useSettings } from '@/presentation/hooks/use-settings';
 import {
   ReservationFilters,
   useFilterParams,
@@ -25,6 +26,7 @@ import { Timeline } from '@/presentation/components/features/reservations/timeli
 import { CalendarView } from '@/presentation/components/features/reservations/calendar-view';
 import { DetailPanel } from '@/presentation/components/features/reservations/detail-panel';
 import { CreateModal } from '@/presentation/components/features/reservations/create-modal';
+import { CarwashReservationModal } from '@/presentation/components/features/reservations/carwash-create-modal';
 import type { Reservation, ReservationStatus } from '@/domain/entities/reservation';
 
 /**
@@ -52,6 +54,7 @@ function ReservationsContent() {
     useState<Reservation | null>(null);
   const [createOpen, setCreateOpen] = useState(false);
   const reservationRepo = useRepository('reservation');
+  const { data: settings } = useSettings();
 
   // Check URL for create=true or reservation={id}
   const searchParams = useSearchParams();
@@ -258,7 +261,11 @@ function ReservationsContent() {
       )}
 
       {/* Create modal */}
-      <CreateModal open={createOpen} onClose={() => setCreateOpen(false)} />
+      {settings?.businessType === 'car_wash' ? (
+        <CarwashReservationModal open={createOpen} onClose={() => setCreateOpen(false)} />
+      ) : (
+        <CreateModal open={createOpen} onClose={() => setCreateOpen(false)} />
+      )}
     </div>
   );
 }

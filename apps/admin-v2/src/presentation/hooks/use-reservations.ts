@@ -23,11 +23,11 @@ export function useReservations(filters: ReservationFilters, enabled = true) {
   });
 }
 
-export function useAvailableSlots(date: string | undefined, serviceId: string | undefined) {
+export function useAvailableSlots(date: string | undefined, serviceId: string | undefined, durationMin?: number) {
   const repo = useRepository('reservation');
   return useQuery({
-    queryKey: ['available-slots', date, serviceId],
-    queryFn: () => new GetAvailableSlotsUseCase(repo).execute(date!, serviceId!),
+    queryKey: ['available-slots', date, serviceId, durationMin],
+    queryFn: () => new GetAvailableSlotsUseCase(repo).execute(date!, serviceId!, durationMin),
     enabled: !!date && !!serviceId,
   });
 }
