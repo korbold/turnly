@@ -66,6 +66,10 @@ Route::prefix('v1')->group(function () {
         ->middleware('throttle:10,60');
     Route::post('auth/verify-email/resend', [AuthController::class, 'resendVerification'])
         ->middleware('throttle:5,60');
+    Route::post('auth/password/forgot', [AuthController::class, 'forgotPassword'])
+        ->middleware('throttle:5,60');
+    Route::post('auth/password/reset', [AuthController::class, 'resetPassword'])
+        ->middleware('throttle:10,60');
 
     // Public onboarding
     Route::prefix('onboarding')->group(function () {

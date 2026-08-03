@@ -8,6 +8,8 @@ import { LogoutUseCase } from '@/application/use-cases/auth/logout.use-case';
 import { RegisterUseCase } from '@/application/use-cases/auth/register.use-case';
 import { VerifyEmailUseCase } from '@/application/use-cases/auth/verify-email.use-case';
 import { ResendVerificationUseCase } from '@/application/use-cases/auth/resend-verification.use-case';
+import { RequestPasswordResetUseCase } from '@/application/use-cases/auth/request-password-reset.use-case';
+import { ResetPasswordUseCase } from '@/application/use-cases/auth/reset-password.use-case';
 import { authStorage } from '@/infrastructure/storage/auth-storage';
 import api from '@/infrastructure/api/client';
 
@@ -85,6 +87,22 @@ export function useResendVerification() {
   return useMutation({
     mutationFn: (email: string) =>
       new ResendVerificationUseCase(repo).execute(email),
+  });
+}
+
+export function useRequestPasswordReset() {
+  const repo = useRepository('auth');
+  return useMutation({
+    mutationFn: (email: string) =>
+      new RequestPasswordResetUseCase(repo).execute(email),
+  });
+}
+
+export function useResetPassword() {
+  const repo = useRepository('auth');
+  return useMutation({
+    mutationFn: (input: { email: string; token: string; password: string }) =>
+      new ResetPasswordUseCase(repo).execute(input),
   });
 }
 

@@ -8,6 +8,7 @@ use App\Infrastructure\Http\Requests\Auth\LoginRequest;
 use App\Infrastructure\Http\Requests\Auth\RegisterRequest;
 use App\Infrastructure\Http\Requests\Auth\VerifyEmailRequest;
 use App\Infrastructure\Mail\AccountDeletionRequestedMail;
+use App\Infrastructure\Mail\PasswordResetMail;
 use App\Infrastructure\Persistence\Models\PlanModel;
 use App\Infrastructure\Persistence\Models\TenantModel;
 use App\Infrastructure\Persistence\Models\TenantUserModel;
@@ -283,6 +284,96 @@ class AuthController extends Controller
 
         return response()->json([
             'data' => ['message' => 'Código reenviado'],
+        ]);
+    }
+
+    /**
+     * Forgot password: validate the email belongs to a registered business,
+     * then email a one-hour reset link. (Product decision: we DO tell the user
+     * when the email isn't found — accepted enumeration tradeoff, throttled.)
+     */
+    public function forgotPassword(Request $request): JsonResponse
+    {
+        $request->validate(['email' => ['required', 'email', 'max:255']]);
+        $email = strtolower(trim($request->string('email')->toString()));
+
+        $user = UserModel::where('email', $email)->first();
+        $isMember = $user && TenantUserModel::where('user_id', $user->id)
+            ->where('is_active', true)
+            ->exists();
+
+        if (!$user || !$isMember) {
+            return response()->json([
+                'error' => [
+                    'code' => 'BUSINESS_NOT_FOUND',
+                    'message' => 'No encontramos un negocio con ese correo.',
+                ],
+            ], 404);
+        }
+
+        $token = bin2hex(random_bytes(32)); // 64-char
+        $tokenHash = hash('sha256', $token);
+
+        // One live token per email — a new request supersedes the old link.
+        DB::table('password_reset_tokens')->updateOrInsert(
+            ['email' => $email],
+            ['token' => $tokenHash, 'created_at' => now()],
+        );
+
+        $host = config('app.frontend_host', 'goturnly.com');
+        $resetUrl = "https://{$host}/reset-password?token={$token}&email=" . urlencode($email);
+
+        Mail::to($email)->send(new PasswordResetMail(
+            name: $user->name,
+            resetUrl: $resetUrl,
+            ttlMinutes: 60,
+        ));
+
+        return response()->json([
+            'data' => ['sent' => true],
+        ]);
+    }
+
+    /**
+     * Reset password with a valid (≤60 min), single-use token. Sets the new
+     * password, revokes all sessions, and consumes the token.
+     */
+    public function resetPassword(Request $request): JsonResponse
+    {
+        $request->validate([
+            'email' => ['required', 'email'],
+            'token' => ['required', 'string', 'size:64'],
+            'password' => ['required', 'string', 'min:6', 'max:255'],
+        ]);
+
+        $email = strtolower(trim($request->string('email')->toString()));
+        $token = $request->string('token')->toString();
+
+        $row = DB::table('password_reset_tokens')->where('email', $email)->first();
+
+        $valid = $row
+            && hash_equals((string) $row->token, hash('sha256', $token))
+            && \Illuminate\Support\Carbon::parse($row->created_at)->greaterThan(now()->subMinutes(60));
+
+        $user = $valid ? UserModel::where('email', $email)->first() : null;
+
+        if (!$valid || !$user) {
+            return response()->json([
+                'error' => [
+                    'code' => 'INVALID_RESET_TOKEN',
+                    'message' => 'El enlace no es válido o expiró. Solicita uno nuevo.',
+                ],
+            ], 422);
+        }
+
+        $user->password = Hash::make($request->string('password')->toString());
+        $user->save();
+        $user->tokens()->delete(); // revoke existing sessions
+
+        DB::table('password_reset_tokens')->where('email', $email)->delete();
+
+        return response()->json([
+            'data' => ['message' => 'Contraseña actualizada.'],
         ]);
     }
 

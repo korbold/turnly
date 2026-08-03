@@ -22,6 +22,8 @@ export interface AuthRepository {
   }): Promise<RegisterResult>;
   verifyEmail(email: string, code: string): Promise<LoginResult>;
   resendVerification(email: string): Promise<void>;
+  requestPasswordReset(email: string): Promise<void>;
+  resetPassword(input: { email: string; token: string; password: string }): Promise<void>;
   logout(): Promise<void>;
   me(): Promise<{ user: User; tenant: Tenant | null }>;
 }
