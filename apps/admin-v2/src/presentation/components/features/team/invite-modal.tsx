@@ -22,13 +22,19 @@ import {
   SelectValue,
 } from '@/presentation/components/ui/select';
 import { useInviteUser } from '@/presentation/hooks/use-team';
+import { useSettings } from '@/presentation/hooks/use-settings';
+import { washerLabel } from '@/shared/constants/roles';
 import type { UserRole } from '@/domain/entities/user';
 
-const ROLES: { value: UserRole; label: string }[] = [
-  { value: 'tenant_admin', label: 'Administrador' },
-  { value: 'cashier', label: 'Cajero' },
-  { value: 'washer', label: 'Lavador' },
-];
+// The `washer` label follows the trade — a barbershop hires barberos, not
+// lavadores. The value sent to the API never changes.
+function roleOptions(businessType: Parameters<typeof washerLabel>[0]): { value: UserRole; label: string }[] {
+  return [
+    { value: 'tenant_admin', label: 'Administrador' },
+    { value: 'cashier', label: 'Cajero' },
+    { value: 'washer', label: washerLabel(businessType) },
+  ];
+}
 
 interface InviteModalProps {
   open: boolean;
@@ -68,6 +74,8 @@ interface CreatedCreds {
 }
 
 export function InviteModal({ open, onClose }: InviteModalProps) {
+  const { data: settings } = useSettings();
+  const roles = roleOptions(settings?.businessType);
   const [name, setName] = useState('');
   const [username, setUsername] = useState('');
   const [usernameTouched, setUsernameTouched] = useState(false);
@@ -246,7 +254,7 @@ export function InviteModal({ open, onClose }: InviteModalProps) {
                     <SelectValue />
                   </SelectTrigger>
                   <SelectContent>
-                    {ROLES.map((r) => (
+                    {roles.map((r) => (
                       <SelectItem key={r.value} value={r.value}>
                         {r.label}
                       </SelectItem>

@@ -33,6 +33,7 @@ import { useChangeRole, useResetPassword } from '@/presentation/hooks/use-team';
 import { useSettings } from '@/presentation/hooks/use-settings';
 import type { User, UserRole } from '@/domain/entities/user';
 import type { BusinessType } from '@/domain/entities/tenant';
+import { washerLabel } from '@/shared/constants/roles';
 
 interface RoleCfg {
   label: string;
@@ -68,21 +69,12 @@ const ROLE_BASE: Record<UserRole, RoleCfg> = {
   },
 };
 
-const WASHER_LABEL_BY_BUSINESS: Partial<Record<BusinessType, string>> = {
-  car_wash: 'Lavador',
-  barbershop: 'Barbero',
-  spa: 'Terapeuta',
-  medical: 'Asistente',
-  gym: 'Entrenador',
-  other: 'Operario',
-};
-
 const ROLES: UserRole[] = ['owner', 'tenant_admin', 'cashier', 'washer', 'client'];
 
 function getRoleConfig(role: UserRole, businessType: BusinessType | null): RoleCfg {
   const base = ROLE_BASE[role] ?? ROLE_BASE.client;
-  if (role === 'washer' && businessType && WASHER_LABEL_BY_BUSINESS[businessType]) {
-    return { ...base, label: WASHER_LABEL_BY_BUSINESS[businessType]! };
+  if (role === 'washer') {
+    return { ...base, label: washerLabel(businessType) };
   }
   return base;
 }

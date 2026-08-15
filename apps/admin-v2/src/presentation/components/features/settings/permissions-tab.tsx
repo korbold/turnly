@@ -8,6 +8,7 @@ import { Skeleton } from '@/presentation/components/ui/skeleton';
 import { cn } from '@/shared/utils/cn';
 import { useSettings, useUpdateSettings } from '@/presentation/hooks/use-settings';
 import { DEFAULT_PERMISSIONS } from '@/shared/constants/permissions';
+import { washerLabel } from '@/shared/constants/roles';
 
 const ROLES = ['Admin', 'Cajero', 'Lavador', 'Cliente'] as const;
 // Column order mirrors the sidebar so the matrix reads like the menu it
@@ -48,6 +49,13 @@ const PERMISSION_DISPLAY: Record<
 };
 
 type PermissionsMatrix = Record<string, Record<string, Permission>>;
+
+// The matrix keys are persisted inside the tenant's settings JSON, so
+// 'Lavador' stays the key forever; only what the owner reads changes with
+// the trade (Barbero, Terapeuta, Entrenador…).
+function roleLabel(role: string, businessType: Parameters<typeof washerLabel>[0]): string {
+  return role === 'Lavador' ? washerLabel(businessType) : role;
+}
 
 function buildDefaultMatrix(): PermissionsMatrix {
   const matrix: PermissionsMatrix = {};
@@ -144,7 +152,7 @@ export function PermissionsTab() {
             {ROLES.map((role) => (
               <tr key={role} className="border-b border-[var(--border-soft)] last:border-0">
                 <td className="px-4 py-2 text-sm font-medium text-[var(--fg-default,#2E3441)]">
-                  {role}
+                  {roleLabel(role, settings?.businessType)}
                 </td>
                 {SECTIONS.map((section) => {
                   const perm = matrix[role]?.[section] ?? 'none';
@@ -159,8 +167,8 @@ export function PermissionsTab() {
                           'inline-flex h-9 w-9 items-center justify-center rounded-md border transition-[background-color,color,transform] duration-150 ease-out active:scale-[0.94] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[rgba(42,109,244,0.20)] focus-visible:ring-offset-1',
                           display.className
                         )}
-                        aria-label={`${role}, ${section}: ${PERMISSION_LABEL[perm]}`}
-                        title={`${role} · ${section}: ${PERMISSION_LABEL[perm]}`}
+                        aria-label={`${roleLabel(role, settings?.businessType)}, ${section}: ${PERMISSION_LABEL[perm]}`}
+                        title={`${roleLabel(role, settings?.businessType)} · ${section}: ${PERMISSION_LABEL[perm]}`}
                       >
                         <Icon className="h-4 w-4" aria-hidden="true" />
                       </button>
