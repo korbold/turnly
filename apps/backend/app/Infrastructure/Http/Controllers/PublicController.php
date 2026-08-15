@@ -647,16 +647,46 @@ class PublicController extends Controller
         }
 
         // Legacy single-service path: synthesize one item from the
-        // default variant (or pick the first active one).
+        // variant that fits what the customer told us about their
+        // vehicle, falling back to the default one.
         $serviceId = $request->service_id;
-        $variant = ServiceVariantModel::withoutGlobalScopes()
+
+        $activeVariants = ServiceVariantModel::withoutGlobalScopes()
             ->where('tenant_id', $tenantId)
             ->where('service_id', $serviceId)
             ->where('is_active', true)
             ->orderByRaw("CASE WHEN label = 'Default' THEN 0 ELSE 1 END")
             ->orderBy('sort_order')
             ->with('service')
-            ->first();
+            ->get();
+
+        // Charging the default price for a Camioneta because the picker
+        // never looked at "Tipo de vehículo" is a billing error, not a
+        // cosmetic one — match on what was typed (or on the saved
+        // resource, when an existing one was chosen).
+        $resourceData = is_array($request->client_resource_data)
+            ? $request->client_resource_data
+            : [];
+
+        if (!$resourceData && $request->client_resource_id) {
+            $existing = ClientResourceModel::withoutGlobalScopes()->find($request->client_resource_id);
+            $resourceData = is_array($existing?->data) ? $existing->data : [];
+        }
+
+        $tenantCustomFields = TenantModel::find($tenantId)?->custom_fields ?? [];
+        if (!is_array($tenantCustomFields)) {
+            $tenantCustomFields = (array) $tenantCustomFields;
+        }
+
+        $variant = ($resourceData && $activeVariants->isNotEmpty())
+            ? app(VariantSuggester::class)->suggestFromData(
+                resourceData: $resourceData,
+                variants: $activeVariants,
+                customFields: $tenantCustomFields,
+            )
+            : null;
+
+        $variant = $variant ?: $activeVariants->first();
 
         if (!$variant) {
             // Service exists but has no variants yet — keep the

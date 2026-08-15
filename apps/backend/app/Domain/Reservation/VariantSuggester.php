@@ -34,6 +34,27 @@ final class VariantSuggester
         Collection $variants,
         array $customFields,
     ): ?ServiceVariantModel {
+        $data = $resource->data ?? [];
+
+        return $this->suggestFromData(is_array($data) ? $data : (array) $data, $variants, $customFields);
+    }
+
+    /**
+     * Same rule, applied to raw field values instead of a saved resource.
+     *
+     * A guest booking on the web types the vehicle data in the form; the
+     * resource row only exists after the reservation is created, so the
+     * price has to be resolved from what was typed.
+     *
+     * @param array<string, mixed> $resourceData
+     * @param Collection<int, ServiceVariantModel> $variants
+     * @param array<int, array<string, mixed>> $customFields
+     */
+    public function suggestFromData(
+        array $resourceData,
+        Collection $variants,
+        array $customFields,
+    ): ?ServiceVariantModel {
         $field = collect($customFields)->first(
             fn (array $f) => ($f['affects_variant'] ?? false) === true,
         );
@@ -41,9 +62,6 @@ final class VariantSuggester
 
         $key = $field['key'] ?? null;
         if (!$key) return null;
-
-        $resourceData = $resource->data ?? [];
-        if (!is_array($resourceData)) $resourceData = (array) $resourceData;
 
         $value = $resourceData[$key] ?? null;
         if (!is_string($value) || $value === '') return null;
