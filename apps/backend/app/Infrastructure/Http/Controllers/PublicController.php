@@ -321,6 +321,15 @@ class PublicController extends Controller
 
         $slots = [];
 
+        // The staff-facing use case skips slots that already passed; this
+        // copy did not, so at 18:00 the booking page still offered 08:00
+        // today and the reservation only failed at the very end, after the
+        // customer had typed everything.
+        // now() rather than a bare DateTimeImmutable: it honours the app
+        // timezone and can be frozen in tests.
+        $now = now()->toDateTimeImmutable();
+        $isToday = $now->format('Y-m-d') === (new \DateTimeImmutable($request->date))->format('Y-m-d');
+
         foreach ($availabilitySlots as $availability) {
             $startTime = new \DateTimeImmutable($request->date . ' ' . $availability->start_time);
             $endTime = new \DateTimeImmutable($request->date . ' ' . $availability->end_time);
@@ -333,6 +342,12 @@ class PublicController extends Controller
 
             while ($current->modify("+{$durationMinutes} minutes") <= $endTime) {
                 $slotEnd = $current->modify("+{$durationMinutes} minutes");
+
+                if ($isToday && $current <= $now) {
+                    $current = $current->modify("+{$stepMinutes} minutes");
+                    continue;
+                }
+
                 $overlapping = 0;
 
                 foreach ($existingReservations as $reservation) {

@@ -33,7 +33,9 @@ export function BookingFlow({ slug, tenant, initialServiceId, primaryColor = '#F
   const repo = useRepository('public');
   const [step, setStep] = useState<Step>(initialServiceId ? 2 : 1);
   const [serviceId, setServiceId] = useState(initialServiceId ?? '');
-  const [date, setDate] = useState<Date | undefined>(undefined);
+  // Starts on today so the customer lands on a populated slot list
+  // instead of an empty panel.
+  const [date, setDate] = useState<Date | undefined>(() => new Date());
   const [selectedSlot, setSelectedSlot] = useState('');
   const [name, setName] = useState('');
   const [email, setEmail] = useState('');
@@ -44,7 +46,7 @@ export function BookingFlow({ slug, tenant, initialServiceId, primaryColor = '#F
 
   const dateStr = date ? format(date, 'yyyy-MM-dd') : '';
 
-  const { data: slots, isLoading: slotsLoading } = useQuery({
+  const { data: slots, isLoading: slotsLoading, isError: slotsError } = useQuery({
     queryKey: ['public', 'slots', slug, serviceId, dateStr],
     queryFn: () => repo.getAvailableSlots(slug, serviceId, dateStr),
     enabled: !!serviceId && !!dateStr,
@@ -153,14 +155,29 @@ export function BookingFlow({ slug, tenant, initialServiceId, primaryColor = '#F
             </p>
           )}
           <div className="flex flex-col gap-4 md:flex-row">
-            <Calendar mode="single" selected={date} onSelect={setDate} locale={es} />
+            {/* The API refuses any date before today, so offering past
+                days led to a failed request and an empty panel with no
+                explanation. */}
+            <Calendar
+              mode="single"
+              selected={date}
+              onSelect={setDate}
+              locale={es}
+              startMonth={new Date()}
+              disabled={{ before: new Date(new Date().setHours(0, 0, 0, 0)) }}
+            />
             <div className="flex-1">
               {!date && <p className="text-sm text-muted-foreground">Selecciona una fecha</p>}
               {date && slotsLoading && <p className="text-sm text-muted-foreground">Cargando horarios...</p>}
-              {date && slots && slots.length === 0 && (
+              {date && slotsError && (
+                <p className="text-sm text-[var(--danger-700)]">
+                  No pudimos cargar los horarios. Elige otra fecha o intenta de nuevo.
+                </p>
+              )}
+              {date && !slotsError && slots && slots.length === 0 && (
                 <p className="text-sm text-muted-foreground">No hay horarios disponibles para esta fecha</p>
               )}
-              {date && slots && slots.length > 0 && (
+              {date && !slotsError && slots && slots.length > 0 && (
                 <div className="grid grid-cols-3 gap-2 sm:grid-cols-4">
                   {slots.map((slot) => {
                     const time = format(new Date(slot.start), 'HH:mm');
