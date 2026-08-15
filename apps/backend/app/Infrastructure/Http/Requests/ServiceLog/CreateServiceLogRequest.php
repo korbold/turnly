@@ -19,7 +19,9 @@ class CreateServiceLogRequest extends FormRequest
             // legacy reads (reports filtering by service, summary
             // grouping) keep working without joining items. With items[]
             // present, the controller derives it from the first line.
-            'service_id'         => ['required_without:items', 'uuid'],
+            // Explicitly null on a product-only ticket — the admin still
+            // echoes the key, so `nullable` has to come before `uuid`.
+            'service_id'         => ['nullable', 'required_without:items', 'uuid'],
             'service_variant_id' => ['nullable', 'uuid'],
             'attended_by'     => ['required', 'uuid'],
             'price_charged'   => ['required_without:items', 'numeric', 'min:0'],
@@ -27,7 +29,12 @@ class CreateServiceLogRequest extends FormRequest
             // their line totals into price_charged and persists each as
             // a service_log_item row.
             'items'                => ['nullable', 'array', 'min:1'],
-            'items.*.service_id'   => ['required_with:items', 'uuid'],
+            // A line is either a service (service_id, optional variant)
+            // or a counter-sale product (product_id). withValidator
+            // enforces exactly one of the two per line.
+            'items.*.item_type'    => ['nullable', 'in:service_variant,product'],
+            'items.*.service_id'   => ['nullable', 'uuid'],
+            'items.*.product_id'   => ['nullable', 'uuid'],
             // Variant picked for the line. Persisted as the item's
             // ref_id so reports + history point at the exact variant
             // the cashier saw on screen.
@@ -50,5 +57,24 @@ class CreateServiceLogRequest extends FormRequest
             'reservation_id'  => ['nullable', 'uuid'],
             'notes'           => ['nullable', 'string', 'max:500'],
         ];
+    }
+
+    public function withValidator($validator): void
+    {
+        $validator->after(function ($validator) {
+            foreach ((array) $this->input('items', []) as $i => $line) {
+                $isProduct = ($line['item_type'] ?? 'service_variant') === 'product';
+                $ref = $isProduct ? ($line['product_id'] ?? null) : ($line['service_id'] ?? null);
+
+                if (empty($ref)) {
+                    $validator->errors()->add(
+                        $isProduct ? "items.$i.product_id" : "items.$i.service_id",
+                        $isProduct
+                            ? 'Falta el producto de la línea.'
+                            : 'Falta el servicio de la línea.',
+                    );
+                }
+            }
+        });
     }
 }

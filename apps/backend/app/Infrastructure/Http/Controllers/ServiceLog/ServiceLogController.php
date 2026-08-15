@@ -8,12 +8,15 @@ use App\Application\UseCases\ServiceLog\GetDailyLogUseCase;
 use App\Domain\Billing\ConsumidorFinalLimit;
 use App\Domain\Identity\EcuadorIdValidator;
 use App\Domain\Inventory\ConsumptionEngine;
+use App\Domain\Inventory\StockLedger;
 use App\Domain\ServiceLog\Contracts\ServiceLogRepositoryInterface;
 use App\Infrastructure\Billing\BillingServiceClient;
 use App\Infrastructure\Http\Controllers\Controller;
 use App\Infrastructure\Http\Requests\ServiceLog\CreateServiceLogRequest;
 use App\Infrastructure\Http\Resources\ServiceLogResource;
 use App\Infrastructure\Jobs\EmitServiceLogInvoiceJob;
+use App\Infrastructure\Persistence\Models\ProductModel;
+use App\Infrastructure\Persistence\Models\ServiceLogItemModel;
 use App\Infrastructure\Persistence\Models\ServiceLogModel;
 use App\Infrastructure\Persistence\Models\TenantModel;
 use App\Infrastructure\Persistence\Models\UserBillingProfileModel;
@@ -27,6 +30,7 @@ class ServiceLogController extends Controller
         private GetDailyLogUseCase $getDailyLog,
         private ServiceLogRepositoryInterface $serviceLogRepository,
         private ConsumptionEngine $consumption,
+        private StockLedger $stock,
     ) {}
 
     public function index(Request $request)
@@ -56,8 +60,10 @@ class ServiceLogController extends Controller
         $items = $request->input('items', []);
         $hasItems = is_array($items) && count($items) > 0;
 
+        // A counter sale can be products only, so the "primary service"
+        // is the first *service* line — null when nothing was rendered.
         $primaryServiceId = $hasItems
-            ? $items[0]['service_id']
+            ? ($this->firstServiceLine($items)['service_id'] ?? null)
             : $request->service_id;
         $priceCharged = $hasItems
             ? array_sum(array_map(
@@ -110,30 +116,13 @@ class ServiceLogController extends Controller
         // points at the variant — mirrors reservation_items so reports
         // can join service_variants directly.
         if ($hasItems) {
-            $sort = 0;
-            $tenantId = app('current_tenant_id');
-            foreach ($items as $line) {
-                $unit = (float) $line['unit_price'];
-                $qty  = (float) $line['qty'];
-                $refId = !empty($line['variant_id']) ? $line['variant_id'] : $line['service_id'];
-                \App\Infrastructure\Persistence\Models\ServiceLogItemModel::create([
-                    'tenant_id'      => $tenantId,
-                    'service_log_id' => $serviceLog->id,
-                    'item_type'      => 'service_variant',
-                    'ref_id'         => $refId,
-                    'label'          => $line['label'],
-                    'qty'            => $qty,
-                    'unit_price'     => $unit,
-                    'line_total'     => $unit * $qty,
-                    'sort_order'     => $sort++,
-                ]);
-            }
+            $this->persistItems($serviceLog->id, $items, $request->user()?->id);
 
-            // Bonus: stamp the first-line variant on the parent so
-            // legacy queries that look at `service_variant_id` (reports
+            // Bonus: stamp the first service line's variant on the parent
+            // so legacy queries that look at `service_variant_id` (reports
             // grouping by variant, BOM consumption) still see the
             // representative variant rather than NULL.
-            $firstVariant = $items[0]['variant_id'] ?? null;
+            $firstVariant = $this->firstServiceLine($items)['variant_id'] ?? null;
             if ($firstVariant) {
                 ServiceLogModel::where('id', $serviceLog->id)
                     ->update(['service_variant_id' => $firstVariant]);
@@ -154,6 +143,92 @@ class ServiceLogController extends Controller
             'clientResource.client', 'service', 'attendant', 'reservation', 'items.variant',
         ])->findOrFail($id);
         return new ServiceLogResource($serviceLog);
+    }
+
+    /** A line without an explicit type is a service — the legacy shape. */
+    private function isProductLine(array $line): bool
+    {
+        return ($line['item_type'] ?? 'service_variant') === 'product';
+    }
+
+    private function firstServiceLine(array $items): array
+    {
+        foreach ($items as $line) {
+            if (!$this->isProductLine($line)) {
+                return $line;
+            }
+        }
+
+        return [];
+    }
+
+    /**
+     * Writes the line items and moves stock for the product ones: a
+     * counter sale has to leave the kardex, otherwise inventory keeps
+     * reporting bottles that were already handed over.
+     */
+    private function persistItems(string $serviceLogId, array $items, ?string $userId): void
+    {
+        $tenantId = app('current_tenant_id');
+        $sort = 0;
+
+        foreach ($items as $line) {
+            $unit      = (float) $line['unit_price'];
+            $qty       = (float) $line['qty'];
+            $isProduct = $this->isProductLine($line);
+
+            $refId = $isProduct
+                ? $line['product_id']
+                : (!empty($line['variant_id']) ? $line['variant_id'] : $line['service_id']);
+
+            ServiceLogItemModel::create([
+                'tenant_id'      => $tenantId,
+                'service_log_id' => $serviceLogId,
+                'item_type'      => $isProduct ? 'product' : 'service_variant',
+                'ref_id'         => $refId,
+                'label'          => $line['label'],
+                'qty'            => $qty,
+                'unit_price'     => $unit,
+                'line_total'     => $unit * $qty,
+                'sort_order'     => $sort++,
+            ]);
+
+            if ($isProduct) {
+                $product = ProductModel::find($refId);
+                if ($product) {
+                    $this->stock->recordSale(
+                        product: $product,
+                        qty:     $qty,
+                        userId:  $userId,
+                        refType: 'service_log',
+                        refId:   $serviceLogId,
+                    );
+                }
+            }
+        }
+    }
+
+    /**
+     * Puts sold units back before the items are replaced or the log is
+     * deleted, so editing a ticket doesn't quietly double-count stock.
+     */
+    private function returnProductStock(ServiceLogModel $log, ?string $userId): void
+    {
+        foreach ($log->items()->where('item_type', 'product')->get() as $item) {
+            $product = ProductModel::find($item->ref_id);
+            if (!$product) {
+                continue;
+            }
+
+            $this->stock->recordReturn(
+                product: $product,
+                qty:     (float) $item->qty,
+                userId:  $userId,
+                refType: 'service_log',
+                refId:   $log->id,
+                note:    'Reverso por edición del registro',
+            );
+        }
     }
 
     public function update(Request $request, string $id): ServiceLogResource
@@ -182,51 +257,41 @@ class ServiceLogController extends Controller
 
         $request->validate([
             'items'                  => 'required|array|min:1',
-            'items.*.service_id'     => 'required|uuid',
+            'items.*.item_type'      => 'nullable|in:service_variant,product',
+            'items.*.service_id'     => 'nullable|uuid',
+            'items.*.product_id'     => 'nullable|uuid',
             'items.*.variant_id'     => 'nullable|uuid',
             'items.*.label'          => 'required|string|max:200',
             'items.*.qty'            => 'required|numeric|min:0.01',
             'items.*.unit_price'     => 'required|numeric|min:0',
         ]);
 
-        $items = $request->input('items');
-        $tenantId = app('current_tenant_id');
+        $items  = $request->input('items');
+        $userId = $request->user()?->id;
 
         // Wrap the delete + insert + parent-update in a single transaction
         // so a mid-loop constraint failure can never leave the log in a
         // corrupt state (old items gone, new items half-written).
-        \Illuminate\Support\Facades\DB::transaction(function () use ($serviceLog, $items, $tenantId) {
+        \Illuminate\Support\Facades\DB::transaction(function () use ($serviceLog, $items, $userId) {
+            // Sold units go back on the shelf before the lines are
+            // replaced; persistItems then books the new sale. Editing a
+            // ticket twice would otherwise discount the stock twice.
+            $this->returnProductStock($serviceLog, $userId);
+
             // Replace all items atomically — delete then re-insert so sort
             // order resets cleanly and orphaned rows can never accumulate.
             $serviceLog->items()->delete();
 
-            $sort = 0;
-            foreach ($items as $line) {
-                $unit   = (float) $line['unit_price'];
-                $qty    = (float) $line['qty'];
-                $refId  = !empty($line['variant_id']) ? $line['variant_id'] : $line['service_id'];
-
-                \App\Infrastructure\Persistence\Models\ServiceLogItemModel::create([
-                    'tenant_id'      => $tenantId,
-                    'service_log_id' => $serviceLog->id,
-                    'item_type'      => 'service_variant',
-                    'ref_id'         => $refId,
-                    'label'          => $line['label'],
-                    'qty'            => $qty,
-                    'unit_price'     => $unit,
-                    'line_total'     => $unit * $qty,
-                    'sort_order'     => $sort++,
-                ]);
-            }
+            $this->persistItems($serviceLog->id, $items, $userId);
 
             // Re-derive parent columns from the new item list so legacy
             // queries (reports grouping by service_id) remain correct.
-            $newTotal       = array_sum(array_map(fn ($it) => (float) $it['unit_price'] * (float) $it['qty'], $items));
-            $firstVariantId = $items[0]['variant_id'] ?? null;
+            $newTotal    = array_sum(array_map(fn ($it) => (float) $it['unit_price'] * (float) $it['qty'], $items));
+            $firstService = $this->firstServiceLine($items);
             $serviceLog->update([
-                'service_id'         => $items[0]['service_id'],
+                'service_id'         => $firstService['service_id'] ?? null,
                 'price_charged'      => $newTotal,
-                'service_variant_id' => $firstVariantId,
+                'service_variant_id' => $firstService['variant_id'] ?? null,
             ]);
         });
 
@@ -235,7 +300,7 @@ class ServiceLogController extends Controller
         );
     }
 
-    public function destroy(string $id): JsonResponse
+    public function destroy(Request $request, string $id): JsonResponse
     {
         $serviceLog = ServiceLogModel::findOrFail($id);
 
@@ -250,6 +315,9 @@ class ServiceLogController extends Controller
                 ],
             ], 422);
         }
+
+        // Deleting an unpaid ticket un-sells whatever went with it.
+        $this->returnProductStock($serviceLog, $request->user()?->id);
 
         $serviceLog->delete();
 

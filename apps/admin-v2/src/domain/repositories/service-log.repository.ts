@@ -2,7 +2,13 @@ import type { ServiceLog, ServiceLogFilters, DailySummary, PaymentMethod } from 
 import type { PaginatedResult } from '../../shared/types/api';
 
 export interface CreateServiceLogItemInput {
-  serviceId: string;
+  /** Defaults to `service_variant` — the legacy shape. `product` sells
+      an inventory item off the shelf and discounts its stock. */
+  itemType?: 'service_variant' | 'product';
+  /** Required for a service line. */
+  serviceId?: string;
+  /** Required for a product line. */
+  productId?: string;
   /** Variant picked for this line, when the service has variants. The
       backend persists this as the item's `ref_id` so the row points at
       the variant the cashier saw on screen. */

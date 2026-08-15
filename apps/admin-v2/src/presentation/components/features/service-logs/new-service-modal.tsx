@@ -23,7 +23,9 @@ import {
 } from '@/presentation/components/ui/select';
 import { Skeleton } from '@/presentation/components/ui/skeleton';
 import { cn } from '@/shared/utils/cn';
+import { apiErrorMessage } from '@/shared/utils/api-error';
 import { useServices } from '@/presentation/hooks/use-services';
+import { useProducts } from '@/presentation/hooks/use-products';
 import { useClients, useCreateClient } from '@/presentation/hooks/use-clients';
 import { useSettings } from '@/presentation/hooks/use-settings';
 import { useTeam } from '@/presentation/hooks/use-team';
@@ -39,6 +41,7 @@ import {
   type BillingProfileDraft,
 } from '@/presentation/components/features/billing/billing-profile-form';
 import type { Service } from '@/domain/entities/service';
+import type { Product } from '@/domain/entities/product';
 import type { PaymentMethod } from '@/domain/entities/service-log';
 import type { ClientResource } from '@/domain/entities/client-resource';
 import type { BusinessType, CustomField } from '@/domain/entities/tenant';
@@ -134,6 +137,17 @@ interface ServiceVariantSlim {
   price: number;
 }
 
+/** A product sold off the shelf. Priced from the inventory record. */
+interface ProductLine {
+  product: Product;
+  qty: number;
+  unitPrice: number;
+}
+
+function formatMoney(value: number): string {
+  return new Intl.NumberFormat('es-EC', { style: 'currency', currency: 'USD' }).format(value);
+}
+
 async function fetchVariantsForService(serviceId: string): Promise<ServiceVariantSlim[]> {
   // Direct fetch via the shared axios client — keeps the modal
   // self-contained without spinning up a dedicated query key per
@@ -169,6 +183,7 @@ async function fetchSuggestedVariant(
 
 export function NewServiceModal({ open, onClose, embedded = false }: NewServiceModalProps) {
   const [lineItems, setLineItems] = useState<LineItem[]>([]);
+  const [productLines, setProductLines] = useState<ProductLine[]>([]);
   const [clientSearch, setClientSearch] = useState('');
   const [selectedClientResourceId, setSelectedClientResourceId] = useState<string | null>(null);
   const [selectedClientResource, setSelectedClientResource] = useState<ClientResource | null>(null);
@@ -181,7 +196,9 @@ export function NewServiceModal({ open, onClose, embedded = false }: NewServiceM
 
   // Total = sum of line items. Stays the source of truth for the price
   // shown in the footer + sent to the backend.
-  const total = lineItems.reduce((acc, it) => acc + it.unitPrice * it.qty, 0);
+  const total =
+    lineItems.reduce((acc, it) => acc + it.unitPrice * it.qty, 0) +
+    productLines.reduce((acc, it) => acc + it.unitPrice * it.qty, 0);
 
   // Drop the bank pick whenever the cashier flips away from transfer.
   // Otherwise the form would carry a stale slug into the next submit.
@@ -260,6 +277,12 @@ export function NewServiceModal({ open, onClose, embedded = false }: NewServiceM
   }, [selectedClientResourceId]);
 
   const { data: servicesData, isLoading: servicesLoading } = useServices();
+  // Consumables are burned by a service's recipe, never sold on their own.
+  const { data: productsPage } = useProducts({ perPage: 100, active: true });
+  const sellableProducts = useMemo(
+    () => (productsPage?.data ?? []).filter((p) => p.type !== 'consumable'),
+    [productsPage],
+  );
   const { data: clientsData, isLoading: clientsLoading } = useClients(1, clientSearch || undefined);
   const { data: settings } = useSettings();
   const { data: teamData } = useTeam({ excludeRole: 'client' as const });
@@ -381,6 +404,7 @@ export function NewServiceModal({ open, onClose, embedded = false }: NewServiceM
 
   function handleReset() {
     setLineItems([]);
+    setProductLines([]);
     setWalkInClientName('');
     setClientSearch('');
     setSelectedClientResourceId(null);
@@ -468,6 +492,32 @@ export function NewServiceModal({ open, onClose, embedded = false }: NewServiceM
     );
   }
 
+  function handleAddProductLine(productId: string) {
+    const product = sellableProducts.find((p) => p.id === productId);
+    if (!product) return;
+
+    setProductLines((prev) => {
+      const existing = prev.find((it) => it.product.id === productId);
+      if (existing) {
+        return prev.map((it) =>
+          it.product.id === productId ? { ...it, qty: it.qty + 1 } : it,
+        );
+      }
+      return [...prev, { product, qty: 1, unitPrice: product.price }];
+    });
+  }
+
+  function handleUpdateProductQty(productId: string, qty: number) {
+    const next = Number.isFinite(qty) ? Math.max(1, Math.floor(qty)) : 1;
+    setProductLines((prev) =>
+      prev.map((it) => (it.product.id === productId ? { ...it, qty: next } : it)),
+    );
+  }
+
+  function handleRemoveProductLine(productId: string) {
+    setProductLines((prev) => prev.filter((it) => it.product.id !== productId));
+  }
+
   function handleRemoveLineItem(serviceId: string) {
     setLineItems((prev) => prev.filter((it) => it.service.id !== serviceId));
   }
@@ -494,7 +544,8 @@ export function NewServiceModal({ open, onClose, embedded = false }: NewServiceM
   }
 
   function handleSubmit() {
-    if (!selectedClientResourceId || lineItems.length === 0 || !attendedBy) return;
+    if (!selectedClientResourceId || !attendedBy) return;
+    if (lineItems.length === 0 && productLines.length === 0) return;
     if (paymentTiming === 'now' && paymentMethod === 'transfer' && !paymentBank) {
       toast.error('Selecciona el banco emisor');
       return;
@@ -515,15 +566,25 @@ export function NewServiceModal({ open, onClose, embedded = false }: NewServiceM
       {
         clientResourceId: selectedClientResourceId,
         attendedBy,
-        items: lineItems.map((it) => ({
-          serviceId: it.service.id,
-          variantId: it.variantId,
-          label: it.variantLabel
-            ? `${it.service.name} · ${it.variantLabel}`
-            : it.service.name,
-          qty: it.qty,
-          unitPrice: it.unitPrice,
-        })),
+        items: [
+          ...lineItems.map((it) => ({
+            itemType: 'service_variant' as const,
+            serviceId: it.service.id,
+            variantId: it.variantId,
+            label: it.variantLabel
+              ? `${it.service.name} · ${it.variantLabel}`
+              : it.service.name,
+            qty: it.qty,
+            unitPrice: it.unitPrice,
+          })),
+          ...productLines.map((it) => ({
+            itemType: 'product' as const,
+            productId: it.product.id,
+            label: it.product.name,
+            qty: it.qty,
+            unitPrice: it.unitPrice,
+          })),
+        ],
         paymentMethod: payNow ? paymentMethod : null,
         paymentBank: payNow && paymentMethod === 'transfer' ? paymentBank : null,
         paymentStatus: payNow ? 'paid' : 'unpaid',
@@ -531,16 +592,17 @@ export function NewServiceModal({ open, onClose, embedded = false }: NewServiceM
       },
       {
         onSuccess: () => {
-          toast.success(payNow ? 'Servicio registrado y cobrado' : 'Servicio registrado · pago pendiente');
+          const noun = lineItems.length === 0 ? 'Venta registrada' : 'Servicio registrado';
+          toast.success(payNow ? `${noun} y cobrada` : `${noun} · pago pendiente`);
           handleClose();
         },
-        onError: () => toast.error('Error al registrar servicio'),
+        onError: (e) => toast.error(apiErrorMessage(e, 'Error al registrar servicio')),
       },
     );
   }
 
   const canSubmit =
-    lineItems.length > 0 &&
+    (lineItems.length > 0 || productLines.length > 0) &&
     !!selectedClientResourceId &&
     !!attendedBy &&
     total > 0 &&
@@ -695,6 +757,112 @@ export function NewServiceModal({ open, onClose, embedded = false }: NewServiceM
                           ))}
                         </div>
                       )}
+                    </li>
+                  );
+                })}
+              </ul>
+            )}
+          </div>
+
+          {/* Counter sale: products straight off the shelf. A ticket may
+              be products only (an aceite sold without washing anything),
+              so this block never depends on a service being picked. */}
+          <div className="order-2">
+            <div className="mb-2 flex items-baseline justify-between gap-2">
+              <label className="block text-sm font-medium">
+                Productos{' '}
+                {productLines.length > 0 && (
+                  <span className="text-[12px] font-normal text-[var(--fg-muted)]">
+                    ({productLines.length})
+                  </span>
+                )}
+              </label>
+            </div>
+
+            {selectedClientResourceId ? (
+              <Select value="" onValueChange={handleAddProductLine}>
+                <SelectTrigger>
+                  <SelectValue
+                    placeholder={
+                      productLines.length === 0 ? 'Agregar producto…' : 'Agregar otro producto…'
+                    }
+                  />
+                </SelectTrigger>
+                <SelectContent>
+                  {sellableProducts.length === 0 ? (
+                    <div className="px-2 py-3 text-[12.5px] text-[var(--fg-muted)]">
+                      No hay productos vendibles en el inventario.
+                    </div>
+                  ) : (
+                    sellableProducts.map((p) => (
+                      <SelectItem key={p.id} value={p.id}>
+                        {p.name} · {formatMoney(p.price)}
+                        {p.stock ? ` · ${p.stock.onHand} en stock` : ''}
+                      </SelectItem>
+                    ))
+                  )}
+                </SelectContent>
+              </Select>
+            ) : (
+              <div className="rounded-lg border border-dashed border-[var(--border-strong)] bg-[var(--bg-app)] px-3 py-3 text-[12.5px] text-[var(--fg-muted)]">
+                Selecciona o crea un cliente arriba para vender productos.
+              </div>
+            )}
+
+            {productLines.length > 0 && (
+              <ul className="mt-2 space-y-2">
+                {productLines.map((line) => {
+                  const onHand = line.product.stock?.onHand ?? null;
+                  const short = onHand !== null && line.qty > onHand;
+
+                  return (
+                    <li
+                      key={line.product.id}
+                      className="rounded-lg border border-[var(--border)] bg-[var(--bg-surface)] p-2.5"
+                    >
+                      <div className="flex items-center gap-2">
+                        <div className="min-w-0 flex-1">
+                          <p className="truncate text-[13.5px] font-medium text-[var(--fg-strong)]">
+                            {line.product.name}
+                          </p>
+                          {onHand !== null && (
+                            <p
+                              className={cn(
+                                'text-[12px]',
+                                short ? 'text-[var(--danger-700)]' : 'text-[var(--fg-muted)]',
+                              )}
+                            >
+                              {short
+                                ? `Solo ${onHand} en stock — se registrará igual y el inventario quedará en negativo`
+                                : `${onHand} en stock`}
+                            </p>
+                          )}
+                        </div>
+                        <Input
+                          type="number"
+                          min={1}
+                          value={line.qty}
+                          onChange={(e) =>
+                            handleUpdateProductQty(line.product.id, Number(e.target.value))
+                          }
+                          className="h-9 w-16 text-center"
+                          aria-label={`Cantidad de ${line.product.name}`}
+                        />
+                        <span
+                          className="w-20 shrink-0 text-right font-mono text-[13.5px] font-semibold tabular-nums text-[var(--fg-strong)]"
+                          style={{ fontFamily: 'var(--font-mono)' }}
+                        >
+                          {formatMoney(line.unitPrice * line.qty)}
+                        </span>
+                        <button
+                          type="button"
+                          onClick={() => handleRemoveProductLine(line.product.id)}
+                          className="shrink-0 rounded-md p-1.5 text-[var(--fg-muted)] transition-colors hover:bg-[var(--bg-hover)] hover:text-[var(--danger-700)]"
+                          aria-label={`Quitar ${line.product.name}`}
+                        >
+                          <X className="h-4 w-4" aria-hidden="true" />
+                        </button>
+                      </div>
                     </li>
                   );
                 })}

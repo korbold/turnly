@@ -38,15 +38,19 @@ export class ApiServiceLogRepository implements ServiceLogRepository {
     };
     if (data.items && data.items.length > 0) {
       body.items = data.items.map((it) => ({
-        service_id: it.serviceId,
+        item_type: it.itemType ?? 'service_variant',
+        service_id: it.serviceId ?? null,
+        product_id: it.productId ?? null,
         variant_id: it.variantId ?? null,
         label: it.label,
         qty: it.qty,
         unit_price: it.unitPrice,
       }));
-      // Backend derives service_id + price_charged from items[0] +
-      // sum; we still echo them so older request paths can read.
-      body.service_id = data.items[0].serviceId;
+      // Backend derives service_id + price_charged from the first
+      // service line + the sum; we still echo them so older request
+      // paths can read. A product-only ticket has no service at all.
+      body.service_id =
+        data.items.find((it) => (it.itemType ?? 'service_variant') !== 'product')?.serviceId ?? null;
       body.price_charged = data.items.reduce(
         (acc, it) => acc + it.unitPrice * it.qty,
         0,

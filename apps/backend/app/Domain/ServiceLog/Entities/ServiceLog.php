@@ -8,7 +8,8 @@ final readonly class ServiceLog
         public string $id,
         public string $tenantId,
         public ?string $clientResourceId,
-        public string $serviceId,
+        // Nullable: a counter sale can be products only.
+        public ?string $serviceId,
         public ?string $reservationId,
         public string $attendedBy,
         public string $createdBy,

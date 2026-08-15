@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Domain\Reservation;
 
 use App\Domain\Inventory\ConsumptionEngine;
+use App\Domain\Inventory\StockLedger;
 use App\Domain\Reservation\Enums\ReservationStatus;
 use App\Infrastructure\Persistence\Models\ProductModel;
 use App\Infrastructure\Persistence\Models\ReservationItemChangeModel;
@@ -28,7 +29,10 @@ use RuntimeException;
  */
 final class ReservationItemEditor
 {
-    public function __construct(private ConsumptionEngine $consumption) {}
+    public function __construct(
+        private ConsumptionEngine $consumption,
+        private StockLedger $stock,
+    ) {}
 
     public function addServiceVariant(
         ReservationModel $reservation,
@@ -95,6 +99,17 @@ final class ReservationItemEditor
                 $qty,
             );
 
+            // Selling a product hands it over — the kardex has to reflect
+            // that immediately, or inventory keeps counting bottles that
+            // already left the shelf.
+            $this->stock->recordSale(
+                product: $product,
+                qty:     (float) $qty,
+                userId:  $userId,
+                refType: 'reservation',
+                refId:   $reservation->id,
+            );
+
             $this->audit(
                 $reservation,
                 ReservationItemChangeModel::ACTION_ADDED,
@@ -127,6 +142,21 @@ final class ReservationItemEditor
                 $qty = (int) $item->qty;
                 for ($i = 0; $i < $qty; $i++) {
                     $this->consumption->releaseVariant($oldRef);
+                }
+            }
+
+            // Dropping a product line puts the units back on the shelf.
+            if ($type === ReservationItemModel::TYPE_PRODUCT) {
+                $product = ProductModel::find($oldRef);
+                if ($product) {
+                    $this->stock->recordReturn(
+                        product: $product,
+                        qty:     (float) $item->qty,
+                        userId:  $userId,
+                        refType: 'reservation',
+                        refId:   $reservation->id,
+                        note:    'Reverso por edición de la reserva',
+                    );
                 }
             }
 

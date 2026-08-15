@@ -7,7 +7,8 @@ final readonly class CreateServiceLogDTO
     public function __construct(
         public string $tenantId,
         public string $clientResourceId,
-        public string $serviceId,
+        // Nullable: a counter sale can be products only.
+        public ?string $serviceId,
         public string $attendedBy,
         public string $createdBy,
         public float $priceCharged,
