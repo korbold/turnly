@@ -13,12 +13,16 @@ import { ResetPasswordUseCase } from '@/application/use-cases/auth/reset-passwor
 import { authStorage } from '@/infrastructure/storage/auth-storage';
 import api from '@/infrastructure/api/client';
 
-export function useMe() {
+export function useMe({ enabled = true }: { enabled?: boolean } = {}) {
   const repo = useRepository('auth');
   return useQuery({
     queryKey: ['me'],
     queryFn: () => new GetMeUseCase(repo).execute(),
     retry: false,
+    // Login screens must not ask who you are: the 401 makes the
+    // interceptor bounce to the login page, which mounts this hook
+    // again — a reload loop the visitor cannot escape.
+    enabled,
   });
 }
 

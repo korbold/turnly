@@ -34,7 +34,14 @@ api.interceptors.response.use(
       // sending them to the staff panel's screen would ask them for a
       // password they never set.
       const inPortal = window.location.pathname.startsWith('/app');
-      window.location.href = inPortal ? '/app/login' : '/login';
+      const target = inPortal ? '/app/login' : '/login';
+      // Redirecting to the page we are already on reloads it, which
+      // re-fires the same request: an endless refresh.
+      if (window.location.pathname !== target) {
+        window.location.href = target;
+      } else {
+        redirecting = false;
+      }
     }
 
     const data = error.response?.data;

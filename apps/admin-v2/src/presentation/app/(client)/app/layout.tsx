@@ -26,7 +26,7 @@ export default function ClientPortalLayout({ children }: { children: React.React
   const pathname = usePathname();
   const router = useRouter();
   const isLogin = pathname === '/app/login';
-  const { data: me, isLoading, isError } = useMe();
+  const { data: me, isLoading, isError } = useMe({ enabled: !isLogin });
 
   useEffect(() => {
     if (isLogin) return;
