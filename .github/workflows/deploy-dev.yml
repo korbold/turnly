@@ -1,11 +1,16 @@
 name: Deploy Dev (backend)
 
+# The dev box (45.32.169.172) is decommissioned as of 2026-08-15 and
+# prod is the only live environment, so the push trigger is off: every
+# run would just fail on an unreachable host. Re-add the `push` block
+# below to bring dev back.
+#
+#  push:
+#    branches: [develop]
+#    paths:
+#      - 'apps/backend/**'
+#      - '.github/workflows/deploy-dev.yml'
 on:
-  push:
-    branches: [develop]
-    paths:
-      - 'apps/backend/**'
-      - '.github/workflows/deploy-dev.yml'
   workflow_dispatch:
 
 concurrency:
