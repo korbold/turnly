@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Infrastructure\Jobs;
 
+use App\Domain\Billing\ConsumidorFinalLimit;
 use App\Events\InvoiceStatusUpdated;
 use App\Infrastructure\Billing\BillingServiceClient;
 use App\Infrastructure\Mail\InvoiceMail;
@@ -33,6 +34,26 @@ class EmitReservationInvoiceJob implements ShouldQueue
         $reservation = ReservationModel::with(['items', 'service', 'variant', 'client'])->findOrFail($this->reservationId);
 
         $billingProfile = $this->resolveBillingProfile($reservation->billing_snapshot);
+
+        // Invoice-on-payment reaches this job without passing the
+        // controller's check, so the rule is enforced here too. Recording
+        // the reason instead of throwing keeps the 3 retries from firing
+        // against a verdict that will never change.
+        $ivaMode = TenantModel::find($reservation->tenant_id)?->settings['iva_mode'] ?? 'excluded';
+
+        if (ConsumidorFinalLimit::blocks(
+            $billingProfile['tipo'] === '07',
+            ConsumidorFinalLimit::totalWithIva($this->grossTotal($reservation), $ivaMode),
+        )) {
+            $reservation->update([
+                'invoice_status' => 'rechazada',
+                'invoice_error'  => ConsumidorFinalLimit::MESSAGE,
+            ]);
+
+            $this->broadcast($reservation);
+
+            return;
+        }
 
         // SRI Tabla 24 (formas de pago): 01 sin sistema financiero (efectivo),
         // 16 tarjeta de débito/crédito, 20 otros con utilización del sistema
@@ -169,6 +190,18 @@ class EmitReservationInvoiceJob implements ShouldQueue
             'passport' => '06',
             default    => '07',
         };
+    }
+
+    /** Displayed total (pre-IVA adjustment), same shape buildItems bills. */
+    private function grossTotal(ReservationModel $reservation): float
+    {
+        if ($reservation->items && $reservation->items->isNotEmpty()) {
+            return (float) $reservation->items->sum(
+                fn ($item) => (float) $item->unit_price * (float) $item->qty,
+            );
+        }
+
+        return (float) ($reservation->variant?->price ?? $reservation->service?->price ?? 0);
     }
 
     private function buildItems(ReservationModel $reservation): array

@@ -5,6 +5,7 @@ namespace App\Infrastructure\Http\Controllers\Reservation;
 use App\Application\DTOs\Reservation\AvailableSlotsQueryDTO;
 use App\Application\DTOs\Reservation\CreateReservationDTO;
 use App\Application\Services\PlanLimitsService;
+use App\Domain\Billing\ConsumidorFinalLimit;
 use App\Application\UseCases\Reservation\CancelReservationUseCase;
 use App\Application\UseCases\Reservation\CompleteWashUseCase;
 use App\Application\UseCases\Reservation\ConfirmReservationUseCase;
@@ -18,6 +19,7 @@ use App\Infrastructure\Http\Requests\Reservation\CreateReservationRequest;
 use App\Infrastructure\Http\Resources\ReservationResource;
 use App\Infrastructure\Jobs\EmitReservationInvoiceJob;
 use App\Infrastructure\Persistence\Models\ReservationModel;
+use App\Infrastructure\Persistence\Models\TenantModel;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 
@@ -390,11 +392,46 @@ class ReservationController extends Controller
             ], 422);
         }
 
+        // Answer before the SRI does: a consumidor final over $50 is a
+        // guaranteed rejection that would burn a secuencial.
+        $docType = $reservation->billing_snapshot['doc_type'] ?? 'final_consumer';
+        $ivaMode = TenantModel::find($reservation->tenant_id)?->settings['iva_mode'] ?? 'excluded';
+
+        if (ConsumidorFinalLimit::blocks(
+            $docType === 'final_consumer',
+            ConsumidorFinalLimit::totalWithIva($this->reservationTotal($reservation), $ivaMode),
+        )) {
+            return response()->json([
+                'error' => [
+                    'code'    => ConsumidorFinalLimit::CODE,
+                    'message' => ConsumidorFinalLimit::MESSAGE,
+                ],
+            ], 422);
+        }
+
         EmitReservationInvoiceJob::dispatch($id);
 
         return response()->json([
             'data' => ['message' => 'Facturación iniciada.'],
         ], 202);
+    }
+
+    /**
+     * What the customer pays, mirroring EmitReservationInvoiceJob::buildItems:
+     * the multi-service items when present, otherwise the variant/service
+     * price. Prices here are as displayed — IVA is applied by the caller.
+     */
+    private function reservationTotal(ReservationModel $reservation): float
+    {
+        $reservation->loadMissing(['items', 'service', 'variant']);
+
+        if ($reservation->items && $reservation->items->isNotEmpty()) {
+            return (float) $reservation->items->sum(
+                fn ($item) => (float) $item->unit_price * (float) $item->qty,
+            );
+        }
+
+        return (float) ($reservation->variant?->price ?? $reservation->service?->price ?? 0);
     }
 
     public function cancel(CancelReservationRequest $request, string $id): JsonResponse

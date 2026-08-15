@@ -17,6 +17,7 @@ import {
   DropdownMenuTrigger,
 } from '@/presentation/components/ui/dropdown-menu';
 import { cn } from '@/shared/utils/cn';
+import { apiErrorMessage } from '@/shared/utils/api-error';
 import {
   useServiceLogs,
   useCompleteServiceLog,
@@ -280,7 +281,7 @@ export function LogList({ date, onEdit, onCreate }: LogListProps) {
                         onClick={() =>
                           emitInvoiceMutation.mutate(log.id, {
                             onSuccess: () => toast.success('Facturación iniciada'),
-                            onError: () => toast.error('Error al iniciar facturación'),
+                            onError: (e) => toast.error(apiErrorMessage(e, 'Error al iniciar facturación'), { duration: 8000 }),
                           })
                         }
                         disabled={isEmitting}

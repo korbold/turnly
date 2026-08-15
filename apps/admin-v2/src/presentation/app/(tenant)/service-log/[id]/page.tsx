@@ -22,6 +22,7 @@ import { Button } from '@/presentation/components/ui/button';
 import { Badge } from '@/presentation/components/ui/badge';
 import { Skeleton } from '@/presentation/components/ui/skeleton';
 import { cn } from '@/shared/utils/cn';
+import { apiErrorMessage } from '@/shared/utils/api-error';
 import {
   useServiceLog,
   useCompleteServiceLog,
@@ -149,7 +150,7 @@ function ServiceLogDetail({ id }: { id: string }) {
                 onClick={() =>
                   emitMutation.mutate(log.id, {
                     onSuccess: () => toast.success('Facturación iniciada'),
-                    onError: () => toast.error('Error al iniciar facturación'),
+                    onError: (e) => toast.error(apiErrorMessage(e, 'Error al iniciar facturación'), { duration: 8000 }),
                   })
                 }
                 disabled={emitMutation.isPending}

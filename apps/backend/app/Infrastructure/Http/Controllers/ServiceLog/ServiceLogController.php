@@ -5,6 +5,7 @@ namespace App\Infrastructure\Http\Controllers\ServiceLog;
 use App\Application\DTOs\ServiceLog\CreateServiceLogDTO;
 use App\Application\UseCases\ServiceLog\CreateServiceLogUseCase;
 use App\Application\UseCases\ServiceLog\GetDailyLogUseCase;
+use App\Domain\Billing\ConsumidorFinalLimit;
 use App\Domain\Identity\EcuadorIdValidator;
 use App\Domain\Inventory\ConsumptionEngine;
 use App\Domain\ServiceLog\Contracts\ServiceLogRepositoryInterface;
@@ -14,6 +15,7 @@ use App\Infrastructure\Http\Requests\ServiceLog\CreateServiceLogRequest;
 use App\Infrastructure\Http\Resources\ServiceLogResource;
 use App\Infrastructure\Jobs\EmitServiceLogInvoiceJob;
 use App\Infrastructure\Persistence\Models\ServiceLogModel;
+use App\Infrastructure\Persistence\Models\TenantModel;
 use App\Infrastructure\Persistence\Models\UserBillingProfileModel;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
@@ -300,7 +302,7 @@ class ServiceLogController extends Controller
 
     public function invoice(string $id): JsonResponse
     {
-        $log = ServiceLogModel::findOrFail($id);
+        $log = ServiceLogModel::with('clientResource.client')->findOrFail($id);
 
         if ($log->invoice_status === 'autorizada') {
             return response()->json([
@@ -311,11 +313,45 @@ class ServiceLogController extends Controller
             ], 422);
         }
 
+        // Answer before the SRI does: a consumidor final over $50 is a
+        // guaranteed rejection that would burn a secuencial.
+        $ivaMode = TenantModel::find($log->tenant_id)?->settings['iva_mode'] ?? 'excluded';
+
+        if (ConsumidorFinalLimit::blocks(
+            $this->billsToConsumidorFinal($log->clientResource?->client?->id),
+            ConsumidorFinalLimit::totalWithIva((float) $log->price_charged, $ivaMode),
+        )) {
+            return response()->json([
+                'error' => [
+                    'code'    => ConsumidorFinalLimit::CODE,
+                    'message' => ConsumidorFinalLimit::MESSAGE,
+                ],
+            ], 422);
+        }
+
         EmitServiceLogInvoiceJob::dispatch($id);
 
         return response()->json([
             'data' => ['message' => 'Facturación iniciada.'],
         ], 202);
+    }
+
+    /**
+     * Mirrors EmitServiceLogInvoiceJob::resolveBillingProfile — no client,
+     * or no default profile, or a profile still on `final_consumer` all
+     * end up billing to CONSUMIDOR FINAL.
+     */
+    private function billsToConsumidorFinal(?string $clientId): bool
+    {
+        if (!$clientId) {
+            return true;
+        }
+
+        $docType = UserBillingProfileModel::where('user_id', $clientId)
+            ->where('is_default', true)
+            ->value('doc_type');
+
+        return $docType === null || $docType === 'final_consumer';
     }
 
     /**

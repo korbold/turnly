@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Infrastructure\Jobs;
 
+use App\Domain\Billing\ConsumidorFinalLimit;
 use App\Events\InvoiceStatusUpdated;
 use App\Infrastructure\Billing\BillingServiceClient;
 use App\Infrastructure\Mail\InvoiceMail;
@@ -35,6 +36,26 @@ class EmitServiceLogInvoiceJob implements ShouldQueue
         $log = ServiceLogModel::with(['items', 'service', 'clientResource.client'])->findOrFail($this->serviceLogId);
 
         $billingProfile = $this->resolveBillingProfile($log->clientResource);
+
+        // Invoice-on-payment reaches this job without passing the
+        // controller's check, so the rule is enforced here too. Recording
+        // the reason instead of throwing keeps the 3 retries from firing
+        // against a verdict that will never change.
+        $ivaMode = TenantModel::find($log->tenant_id)?->settings['iva_mode'] ?? 'excluded';
+
+        if (ConsumidorFinalLimit::blocks(
+            $billingProfile['tipo'] === '07',
+            ConsumidorFinalLimit::totalWithIva((float) $log->price_charged, $ivaMode),
+        )) {
+            $log->update([
+                'invoice_status' => 'rechazada',
+                'invoice_error'  => ConsumidorFinalLimit::MESSAGE,
+            ]);
+
+            $this->broadcast($log);
+
+            return;
+        }
 
         // SRI Tabla 24 (formas de pago): 01 sin sistema financiero (efectivo),
         // 16 tarjeta de débito/crédito, 20 otros con utilización del sistema
