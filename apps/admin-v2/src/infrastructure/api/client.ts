@@ -30,7 +30,11 @@ api.interceptors.response.use(
     if (error.response?.status === 401 && typeof window !== 'undefined' && !redirecting && error.config?.url !== '/auth/login') {
       redirecting = true;
       authStorage.clear();
-      window.location.href = '/login';
+      // Customers live under /app and have their own passwordless login;
+      // sending them to the staff panel's screen would ask them for a
+      // password they never set.
+      const inPortal = window.location.pathname.startsWith('/app');
+      window.location.href = inPortal ? '/app/login' : '/login';
     }
 
     const data = error.response?.data;

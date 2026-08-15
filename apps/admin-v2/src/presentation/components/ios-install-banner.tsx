@@ -1,6 +1,7 @@
 'use client';
 
 import { useEffect, useState } from 'react';
+import { usePathname } from 'next/navigation';
 import { X, Share, Download } from 'lucide-react';
 
 const DISMISSED_KEY = 'pwa-install-banner-dismissed';
@@ -11,6 +12,7 @@ interface BeforeInstallPromptEvent extends Event {
 }
 
 export function IosInstallBanner() {
+  const pathname = usePathname();
   const [mode, setMode] = useState<'ios' | 'chrome' | null>(null);
   const [deferredPrompt, setDeferredPrompt] = useState<BeforeInstallPromptEvent | null>(null);
 
@@ -56,7 +58,13 @@ export function IosInstallBanner() {
   if (!mode) return null;
 
   return (
-    <div className="fixed bottom-0 left-0 right-0 z-50 bg-white border-t border-zinc-200 shadow-lg p-4">
+    // The customer portal has its own fixed tab bar at the bottom; the
+    // banner sits above it instead of burying Inicio/Reservas/Perfil.
+    <div
+      className={`fixed left-0 right-0 z-50 border-t border-zinc-200 bg-white p-4 shadow-lg ${
+        pathname?.startsWith('/app') ? 'bottom-[61px]' : 'bottom-0'
+      }`}
+    >
       <button
         onClick={dismiss}
         className="absolute top-3 right-3 text-zinc-400 hover:text-zinc-600"

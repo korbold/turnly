@@ -1,14 +1,17 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { use, useEffect, useState } from 'react';
+import { useRouter } from 'next/navigation';
 import Link from 'next/link';
-import { Smartphone, ExternalLink, AlertCircle } from 'lucide-react';
+import { Smartphone, ExternalLink, Loader2, Globe } from 'lucide-react';
+import { authStorage } from '@/infrastructure/storage/auth-storage';
+import { useVerifyMagicLink } from '@/presentation/hooks/use-client-portal';
+import { apiErrorMessage } from '@/shared/utils/api-error';
 
 const ANDROID_PACKAGE_DEV = 'com.turnly.customer.dev';
 const ANDROID_PACKAGE_PROD = 'com.turnly.customer';
 const PLAY_STORE_URL =
   'https://play.google.com/store/apps/details?id=com.turnly.customer';
-const APP_STORE_URL = 'https://apps.apple.com/app/turnly';
 
 function detectPlatform(ua: string): 'android' | 'ios' | 'desktop' {
   if (/android/i.test(ua)) return 'android';
@@ -16,10 +19,16 @@ function detectPlatform(ua: string): 'android' | 'ios' | 'desktop' {
   return 'desktop';
 }
 
-export default function MagicLinkLandingPage() {
-  const [platform, setPlatform] =
-    useState<'android' | 'ios' | 'desktop' | null>(null);
-  const [tried, setTried] = useState(false);
+export default function MagicLinkLandingPage({
+  params,
+}: {
+  params: Promise<{ token: string }>;
+}) {
+  const { token } = use(params);
+  const router = useRouter();
+  const [platform, setPlatform] = useState<'android' | 'ios' | 'desktop' | null>(null);
+  const [error, setError] = useState<string | null>(null);
+  const verify = useVerifyMagicLink();
 
   useEffect(() => {
     if (typeof window === 'undefined') return;
@@ -28,33 +37,39 @@ export default function MagicLinkLandingPage() {
 
   function tryOpenApp() {
     if (typeof window === 'undefined' || platform === null) return;
-    setTried(true);
 
     if (platform === 'android') {
       const host = window.location.host;
       const path = window.location.pathname + window.location.search;
-      const isDev = host.startsWith('dev.');
-      const pkg = isDev ? ANDROID_PACKAGE_DEV : ANDROID_PACKAGE_PROD;
-      const intentUrl = `intent://${host}${path}#Intent;scheme=https;package=${pkg};S.browser_fallback_url=${encodeURIComponent(
-        PLAY_STORE_URL,
-      )};end`;
-      window.location.href = intentUrl;
+      const pkg = host.startsWith('dev.') ? ANDROID_PACKAGE_DEV : ANDROID_PACKAGE_PROD;
+      // No store fallback: the app is not published yet, so a failed
+      // open must leave the customer on this page, where the browser
+      // route is waiting — not on an empty store listing.
+      window.location.href = `intent://${host}${path}#Intent;scheme=https;package=${pkg};end`;
       return;
     }
 
     if (platform === 'ios') {
-      // Re-navigating to the same URL from a user gesture lets iOS try
-      // the Universal Link route. If the app is installed, it opens.
       window.location.href = window.location.href;
     }
   }
 
-  useEffect(() => {
-    if (platform === 'ios' || platform === 'android') {
-      const id = setTimeout(tryOpenApp, 400);
-      return () => clearTimeout(id);
-    }
-  }, [platform]);
+  /**
+   * Consumes the link right here and drops the customer into the web
+   * portal. This is the path that works with no app installed — the
+   * whole reason the portal exists while Play review is pending.
+   */
+  function continueInBrowser() {
+    setError(null);
+    verify.mutate(token, {
+      onSuccess: (session) => {
+        authStorage.setToken(session.token);
+        router.replace('/app');
+      },
+      onError: (e) =>
+        setError(apiErrorMessage(e, 'El link no es válido o ya venció. Pide uno nuevo.')),
+    });
+  }
 
   return (
     <div className="flex min-h-screen flex-col items-center justify-center bg-[var(--bg-app)] px-5 py-10">
@@ -63,43 +78,54 @@ export default function MagicLinkLandingPage() {
           <Smartphone className="h-7 w-7" aria-hidden="true" />
         </div>
         <h1 className="mt-5 text-[20px] font-bold tracking-[-0.01em] text-[var(--ink-900)]">
-          Abre Turnly
+          Entra a Turnly
         </h1>
         <p className="mt-2 text-[13.5px] leading-relaxed text-[var(--ink-600)]">
-          Tu link te lleva directo a la app Turnly. Si no se abrió sola, pulsa el botón.
+          Continúa aquí mismo en el navegador, o ábrelo en la app si ya la tienes instalada.
         </p>
 
-        {platform === 'desktop' ? (
-          <div className="mt-6 flex items-start gap-2 rounded-xl border border-[var(--border-soft)] bg-[var(--niebla-clara,#F4F5F7)] px-4 py-3 text-left">
-            <AlertCircle
-              className="mt-0.5 h-4 w-4 shrink-0 text-[var(--fg-muted)]"
-              aria-hidden="true"
-            />
-            <p className="text-[12.5px] leading-snug text-[var(--ink-600)]">
-              Este link sólo funciona en tu celular. Abre el correo desde el iPhone o Android
-              donde tienes la app instalada.
-            </p>
-          </div>
-        ) : (
+        <button
+          type="button"
+          onClick={continueInBrowser}
+          disabled={verify.isPending}
+          className="mt-6 inline-flex h-11 w-full items-center justify-center gap-2 rounded-xl bg-[var(--brand-500)] text-[14px] font-semibold text-white transition-[background-color,transform] duration-150 ease-out hover:bg-[var(--brand-600)] active:scale-[0.97] disabled:opacity-70"
+        >
+          {verify.isPending ? (
+            <Loader2 className="h-4 w-4 animate-spin" aria-hidden="true" />
+          ) : (
+            <Globe className="h-4 w-4" aria-hidden="true" />
+          )}
+          {verify.isPending ? 'Entrando…' : 'Continuar en el navegador'}
+        </button>
+
+        {platform !== 'desktop' && (
           <button
             type="button"
             onClick={tryOpenApp}
-            className="mt-6 inline-flex h-11 w-full items-center justify-center gap-2 rounded-xl bg-[var(--brand-500)] text-[14px] font-semibold text-white transition-[background-color,transform] duration-150 ease-out hover:bg-[var(--brand-600)] active:scale-[0.97]"
+            className="mt-2.5 inline-flex h-11 w-full items-center justify-center gap-2 rounded-xl border border-[var(--border-soft)] text-[14px] font-semibold text-[var(--ink-900)] transition-colors hover:bg-[var(--niebla-clara,#F4F5F7)]"
           >
             <ExternalLink className="h-4 w-4" aria-hidden="true" />
             Abrir en la app
           </button>
         )}
 
-        {tried && platform !== 'desktop' && (
+        {error && (
+          <p role="alert" className="mt-4 text-[12.5px] leading-snug text-[var(--danger-700)]">
+            {error}{' '}
+            <Link href="/app/login" className="font-semibold underline">
+              Pedir otro link
+            </Link>
+          </p>
+        )}
+
+        {platform === 'android' && !error && (
           <p className="mt-4 text-[12px] leading-snug text-[var(--ink-500)]">
-            ¿No se abrió? Quizás aún no tienes la app.
-            <br />
+            ¿Aún no tienes la app?{' '}
             <Link
-              href={platform === 'ios' ? APP_STORE_URL : PLAY_STORE_URL}
+              href={PLAY_STORE_URL}
               className="font-semibold text-[var(--brand-700)] hover:text-[var(--brand-600)]"
             >
-              Descargarla aquí
+              Verla en Play Store
             </Link>
           </p>
         )}
