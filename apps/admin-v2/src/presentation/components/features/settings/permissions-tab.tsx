@@ -10,7 +10,13 @@ import { useSettings, useUpdateSettings } from '@/presentation/hooks/use-setting
 import { DEFAULT_PERMISSIONS } from '@/shared/constants/permissions';
 
 const ROLES = ['Admin', 'Cajero', 'Lavador', 'Cliente'] as const;
-const SECTIONS = ['Dashboard', 'Reservas', 'Registro', 'Clientes', 'Servicios', 'Equipo', 'Reportes', 'Config'] as const;
+// Column order mirrors the sidebar so the matrix reads like the menu it
+// governs. Every module the sidebar can show needs a column here —
+// otherwise it is silently ungrantable to cashier/washer.
+const SECTIONS = [
+  'Dashboard', 'Reservas', 'Registro', 'Clientes', 'Servicios', 'Inventario',
+  'Equipo', 'Reportes', 'Facturas', 'Plan', 'Config',
+] as const;
 
 type Permission = 'full' | 'view' | 'none';
 

@@ -13,19 +13,20 @@ const ROLE_TO_MATRIX: Partial<Record<UserRole, string>> = {
   client: 'Cliente',
 };
 
-// Maps sidebar href → permissions matrix section key.
-// undefined means the section is not in the matrix —
-// restricted roles (washer/cashier) will not see it.
+// Maps sidebar href → permissions matrix section key. Anything missing
+// here is ungrantable: restricted roles (washer/cashier) never see it,
+// no matter what the owner ticks in the matrix.
 const HREF_TO_SECTION: Record<string, string | undefined> = {
   '/dashboard': 'Dashboard',
   '/reservations': 'Reservas',
   '/service-logs': 'Registro',
   '/clients': 'Clientes',
   '/services': 'Servicios',
-  '/inventory': undefined,
+  '/inventory': 'Inventario',
   '/team': 'Equipo',
   '/reports': 'Reportes',
-  '/plan': undefined,
+  '/facturas': 'Facturas',
+  '/plan': 'Plan',
   '/settings': 'Config',
 };
 
