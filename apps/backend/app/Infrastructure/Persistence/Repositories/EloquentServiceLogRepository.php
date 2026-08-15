@@ -78,8 +78,11 @@ class EloquentServiceLogRepository implements ServiceLogRepositoryInterface
         $serviceRevenue = (float) $rows->sum('price_charged');
         $reservationRevenue = (float) $reservations->sum(fn ($r) => $r->service?->price ?? 0);
 
+        // Mirrors the enum the cashier picks from; leaving `other` out
+        // meant those sales landed in the revenue figure with no tile
+        // accounting for them.
         $byPaymentMethod = [];
-        foreach (['cash', 'card', 'transfer'] as $method) {
+        foreach (['cash', 'card', 'transfer', 'other'] as $method) {
             $subset = $rows->where('payment_method', $method);
             $byPaymentMethod[$method] = [
                 'count' => $subset->count(),
