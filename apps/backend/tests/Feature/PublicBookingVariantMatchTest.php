@@ -124,3 +124,24 @@ test('a vehicle type with no match falls back to the default variant', function 
 
     expect((float) $item->unit_price)->toBe(7.0);
 });
+
+// Tenants that never ticked "affects_variant" still have variants that
+// declare the types they serve; charging the default price there is the
+// same billing error with a different cause.
+test('the vehicle type is matched even when no field is flagged', function () {
+    $this->tenant->update(['custom_fields' => [
+        ['key' => 'plate', 'label' => 'Placa', 'type' => 'text', 'required' => true],
+        [
+            'key' => 'vehicle_type',
+            'label' => 'Tipo de vehículo',
+            'type' => 'select',
+            'required' => true,
+            'options' => ['Hatchback', 'Camioneta'],
+        ],
+    ]]);
+    app()->instance('current_tenant', $this->tenant->fresh());
+
+    $id = bookAs('Camioneta');
+
+    expect((float) ReservationItemModel::where('reservation_id', $id)->value('unit_price'))->toBe(18.0);
+});

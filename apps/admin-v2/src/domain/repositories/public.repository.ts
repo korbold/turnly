@@ -9,8 +9,31 @@ export interface PublicTenant {
   socialLinks: { instagram: string | null; facebook: string | null; whatsapp: string | null };
   address: string | null;
   phone: string | null;
-  services: Array<{ id: string; name: string; price: string; imageUrl: string | null; description: string | null }>;
-  customFields: Array<{ key: string; label: string; type: string; required: boolean; options?: string[] }>;
+  services: Array<{
+    id: string;
+    name: string;
+    price: string;
+    imageUrl: string | null;
+    description: string | null;
+    /** Sizes/segments of the service. `vehicleTypes` are the answers to
+        the affects_variant field that map to this variant. */
+    variants: Array<{
+      id: string;
+      label: string;
+      price: number;
+      durationMin: number;
+      vehicleTypes: string[];
+    }>;
+  }>;
+  customFields: Array<{
+    key: string;
+    label: string;
+    type: string;
+    required: boolean;
+    options?: string[];
+    /** The answer to this field decides which variant (and price) applies. */
+    affectsVariant?: boolean;
+  }>;
 }
 
 export interface BookingData {
@@ -27,6 +50,11 @@ export interface BookingData {
 
 export interface PublicRepository {
   getTenantBySlug(slug: string): Promise<PublicTenant>;
-  getAvailableSlots(slug: string, serviceId: string, date: string): Promise<AvailableSlot[]>;
+  getAvailableSlots(
+    slug: string,
+    serviceId: string,
+    date: string,
+    durationMin?: number,
+  ): Promise<AvailableSlot[]>;
   book(slug: string, data: BookingData): Promise<{ reservationId: string }>;
 }

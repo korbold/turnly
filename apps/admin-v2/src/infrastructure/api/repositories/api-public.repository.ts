@@ -29,6 +29,13 @@ function mapPublicTenant(raw: Record<string, unknown>): PublicTenant {
       price: String(s.price),
       imageUrl: (s.image_url as string) ?? null,
       description: (s.description as string) ?? null,
+      variants: ((s.variants ?? []) as Record<string, unknown>[]).map((v) => ({
+        id: v.id as string,
+        label: v.label as string,
+        price: Number(v.price ?? 0),
+        durationMin: Number(v.duration_min ?? 0),
+        vehicleTypes: (v.vehicle_types as string[] | undefined) ?? [],
+      })),
     })),
     customFields: ((tenant.custom_fields ?? []) as Record<string, unknown>[]).map((f) => ({
       key: f.key as string,
@@ -36,6 +43,7 @@ function mapPublicTenant(raw: Record<string, unknown>): PublicTenant {
       type: f.type as string,
       required: f.required as boolean,
       options: f.options as string[] | undefined,
+      affectsVariant: (f.affects_variant as boolean | undefined) ?? false,
     })),
   };
 }
@@ -46,9 +54,14 @@ export class ApiPublicRepository implements PublicRepository {
     return mapPublicTenant(res.data);
   }
 
-  async getAvailableSlots(slug: string, serviceId: string, date: string): Promise<AvailableSlot[]> {
+  async getAvailableSlots(
+    slug: string,
+    serviceId: string,
+    date: string,
+    durationMin?: number,
+  ): Promise<AvailableSlot[]> {
     const { data: res } = await api.get(`/public/tenants/${slug}/available-slots`, {
-      params: { service_id: serviceId, date },
+      params: { service_id: serviceId, date, ...(durationMin ? { duration_min: durationMin } : {}) },
     });
     return (res.data as Record<string, unknown>[]).map(mapAvailableSlot);
   }

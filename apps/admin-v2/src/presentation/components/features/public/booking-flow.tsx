@@ -44,12 +44,40 @@ export function BookingFlow({ slug, tenant, initialServiceId, primaryColor = '#F
   const [customData, setCustomData] = useState<Record<string, string>>({});
   const [reservationId, setReservationId] = useState('');
 
+  const selectedService = tenant.services.find((s) => s.id === serviceId);
+  const selectedServiceForVariant = selectedService;
+
+  // The field whose answer decides the variant (car wash: "Tipo de
+  // vehículo"). It is asked in step 2, before the times, because the
+  // variant's duration is what makes a slot fit or not.
+  // Explicit configuration wins; otherwise infer the field from the
+  // overlap between its options and the types the variants declare, so a
+  // tenant that never ticked the flag still gets the right price.
+  const declaredTypes = new Set(
+    (selectedServiceForVariant?.variants ?? []).flatMap((v) => v.vehicleTypes),
+  );
+  const variantField =
+    tenant.customFields.find((f) => f.affectsVariant) ??
+    tenant.customFields.find((f) => (f.options ?? []).some((o) => declaredTypes.has(o)));
+  const variantAnswer = variantField ? (customData[variantField.key] ?? '') : '';
+
+  const matchedVariant =
+    variantAnswer && selectedService
+      ? selectedService.variants.find((v) => v.vehicleTypes.includes(variantAnswer))
+      : undefined;
+
+  // Slots must be carved at the real duration; asking with the default
+  // length let a 60-minute wash land in a 30-minute gap.
+  const durationMin = matchedVariant?.durationMin;
+
   const dateStr = date ? format(date, 'yyyy-MM-dd') : '';
 
   const { data: slots, isLoading: slotsLoading, isError: slotsError } = useQuery({
-    queryKey: ['public', 'slots', slug, serviceId, dateStr],
-    queryFn: () => repo.getAvailableSlots(slug, serviceId, dateStr),
-    enabled: !!serviceId && !!dateStr,
+    queryKey: ['public', 'slots', slug, serviceId, dateStr, durationMin ?? 0],
+    queryFn: () => repo.getAvailableSlots(slug, serviceId, dateStr, durationMin),
+    // Without the segmentation answer the duration is unknown, so we do
+    // not offer times yet.
+    enabled: !!serviceId && !!dateStr && (!variantField || !!variantAnswer),
   });
 
   const bookMutation = useMutation({
@@ -59,8 +87,6 @@ export function BookingFlow({ slug, tenant, initialServiceId, primaryColor = '#F
       setStep(4);
     },
   });
-
-  const selectedService = tenant.services.find((s) => s.id === serviceId);
 
   function handleBack() {
     if (step > 1) setStep((s) => (s - 1) as Step);
@@ -154,6 +180,38 @@ export function BookingFlow({ slug, tenant, initialServiceId, primaryColor = '#F
               Servicio: <span className="font-medium text-foreground">{selectedService.name}</span>
             </p>
           )}
+          {variantField && (
+            <div className="max-w-md space-y-1.5">
+              <Label>
+                {variantField.label}
+                <span className="text-rose-500"> *</span>
+              </Label>
+              <Select
+                value={variantAnswer}
+                onValueChange={(v) =>
+                  setCustomData((d) => ({ ...d, [variantField.key]: v }))
+                }
+              >
+                <SelectTrigger><SelectValue placeholder="Seleccionar" /></SelectTrigger>
+                <SelectContent>
+                  {(variantField.options ?? []).map((opt) => (
+                    <SelectItem key={opt} value={opt}>{opt}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+              {matchedVariant ? (
+                <p className="text-sm text-muted-foreground">
+                  {matchedVariant.label}: ${matchedVariant.price.toFixed(2)} ·{' '}
+                  {matchedVariant.durationMin} min
+                </p>
+              ) : (
+                <p className="text-sm text-muted-foreground">
+                  El precio y la duración dependen de esta respuesta.
+                </p>
+              )}
+            </div>
+          )}
+
           <div className="flex flex-col gap-4 md:flex-row">
             {/* The API refuses any date before today, so offering past
                 days led to a failed request and an empty panel with no
@@ -167,7 +225,14 @@ export function BookingFlow({ slug, tenant, initialServiceId, primaryColor = '#F
               disabled={{ before: new Date(new Date().setHours(0, 0, 0, 0)) }}
             />
             <div className="flex-1">
-              {!date && <p className="text-sm text-muted-foreground">Selecciona una fecha</p>}
+              {variantField && !variantAnswer && (
+                <p className="text-sm text-muted-foreground">
+                  Elige {variantField.label.toLowerCase()} para ver los horarios disponibles.
+                </p>
+              )}
+              {(!variantField || variantAnswer) && !date && (
+                <p className="text-sm text-muted-foreground">Selecciona una fecha</p>
+              )}
               {date && slotsLoading && <p className="text-sm text-muted-foreground">Cargando horarios...</p>}
               {date && slotsError && (
                 <p className="text-sm text-[var(--danger-700)]">
@@ -232,8 +297,9 @@ export function BookingFlow({ slug, tenant, initialServiceId, primaryColor = '#F
               <Input value={phone} onChange={(e) => setPhone(e.target.value)} placeholder="+593 99 123 4567" />
             </div>
 
-            {/* Custom fields */}
-            {tenant.customFields.map((field) => (
+            {/* Custom fields — the segmentation one was already answered
+                in step 2, where it decided price and duration. */}
+            {tenant.customFields.filter((f) => !f.affectsVariant).map((field) => (
               <div key={field.key} className="space-y-1.5">
                 <Label>{field.label}{field.required && <span className="text-rose-500"> *</span>}</Label>
                 {field.type === 'select' ? (

@@ -58,13 +58,33 @@ final class VariantSuggester
         $field = collect($customFields)->first(
             fn (array $f) => ($f['affects_variant'] ?? false) === true,
         );
-        if (!$field) return null;
 
-        $key = $field['key'] ?? null;
-        if (!$key) return null;
+        $value = null;
 
-        $value = $resourceData[$key] ?? null;
-        if (!is_string($value) || $value === '') return null;
+        if ($field && ($key = $field['key'] ?? null)) {
+            $candidate = $resourceData[$key] ?? null;
+            $value = is_string($candidate) && $candidate !== '' ? $candidate : null;
+        }
+
+        // Not every tenant remembered to flag the field, yet its variants
+        // still declare the types they serve. Rather than silently
+        // charging the default price, match any answer that a variant
+        // claims. Explicit configuration still wins.
+        if ($value === null) {
+            $declared = $variants
+                ->filter(fn ($v) => $v->is_active)
+                ->flatMap(fn ($v) => is_array($v->vehicle_types) ? $v->vehicle_types : [])
+                ->unique();
+
+            foreach ($resourceData as $candidate) {
+                if (is_string($candidate) && $candidate !== '' && $declared->contains($candidate)) {
+                    $value = $candidate;
+                    break;
+                }
+            }
+        }
+
+        if ($value === null) return null;
 
         return $variants
             ->filter(fn ($v) => $v->is_active)
