@@ -213,6 +213,12 @@ class PublicController extends Controller
                             'price' => (float) $v->price,
                             'duration_min' => (int) $v->duration_min,
                             'sort_order' => (int) $v->sort_order,
+                            // Lets the booking page resolve price and
+                            // duration from the answer to the
+                            // affects_variant field before asking for a
+                            // time — a 60-minute wash must not be booked
+                            // into a 30-minute gap.
+                            'vehicle_types' => $v->vehicle_types ?? [],
                         ])->all(),
                 ];
             });
