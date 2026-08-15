@@ -1,6 +1,7 @@
 import Link from 'next/link';
 import { ArrowRight, MapPin, Search, Sparkles } from 'lucide-react';
 import { ExplorarFilter } from '@/presentation/components/features/public/explorar-filter';
+import { SessionNav } from '@/presentation/components/features/public/session-nav';
 
 export const dynamic = 'force-dynamic';
 
@@ -104,18 +105,7 @@ export default async function ExplorarPage({ searchParams }: PageProps) {
             </Link>
           </nav>
           <div className="flex items-center gap-2.5">
-            <Link
-              href="/login"
-              className="text-[13px] text-[var(--ink-600)] transition-colors duration-150 hover:text-[var(--ink-900)]"
-            >
-              Iniciar sesión
-            </Link>
-            <Link
-              href="/register"
-              className="inline-flex h-9 items-center rounded-lg bg-[var(--brand-500)] px-3.5 text-[13px] font-medium text-white transition-[background-color,transform] duration-150 ease-out hover:bg-[var(--brand-600)] active:scale-[0.97]"
-            >
-              Empezar gratis
-            </Link>
+            <SessionNav />
           </div>
         </div>
       </header>
