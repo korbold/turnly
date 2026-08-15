@@ -41,6 +41,12 @@ export function useVerifyMagicLink() {
   });
 }
 
+export function useGoogleLogin() {
+  return useMutation({
+    mutationFn: (idToken: string) => clientPortalRepository.googleLogin(idToken),
+  });
+}
+
 export function useDeleteAccount() {
   return useMutation({
     mutationFn: () => clientPortalRepository.deleteAccount(),

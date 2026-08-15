@@ -2,18 +2,43 @@
 
 import { useState } from 'react';
 import Link from 'next/link';
-import { Mail, ArrowRight, CheckCircle2 } from 'lucide-react';
+import { useRouter } from 'next/navigation';
+import { Mail, ArrowRight, CheckCircle2, Loader2 } from 'lucide-react';
 import { Button } from '@/presentation/components/ui/button';
 import { Input } from '@/presentation/components/ui/input';
 import { Label } from '@/presentation/components/ui/label';
-import { useRequestMagicLink } from '@/presentation/hooks/use-client-portal';
+import { useGoogleLogin, useRequestMagicLink } from '@/presentation/hooks/use-client-portal';
+import { authStorage } from '@/infrastructure/storage/auth-storage';
+import { isGoogleSignInConfigured, signInWithGoogle } from '@/lib/firebase/google-auth';
 import { apiErrorMessage } from '@/shared/utils/api-error';
 
 export default function ClientLoginPage() {
+  const router = useRouter();
   const [email, setEmail] = useState('');
   const [sent, setSent] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [googlePending, setGooglePending] = useState(false);
   const requestLink = useRequestMagicLink();
+  const googleLogin = useGoogleLogin();
+
+  async function handleGoogle() {
+    setError(null);
+    setGooglePending(true);
+    try {
+      const idToken = await signInWithGoogle();
+      const session = await googleLogin.mutateAsync(idToken);
+      authStorage.setToken(session.token);
+      router.replace('/app');
+    } catch (e) {
+      // Closing the popup is a normal cancel, not a failure worth shouting about.
+      const code = (e as { code?: string })?.code ?? '';
+      if (!code.includes('popup-closed') && !code.includes('cancelled-popup')) {
+        setError(apiErrorMessage(e, 'No pudimos entrar con Google. Intenta con tu correo.'));
+      }
+    } finally {
+      setGooglePending(false);
+    }
+  }
 
   function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
@@ -100,6 +125,36 @@ export default function ClientLoginPage() {
                 {!requestLink.isPending && <ArrowRight className="ml-1.5 h-4 w-4" aria-hidden="true" />}
               </Button>
             </form>
+
+            {isGoogleSignInConfigured() && (
+              <>
+                <div className="my-5 flex items-center gap-3">
+                  <span className="h-px flex-1 bg-[var(--border)]" />
+                  <span className="text-[12px] text-[var(--fg-muted)]">o</span>
+                  <span className="h-px flex-1 bg-[var(--border)]" />
+                </div>
+
+                <Button
+                  type="button"
+                  variant="outline"
+                  className="w-full"
+                  onClick={handleGoogle}
+                  disabled={googlePending}
+                >
+                  {googlePending ? (
+                    <Loader2 className="mr-2 h-4 w-4 animate-spin" aria-hidden="true" />
+                  ) : (
+                    <svg className="mr-2 h-4 w-4" viewBox="0 0 24 24" aria-hidden="true">
+                      <path fill="#4285F4" d="M23.5 12.3c0-.8-.1-1.6-.2-2.3H12v4.5h6.5a5.6 5.6 0 0 1-2.4 3.7v3h3.9c2.3-2.1 3.5-5.2 3.5-8.9z" />
+                      <path fill="#34A853" d="M12 24c3.2 0 5.9-1.1 7.9-2.9l-3.9-3c-1.1.7-2.4 1.2-4 1.2-3.1 0-5.7-2.1-6.6-4.9H1.4v3.1A12 12 0 0 0 12 24z" />
+                      <path fill="#FBBC05" d="M5.4 14.4a7.2 7.2 0 0 1 0-4.6V6.7H1.4a12 12 0 0 0 0 10.8l4-3.1z" />
+                      <path fill="#EA4335" d="M12 4.8c1.8 0 3.3.6 4.6 1.8l3.4-3.4A12 12 0 0 0 1.4 6.7l4 3.1C6.3 6.9 8.9 4.8 12 4.8z" />
+                    </svg>
+                  )}
+                  Continuar con Google
+                </Button>
+              </>
+            )}
           </>
         )}
 

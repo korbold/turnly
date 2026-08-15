@@ -33,6 +33,22 @@ export const clientPortalRepository = {
     };
   },
 
+  /** Exchanges a Firebase ID token for a Turnly session. */
+  async googleLogin(idToken: string): Promise<MagicLinkSession> {
+    const { data: res } = await api.post('/auth/google', { id_token: idToken });
+    const d = res.data ?? res;
+    return {
+      token: String(d.token),
+      user: {
+        id: String(d.user?.id ?? ''),
+        name: String(d.user?.name ?? ''),
+        email: String(d.user?.email ?? ''),
+        termsAcceptedAt: (d.user?.terms_accepted_at as string | null) ?? null,
+      },
+      accountRestored: Boolean(d.account_restored),
+    };
+  },
+
   async myReservations(status?: string): Promise<ClientReservation[]> {
     const { data: res } = await api.get('/client/reservations', {
       params: status ? { status } : undefined,
