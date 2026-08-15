@@ -188,6 +188,21 @@ export default async function ExplorarPage({ searchParams }: PageProps) {
                           alt=""
                           className="h-full w-full object-cover transition-transform duration-300 ease-out group-hover:scale-[1.03]"
                         />
+                      ) : t.logo_url ? (
+                        // A business with a logo but no cover photo used to
+                        // show a bare initial, hiding the one piece of brand
+                        // it had uploaded.
+                        <div
+                          className="flex h-full w-full items-center justify-center p-6"
+                          style={{ backgroundColor: palette.bg }}
+                        >
+                          {/* eslint-disable-next-line @next/next/no-img-element */}
+                          <img
+                            src={t.logo_url}
+                            alt={t.name}
+                            className="max-h-full max-w-[70%] object-contain transition-transform duration-300 ease-out group-hover:scale-[1.03]"
+                          />
+                        </div>
                       ) : (
                         <div
                           className="flex h-full w-full items-center justify-center text-[44px] font-extrabold tracking-[-0.04em]"
