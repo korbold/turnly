@@ -23,6 +23,7 @@ import {
   SelectValue,
 } from '@/presentation/components/ui/select';
 import { useSettings } from '@/presentation/hooks/use-settings';
+import { apiErrorMessage } from '@/shared/utils/api-error';
 import { useCreateClient, useUpdateClient } from '@/presentation/hooks/use-clients';
 import type { ClientResource } from '@/domain/entities/client-resource';
 import type { CustomField } from '@/domain/entities/tenant';
@@ -79,15 +80,15 @@ export function ClientForm({ open, onClose, client }: ClientFormProps) {
   }
 
   function onSubmit(values: Record<string, unknown>) {
-    // Separate known DB columns from custom data
-    const { plate, brand, model, color, type, ...rest } = values;
+    // Everything travels in `data`. Splitting plate/brand/model/color/type
+    // out into top-level columns silently dropped them: the API stores only
+    // the `data` bag, so a tenant whose custom fields use those keys (every
+    // car wash) lost its placa, marca and color on the first edit.
+    const data = Object.fromEntries(
+      Object.entries(values).filter(([, v]) => v !== undefined && v !== ''),
+    );
     const payload = {
-      plate: (plate as string) || undefined,
-      brand: (brand as string) || undefined,
-      model: (model as string) || undefined,
-      color: (color as string) || undefined,
-      type: (type as string) || undefined,
-      data: Object.keys(rest).length > 0 ? rest : undefined,
+      data: Object.keys(data).length > 0 ? data : undefined,
     };
 
     if (isEditing && client) {
@@ -98,7 +99,7 @@ export function ClientForm({ open, onClose, client }: ClientFormProps) {
             toast.success('Cliente actualizado');
             handleClose();
           },
-          onError: () => toast.error('Error al actualizar'),
+          onError: (e) => toast.error(apiErrorMessage(e, 'Error al actualizar')),
         }
       );
     } else {
@@ -107,7 +108,7 @@ export function ClientForm({ open, onClose, client }: ClientFormProps) {
           toast.success('Cliente creado');
           handleClose();
         },
-        onError: () => toast.error('Error al crear'),
+        onError: (e) => toast.error(apiErrorMessage(e, 'Error al crear')),
       });
     }
   }
