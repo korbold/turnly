@@ -31,7 +31,8 @@ export function useCancelMyReservation() {
 
 export function useRequestMagicLink() {
   return useMutation({
-    mutationFn: (email: string) => clientPortalRepository.requestMagicLink(email),
+    mutationFn: ({ email, turnstileToken }: { email: string; turnstileToken?: string | null }) =>
+      clientPortalRepository.requestMagicLink(email, turnstileToken),
   });
 }
 

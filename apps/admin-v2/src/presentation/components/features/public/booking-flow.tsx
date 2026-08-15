@@ -6,6 +6,10 @@ import { es } from 'date-fns/locale';
 import { Check, ArrowLeft, Loader2 } from 'lucide-react';
 import { Button } from '@/presentation/components/ui/button';
 import { Input } from '@/presentation/components/ui/input';
+import {
+  TurnstileWidget,
+  isTurnstileEnabled,
+} from '@/presentation/components/features/security/turnstile-widget';
 import { Label } from '@/presentation/components/ui/label';
 import { Textarea } from '@/presentation/components/ui/textarea';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/presentation/components/ui/select';
@@ -32,7 +36,9 @@ export function BookingFlow({ slug, tenant, initialServiceId, primaryColor = '#F
   const [date, setDate] = useState<Date | undefined>(undefined);
   const [selectedSlot, setSelectedSlot] = useState('');
   const [name, setName] = useState('');
+  const [email, setEmail] = useState('');
   const [phone, setPhone] = useState('');
+  const [turnstileToken, setTurnstileToken] = useState<string | null>(null);
   const [customData, setCustomData] = useState<Record<string, string>>({});
   const [reservationId, setReservationId] = useState('');
 
@@ -69,12 +75,14 @@ export function BookingFlow({ slug, tenant, initialServiceId, primaryColor = '#F
   }
 
   function handleSubmit() {
-    if (!serviceId || !selectedSlot || !name || !phone) return;
+    if (!serviceId || !selectedSlot || !name || !email || !phone) return;
     bookMutation.mutate({
       serviceId,
       scheduledAt: selectedSlot,
       name,
+      email: email.trim().toLowerCase(),
       phone,
+      turnstileToken,
       resourceData: customData,
     });
   }
@@ -189,6 +197,20 @@ export function BookingFlow({ slug, tenant, initialServiceId, primaryColor = '#F
               <Input value={name} onChange={(e) => setName(e.target.value)} placeholder="Tu nombre completo" />
             </div>
             <div className="space-y-1.5">
+              <Label>Correo</Label>
+              <Input
+                type="email"
+                inputMode="email"
+                autoComplete="email"
+                value={email}
+                onChange={(e) => setEmail(e.target.value)}
+                placeholder="tucorreo@ejemplo.com"
+              />
+              <p className="text-[12px] text-[var(--fg-muted)]">
+                Ahí te llega la confirmación y con él entras a ver tus reservas.
+              </p>
+            </div>
+            <div className="space-y-1.5">
               <Label>Teléfono</Label>
               <Input value={phone} onChange={(e) => setPhone(e.target.value)} placeholder="+593 99 123 4567" />
             </div>
@@ -222,10 +244,18 @@ export function BookingFlow({ slug, tenant, initialServiceId, primaryColor = '#F
             ))}
           </div>
 
+          <TurnstileWidget onToken={setTurnstileToken} />
+
           <Button
             className="w-full"
             style={{ backgroundColor: primaryColor }}
-            disabled={!name || !phone || bookMutation.isPending}
+            disabled={
+              !name ||
+              !email ||
+              !phone ||
+              bookMutation.isPending ||
+              (isTurnstileEnabled() && !turnstileToken)
+            }
             onClick={handleSubmit}
           >
             {bookMutation.isPending ? (

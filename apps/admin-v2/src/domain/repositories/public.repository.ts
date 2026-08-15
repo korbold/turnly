@@ -17,8 +17,12 @@ export interface BookingData {
   serviceId: string;
   scheduledAt: string;
   name: string;
+  /** Required by the API for guest bookings — it keys the client account. */
+  email: string;
   phone: string;
   resourceData: Record<string, unknown>;
+  /** Cloudflare Turnstile token, when the gate is enabled. */
+  turnstileToken?: string | null;
 }
 
 export interface PublicRepository {

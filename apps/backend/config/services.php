@@ -39,6 +39,12 @@ return [
         'client_id' => env('GOOGLE_CLIENT_ID'),
     ],
 
+    // Cloudflare Turnstile. Absent secret = check disabled (see
+    // VerifyTurnstileMiddleware), which is the state before the keys exist.
+    'turnstile' => [
+        'secret' => env('TURNSTILE_SECRET_KEY'),
+    ],
+
     'billing' => [
         'url' => env('BILLING_SERVICE_URL', 'http://localhost:8100'),
     ],

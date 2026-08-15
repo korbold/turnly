@@ -24,6 +24,7 @@ return Application::configure(basePath: dirname(__DIR__))
             'super_admin' => \App\Infrastructure\Http\Middleware\EnsureSuperAdminMiddleware::class,
             'verified.email' => \App\Infrastructure\Http\Middleware\EnsureEmailVerifiedMiddleware::class,
             'tenant.member' => \App\Infrastructure\Http\Middleware\EnsureTenantMemberMiddleware::class,
+            'turnstile' => \App\Infrastructure\Http\Middleware\VerifyTurnstileMiddleware::class,
         ]);
     })
     ->withExceptions(function (Exceptions $exceptions): void {

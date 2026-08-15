@@ -41,7 +41,7 @@ Route::prefix('v1/public')->group(function () {
     Route::get('services/{id}/suggested-variant', [PublicController::class, 'suggestVariant'])->middleware('auth:sanctum');
     Route::get('tenants/{slug}/my-resources', [PublicController::class, 'myResources'])->middleware('auth:sanctum');
     Route::post('tenants/{slug}/book', [PublicController::class, 'book'])
-        ->middleware('throttle:public-book');
+        ->middleware(['throttle:public-book', 'turnstile']);
 });
 
 Route::prefix('v1')->group(function () {
@@ -59,7 +59,7 @@ Route::prefix('v1')->group(function () {
     Route::post('auth/google', [GoogleAuthController::class, 'login'])
         ->middleware('throttle:google-auth');
     Route::post('auth/magic-link/request', [MagicLinkController::class, 'request'])
-        ->middleware(['throttle:magic-link-email', 'throttle:magic-link-global']);
+        ->middleware(['throttle:magic-link-email', 'throttle:magic-link-global', 'turnstile']);
     Route::post('auth/magic-link/verify', [MagicLinkController::class, 'verify'])
         ->middleware('throttle:10,60');
     Route::post('auth/verify-email', [AuthController::class, 'verifyEmail'])

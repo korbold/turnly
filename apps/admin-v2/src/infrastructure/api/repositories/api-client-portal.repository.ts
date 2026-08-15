@@ -14,8 +14,11 @@ export interface MagicLinkSession {
  * all in one list, so no X-Tenant header is sent.
  */
 export const clientPortalRepository = {
-  async requestMagicLink(email: string): Promise<void> {
-    await api.post('/auth/magic-link/request', { email });
+  async requestMagicLink(email: string, turnstileToken?: string | null): Promise<void> {
+    await api.post('/auth/magic-link/request', {
+      email,
+      ...(turnstileToken ? { turnstile_token: turnstileToken } : {}),
+    });
   },
 
   async verifyMagicLink(token: string): Promise<MagicLinkSession> {

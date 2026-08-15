@@ -11,6 +11,10 @@ import { useGoogleLogin, useRequestMagicLink } from '@/presentation/hooks/use-cl
 import { authStorage } from '@/infrastructure/storage/auth-storage';
 import { isGoogleSignInConfigured, signInWithGoogle } from '@/lib/firebase/google-auth';
 import { apiErrorMessage } from '@/shared/utils/api-error';
+import {
+  TurnstileWidget,
+  isTurnstileEnabled,
+} from '@/presentation/components/features/security/turnstile-widget';
 
 export default function ClientLoginPage() {
   const router = useRouter();
@@ -18,6 +22,7 @@ export default function ClientLoginPage() {
   const [sent, setSent] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [googlePending, setGooglePending] = useState(false);
+  const [turnstileToken, setTurnstileToken] = useState<string | null>(null);
   const requestLink = useRequestMagicLink();
   const googleLogin = useGoogleLogin();
 
@@ -43,7 +48,7 @@ export default function ClientLoginPage() {
   function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
     setError(null);
-    requestLink.mutate(email.trim().toLowerCase(), {
+    requestLink.mutate({ email: email.trim().toLowerCase(), turnstileToken }, {
       onSuccess: () => setSent(true),
       onError: (err) => setError(apiErrorMessage(err, 'No pudimos enviar el link. Intenta de nuevo.')),
     });
@@ -116,10 +121,16 @@ export default function ClientLoginPage() {
                 </p>
               )}
 
+              <TurnstileWidget onToken={setTurnstileToken} />
+
               <Button
                 type="submit"
                 className="w-full"
-                disabled={!email.trim() || requestLink.isPending}
+                disabled={
+                  !email.trim() ||
+                  requestLink.isPending ||
+                  (isTurnstileEnabled() && !turnstileToken)
+                }
               >
                 {requestLink.isPending ? 'Enviando…' : 'Enviarme el link'}
                 {!requestLink.isPending && <ArrowRight className="ml-1.5 h-4 w-4" aria-hidden="true" />}

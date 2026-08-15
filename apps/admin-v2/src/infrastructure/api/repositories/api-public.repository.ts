@@ -54,12 +54,17 @@ export class ApiPublicRepository implements PublicRepository {
   }
 
   async book(slug: string, bookingData: BookingData): Promise<{ reservationId: string }> {
+    // The API validates client_name / client_email / client_phone and
+    // reads client_resource_data. Sending name/phone/resource_data made
+    // every guest booking fail with a 422.
     const { data: res } = await api.post(`/public/tenants/${slug}/book`, {
       service_id: bookingData.serviceId,
       scheduled_at: bookingData.scheduledAt,
-      name: bookingData.name,
-      phone: bookingData.phone,
-      resource_data: bookingData.resourceData,
+      client_name: bookingData.name,
+      client_email: bookingData.email,
+      client_phone: bookingData.phone,
+      client_resource_data: bookingData.resourceData,
+      ...(bookingData.turnstileToken ? { turnstile_token: bookingData.turnstileToken } : {}),
     });
     const d = res.data;
     return { reservationId: (d.reservation_id ?? d.id) as string };
