@@ -48,3 +48,59 @@ test('admin-created walk-in appears in the browse clients list', function () {
         ->assertJsonCount(1, 'data')
         ->assertJsonPath('data.0.client.name', 'Juan Pérez');
 });
+
+// Regression: car-wash tenants whose custom_fields carry no name field (only
+// placa/marca/color/tipo) fell back to the cashier's own staff id, so every
+// walk-in vanished from Clientes. Unowned keeps it visible.
+test('walk-in with no name field is saved unowned and still lists', function () {
+    $this->tenant->update(['custom_fields' => [
+        ['key' => 'plate', 'label' => 'Placa', 'type' => 'text', 'required' => true, 'options' => null, 'capitalize' => 'uppercase'],
+        ['key' => 'brand', 'label' => 'Marca', 'type' => 'text', 'required' => false, 'options' => null],
+    ]]);
+    app()->instance('current_tenant', $this->tenant->fresh());
+
+    $create = $this->actingAs($this->owner)
+        ->withHeader('X-Tenant', $this->tenant->slug)
+        ->postJson('/api/v1/client-resources', [
+            'data' => ['plate' => 'IAI3592', 'brand' => 'JMC'],
+        ]);
+
+    $create->assertStatus(201)->assertJsonPath('data.client_id', null);
+
+    $list = $this->actingAs($this->owner)
+        ->withHeader('X-Tenant', $this->tenant->slug)
+        ->getJson('/api/v1/client-resources?all=1');
+
+    $list->assertOk()
+        ->assertJsonCount(1, 'data')
+        ->assertJsonPath('data.0.label', 'IAI3592 - JMC');
+});
+
+// The razón social the cashier types in "Datos de facturación" is a real
+// person's name, so it names the client when no custom field does.
+test('billing legal_name names the client when no name field exists', function () {
+    $this->tenant->update(['custom_fields' => [
+        ['key' => 'plate', 'label' => 'Placa', 'type' => 'text', 'required' => true, 'options' => null, 'capitalize' => 'uppercase'],
+    ]]);
+    app()->instance('current_tenant', $this->tenant->fresh());
+
+    $create = $this->actingAs($this->owner)
+        ->withHeader('X-Tenant', $this->tenant->slug)
+        ->postJson('/api/v1/client-resources', [
+            'data' => ['plate' => 'IAI3592'],
+            'billing_profile' => [
+                'doc_type'   => 'cedula',
+                'doc_number' => '1004296905',
+                'legal_name' => 'Vanessa Paspuel',
+                'email'      => 'vane@example.com',
+            ],
+        ]);
+
+    $create->assertStatus(201);
+
+    $list = $this->actingAs($this->owner)
+        ->withHeader('X-Tenant', $this->tenant->slug)
+        ->getJson('/api/v1/client-resources?all=1');
+
+    $list->assertOk()->assertJsonPath('data.0.client.name', 'Vanessa Paspuel');
+});

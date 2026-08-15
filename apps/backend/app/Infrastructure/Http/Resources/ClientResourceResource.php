@@ -16,10 +16,12 @@ class ClientResourceResource extends JsonResource
             'data'       => $this->data,
             'created_at' => $this->created_at?->toIso8601String(),
 
-            'client' => $this->whenLoaded('client', fn () => [
+            // client_id is nullable (walk-in with no identified owner),
+            // so the loaded relation can still be null.
+            'client' => $this->whenLoaded('client', fn () => $this->client ? [
                 'name'  => $this->client->name,
                 'email' => $this->client->email,
-            ]),
+            ] : null),
         ];
     }
 

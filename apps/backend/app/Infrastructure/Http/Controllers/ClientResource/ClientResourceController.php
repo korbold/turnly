@@ -90,13 +90,18 @@ class ClientResourceController extends Controller
             $isAdmin = $tenantUser && in_array($tenantUser->role, ['owner', 'tenant_admin']);
 
             if ($isAdmin) {
-                $clientName = $this->extractClientName($data);
-                if ($clientName) {
-                    $client = $this->findOrCreateClient($clientName, $tenantId);
-                    $clientId = $client->id;
-                } else {
-                    $clientId = $user->id;
-                }
+                // Name can come from a custom field, or (when the tenant
+                // configured none) from the fiscal profile the cashier
+                // typed. Falling back to the staff member's own id would
+                // file the walk-in under an employee, and the clients
+                // browse filter hides staff-owned resources — the record
+                // would vanish from Clientes. Leave it unowned instead.
+                $clientName = $this->extractClientName($data)
+                    ?? $this->extractBillingName($request->billing_profile);
+
+                $clientId = $clientName
+                    ? $this->findOrCreateClient($clientName, $tenantId)->id
+                    : null;
             } else {
                 $clientId = $user->id;
             }
@@ -115,7 +120,7 @@ class ClientResourceController extends Controller
         // created (or pre-existing) user so SRI invoicing has the
         // identity ready. First profile lands as default so check-in
         // auto-picks it without prompting.
-        if (is_array($request->billing_profile) && !empty($request->billing_profile)) {
+        if ($clientId && is_array($request->billing_profile) && !empty($request->billing_profile)) {
             $this->upsertBillingProfile($clientId, $request->billing_profile);
         }
 
@@ -411,6 +416,27 @@ class ClientResourceController extends Controller
         }
 
         return null;
+    }
+
+    /**
+     * Second-chance client name for tenants whose custom_fields carry no
+     * name field: the razón social the cashier typed in "Datos de
+     * facturación". CONSUMIDOR FINAL is a placeholder, not a person, so
+     * it never names a client.
+     */
+    private function extractBillingName(mixed $billingProfile): ?string
+    {
+        if (!is_array($billingProfile)) {
+            return null;
+        }
+
+        $legalName = trim((string) ($billingProfile['legal_name'] ?? ''));
+
+        if ($legalName === '' || strcasecmp($legalName, 'CONSUMIDOR FINAL') === 0) {
+            return null;
+        }
+
+        return $legalName;
     }
 
     private function findOrCreateClient(string $name, string $tenantId): UserModel

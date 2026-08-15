@@ -280,6 +280,19 @@ export function NewServiceModal({ open, onClose, embedded = false }: NewServiceM
   const [showCustomForm, setShowCustomForm] = useState(false);
   const [customFieldValues, setCustomFieldValues] = useState<Record<string, string>>({});
   const [billingProfile, setBillingProfile] = useState<BillingProfileDraft>(EMPTY_BILLING_PROFILE);
+  const [walkInClientName, setWalkInClientName] = useState('');
+
+  // Mirrors the backend's name detection (ClientResourceController::
+  // extractClientName). When the tenant configured no name field the
+  // walk-in would land unowned, so we ask for the name right here.
+  const hasNameField = useMemo(
+    () =>
+      customFields.some((f) => {
+        const label = f.label?.toLowerCase() ?? '';
+        return f.key === 'nombre' || (label.includes('nombre') && label.includes('cliente'));
+      }),
+    [customFields]
+  );
 
   function applyCapitalization(value: string, mode?: 'none' | 'uppercase' | 'capitalize' | 'lowercase'): string {
     if (mode === 'uppercase') return value.toUpperCase();
@@ -317,6 +330,11 @@ export function NewServiceModal({ open, onClose, embedded = false }: NewServiceM
     const cleaned = Object.fromEntries(
       Object.entries(customFieldValues).filter(([, v]) => v?.trim())
     );
+    // `nombre` is the key the backend looks for to create/link the real
+    // client user; without it the resource stays unowned.
+    if (!hasNameField && walkInClientName.trim()) {
+      cleaned.nombre = walkInClientName.trim();
+    }
     if (Object.keys(cleaned).length === 0) {
       toast.error('Llena al menos un campo');
       return;
@@ -349,6 +367,7 @@ export function NewServiceModal({ open, onClose, embedded = false }: NewServiceM
       setShowCustomForm(false);
       setCustomFieldValues({});
       setBillingProfile(EMPTY_BILLING_PROFILE);
+      setWalkInClientName('');
       setClientSearch('');
       toast.success('Registro creado');
     } catch {
@@ -362,6 +381,7 @@ export function NewServiceModal({ open, onClose, embedded = false }: NewServiceM
 
   function handleReset() {
     setLineItems([]);
+    setWalkInClientName('');
     setClientSearch('');
     setSelectedClientResourceId(null);
     setSelectedClientResource(null);
@@ -832,6 +852,22 @@ export function NewServiceModal({ open, onClose, embedded = false }: NewServiceM
                 <p className="text-[11px] font-semibold uppercase tracking-[0.04em] text-[var(--fg-muted)]">
                   Crear nuevo registro
                 </p>
+                {!hasNameField && (
+                  <div>
+                    <label className="mb-1 block text-xs font-medium text-[var(--fg)]">
+                      Nombre del cliente
+                      <span className="ml-1 font-normal text-[var(--fg-muted)]">(opcional)</span>
+                    </label>
+                    <Input
+                      type="text"
+                      value={walkInClientName}
+                      placeholder="Ej. Vanessa Paspuel"
+                      onChange={(e) =>
+                        setWalkInClientName(applyCapitalization(e.target.value, 'capitalize'))
+                      }
+                    />
+                  </div>
+                )}
                 {customFields.map((f) => (
                   <div key={f.key}>
                     <label className="mb-1 block text-xs font-medium text-[var(--fg)]">
@@ -905,6 +941,7 @@ export function NewServiceModal({ open, onClose, embedded = false }: NewServiceM
                       setShowCustomForm(false);
                       setCustomFieldValues({});
                       setBillingProfile(EMPTY_BILLING_PROFILE);
+                      setWalkInClientName('');
                     }}
                   >
                     Cancelar
