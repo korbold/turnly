@@ -196,9 +196,12 @@ export function NewServiceModal({ open, onClose, embedded = false }: NewServiceM
 
   // Total = sum of line items. Stays the source of truth for the price
   // shown in the footer + sent to the backend.
-  const total =
-    lineItems.reduce((acc, it) => acc + it.unitPrice * it.qty, 0) +
-    productLines.reduce((acc, it) => acc + it.unitPrice * it.qty, 0);
+  // Kept apart so each section shows its own subtotal: a single figure
+  // sitting under "Servicios" while it silently included products read
+  // as a wrong service price.
+  const servicesTotal = lineItems.reduce((acc, it) => acc + it.unitPrice * it.qty, 0);
+  const productsTotal = productLines.reduce((acc, it) => acc + it.unitPrice * it.qty, 0);
+  const total = servicesTotal + productsTotal;
 
   // Drop the bank pick whenever the cashier flips away from transfer.
   // Otherwise the form would carry a stale slug into the next submit.
@@ -637,10 +640,7 @@ export function NewServiceModal({ open, onClose, embedded = false }: NewServiceM
                   className="font-mono text-[13.5px] font-semibold tabular-nums text-[var(--fg-strong)]"
                   style={{ fontFamily: 'var(--font-mono)' }}
                 >
-                  {new Intl.NumberFormat('es-EC', {
-                    style: 'currency',
-                    currency: 'USD',
-                  }).format(total)}
+                  {formatMoney(servicesTotal)}
                 </span>
               )}
             </div>
@@ -777,6 +777,14 @@ export function NewServiceModal({ open, onClose, embedded = false }: NewServiceM
                   </span>
                 )}
               </label>
+              {productLines.length > 0 && (
+                <span
+                  className="font-mono text-[13.5px] font-semibold tabular-nums text-[var(--fg-strong)]"
+                  style={{ fontFamily: 'var(--font-mono)' }}
+                >
+                  {formatMoney(productsTotal)}
+                </span>
+              )}
             </div>
 
             {selectedClientResourceId ? (
@@ -1261,6 +1269,20 @@ export function NewServiceModal({ open, onClose, embedded = false }: NewServiceM
 
   const footerButtons = (
     <>
+      {/* The amount to charge is the one number the cashier reads out
+          loud, so it sits next to the action instead of being inferred
+          from two section subtotals. */}
+      <div className="flex w-full items-baseline justify-between gap-2 sm:mr-auto sm:w-auto sm:justify-start">
+        <span className="text-[12px] font-semibold uppercase tracking-[0.04em] text-[var(--fg-muted)]">
+          Total
+        </span>
+        <span
+          className="font-mono text-[19px] font-bold tabular-nums text-[var(--fg-strong)]"
+          style={{ fontFamily: 'var(--font-mono)' }}
+        >
+          {formatMoney(total)}
+        </span>
+      </div>
       <Button variant="outline" onClick={handleClose}>
         Cancelar
       </Button>
