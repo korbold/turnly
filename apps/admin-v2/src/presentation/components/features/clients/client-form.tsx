@@ -40,6 +40,14 @@ export function ClientForm({ open, onClose, client }: ClientFormProps) {
   const customFields = settings?.customFields ?? [];
   const isEditing = !!client;
 
+  // Tenants that configured no name field (car wash: placa/marca/color)
+  // still need a way to name the owner — otherwise the record can never
+  // stop being anonymous. Mirrors the backend's `nombre` convention.
+  const hasNameField = customFields.some((f) => {
+    const label = f.label?.toLowerCase() ?? '';
+    return f.key === 'nombre' || (label.includes('nombre') && label.includes('cliente'));
+  });
+
   const form = useForm<Record<string, unknown>>({
     defaultValues: {},
   });
@@ -56,6 +64,9 @@ export function ClientForm({ open, onClose, client }: ClientFormProps) {
       if (client.model) values['model'] = client.model;
       if (client.color) values['color'] = client.color;
       if (client.type) values['type'] = client.type;
+      // Seed the fallback name input with the linked client so editing
+      // an owned record doesn't look like the name was lost.
+      if (!values['nombre'] && client.client?.name) values['nombre'] = client.client.name;
       form.reset(values);
     } else {
       form.reset({});
@@ -175,6 +186,15 @@ export function ClientForm({ open, onClose, client }: ClientFormProps) {
         <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
           {customFields.length > 0 ? (
             <div className="grid grid-cols-2 gap-3">
+              {!hasNameField && (
+                <div className="col-span-2">
+                  <Label className="mb-1.5">
+                    Nombre del cliente{' '}
+                    <span className="font-normal text-[var(--fg-muted)]">(opcional)</span>
+                  </Label>
+                  <Input {...form.register('nombre')} placeholder="Ej. Marta Ruiz" />
+                </div>
+              )}
               {customFields.map(renderField)}
             </div>
           ) : (

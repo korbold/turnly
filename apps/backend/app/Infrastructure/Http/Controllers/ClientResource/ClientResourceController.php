@@ -302,9 +302,22 @@ class ClientResourceController extends Controller
             'data' => 'nullable|array',
         ]);
 
-        $clientResource->update([
-            'data' => $request->data ?? [],
-        ]);
+        $data = $request->data ?? [];
+
+        $clientResource->update(['data' => $data]);
+
+        // Naming an unowned walk-in promotes it to a real client: the
+        // counter can complete the record next time the customer shows
+        // up. An already-owned resource is left alone — reassigning an
+        // owner is what the transfer endpoint is for.
+        if (!$clientResource->client_id) {
+            $name = $this->extractClientName($data);
+            if ($name) {
+                $clientResource->update([
+                    'client_id' => $this->findOrCreateClient($name, app('current_tenant_id'))->id,
+                ]);
+            }
+        }
 
         return new ClientResourceResource($clientResource->load('client'));
     }
@@ -392,6 +405,17 @@ class ClientResourceController extends Controller
      */
     private function extractClientName(array $data): ?string
     {
+        // Tenants with no name field in custom_fields still get asked for
+        // one by the walk-in form, which ships it under the conventional
+        // `nombre` key. Honour it before consulting the config, otherwise
+        // the typed name would be silently dropped.
+        if (!empty($data['nombre']) && is_string($data['nombre'])) {
+            $direct = trim($data['nombre']);
+            if ($direct !== '') {
+                return $direct;
+            }
+        }
+
         $tenant = app('current_tenant');
         $customFields = $tenant->custom_fields ?? [];
         if (is_string($customFields)) {

@@ -65,7 +65,7 @@ test('walk-in with no name field is saved unowned and still lists', function () 
             'data' => ['plate' => 'IAI3592', 'brand' => 'JMC'],
         ]);
 
-    $create->assertStatus(201)->assertJsonPath('data.client_id', null);
+    $create->assertStatus(201)->assertJsonPath('client_id', null);
 
     $list = $this->actingAs($this->owner)
         ->withHeader('X-Tenant', $this->tenant->slug)
@@ -74,6 +74,55 @@ test('walk-in with no name field is saved unowned and still lists', function () 
     $list->assertOk()
         ->assertJsonCount(1, 'data')
         ->assertJsonPath('data.0.label', 'IAI3592 - JMC');
+});
+
+// The walk-in form asks for a name even when the tenant configured no name
+// field, shipping it under the conventional `nombre` key. Reading only the
+// configured custom_fields would drop it on the floor.
+test('name typed for a tenant without a name field still creates the client', function () {
+    $this->tenant->update(['custom_fields' => [
+        ['key' => 'plate', 'label' => 'Placa', 'type' => 'text', 'required' => true, 'options' => null, 'capitalize' => 'uppercase'],
+    ]]);
+    app()->instance('current_tenant', $this->tenant->fresh());
+
+    $this->actingAs($this->owner)
+        ->withHeader('X-Tenant', $this->tenant->slug)
+        ->postJson('/api/v1/client-resources', [
+            'data' => ['plate' => 'IAI3592', 'nombre' => 'Marta Ruiz'],
+        ])
+        ->assertStatus(201);
+
+    $list = $this->actingAs($this->owner)
+        ->withHeader('X-Tenant', $this->tenant->slug)
+        ->getJson('/api/v1/client-resources?all=1');
+
+    $list->assertOk()->assertJsonPath('data.0.client.name', 'Marta Ruiz');
+});
+
+// "Asignar nombre" on an unowned record: PATCH with a name links (or
+// creates) the client so the row stops being anonymous.
+test('naming an unowned walk-in later links a real client', function () {
+    $this->tenant->update(['custom_fields' => [
+        ['key' => 'plate', 'label' => 'Placa', 'type' => 'text', 'required' => true, 'options' => null, 'capitalize' => 'uppercase'],
+    ]]);
+    app()->instance('current_tenant', $this->tenant->fresh());
+
+    $created = $this->actingAs($this->owner)
+        ->withHeader('X-Tenant', $this->tenant->slug)
+        ->postJson('/api/v1/client-resources', ['data' => ['plate' => 'IAI3592']]);
+
+    $created->assertStatus(201)->assertJsonPath('client_id', null);
+    $id = $created->json('id');
+
+    $this->actingAs($this->owner)
+        ->withHeader('X-Tenant', $this->tenant->slug)
+        ->patchJson("/api/v1/client-resources/{$id}", [
+            'data' => ['plate' => 'IAI3592', 'nombre' => 'Marta Ruiz'],
+        ])
+        ->assertOk()
+        ->assertJsonPath('client.name', 'Marta Ruiz');
+
+    expect(\App\Infrastructure\Persistence\Models\ClientResourceModel::find($id)->client_id)->not->toBeNull();
 });
 
 // The razón social the cashier types in "Datos de facturación" is a real

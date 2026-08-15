@@ -79,9 +79,18 @@ export function ClientCard({ client, index = 0 }: ClientCardProps) {
             />
           )}
         </div>
-        {secondary && (
-          <p className="truncate text-[12.5px] text-[var(--fg-secondary)]">
-            {secondary}
+        {clientName ? (
+          secondary && (
+            <p className="truncate text-[12.5px] text-[var(--fg-secondary)]">{secondary}</p>
+          )
+        ) : (
+          // Unowned walk-in: the counter never captured a name. Say so
+          // plainly and point at the fix instead of leaving a blank line.
+          <p className="flex items-center gap-1.5 truncate text-[12.5px] text-[var(--fg-secondary)]">
+            <span className="rounded-full bg-[var(--bg-sunken)] px-1.5 py-0.5 text-[10.5px] font-semibold uppercase tracking-[0.03em] text-[var(--fg-muted)]">
+              Sin cliente
+            </span>
+            <span className="truncate">Toca para asignar nombre</span>
           </p>
         )}
       </div>

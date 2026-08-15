@@ -159,6 +159,17 @@ function ClientDetailContent() {
               <p className="mt-1 text-[13px] text-[var(--fg-secondary)]">{realEmail}</p>
             )}
 
+            {!clientName && (
+              <button
+                type="button"
+                onClick={() => setEditOpen(true)}
+                className="mt-2 inline-flex items-center gap-1.5 rounded-full border border-dashed border-[var(--border-strong)] px-2.5 py-1 text-[12px] font-medium text-[var(--fg-secondary)] transition-colors hover:bg-[var(--bg-hover)]"
+              >
+                <Pencil className="h-3 w-3" aria-hidden="true" />
+                Sin cliente · asignar nombre
+              </button>
+            )}
+
             {vehicleChips.length > 0 && (
               <div className="mt-3 flex flex-wrap gap-1.5">
                 {vehicleChips.map((c) => (
