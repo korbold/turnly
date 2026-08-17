@@ -11,6 +11,9 @@ function mapStats(raw: Record<string, unknown>): ReportStats {
   return {
     totalServices: (raw.total_services ?? raw.totalServices) as number,
     totalRevenue: (raw.total_revenue ?? raw.totalRevenue) as number,
+    collectedRevenue: (raw.collected_revenue ?? raw.collectedRevenue ?? 0) as number,
+    unpaidRevenue: (raw.unpaid_revenue ?? raw.unpaidRevenue ?? 0) as number,
+    unpaidCount: (raw.unpaid_count ?? raw.unpaidCount ?? 0) as number,
     totalReservations: (raw.total_reservations ?? raw.totalReservations) as number,
     averageDailyRevenue: (raw.average_daily_revenue ?? raw.averageDailyRevenue) as number,
   };
@@ -21,6 +24,8 @@ function mapDailyBreakdown(raw: Record<string, unknown>): DailyBreakdown {
     date: raw.date as string,
     services: raw.services as number,
     revenue: raw.revenue as number,
+    collected: (raw.collected ?? raw.revenue ?? 0) as number,
+    unpaid: (raw.unpaid ?? 0) as number,
     byCash: (raw.by_cash ?? raw.byCash) as number,
     byCard: (raw.by_card ?? raw.byCard) as number,
     byTransfer: (raw.by_transfer ?? raw.byTransfer) as number,

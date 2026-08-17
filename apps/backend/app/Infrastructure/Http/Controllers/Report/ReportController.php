@@ -138,6 +138,16 @@ class ReportController extends Controller
         $totalRevenue       = $serviceRevenue + $reservationRevenue;
         $totalServices      = $washLogs->count() + $reservations->count();
 
+        // The per-method buckets only see rows that carry a method, so a service
+        // charged but not collected sat in total_revenue and in no bucket: the
+        // donut never added up to the headline. Report both figures instead of
+        // making the accountant find the difference.
+        $unpaidLogs = $washLogs->where('payment_status', 'unpaid');
+        $unpaidRes  = $reservations->where('payment_status', 'unpaid');
+        $unpaidRevenue = (float) $unpaidLogs->sum('price_charged')
+            + (float) $unpaidRes->sum($totalForReservation);
+        $collectedRevenue = $totalRevenue - $unpaidRevenue;
+
         // Per-method buckets (Phase 1 payments live on the reservation
         // row; the older wash logs still carry their own payment_method).
         $paidReservations = $reservations->where('payment_status', 'paid');
@@ -178,7 +188,13 @@ class ReportController extends Controller
         $activeDays = 0;
         while ($current <= $end) {
             $dayStr  = $current->format('Y-m-d');
-            $dayLogs = $washLogs->where('log_date', $dayStr);
+            // log_date is cast to a date, so the model hands back a Carbon whose
+            // string form carries a time. Comparing it against a plain Y-m-d never
+            // matched, and every day came back empty under headline totals that were
+            // right. Same normalisation monthly() already uses.
+            $dayLogs = $washLogs->filter(
+                fn ($l) => $l->log_date?->format('Y-m-d') === $dayStr
+            );
             $dayRes  = $reservations->filter(fn ($r) => str_starts_with((string) $r->scheduled_at, $dayStr));
             $dayResPaid = $dayRes->where('payment_status', 'paid');
 
@@ -190,11 +206,16 @@ class ReportController extends Controller
                 $activeDays++;
             }
 
+            $dayUnpaid = (float) $dayLogs->where('payment_status', 'unpaid')->sum('price_charged')
+                + (float) $dayRes->where('payment_status', 'unpaid')->sum($totalForReservation);
+
             $dailyBreakdown[] = [
                 'date'         => $dayStr,
                 'services'     => $dayLogs->count() + $dayRes->count(),
                 'reservations' => $dayRes->count(),
                 'revenue'      => $dayRevenue,
+                'collected'    => $dayRevenue - $dayUnpaid,
+                'unpaid'       => $dayUnpaid,
                 'by_cash'      => (float) $dayLogs->where('payment_method', 'cash')->sum('price_charged')
                     + (float) $dayResPaid->where('payment_method', 'cash')->sum($totalForReservation),
                 'by_card'      => (float) $dayLogs->where('payment_method', 'card')->sum('price_charged')
@@ -205,7 +226,9 @@ class ReportController extends Controller
             $current->modify('+1 day');
         }
 
-        $averageDailyRevenue = $activeDays > 0 ? $totalRevenue / $activeDays : 0.0;
+        // Averages what was actually taken, so it agrees with the headline
+        // rather than quoting a per-day figure the till never saw.
+        $averageDailyRevenue = $activeDays > 0 ? $collectedRevenue / $activeDays : 0.0;
 
         return response()->json([
             'data' => [
@@ -214,7 +237,11 @@ class ReportController extends Controller
                 // Nested `stats` block matches the admin mapper contract.
                 'stats' => [
                     'total_services'        => $totalServices,
+                    // Everything registered in the range, collected or not.
                     'total_revenue'         => $totalRevenue,
+                    'collected_revenue'     => $collectedRevenue,
+                    'unpaid_revenue'        => $unpaidRevenue,
+                    'unpaid_count'          => $unpaidLogs->count() + $unpaidRes->count(),
                     'total_reservations'    => $reservations->count(),
                     'average_daily_revenue' => round($averageDailyRevenue, 2),
                 ],
@@ -258,7 +285,13 @@ class ReportController extends Controller
             $day = clone $startOfWeek;
             $day->modify("+{$i} days");
             $dayStr = $day->format('Y-m-d');
-            $dayLogs = $washLogs->where('log_date', $dayStr);
+            // log_date is cast to a date, so the model hands back a Carbon whose
+            // string form carries a time. Comparing it against a plain Y-m-d never
+            // matched, and every day came back empty under headline totals that were
+            // right. Same normalisation monthly() already uses.
+            $dayLogs = $washLogs->filter(
+                fn ($l) => $l->log_date?->format('Y-m-d') === $dayStr
+            );
             $dayRes = $reservations->filter(fn ($r) => str_starts_with($r->scheduled_at, $dayStr));
             $dailyBreakdown[$dayStr] = [
                 'washes' => $dayLogs->count() + $dayRes->count(),

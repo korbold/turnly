@@ -79,7 +79,8 @@ export function DailyTable({ data, isLoading, onRowClick }: DailyTableProps) {
             <TableRow>
               <TableHead>Fecha</TableHead>
               <TableHead className="text-right">Servicios</TableHead>
-              <TableHead className="text-right">Ingresos</TableHead>
+              <TableHead className="text-right">Cobrado</TableHead>
+              <TableHead className="text-right">Sin cobrar</TableHead>
               <TableHead className="text-right">Efectivo</TableHead>
               <TableHead className="text-right">Tarjeta</TableHead>
               <TableHead className="text-right">Transfer.</TableHead>
@@ -105,7 +106,13 @@ export function DailyTable({ data, isLoading, onRowClick }: DailyTableProps) {
                   className={cellMonoClass}
                   style={{ fontFamily: 'var(--font-mono)' }}
                 >
-                  {formatCurrency(row.revenue)}
+                  {formatCurrency(row.collected)}
+                </TableCell>
+                <TableCell
+                  className={`text-right tabular-nums ${row.unpaid > 0 ? 'text-[var(--warning-700)]' : 'text-[var(--fg-muted)]'}`}
+                  style={{ fontFamily: 'var(--font-mono)' }}
+                >
+                  {formatCurrency(row.unpaid)}
                 </TableCell>
                 <TableCell
                   className="text-right tabular-nums text-[var(--fg-secondary)]"
