@@ -82,7 +82,17 @@ export interface DailySummary {
   unpaid: { count: number; total: number };
 }
 
+/**
+ * `payment` is one control, mirroring the PAGO column: a state (paid/pending)
+ * or a concrete method. They never combine — a pending row has no method yet.
+ */
+export type PaymentFilter = 'paid' | 'pending' | 'cash' | 'card' | 'transfer';
+
 export interface ServiceLogFilters {
   date?: string;
   page?: number;
+  payment?: PaymentFilter;
+  status?: 'in_progress' | 'completed';
+  /** Free-text search over plate, brand and owner name. */
+  q?: string;
 }

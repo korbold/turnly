@@ -1,12 +1,21 @@
 'use client';
 
-import { useState, useEffect, Suspense } from 'react';
+import { useState, useEffect, useMemo, Suspense } from 'react';
 import { useSearchParams, useRouter, usePathname } from 'next/navigation';
-import { format, addDays, subDays } from 'date-fns';
+import { format, addDays, subDays, parseISO } from 'date-fns';
 import { es } from 'date-fns/locale';
-import { ChevronLeft, ChevronRight, CalendarIcon, Plus } from 'lucide-react';
+import { useQueryState, parseAsString, parseAsStringEnum } from 'nuqs';
+import { ChevronLeft, ChevronRight, CalendarIcon, Plus, Search, X } from 'lucide-react';
 import { Button } from '@/presentation/components/ui/button';
+import { Input } from '@/presentation/components/ui/input';
 import { Calendar } from '@/presentation/components/ui/calendar';
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/presentation/components/ui/select';
 import {
   Popover,
   PopoverContent,
@@ -17,7 +26,23 @@ import { DailySummary } from '@/presentation/components/features/service-logs/da
 import { LogList } from '@/presentation/components/features/service-logs/log-list';
 import { NewServiceModal } from '@/presentation/components/features/service-logs/new-service-modal';
 import { EditServiceLogDialog } from '@/presentation/components/features/service-logs/edit-service-log-dialog';
-import type { ServiceLog } from '@/domain/entities/service-log';
+import type { ServiceLog, PaymentFilter } from '@/domain/entities/service-log';
+
+/** Mirrors the PAGO column: a payment state, or the concrete method. */
+const PAYMENT_OPTIONS: Array<{ value: PaymentFilter; label: string }> = [
+  { value: 'pending', label: 'Pendiente' },
+  { value: 'paid', label: 'Pagado' },
+  { value: 'cash', label: 'Efectivo' },
+  { value: 'card', label: 'Tarjeta' },
+  { value: 'transfer', label: 'Transferencia' },
+];
+
+const STATUS_OPTIONS = [
+  { value: 'in_progress', label: 'En progreso' },
+  { value: 'completed', label: 'Completado' },
+] as const;
+
+const ALL = 'all';
 
 /**
  * Master-detail breakpoint. On `lg+` the create form slots into a
@@ -41,10 +66,44 @@ function ServiceLogContent() {
   const searchParams = useSearchParams();
   const router = useRouter();
   const pathname = usePathname();
-  const [selectedDate, setSelectedDate] = useState(new Date());
   const [createOpen, setCreateOpen] = useState(false);
   const [editTarget, setEditTarget] = useState<ServiceLog | null>(null);
-  const dateStr = format(selectedDate, 'yyyy-MM-dd');
+
+  // Day and filters live in the URL: a refresh used to drop the cashier back
+  // on today, and a filtered view can now be shared or bookmarked.
+  const [dateStr, setDateStr] = useQueryState(
+    'date',
+    parseAsString.withDefault(format(new Date(), 'yyyy-MM-dd')),
+  );
+  const [payment, setPayment] = useQueryState(
+    'payment',
+    parseAsStringEnum<PaymentFilter>(PAYMENT_OPTIONS.map((o) => o.value)),
+  );
+  const [status, setStatus] = useQueryState(
+    'status',
+    parseAsStringEnum<'in_progress' | 'completed'>(['in_progress', 'completed']),
+  );
+  const [search, setSearch] = useQueryState('q', parseAsString.withDefault(''));
+
+  // The box holds what is being typed; the URL (and the query) only catch up
+  // once typing pauses, so a plate isn't re-fetched letter by letter.
+  const [searchDraft, setSearchDraft] = useState(search);
+  useEffect(() => {
+    if (searchDraft === search) return;
+    const t = setTimeout(() => setSearch(searchDraft || null), 350);
+    return () => clearTimeout(t);
+  }, [searchDraft, search, setSearch]);
+
+  const selectedDate = useMemo(() => parseISO(dateStr), [dateStr]);
+  const setSelectedDate = (d: Date) => setDateStr(format(d, 'yyyy-MM-dd'));
+  const hasFilters = !!payment || !!status || !!search;
+
+  function clearFilters() {
+    setPayment(null);
+    setStatus(null);
+    setSearch(null);
+    setSearchDraft('');
+  }
   const isDesktop = useIsDesktop();
   const showInlineCreate = isDesktop && createOpen;
 
@@ -83,7 +142,7 @@ function ServiceLogContent() {
               size="sm"
               aria-label="Día anterior"
               className="h-9 w-9 p-0"
-              onClick={() => setSelectedDate((d) => subDays(d, 1))}
+              onClick={() => setSelectedDate(subDays(selectedDate, 1))}
             >
               <ChevronLeft className="h-4 w-4" />
             </Button>
@@ -114,7 +173,7 @@ function ServiceLogContent() {
               size="sm"
               aria-label="Día siguiente"
               className="h-9 w-9 p-0"
-              onClick={() => setSelectedDate((d) => addDays(d, 1))}
+              onClick={() => setSelectedDate(addDays(selectedDate, 1))}
             >
               <ChevronRight className="h-4 w-4" />
             </Button>
@@ -130,11 +189,79 @@ function ServiceLogContent() {
           </Button>
         </div>
 
-        {/* Summary cards */}
+        {/* Summary cards — the day's caja, deliberately not narrowed by the
+            filters below: they exist to find a row, not to restate the till. */}
         <DailySummary date={dateStr} />
 
+        {/* Filters */}
+        <div className="flex flex-col gap-2 sm:flex-row sm:items-center">
+          <div className="relative min-w-0 flex-1">
+            <Search
+              className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-[var(--fg-muted)]"
+              aria-hidden="true"
+            />
+            <Input
+              className="h-9 pl-9"
+              placeholder="Buscar por placa, marca o cliente…"
+              aria-label="Buscar en el registro del día"
+              value={searchDraft}
+              onChange={(e) => setSearchDraft(e.target.value)}
+            />
+          </div>
+
+          <Select
+            value={payment ?? ALL}
+            onValueChange={(v) => setPayment(v === ALL ? null : (v as PaymentFilter))}
+          >
+            <SelectTrigger className="h-9 sm:w-[168px]" aria-label="Filtrar por pago">
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value={ALL}>Todos los pagos</SelectItem>
+              {PAYMENT_OPTIONS.map((o) => (
+                <SelectItem key={o.value} value={o.value}>
+                  {o.label}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+
+          <Select
+            value={status ?? ALL}
+            onValueChange={(v) =>
+              setStatus(v === ALL ? null : (v as 'in_progress' | 'completed'))
+            }
+          >
+            <SelectTrigger className="h-9 sm:w-[160px]" aria-label="Filtrar por estado">
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value={ALL}>Todos los estados</SelectItem>
+              {STATUS_OPTIONS.map((o) => (
+                <SelectItem key={o.value} value={o.value}>
+                  {o.label}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+
+          {hasFilters && (
+            <Button variant="ghost" size="sm" className="h-9 shrink-0" onClick={clearFilters}>
+              <X className="mr-1.5 h-4 w-4" aria-hidden="true" />
+              Limpiar
+            </Button>
+          )}
+        </div>
+
         {/* Log list */}
-        <LogList date={dateStr} onCreate={() => setCreateOpen(true)} onEdit={setEditTarget} />
+        <LogList
+          date={dateStr}
+          payment={payment ?? undefined}
+          status={status ?? undefined}
+          q={search || undefined}
+          onCreate={() => setCreateOpen(true)}
+          onEdit={setEditTarget}
+        />
       </main>
 
       {/* Desktop master-detail — embedded panel sticky in the right rail

@@ -17,6 +17,9 @@ export class ApiServiceLogRepository implements ServiceLogRepository {
     const params: Record<string, unknown> = {};
     if (filters.date) params.date = filters.date;
     if (filters.page) params.page = filters.page;
+    if (filters.payment) params.payment = filters.payment;
+    if (filters.status) params.status = filters.status;
+    if (filters.q?.trim()) params.q = filters.q.trim();
 
     const { data: res } = await api.get('/service-logs', { params });
     return mapPaginatedResponse(res, mapServiceLog);

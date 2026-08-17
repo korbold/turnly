@@ -46,6 +46,38 @@ class ServiceLogController extends Controller
             $query->whereDate('log_date', now()->toDateString());
         }
 
+        // One control in the UI, mirroring the PAGO column: either a payment
+        // state or a concrete method. They can't be combined — a pending row
+        // has no method yet — so they share a single parameter.
+        $payment = (string) $request->get('payment', '');
+        if ($payment === 'paid' || $payment === 'pending') {
+            $query->where('payment_status', $payment === 'paid' ? 'paid' : 'unpaid');
+        } elseif (in_array($payment, ['cash', 'card', 'transfer', 'other'], true)) {
+            $query->where('payment_method', $payment);
+        }
+
+        if (in_array($request->get('status'), ['in_progress', 'completed'], true)) {
+            $query->where('status', $request->get('status'));
+        }
+
+        // Counter search: plate, brand or owner name. The resource's custom
+        // fields live in a json column, which MySQL compares with a binary
+        // collation — lowercase both sides or "ibb9762" misses "IBB9762".
+        $search = trim((string) $request->get('q', ''));
+        if ($search !== '') {
+            $like = '%' . $search . '%';
+            $likeLower = '%' . mb_strtolower($search) . '%';
+
+            $query->whereHas('clientResource', function ($cr) use ($like, $likeLower) {
+                $cr->whereRaw('LOWER(CAST(data AS CHAR)) LIKE ?', [$likeLower])
+                    ->orWhereHas('client', function ($c) use ($like) {
+                        $c->where('name', 'like', $like)
+                            ->orWhere('email', 'like', $like)
+                            ->orWhere('phone', 'like', $like);
+                    });
+            });
+        }
+
         $logs = $query->orderBy('started_at', 'desc')->paginate($request->get('per_page', 50));
 
         return ServiceLogResource::collection($logs);
