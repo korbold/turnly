@@ -1,6 +1,7 @@
 'use client';
 
-import { CreditCard, Banknote, ArrowLeftRight, MoreHorizontal, Wallet } from 'lucide-react';
+import { useState } from 'react';
+import { CreditCard, Banknote, ArrowLeftRight, MoreHorizontal, Wallet, Eye, EyeOff } from 'lucide-react';
 import { Skeleton } from '@/presentation/components/ui/skeleton';
 import { useDailySummary } from '@/presentation/hooks/use-service-logs';
 
@@ -13,6 +14,35 @@ const fmt = (v: number) =>
   })
     .format(v)
     .replace(/ /g, ' ');
+
+const MASK = '••••';
+
+const HIDE_AMOUNTS_KEY = 'turnly:service-log:hide-amounts';
+
+/**
+ * Whether the cashier chose to keep the day's figures off screen — a customer
+ * standing at the counter shouldn't read the caja. Persisted so a reload does
+ * not put the money back on display. Reading on the server returns false, which
+ * is safe: this block renders a skeleton until React Query resolves on the
+ * client, so no server markup depends on the value.
+ */
+function loadHideAmounts(): boolean {
+  if (typeof window === 'undefined') return false;
+  try {
+    return window.localStorage.getItem(HIDE_AMOUNTS_KEY) === '1';
+  } catch {
+    return false;
+  }
+}
+
+function saveHideAmounts(hidden: boolean) {
+  if (typeof window === 'undefined') return;
+  try {
+    window.localStorage.setItem(HIDE_AMOUNTS_KEY, hidden ? '1' : '0');
+  } catch {
+    // localStorage full / disabled — the toggle still works for this session.
+  }
+}
 
 interface DailySummaryProps {
   date: string;
@@ -32,6 +62,17 @@ const METHOD_TILES = [
 
 export function DailySummary({ date }: DailySummaryProps) {
   const { data, isLoading } = useDailySummary(date);
+  const [hideAmounts, setHideAmounts] = useState(loadHideAmounts);
+
+  const money = (v: number) => (hideAmounts ? MASK : fmt(v));
+
+  function toggleAmounts() {
+    setHideAmounts((prev) => {
+      const next = !prev;
+      saveHideAmounts(next);
+      return next;
+    });
+  }
 
   if (isLoading) {
     return (
@@ -65,14 +106,30 @@ export function DailySummary({ date }: DailySummaryProps) {
         aria-label="Ingresos del día"
         className="rounded-xl border border-[var(--border)] bg-[var(--bg-surface)] p-5"
       >
-        <p className="text-[11px] font-semibold uppercase tracking-[0.04em] text-[var(--fg-muted)]">
-          Ingresos del día
-        </p>
+        <div className="flex items-start justify-between gap-3">
+          <p className="text-[11px] font-semibold uppercase tracking-[0.04em] text-[var(--fg-muted)]">
+            Ingresos del día
+          </p>
+          <button
+            type="button"
+            onClick={toggleAmounts}
+            aria-pressed={hideAmounts}
+            aria-label={hideAmounts ? 'Mostrar montos' : 'Ocultar montos'}
+            title={hideAmounts ? 'Mostrar montos' : 'Ocultar montos'}
+            className="-mr-1 -mt-1 shrink-0 rounded-lg p-1.5 text-[var(--fg-muted)] transition-colors hover:bg-[var(--bg-sunken)] hover:text-[var(--fg-strong)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+          >
+            {hideAmounts ? (
+              <EyeOff className="h-4 w-4" aria-hidden="true" />
+            ) : (
+              <Eye className="h-4 w-4" aria-hidden="true" />
+            )}
+          </button>
+        </div>
         <p
           className="mt-2 text-[34px] font-bold leading-none tabular-nums text-[var(--fg-strong)]"
           style={{ fontFamily: 'var(--font-mono)' }}
         >
-          {fmt(collected)}
+          {money(collected)}
         </p>
         <p className="mt-2 text-[13px] text-[var(--fg-secondary)]">
           {total === 0
@@ -104,7 +161,7 @@ export function DailySummary({ date }: DailySummaryProps) {
               className="mt-3 text-[22px] font-bold leading-none tabular-nums text-[var(--fg-strong)]"
               style={{ fontFamily: 'var(--font-mono)' }}
             >
-              {fmt(data?.byPaymentMethod?.[key]?.total ?? 0)}
+              {money(data?.byPaymentMethod?.[key]?.total ?? 0)}
             </p>
           </section>
         ))}
@@ -132,7 +189,7 @@ export function DailySummary({ date }: DailySummaryProps) {
                 className="text-[22px] font-bold leading-none tabular-nums text-[var(--warning-700)]"
                 style={{ fontFamily: 'var(--font-mono)' }}
               >
-                {fmt(unpaidTotal)}
+                {money(unpaidTotal)}
               </p>
               <p className="mt-1.5 text-[11.5px] text-[var(--warning-700)]/80">
                 {unpaidCount} {unpaidCount === 1 ? 'servicio' : 'servicios'}
