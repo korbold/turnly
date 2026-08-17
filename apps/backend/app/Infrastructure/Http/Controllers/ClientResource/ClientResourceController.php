@@ -58,10 +58,17 @@ class ClientResourceController extends Controller
         // pass — MySQL evaluates each key/value pair as text, which is
         // good enough for the realistic cardinality (hundreds, not
         // millions) without forcing a JSON_TABLE rewrite.
+        //
+        // LOWER(CAST(data AS CHAR)) instead of a plain LIKE: a MySQL JSON
+        // column compares with a binary collation, so `data LIKE '%ibf%'`
+        // never matches a stored "IBF7520". Lowercasing both sides makes the
+        // plate search behave like the varchar columns below, which are
+        // already case-insensitive under utf8mb4_unicode_ci.
         if ($search !== '') {
             $like = '%' . $search . '%';
-            $query->where(function ($q) use ($like) {
-                $q->where('data', 'like', $like)
+            $likeLower = '%' . mb_strtolower($search) . '%';
+            $query->where(function ($q) use ($like, $likeLower) {
+                $q->whereRaw('LOWER(CAST(data AS CHAR)) LIKE ?', [$likeLower])
                     ->orWhereHas('client', function ($c) use ($like) {
                         $c->where('name', 'like', $like)
                             ->orWhere('email', 'like', $like)
