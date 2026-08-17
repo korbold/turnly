@@ -130,3 +130,58 @@ test('keeps filtering to the requested day', function () {
     fetchLogs(['payment' => 'paid'])->assertOk()->assertJsonCount(1, 'data');
     fetchLogs(['date' => now()->subDay()->toDateString()])->assertOk()->assertJsonCount(1, 'data');
 });
+
+test('paginates with the requested page size', function () {
+    foreach (range(1, 12) as $i) {
+        ($this->makeLog)($this->hilux, ['payment_method' => 'cash', 'payment_status' => 'paid']);
+    }
+
+    fetchLogs(['per_page' => 10])
+        ->assertOk()
+        ->assertJsonCount(10, 'data')
+        ->assertJsonPath('meta.total', 12)
+        ->assertJsonPath('meta.per_page', 10)
+        ->assertJsonPath('meta.last_page', 2);
+
+    fetchLogs(['per_page' => 10, 'page' => 2])
+        ->assertOk()
+        ->assertJsonCount(2, 'data')
+        ->assertJsonPath('meta.current_page', 2);
+});
+
+test('per_page=all returns every row on a single page', function () {
+    foreach (range(1, 12) as $i) {
+        ($this->makeLog)($this->hilux, ['payment_method' => 'cash', 'payment_status' => 'paid']);
+    }
+
+    fetchLogs(['per_page' => 'all'])
+        ->assertOk()
+        ->assertJsonCount(12, 'data')
+        ->assertJsonPath('meta.total', 12)
+        ->assertJsonPath('meta.last_page', 1);
+});
+
+test('per_page=all is still bounded by the active filters', function () {
+    ($this->makeLog)($this->hilux, ['payment_method' => null, 'payment_status' => 'unpaid']);
+    ($this->makeLog)($this->tracker, ['payment_method' => 'cash', 'payment_status' => 'paid']);
+
+    fetchLogs(['per_page' => 'all', 'payment' => 'pending'])
+        ->assertOk()
+        ->assertJsonCount(1, 'data')
+        ->assertJsonPath('meta.total', 1);
+});
+
+test('per_page=all copes with a day that has no rows', function () {
+    fetchLogs(['per_page' => 'all'])
+        ->assertOk()
+        ->assertJsonCount(0, 'data');
+});
+
+test('rejects a page size that is not offered', function (string $size) {
+    foreach (range(1, 3) as $i) {
+        ($this->makeLog)($this->hilux, ['payment_method' => 'cash', 'payment_status' => 'paid']);
+    }
+
+    // Falls back to the default rather than letting a caller ask for 10000.
+    fetchLogs(['per_page' => $size])->assertOk()->assertJsonPath('meta.per_page', 50);
+})->with(['garbage' => ['abc'], 'oversized' => ['10000'], 'zero' => ['0']]);

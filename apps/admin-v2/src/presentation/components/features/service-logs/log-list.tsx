@@ -3,7 +3,7 @@
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { format } from 'date-fns';
-import { MoreHorizontal, CheckCircle2, Pencil, Trash2, Plus, ClipboardList, Wallet, Play, Trophy, FileText, Receipt, Eye, Loader2 } from 'lucide-react';
+import { MoreHorizontal, CheckCircle2, Pencil, Trash2, Plus, ClipboardList, Wallet, Play, Trophy, FileText, Receipt, Eye, Loader2, ChevronLeft, ChevronRight } from 'lucide-react';
 import { toast } from 'sonner';
 import { motion } from 'framer-motion';
 import { Badge } from '@/presentation/components/ui/badge';
@@ -28,7 +28,14 @@ import { RegisterPaymentDialog } from '@/presentation/components/features/servic
 import { FiscalProfileDialog } from '@/presentation/components/features/service-logs/fiscal-profile-dialog';
 import { InvoiceStatusBadge } from '@/presentation/components/features/service-logs/invoice-status-badge';
 import { useEmitInvoice } from '@/presentation/hooks/use-invoices';
-import type { ServiceLog, ServiceLogStatus, PaymentFilter } from '@/domain/entities/service-log';
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/presentation/components/ui/select';
+import type { ServiceLog, ServiceLogStatus, PaymentFilter, PageSize } from '@/domain/entities/service-log';
 
 const STATUS_CONFIG: Record<ServiceLogStatus, { label: string; color: string; bg: string }> = {
   in_progress: { label: 'En progreso', color: 'text-[var(--status-progress-fg)]', bg: 'bg-[var(--status-progress-bg)]' },
@@ -47,13 +54,28 @@ interface LogListProps {
   payment?: PaymentFilter;
   status?: 'in_progress' | 'completed';
   q?: string;
+  page?: number;
+  perPage?: PageSize;
+  onPageChange?: (page: number) => void;
+  onPerPageChange?: (size: PageSize) => void;
   onEdit?: (log: ServiceLog) => void;
   onCreate?: () => void;
 }
 
-export function LogList({ date, payment, status, q, onEdit, onCreate }: LogListProps) {
+export function LogList({
+  date,
+  payment,
+  status,
+  q,
+  page = 1,
+  perPage = '15',
+  onPageChange,
+  onPerPageChange,
+  onEdit,
+  onCreate,
+}: LogListProps) {
   const router = useRouter();
-  const { data, isLoading } = useServiceLogs({ date, payment, status, q });
+  const { data, isLoading } = useServiceLogs({ date, payment, status, q, page, perPage });
   const completeMutation = useCompleteServiceLog();
   const deleteMutation = useDeleteServiceLog();
   const emitInvoiceMutation = useEmitInvoice();
@@ -61,6 +83,11 @@ export function LogList({ date, payment, status, q, onEdit, onCreate }: LogListP
   const [billingTarget, setBillingTarget] = useState<ServiceLog | null>(null);
 
   const logs = data?.data ?? [];
+  const total = data?.meta?.total ?? 0;
+  const lastPage = data?.meta?.lastPage ?? 1;
+  const currentPage = data?.meta?.currentPage ?? 1;
+  const rangeStart = total === 0 ? 0 : (currentPage - 1) * (data?.meta?.perPage ?? 0) + 1;
+  const rangeEnd = Math.min(rangeStart + logs.length - 1, total);
 
   function handleComplete(id: string) {
     completeMutation.mutate(id, {
@@ -379,6 +406,59 @@ export function LogList({ date, payment, status, q, onEdit, onCreate }: LogListP
           </motion.div>
         );
       })}
+
+      {/* Pager. The size selector stays put even on a single page — it is how
+          the cashier asks for "Todos" — while the prev/next pair only appears
+          when there is somewhere to go. */}
+      <div className="flex flex-col gap-2 pt-1 sm:flex-row sm:items-center sm:justify-between">
+        <p className="text-[12px] text-[var(--fg-muted)]">
+          {total === 0
+            ? 'Sin registros'
+            : `Mostrando ${rangeStart}–${rangeEnd} de ${total}`}
+        </p>
+
+        <div className="flex items-center gap-2">
+          {lastPage > 1 && (
+            <div className="flex items-center gap-1">
+              <Button
+                variant="outline"
+                size="sm"
+                className="h-8 w-8 p-0"
+                aria-label="Página anterior"
+                disabled={currentPage <= 1}
+                onClick={() => onPageChange?.(currentPage - 1)}
+              >
+                <ChevronLeft className="h-4 w-4" aria-hidden="true" />
+              </Button>
+              <span className="px-1 text-[12px] tabular-nums text-[var(--fg-secondary)]">
+                {currentPage} / {lastPage}
+              </span>
+              <Button
+                variant="outline"
+                size="sm"
+                className="h-8 w-8 p-0"
+                aria-label="Página siguiente"
+                disabled={currentPage >= lastPage}
+                onClick={() => onPageChange?.(currentPage + 1)}
+              >
+                <ChevronRight className="h-4 w-4" aria-hidden="true" />
+              </Button>
+            </div>
+          )}
+
+          <Select value={perPage} onValueChange={(v) => onPerPageChange?.(v as PageSize)}>
+            <SelectTrigger className="h-8 w-[104px]" aria-label="Filas por página">
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="10">10 filas</SelectItem>
+              <SelectItem value="15">15 filas</SelectItem>
+              <SelectItem value="20">20 filas</SelectItem>
+              <SelectItem value="all">Todos</SelectItem>
+            </SelectContent>
+          </Select>
+        </div>
+      </div>
 
       {/* Pago dialog — triggered from the unpaid rows' overflow menu. */}
       {payTarget && (

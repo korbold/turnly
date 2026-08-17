@@ -88,9 +88,13 @@ export interface DailySummary {
  */
 export type PaymentFilter = 'paid' | 'pending' | 'cash' | 'card' | 'transfer';
 
+/** Page sizes the UI offers; "all" collapses the day into a single page. */
+export type PageSize = '10' | '15' | '20' | 'all';
+
 export interface ServiceLogFilters {
   date?: string;
   page?: number;
+  perPage?: PageSize;
   payment?: PaymentFilter;
   status?: 'in_progress' | 'completed';
   /** Free-text search over plate, brand and owner name. */

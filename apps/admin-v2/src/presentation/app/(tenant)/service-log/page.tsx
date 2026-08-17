@@ -4,7 +4,7 @@ import { useState, useEffect, useMemo, Suspense } from 'react';
 import { useSearchParams, useRouter, usePathname } from 'next/navigation';
 import { format, addDays, subDays, parseISO } from 'date-fns';
 import { es } from 'date-fns/locale';
-import { useQueryState, parseAsString, parseAsStringEnum } from 'nuqs';
+import { useQueryState, parseAsString, parseAsStringEnum, parseAsInteger } from 'nuqs';
 import { ChevronLeft, ChevronRight, CalendarIcon, Plus, Search, X } from 'lucide-react';
 import { Button } from '@/presentation/components/ui/button';
 import { Input } from '@/presentation/components/ui/input';
@@ -26,7 +26,7 @@ import { DailySummary } from '@/presentation/components/features/service-logs/da
 import { LogList } from '@/presentation/components/features/service-logs/log-list';
 import { NewServiceModal } from '@/presentation/components/features/service-logs/new-service-modal';
 import { EditServiceLogDialog } from '@/presentation/components/features/service-logs/edit-service-log-dialog';
-import type { ServiceLog, PaymentFilter } from '@/domain/entities/service-log';
+import type { ServiceLog, PaymentFilter, PageSize } from '@/domain/entities/service-log';
 
 /** Mirrors the PAGO column: a payment state, or the concrete method. */
 const PAYMENT_OPTIONS: Array<{ value: PaymentFilter; label: string }> = [
@@ -84,18 +84,29 @@ function ServiceLogContent() {
     parseAsStringEnum<'in_progress' | 'completed'>(['in_progress', 'completed']),
   );
   const [search, setSearch] = useQueryState('q', parseAsString.withDefault(''));
+  const [page, setPage] = useQueryState('page', parseAsInteger.withDefault(1));
+  const [perPage, setPerPage] = useQueryState(
+    'per_page',
+    parseAsStringEnum<PageSize>(['10', '15', '20', 'all']).withDefault('15'),
+  );
 
   // The box holds what is being typed; the URL (and the query) only catch up
   // once typing pauses, so a plate isn't re-fetched letter by letter.
   const [searchDraft, setSearchDraft] = useState(search);
   useEffect(() => {
     if (searchDraft === search) return;
-    const t = setTimeout(() => setSearch(searchDraft || null), 350);
+    const t = setTimeout(() => {
+      setSearch(searchDraft || null);
+      setPage(null);
+    }, 350);
     return () => clearTimeout(t);
-  }, [searchDraft, search, setSearch]);
+  }, [searchDraft, search, setSearch, setPage]);
 
   const selectedDate = useMemo(() => parseISO(dateStr), [dateStr]);
-  const setSelectedDate = (d: Date) => setDateStr(format(d, 'yyyy-MM-dd'));
+  const setSelectedDate = (d: Date) => {
+    setDateStr(format(d, 'yyyy-MM-dd'));
+    setPage(null);
+  };
   const hasFilters = !!payment || !!status || !!search;
 
   function clearFilters() {
@@ -103,6 +114,7 @@ function ServiceLogContent() {
     setStatus(null);
     setSearch(null);
     setSearchDraft('');
+    setPage(null);
   }
   const isDesktop = useIsDesktop();
   const showInlineCreate = isDesktop && createOpen;
@@ -211,7 +223,10 @@ function ServiceLogContent() {
 
           <Select
             value={payment ?? ALL}
-            onValueChange={(v) => setPayment(v === ALL ? null : (v as PaymentFilter))}
+            onValueChange={(v) => {
+              setPayment(v === ALL ? null : (v as PaymentFilter));
+              setPage(null);
+            }}
           >
             <SelectTrigger className="h-9 sm:w-[168px]" aria-label="Filtrar por pago">
               <SelectValue />
@@ -228,9 +243,10 @@ function ServiceLogContent() {
 
           <Select
             value={status ?? ALL}
-            onValueChange={(v) =>
-              setStatus(v === ALL ? null : (v as 'in_progress' | 'completed'))
-            }
+            onValueChange={(v) => {
+              setStatus(v === ALL ? null : (v as 'in_progress' | 'completed'));
+              setPage(null);
+            }}
           >
             <SelectTrigger className="h-9 sm:w-[160px]" aria-label="Filtrar por estado">
               <SelectValue />
@@ -259,6 +275,13 @@ function ServiceLogContent() {
           payment={payment ?? undefined}
           status={status ?? undefined}
           q={search || undefined}
+          page={page}
+          perPage={perPage}
+          onPageChange={(p) => setPage(p <= 1 ? null : p)}
+          onPerPageChange={(size) => {
+            setPerPage(size === '15' ? null : size);
+            setPage(null);
+          }}
           onCreate={() => setCreateOpen(true)}
           onEdit={setEditTarget}
         />

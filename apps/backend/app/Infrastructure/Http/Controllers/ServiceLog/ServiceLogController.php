@@ -78,7 +78,19 @@ class ServiceLogController extends Controller
             });
         }
 
-        $logs = $query->orderBy('started_at', 'desc')->paginate($request->get('per_page', 50));
+        $query->orderBy('started_at', 'desc');
+
+        // Only the sizes the UI offers, so a caller can't ask for 10.000 rows.
+        // "all" becomes a single page the size of the filtered result, which
+        // keeps the response shape (and meta) identical for the client.
+        $requested = (string) $request->get('per_page', 50);
+        $perPage = match (true) {
+            $requested === 'all'                       => max($query->clone()->count(), 1),
+            in_array($requested, ['10', '15', '20'], true) => (int) $requested,
+            default                                    => 50,
+        };
+
+        $logs = $query->paginate($perPage);
 
         return ServiceLogResource::collection($logs);
     }
