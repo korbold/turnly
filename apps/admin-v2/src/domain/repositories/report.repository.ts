@@ -27,6 +27,8 @@ export interface RangeReport {
   dailyBreakdown: DailyBreakdown[];
   byPaymentMethod: Record<string, { count: number; total: number }>;
   byBank: Record<string, { count: number; total: number }>;
+  /** Banks with activity in the range, before the bank filter narrows it. */
+  availableBanks: string[];
   filters: {
     paymentMethod: 'cash' | 'card' | 'transfer' | null;
     paymentBank: string | null;

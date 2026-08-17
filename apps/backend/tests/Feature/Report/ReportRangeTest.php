@@ -161,3 +161,62 @@ test('a range with no activity reports zeros without dividing by zero', function
         ->assertJsonPath('data.stats.average_daily_revenue', 0)
         ->assertJsonPath('data.daily_breakdown.0.services', 0);
 });
+
+/*
+ * service_logs has carried payment_bank since the 400001 migration, but the
+ * report still assumed banks only lived on reservations and dropped every log
+ * when a bank filter was on. In production 100% of the transfers with a bank
+ * are service logs, so the filter returned nothing at all.
+ */
+test('filtering by bank keeps the services paid with that bank', function () {
+    ($this->log)('2026-08-17', 100.00, 'transfer')->update(['payment_bank' => 'pichincha']);
+    ($this->log)('2026-08-17', 50.00, 'transfer')->update(['payment_bank' => 'guayaquil']);
+    ($this->log)('2026-08-17', 30.00, 'cash');
+
+    $res = test()
+        ->actingAs($this->owner)
+        ->withHeader('X-Tenant', $this->tenant->slug)
+        ->getJson('/api/v1/reports/range?date_from=2026-08-17&date_to=2026-08-17&payment_method=transfer&payment_bank=pichincha')
+        ->assertOk();
+
+    $res->assertJsonPath('data.stats.total_services', 1)
+        ->assertJsonPath('data.stats.total_revenue', 100)
+        ->assertJsonPath('data.daily_breakdown.0.services', 1)
+        ->assertJsonPath('data.daily_breakdown.0.by_transfer', 100);
+});
+
+test('the bank breakdown counts services, not only reservations', function () {
+    ($this->log)('2026-08-17', 100.00, 'transfer')->update(['payment_bank' => 'pichincha']);
+    ($this->log)('2026-08-17', 130.00, 'transfer')->update(['payment_bank' => 'pichincha']);
+    ($this->log)('2026-08-17', 50.00, 'transfer')->update(['payment_bank' => 'guayaquil']);
+
+    $res = fetchRange('2026-08-17', '2026-08-17')->assertOk();
+
+    $res->assertJsonPath('data.by_bank.pichincha.count', 2)
+        ->assertJsonPath('data.by_bank.pichincha.total', 230)
+        ->assertJsonPath('data.by_bank.guayaquil.count', 1)
+        ->assertJsonPath('data.by_bank.guayaquil.total', 50);
+});
+
+// The chips let you switch banks, so they can't be derived from the filtered
+// result: picking Pichincha dropped every other bank from the list and left the
+// user with no way back except clearing the filter.
+test('the bank list survives filtering by one bank', function () {
+    ($this->log)('2026-08-17', 100.00, 'transfer')->update(['payment_bank' => 'pichincha']);
+    ($this->log)('2026-08-17', 50.00, 'transfer')->update(['payment_bank' => 'guayaquil']);
+
+    $sinFiltro = fetchRange('2026-08-17', '2026-08-17')->assertOk();
+    expect($sinFiltro->json('data.available_banks'))
+        ->toEqualCanonicalizing(['pichincha', 'guayaquil']);
+
+    $filtrado = test()
+        ->actingAs($this->owner)
+        ->withHeader('X-Tenant', $this->tenant->slug)
+        ->getJson('/api/v1/reports/range?date_from=2026-08-17&date_to=2026-08-17&payment_method=transfer&payment_bank=pichincha')
+        ->assertOk();
+
+    // Narrowed figures, full list of banks to switch to.
+    expect($filtrado->json('data.stats.total_revenue'))->toBe(100)
+        ->and($filtrado->json('data.available_banks'))
+        ->toEqualCanonicalizing(['pichincha', 'guayaquil']);
+});

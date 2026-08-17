@@ -92,11 +92,11 @@ class ReportController extends Controller
         if ($methodFilter) {
             $washLogsQuery->where('payment_method', $methodFilter);
         }
-        // Wash logs don't carry payment_bank — filtering by bank means
-        // we're slicing to transferencia detail, so any non-reservation
-        // legacy row drops out of the result by definition.
+        // Service logs have carried payment_bank since the 400001 migration, and
+        // in practice that is where the bank data lives — discarding them here
+        // made every bank filter come back empty.
         if ($bankFilter) {
-            $washLogsQuery->whereRaw('1 = 0');
+            $washLogsQuery->where('payment_bank', $bankFilter);
         }
         $washLogs = $washLogsQuery->get();
 
@@ -172,6 +172,10 @@ class ReportController extends Controller
         $transferReservations = $paidReservations
             ->where('payment_method', 'transfer')
             ->whereNotNull('payment_bank');
+        $transferLogs = $washLogs
+            ->where('payment_method', 'transfer')
+            ->whereNotNull('payment_bank');
+
         $byBank = [];
         foreach ($transferReservations->groupBy('payment_bank') as $slug => $rows) {
             $byBank[$slug] = [
@@ -179,6 +183,37 @@ class ReportController extends Controller
                 'total' => (float) $rows->sum($totalForReservation),
             ];
         }
+        // Same reason as the filter above: the counter's transfers are service
+        // logs, so a breakdown built only off reservations reports no banks at
+        // all for a tenant that takes transfers all day.
+        foreach ($transferLogs->groupBy('payment_bank') as $slug => $rows) {
+            $byBank[$slug] = [
+                'count' => ($byBank[$slug]['count'] ?? 0) + $rows->count(),
+                'total' => ($byBank[$slug]['total'] ?? 0.0) + (float) $rows->sum('price_charged'),
+            ];
+        }
+
+        // Every bank with activity in the range, computed before the bank filter
+        // narrows anything: these are the chips the user switches between, and
+        // deriving them from the filtered result left only the bank already
+        // selected, with no way across to another.
+        $availableBanks = ServiceLogModel::whereBetween('log_date', [$from, $to])
+            ->where('payment_method', 'transfer')
+            ->whereNotNull('payment_bank')
+            ->distinct()
+            ->pluck('payment_bank')
+            ->merge(
+                ReservationModel::whereBetween('scheduled_at', [$from . ' 00:00:00', $to . ' 23:59:59'])
+                    ->whereNotIn('status', ['cancelled', 'no_show'])
+                    ->where('payment_status', 'paid')
+                    ->where('payment_method', 'transfer')
+                    ->whereNotNull('payment_bank')
+                    ->distinct()
+                    ->pluck('payment_bank')
+            )
+            ->unique()
+            ->values()
+            ->all();
 
         // Daily breakdown over every date in the range, even days with
         // zero activity, so the chart's x-axis stays continuous.
@@ -248,6 +283,7 @@ class ReportController extends Controller
                 'daily_breakdown'   => $dailyBreakdown,
                 'by_payment_method' => $byPaymentMethod,
                 'by_bank'           => $byBank,
+                'available_banks'   => $availableBanks,
                 'filters' => [
                     'payment_method' => $methodFilter,
                     'payment_bank'   => $bankFilter,

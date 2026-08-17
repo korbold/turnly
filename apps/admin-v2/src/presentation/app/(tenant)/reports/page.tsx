@@ -1,6 +1,6 @@
 'use client';
 
-import { Suspense, useMemo } from 'react';
+import { Suspense } from 'react';
 import { format, parseISO } from 'date-fns';
 import { es } from 'date-fns/locale';
 import { FileDown, FilterX } from 'lucide-react';
@@ -37,10 +37,9 @@ function ReportsContent() {
   // Bank picker only shows banks with paid transferencias in the
   // current range, so a fresh tenant with no transfer activity still
   // gets to filter without scrolling past 13 empty options.
-  const availableBanks = useMemo(
-    () => Object.keys(report?.byBank ?? {}),
-    [report?.byBank],
-  );
+  // From the API's unfiltered list, not from byBank: byBank shrinks to the
+  // selected bank, which used to leave the chips with nowhere to switch to.
+  const availableBanks = report?.availableBanks ?? [];
 
   function handleRangeChange(newFrom: string, newTo: string) {
     setFrom(newFrom);

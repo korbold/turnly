@@ -48,6 +48,7 @@ function mapRangeReport(raw: Record<string, unknown>): RangeReport {
       string,
       { count: number; total: number }
     >,
+    availableBanks: ((raw.available_banks ?? raw.availableBanks ?? []) as string[]),
     filters: {
       paymentMethod: (filters.payment_method ?? filters.paymentMethod ?? null) as RangeReport['filters']['paymentMethod'],
       paymentBank: (filters.payment_bank ?? filters.paymentBank ?? null) as string | null,
