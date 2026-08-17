@@ -162,6 +162,8 @@ Route::prefix('v1')->group(function () {
             // Tenant billing cert (SRI electronic invoicing certificate)
             Route::get('settings/billing-cert', [\App\Infrastructure\Http\Controllers\Tenant\BillingProfileController::class, 'showCert']);
             Route::post('settings/billing-cert', [\App\Infrastructure\Http\Controllers\Tenant\BillingProfileController::class, 'uploadCert']);
+            // Ambiente SRI + establecimiento / punto de emisión, without re-uploading the .p12
+            Route::put('settings/billing-emission', [\App\Infrastructure\Http\Controllers\Tenant\BillingProfileController::class, 'updateEmission']);
 
             // Reservations
             // NOTE: reservations/available-slots moved to the customer booking

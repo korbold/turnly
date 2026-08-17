@@ -179,6 +179,43 @@ class BillingProfileController extends Controller
         }
     }
 
+    /**
+     * Change the ambiente SRI and the establecimiento / punto de emisión the
+     * next invoice is issued from. Proxies the billing service, which owns this
+     * data — the .p12 is never re-sent. A missing config there (404) surfaces as
+     * a 422 telling the tenant to upload the certificate first.
+     */
+    public function updateEmission(Request $request): JsonResponse
+    {
+        $validated = $request->validate([
+            'ambiente'            => ['required', 'integer', 'in:1,2'],
+            'estab'               => ['required', 'string', 'regex:/^\d{3}$/'],
+            'pto_emi'             => ['required', 'string', 'regex:/^\d{3}$/'],
+            'nombre'              => ['required', 'string', 'max:300'],
+            'dir_establecimiento' => ['required', 'string', 'max:300'],
+        ]);
+
+        $tenantId = app('current_tenant_id');
+        $billingUrl = rtrim((string) config('services.billing.url'), '/');
+
+        try {
+            $response = Http::timeout(20)->put(
+                "{$billingUrl}/api/tenant-billing-configs/{$tenantId}/emission",
+                $validated
+            );
+
+            if ($response->failed()) {
+                return response()->json([
+                    'message' => $response->json('message') ?? $response->body(),
+                ], 422);
+            }
+
+            return response()->json(['data' => $response->json('data', $response->json())]);
+        } catch (\Throwable $e) {
+            return response()->json(['message' => $e->getMessage()], 422);
+        }
+    }
+
     private function serialize(TenantModel $tenant): array
     {
         return [

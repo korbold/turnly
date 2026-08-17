@@ -10,6 +10,8 @@ import {
   KeyRound,
   Upload,
   CheckCircle2,
+  Store,
+  TriangleAlert,
 } from 'lucide-react';
 import { toast } from 'sonner';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
@@ -33,6 +35,15 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/presentation/components/ui/select';
+import { Switch } from '@/presentation/components/ui/switch';
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from '@/presentation/components/ui/dialog';
 import {
   useBillingProfile,
   useUpdateBillingProfile,
@@ -56,6 +67,25 @@ interface CertData {
   cert_configured: boolean;
   ruc?: string;
   ambiente?: number;
+  /** Establecimiento + punto de emisión the next invoice is issued from. */
+  estab?: string | null;
+  pto_emi?: string | null;
+  nombre_establecimiento?: string | null;
+  dir_establecimiento?: string | null;
+  secuencial_actual?: number | null;
+}
+
+interface EmissionForm {
+  estab: string;
+  ptoEmi: string;
+  nombre: string;
+  dirEstablecimiento: string;
+}
+
+/** The SRI wants both codes as three digits — "2" is stored as "002". */
+function padCode(value: string): string {
+  const digits = value.replace(/\D/g, '').slice(0, 3);
+  return digits ? digits.padStart(3, '0') : '';
 }
 
 function StepIndicator({ step, done, label }: { step: number; done: boolean; label: string }) {
@@ -89,6 +119,16 @@ export function BillingTab() {
   const fileInputRef = useRef<HTMLInputElement>(null);
   const passwordRef = useRef<HTMLInputElement>(null);
 
+  const [emission, setEmission] = useState<EmissionForm>({
+    estab: '001',
+    ptoEmi: '001',
+    nombre: 'Matriz',
+    dirEstablecimiento: '',
+  });
+  const [emissionErrors, setEmissionErrors] = useState<Record<string, string>>({});
+  const [isProduccion, setIsProduccion] = useState(false);
+  const [confirmProduccion, setConfirmProduccion] = useState(false);
+
   const { data: certData, isLoading: certLoading } = useQuery<CertData | null>({
     queryKey: ['billing-cert'],
     queryFn: async () => {
@@ -117,6 +157,27 @@ export function BillingTab() {
     },
   });
 
+  const updateEmissionMutation = useMutation({
+    mutationFn: async (payload: {
+      ambiente: number;
+      estab: string;
+      pto_emi: string;
+      nombre: string;
+      dir_establecimiento: string;
+    }) => {
+      const { data } = await api.put('/settings/billing-emission', payload);
+      return data;
+    },
+    onSuccess: () => {
+      toast.success('Establecimiento y ambiente guardados');
+      queryClient.invalidateQueries({ queryKey: ['billing-cert'] });
+    },
+    onError: (err: unknown) => {
+      const msg = (err as { message?: string })?.message;
+      toast.error(msg ?? 'Error al guardar el establecimiento');
+    },
+  });
+
   function handleCertSubmit(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault();
     if (!certFile) return;
@@ -138,6 +199,22 @@ export function BillingTab() {
       });
     }
   }, [profile]);
+
+  // Seed the emission form once from the billing service. Guarded by a ref so a
+  // background refetch can't wipe out what the user is halfway through typing.
+  const emissionSeeded = useRef(false);
+  useEffect(() => {
+    if (!certData || emissionSeeded.current) return;
+    emissionSeeded.current = true;
+    setEmission({
+      estab: certData.estab ?? '001',
+      ptoEmi: certData.pto_emi ?? '001',
+      nombre: certData.nombre_establecimiento ?? 'Matriz',
+      dirEstablecimiento: certData.dir_establecimiento ?? profile?.billingAddress ?? '',
+    });
+    setIsProduccion(certData.ambiente === 2);
+    setSelectedAmbiente(certData.ambiente ?? 1);
+  }, [certData, profile?.billingAddress]);
 
   const debouncedTaxId = useDebounced(form.taxId ?? '');
   const lookupEnabled = debouncedTaxId.length >= 10;
@@ -191,6 +268,38 @@ export function BillingTab() {
       toast.error(msg);
     }
   }
+
+  function handleEmissionField<K extends keyof EmissionForm>(key: K, value: string) {
+    setEmission((prev) => ({ ...prev, [key]: value }));
+    setEmissionErrors((e) => ({ ...e, [key]: '' }));
+  }
+
+  function saveEmission(ambiente: number) {
+    const estab = padCode(emission.estab);
+    const ptoEmi = padCode(emission.ptoEmi);
+    const e: Record<string, string> = {};
+
+    if (estab.length !== 3) e.estab = 'Tres dígitos, ej. 001';
+    if (ptoEmi.length !== 3) e.ptoEmi = 'Tres dígitos, ej. 001';
+    if (!emission.nombre.trim()) e.nombre = 'Requerido';
+    if (!emission.dirEstablecimiento.trim()) e.dirEstablecimiento = 'Requerido';
+
+    setEmissionErrors(e);
+    if (Object.keys(e).length > 0) return;
+
+    setEmission((prev) => ({ ...prev, estab, ptoEmi }));
+    updateEmissionMutation.mutate({
+      ambiente,
+      estab,
+      pto_emi: ptoEmi,
+      nombre: emission.nombre.trim(),
+      dir_establecimiento: emission.dirEstablecimiento.trim(),
+    });
+  }
+
+  const estabChanged =
+    !!certData?.estab &&
+    (padCode(emission.estab) !== certData.estab || padCode(emission.ptoEmi) !== certData.pto_emi);
 
   const profileComplete = !!(
     profile?.taxId &&
@@ -287,6 +396,8 @@ export function BillingTab() {
         <StepIndicator step={1} done={profileComplete} label="Datos del emisor" />
         <div className="h-px flex-1 bg-[var(--border-default)]" />
         <StepIndicator step={2} done={certConfigured} label="Certificado .p12" />
+        <div className="h-px flex-1 bg-[var(--border-default)]" />
+        <StepIndicator step={3} done={certConfigured && isProduccion} label="Producción" />
       </div>
 
       {/* Step 1 — Billing profile */}
@@ -444,21 +555,26 @@ export function BillingTab() {
               />
             </div>
 
-            <div className="space-y-1.5">
-              <Label>Ambiente SRI</Label>
-              <Select
-                value={String(selectedAmbiente)}
-                onValueChange={(v) => setSelectedAmbiente(Number(v))}
-              >
-                <SelectTrigger>
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="1">Pruebas</SelectItem>
-                  <SelectItem value="2">Producción</SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
+            {/* First upload only — once the cert exists the ambiente is owned by
+                the "Establecimiento y ambiente" card below, which changes it
+                without re-sending the .p12. */}
+            {!certConfigured && (
+              <div className="space-y-1.5">
+                <Label>Ambiente SRI</Label>
+                <Select
+                  value={String(selectedAmbiente)}
+                  onValueChange={(v) => setSelectedAmbiente(Number(v))}
+                >
+                  <SelectTrigger>
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="1">Pruebas</SelectItem>
+                    <SelectItem value="2">Producción</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+            )}
           </CardContent>
 
           <CardFooter className="border-t pt-4">
@@ -483,6 +599,208 @@ export function BillingTab() {
           </CardFooter>
         </form>
       </Card>
+
+      {/* Step 3 — Establecimiento + ambiente. Only reachable once the cert
+          exists: the billing service owns this row and 404s without it. */}
+      {certConfigured && (
+        <Card>
+          <CardHeader className="pb-4">
+            <div className="flex items-start justify-between gap-3">
+              <div>
+                <CardTitle className="flex items-center gap-2 text-[15px]">
+                  <Store className="h-4 w-4 shrink-0" aria-hidden="true" />
+                  Establecimiento y ambiente
+                </CardTitle>
+                <CardDescription className="mt-1">
+                  Punto de venta desde el que se emiten las facturas y si van al SRI de
+                  pruebas o de producción.
+                </CardDescription>
+              </div>
+              <Badge
+                className={
+                  isProduccion
+                    ? 'shrink-0 bg-green-100 text-green-800 border-green-200'
+                    : 'shrink-0 bg-amber-100 text-amber-800 border-amber-200'
+                }
+              >
+                {isProduccion ? 'Producción' : 'Pruebas'}
+              </Badge>
+            </div>
+          </CardHeader>
+
+          <CardContent className="space-y-4">
+            <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+              <div className="space-y-1.5">
+                <Label htmlFor="estab">Código de establecimiento</Label>
+                <Input
+                  id="estab"
+                  value={emission.estab}
+                  inputMode="numeric"
+                  maxLength={3}
+                  placeholder="001"
+                  onChange={(e) => handleEmissionField('estab', e.target.value.replace(/\D/g, ''))}
+                  onBlur={() => handleEmissionField('estab', padCode(emission.estab))}
+                />
+                {emissionErrors.estab && (
+                  <p className="text-xs text-[var(--danger-500)]">{emissionErrors.estab}</p>
+                )}
+              </div>
+
+              <div className="space-y-1.5">
+                <Label htmlFor="pto_emi">Punto de emisión</Label>
+                <Input
+                  id="pto_emi"
+                  value={emission.ptoEmi}
+                  inputMode="numeric"
+                  maxLength={3}
+                  placeholder="001"
+                  onChange={(e) => handleEmissionField('ptoEmi', e.target.value.replace(/\D/g, ''))}
+                  onBlur={() => handleEmissionField('ptoEmi', padCode(emission.ptoEmi))}
+                />
+                {emissionErrors.ptoEmi && (
+                  <p className="text-xs text-[var(--danger-500)]">{emissionErrors.ptoEmi}</p>
+                )}
+              </div>
+            </div>
+
+            <div className="space-y-1.5">
+              <Label htmlFor="estab_nombre">Nombre del establecimiento</Label>
+              <Input
+                id="estab_nombre"
+                value={emission.nombre}
+                placeholder="Matriz"
+                onChange={(e) => handleEmissionField('nombre', e.target.value)}
+              />
+              {emissionErrors.nombre && (
+                <p className="text-xs text-[var(--danger-500)]">{emissionErrors.nombre}</p>
+              )}
+            </div>
+
+            <div className="space-y-1.5">
+              <div className="flex items-center justify-between gap-2">
+                <Label htmlFor="estab_dir">Dirección del establecimiento</Label>
+                {!!profile?.billingAddress && (
+                  <button
+                    type="button"
+                    className="text-[11px] font-medium text-[var(--fg-muted)] underline underline-offset-2 hover:text-[var(--fg-default)]"
+                    onClick={() =>
+                      handleEmissionField('dirEstablecimiento', profile.billingAddress ?? '')
+                    }
+                  >
+                    Usar la dirección de la matriz
+                  </button>
+                )}
+              </div>
+              <Input
+                id="estab_dir"
+                value={emission.dirEstablecimiento}
+                placeholder="Calle, número, ciudad"
+                onChange={(e) => handleEmissionField('dirEstablecimiento', e.target.value)}
+              />
+              {emissionErrors.dirEstablecimiento && (
+                <p className="text-xs text-[var(--danger-500)]">
+                  {emissionErrors.dirEstablecimiento}
+                </p>
+              )}
+            </div>
+
+            <div className="flex items-center justify-between gap-4 rounded-lg border border-[var(--border-default)] px-3 py-3">
+              <div className="flex-1">
+                <Label htmlFor="ambiente_switch" className="text-[14px]">
+                  Emitir en producción
+                </Label>
+                <p className="mt-0.5 text-[12px] text-[var(--fg-muted)]">
+                  {isProduccion
+                    ? 'Las facturas se envían al SRI real y tienen validez legal.'
+                    : 'Las facturas se envían al SRI de pruebas y no tienen validez legal.'}
+                </p>
+              </div>
+              <Switch
+                id="ambiente_switch"
+                checked={isProduccion}
+                disabled={updateEmissionMutation.isPending}
+                onCheckedChange={(checked) => {
+                  if (checked) {
+                    setConfirmProduccion(true);
+                    return;
+                  }
+                  setIsProduccion(false);
+                }}
+              />
+            </div>
+
+            {estabChanged && (
+              <p className="flex items-start gap-2 rounded-md border border-amber-200 bg-amber-50 px-3 py-2 text-[12px] text-amber-900">
+                <TriangleAlert className="mt-0.5 h-3.5 w-3.5 shrink-0" aria-hidden="true" />
+                El secuencial arranca en 000000001 para este establecimiento y punto de
+                emisión — el SRI los cuenta por separado. El anterior queda intacto.
+              </p>
+            )}
+
+            {typeof certData?.secuencial_actual === 'number' && (
+              <p className="text-[12px] text-[var(--fg-muted)]">
+                Última factura emitida en {certData.estab}-{certData.pto_emi}:{' '}
+                {String(certData.secuencial_actual).padStart(9, '0')}
+              </p>
+            )}
+          </CardContent>
+
+          <CardFooter className="border-t pt-4">
+            <Button
+              onClick={() => saveEmission(isProduccion ? 2 : 1)}
+              disabled={updateEmissionMutation.isPending}
+              className="ml-auto"
+            >
+              {updateEmissionMutation.isPending ? (
+                <>
+                  <Loader2 className="mr-2 h-4 w-4 animate-spin" aria-hidden="true" />
+                  Guardando...
+                </>
+              ) : (
+                <>
+                  <Save className="mr-2 h-4 w-4" aria-hidden="true" />
+                  Guardar
+                </>
+              )}
+            </Button>
+          </CardFooter>
+        </Card>
+      )}
+
+      <Dialog open={confirmProduccion} onOpenChange={setConfirmProduccion}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>¿Pasar a producción?</DialogTitle>
+            <DialogDescription asChild>
+              <div className="space-y-2 text-left">
+                <p>
+                  Desde ahora las facturas se envían al SRI real y tienen validez legal: una
+                  vez autorizadas no se pueden borrar, sólo anular ante el SRI.
+                </p>
+                <p>
+                  Revisa que el RUC {profile?.taxId} y el establecimiento{' '}
+                  {padCode(emission.estab) || '001'} estén abiertos en el SRI, o los
+                  comprobantes serán rechazados.
+                </p>
+              </div>
+            </DialogDescription>
+          </DialogHeader>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setConfirmProduccion(false)}>
+              Cancelar
+            </Button>
+            <Button
+              onClick={() => {
+                setConfirmProduccion(false);
+                setIsProduccion(true);
+                saveEmission(2);
+              }}
+            >
+              Sí, emitir en producción
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
