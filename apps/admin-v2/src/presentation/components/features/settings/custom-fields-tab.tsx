@@ -40,6 +40,14 @@ export function CustomFieldsTab() {
   const { data: settings, isLoading } = useSettings();
   const update = useUpdateSettings();
   const [fields, setFields] = useState<CustomField[]>([]);
+  /**
+   * Raw text being typed into an "Opciones" box, keyed by field key. The
+   * committed value is a string[], and rendering `options.join(', ')` back into
+   * the input on every keystroke swallowed the separator: "Van," normalises to
+   * "Van", so the next character landed inside the previous option and adding an
+   * option at the end was impossible. Keep the literal text until blur.
+   */
+  const [optionDrafts, setOptionDrafts] = useState<Record<string, string>>({});
 
   useEffect(() => {
     if (settings?.customFields) {
@@ -70,14 +78,85 @@ export function CustomFieldsTab() {
     );
   }
 
-  function updateOptions(idx: number, optionsStr: string) {
-    const options = optionsStr.split(',').map((s) => s.trim()).filter(Boolean);
+  function isLockedField(field: CustomField): boolean {
+    return field.affectsVariant === true || field.locked === true;
+  }
+
+  function parseOptions(raw: string): string[] {
+    return raw.split(',').map((s) => s.trim()).filter(Boolean);
+  }
+
+  /** Seeded options of a locked field may be added to, never dropped. */
+  function missingSeeded(field: CustomField, options: string[]): string[] {
+    if (!isLockedField(field)) return [];
+    return seededOptionsFor(field.key).filter((o) => !options.includes(o));
+  }
+
+  function clearDraft(key: string) {
+    setOptionDrafts((prev) => {
+      const next = { ...prev };
+      delete next[key];
+      return next;
+    });
+  }
+
+  function optionsText(field: CustomField): string {
+    return optionDrafts[field.key] ?? field.options?.join(', ') ?? '';
+  }
+
+  /** Parse and validate on blur — never mid-keystroke. */
+  function commitOptions(idx: number, field: CustomField) {
+    const raw = optionDrafts[field.key];
+    if (raw === undefined) return;
+
+    const options = parseOptions(raw);
+    const missing = missingSeeded(field, options);
+    if (missing.length) {
+      toast.error(`No puedes quitar: ${missing.join(', ')}`);
+      clearDraft(field.key);
+      return;
+    }
+
     updateField(idx, { options });
+    clearDraft(field.key);
+  }
+
+  /**
+   * Fold any still-open draft into the fields being saved. Clicking the button
+   * blurs the input first, but a keyboard-triggered save would otherwise drop
+   * what the user just typed.
+   */
+  function resolveFields(): CustomField[] | null {
+    let error: string | null = null;
+
+    const merged = fields.map((field) => {
+      const raw = optionDrafts[field.key];
+      if (raw === undefined || field.type !== 'select') return field;
+
+      const options = parseOptions(raw);
+      const missing = missingSeeded(field, options);
+      if (missing.length) {
+        error ??= `No puedes quitar: ${missing.join(', ')}`;
+        return field;
+      }
+      return { ...field, options };
+    });
+
+    if (error) {
+      toast.error(error);
+      return null;
+    }
+    return merged;
   }
 
   async function handleSave() {
+    const resolved = resolveFields();
+    if (!resolved) return;
+
     try {
-      await update.mutateAsync({ customFields: fields });
+      await update.mutateAsync({ customFields: resolved });
+      setFields(resolved);
+      setOptionDrafts({});
       toast.success('Campos guardados');
     } catch {
       toast.error('Error al guardar campos');
@@ -184,32 +263,18 @@ export function CustomFieldsTab() {
                   {field.type === 'select' && (
                     <div className="space-y-1">
                       <Label className="text-xs">Opciones (separadas por coma)</Label>
-                      {locked ? (
-                        <>
-                          <Input
-                            value={field.options?.join(', ') ?? ''}
-                            onChange={(e) => {
-                              const next = e.target.value.split(',').map((s) => s.trim()).filter(Boolean);
-                              const seeded = seededOptionsFor(field.key);
-                              const missing = seeded.filter((o) => !next.includes(o));
-                              if (missing.length) {
-                                toast.error(`No puedes quitar: ${missing.join(', ')}`);
-                                return;
-                              }
-                              updateField(idx, { options: next });
-                            }}
-                            placeholder="Opcion 1, Opcion 2, Opcion 3"
-                          />
-                          <p className="text-[11px] text-[var(--fg-muted)]">
-                            Opciones base fijas; puedes agregar nuevas.
-                          </p>
-                        </>
-                      ) : (
-                        <Input
-                          value={field.options?.join(', ') ?? ''}
-                          onChange={(e) => updateOptions(idx, e.target.value)}
-                          placeholder="Opcion 1, Opcion 2, Opcion 3"
-                        />
+                      <Input
+                        value={optionsText(field)}
+                        onChange={(e) =>
+                          setOptionDrafts((prev) => ({ ...prev, [field.key]: e.target.value }))
+                        }
+                        onBlur={() => commitOptions(idx, field)}
+                        placeholder="Opcion 1, Opcion 2, Opcion 3"
+                      />
+                      {locked && (
+                        <p className="text-[11px] text-[var(--fg-muted)]">
+                          Opciones base fijas; puedes agregar nuevas.
+                        </p>
                       )}
                     </div>
                   )}
