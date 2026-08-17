@@ -952,36 +952,40 @@ export function NewServiceModal({ open, onClose, embedded = false }: NewServiceM
                 ))}
               </div>
             ) : (
-              <div className="max-h-40 space-y-1.5 overflow-y-auto">
-                {clients.map((cr) => (
-                  <button
-                    key={cr.id}
-                    className={cn(
-                      'flex w-full items-center gap-3 rounded-lg border p-2.5 text-left transition-all',
-                      selectedClientResourceId === cr.id
-                        ? 'border-[var(--color-primary)] bg-[var(--color-primary-muted)]/50 ring-1 ring-[var(--color-primary)]/20'
-                        : 'hover:bg-zinc-50'
-                    )}
-                    onClick={() => {
-                      setSelectedClientResourceId(cr.id);
-                      setSelectedClientResource(cr);
-                    }}
-                  >
-                    {selectedClientResourceId === cr.id && (
-                      <Check className="h-4 w-4 shrink-0 text-[var(--color-primary)]" />
-                    )}
-                    <div className="min-w-0">
-                      <p className="truncate text-sm font-medium">
-                        {cr.label || cr.plate || cr.client?.name || 'Sin identificar'}
-                      </p>
-                      <p className="truncate text-xs text-muted-foreground">
-                        {[cr.brand, cr.model, cr.color].filter(Boolean).join(' - ') ||
-                          cr.client?.email ||
-                          ''}
-                      </p>
-                    </div>
-                  </button>
-                ))}
+              <>
+                <div className="max-h-56 space-y-1.5 overflow-y-auto">
+                  {clients.map((cr) => (
+                    <button
+                      key={cr.id}
+                      className={cn(
+                        'flex w-full items-center gap-3 rounded-lg border p-2.5 text-left transition-all',
+                        selectedClientResourceId === cr.id
+                          ? 'border-[var(--color-primary)] bg-[var(--color-primary-muted)]/50 ring-1 ring-[var(--color-primary)]/20'
+                          : 'hover:bg-zinc-50'
+                      )}
+                      onClick={() => {
+                        setSelectedClientResourceId(cr.id);
+                        setSelectedClientResource(cr);
+                      }}
+                    >
+                      {selectedClientResourceId === cr.id && (
+                        <Check className="h-4 w-4 shrink-0 text-[var(--color-primary)]" />
+                      )}
+                      <div className="min-w-0">
+                        <p className="truncate text-sm font-medium">
+                          {cr.label || cr.plate || cr.client?.name || 'Sin identificar'}
+                        </p>
+                        <p className="truncate text-xs text-muted-foreground">
+                          {[cr.brand, cr.model, cr.color].filter(Boolean).join(' - ') ||
+                            cr.client?.email ||
+                            ''}
+                        </p>
+                      </div>
+                    </button>
+                  ))}
+                </div>
+                {/* Pinned below the scroll box, not inside it: an action that
+                    sits after N vehicles is an action nobody scrolls to. */}
                 {!showCustomForm && (hasCustomFields ? (
                   <button
                     type="button"
@@ -992,7 +996,7 @@ export function NewServiceModal({ open, onClose, embedded = false }: NewServiceM
                         setCustomFieldValues({ [seedKey]: clientSearch.trim() });
                       }
                     }}
-                    className="flex w-full items-center gap-2 rounded-lg border border-dashed border-[var(--border-strong)] p-2.5 text-left transition-colors hover:bg-[var(--bg-hover)]"
+                    className="mt-1.5 flex w-full items-center gap-2 rounded-lg border border-dashed border-[var(--border-strong)] p-2.5 text-left transition-colors hover:bg-[var(--bg-hover)]"
                   >
                     <Plus className="h-4 w-4 shrink-0 text-[var(--brand-500)]" />
                     <span className="text-sm">Crear nuevo registro</span>
@@ -1003,7 +1007,7 @@ export function NewServiceModal({ open, onClose, embedded = false }: NewServiceM
                       type="button"
                       onClick={handleQuickCreateClient}
                       disabled={createClient.isPending}
-                      className="flex w-full items-center gap-2 rounded-lg border border-dashed border-[var(--border-strong)] p-2.5 text-left transition-colors hover:bg-[var(--bg-hover)] disabled:opacity-60"
+                      className="mt-1.5 flex w-full items-center gap-2 rounded-lg border border-dashed border-[var(--border-strong)] p-2.5 text-left transition-colors hover:bg-[var(--bg-hover)] disabled:opacity-60"
                     >
                       {createClient.isPending ? (
                         <Loader2 className="h-4 w-4 shrink-0 animate-spin text-[var(--fg-muted)]" />
@@ -1020,7 +1024,7 @@ export function NewServiceModal({ open, onClose, embedded = false }: NewServiceM
                     </button>
                   )
                 ))}
-              </div>
+              </>
             )}
 
             {showCustomForm && hasCustomFields && (
