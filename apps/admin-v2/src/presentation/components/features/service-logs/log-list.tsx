@@ -160,8 +160,13 @@ export function LogList({ date, payment, status, q, onEdit, onCreate }: LogListP
             animate={{ opacity: 1, y: 0 }}
             transition={{ delay: idx * 0.03 }}
             className={cn(
-              'rounded-lg border border-[var(--border)] bg-white p-3 transition-colors hover:bg-[var(--bg-sunken)]/40',
+              'rounded-lg border p-3 transition-colors',
               'lg:grid lg:grid-cols-[60px_minmax(0,1.3fr)_minmax(0,1.3fr)_minmax(0,1fr)_84px_112px_minmax(280px,auto)] lg:items-center lg:gap-3',
+              // Same amber as the "Sin cobrar" tile, so the total up top and the
+              // rows it is made of read as one thing.
+              isUnpaid
+                ? 'border-[var(--warning-200)] bg-[var(--warning-50)] hover:bg-[var(--warning-100)]'
+                : 'border-[var(--border)] bg-white hover:bg-[var(--bg-sunken)]/40',
             )}
           >
             {/* Hora — bigger weight on mobile to read like a chip,
