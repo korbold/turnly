@@ -60,6 +60,8 @@ interface LogListProps {
   onPerPageChange?: (size: PageSize) => void;
   onEdit?: (log: ServiceLog) => void;
   onCreate?: () => void;
+  /** Dashboard preview: no pager, no size selector — the full list is a click away. */
+  compact?: boolean;
 }
 
 export function LogList({
@@ -73,6 +75,7 @@ export function LogList({
   onPerPageChange,
   onEdit,
   onCreate,
+  compact = false,
 }: LogListProps) {
   const router = useRouter();
   const { data, isLoading } = useServiceLogs({ date, payment, status, q, page, perPage });
@@ -419,6 +422,7 @@ export function LogList({
       {/* Pager. The size selector stays put even on a single page — it is how
           the cashier asks for "Todos" — while the prev/next pair only appears
           when there is somewhere to go. */}
+      {!compact && (
       <div className="flex flex-col gap-2 pt-1 sm:flex-row sm:items-center sm:justify-between">
         <p className="text-[12px] text-[var(--fg-muted)]">
           {total === 0
@@ -468,6 +472,7 @@ export function LogList({
           </Select>
         </div>
       </div>
+      )}
 
       {/* Pago dialog — triggered from the unpaid rows' overflow menu. */}
       {payTarget && (
