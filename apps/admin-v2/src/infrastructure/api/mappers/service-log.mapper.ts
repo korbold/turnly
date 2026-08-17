@@ -88,6 +88,7 @@ export function mapDailySummary(raw: Record<string, unknown>): DailySummary {
       { count: number; total: number }
     >,
     byStatus: (raw.by_status ?? raw.byStatus ?? {}) as Record<string, number>,
+    collected: (raw.collected ?? { count: 0, total: 0 }) as { count: number; total: number },
     unpaid: (raw.unpaid ?? { count: 0, total: 0 }) as { count: number; total: number },
   };
 }

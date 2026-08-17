@@ -75,8 +75,10 @@ class EloquentServiceLogRepository implements ServiceLogRepositoryInterface
             ->with('service')
             ->get();
 
+        $reservationPrice = fn ($r) => (float) ($r->service?->price ?? 0);
+
         $serviceRevenue = (float) $rows->sum('price_charged');
-        $reservationRevenue = (float) $reservations->sum(fn ($r) => $r->service?->price ?? 0);
+        $reservationRevenue = (float) $reservations->sum($reservationPrice);
 
         // Mirrors the enum the cashier picks from; leaving `other` out
         // meant those sales landed in the revenue figure with no tile
@@ -95,19 +97,31 @@ class EloquentServiceLogRepository implements ServiceLogRepositoryInterface
             'completed'   => $rows->where('status', 'completed')->count(),
         ];
 
-        // "Cobrar al retirar" rows carry a price but no payment_method yet, so
-        // they land in total_revenue while every tile above ignores them. Report
-        // them on their own: paid tiles + unpaid must reconcile to the headline.
-        $unpaidRows = $rows->where('payment_status', 'unpaid');
+        // Money in the till vs money still owed. Both service logs and
+        // reservations run payment on a track of their own — "cobrar al
+        // retirar" leaves either one unpaid — so each figure has to split both
+        // sources. Deriving one from the other in the client would bill an
+        // unpaid reservation as collected, since reservations default to unpaid.
+        $paidRows           = $rows->where('payment_status', 'paid');
+        $unpaidRows         = $rows->where('payment_status', 'unpaid');
+        $paidReservations   = $reservations->where('payment_status', 'paid');
+        $unpaidReservations = $reservations->where('payment_status', 'unpaid');
 
         return [
             'total_washes'       => $rows->count() + $reservations->count(),
+            // Everything registered today, collected or not.
             'total_revenue'      => $serviceRevenue + $reservationRevenue,
             'by_payment_method'  => $byPaymentMethod,
             'by_status'          => $byStatus,
+            'collected'          => [
+                'count' => $paidRows->count() + $paidReservations->count(),
+                'total' => (float) $paidRows->sum('price_charged')
+                    + (float) $paidReservations->sum($reservationPrice),
+            ],
             'unpaid'             => [
-                'count' => $unpaidRows->count(),
-                'total' => (float) $unpaidRows->sum('price_charged'),
+                'count' => $unpaidRows->count() + $unpaidReservations->count(),
+                'total' => (float) $unpaidRows->sum('price_charged')
+                    + (float) $unpaidReservations->sum($reservationPrice),
             ],
         ];
     }

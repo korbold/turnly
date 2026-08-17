@@ -68,12 +68,15 @@ export interface ServiceLog {
 
 export interface DailySummary {
   totalWashes: number;
+  /** Everything registered today, collected or not. */
   totalRevenue: number;
+  /** Money actually in the till: paid service logs plus paid reservations. */
+  collected: { count: number; total: number };
   byPaymentMethod: Record<string, { count: number; total: number }>;
   byStatus: Record<string, number>;
   /**
    * Charged but not collected yet ("Cobrar al retirar"). Not a payment method
-   * — those rows have none — so it travels on its own. Paid tiles plus this
+   * — those rows have none — so it travels on its own. collected + unpaid
    * reconcile to totalRevenue.
    */
   unpaid: { count: number; total: number };

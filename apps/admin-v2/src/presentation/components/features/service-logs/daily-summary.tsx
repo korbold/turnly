@@ -46,7 +46,10 @@ export function DailySummary({ date }: DailySummaryProps) {
   }
 
   const total = data?.totalWashes ?? 0;
-  const revenue = data?.totalRevenue ?? 0;
+  // The headline is money in the till, not everything registered — what is
+  // still owed lives in its own tile. The backend splits both figures because
+  // reservations carry their own payment_status.
+  const collected = data?.collected?.total ?? 0;
   const unpaidTotal = data?.unpaid?.total ?? 0;
   const unpaidCount = data?.unpaid?.count ?? 0;
 
@@ -69,7 +72,7 @@ export function DailySummary({ date }: DailySummaryProps) {
           className="mt-2 text-[34px] font-bold leading-none tabular-nums text-[var(--fg-strong)]"
           style={{ fontFamily: 'var(--font-mono)' }}
         >
-          {fmt(revenue)}
+          {fmt(collected)}
         </p>
         <p className="mt-2 text-[13px] text-[var(--fg-secondary)]">
           {total === 0
