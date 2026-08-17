@@ -1,7 +1,7 @@
 'use client';
 
 import { useState } from 'react';
-import { CreditCard, Banknote, ArrowLeftRight, MoreHorizontal, Wallet, Eye, EyeOff } from 'lucide-react';
+import { CreditCard, Banknote, ArrowLeftRight, MoreHorizontal, Wallet, Eye, EyeOff, ChevronDown } from 'lucide-react';
 import { Skeleton } from '@/presentation/components/ui/skeleton';
 import { useDailySummary } from '@/presentation/hooks/use-service-logs';
 
@@ -44,6 +44,30 @@ function saveHideAmounts(hidden: boolean) {
   }
 }
 
+const COLLAPSED_KEY = 'turnly:service-log:summary-collapsed';
+
+/**
+ * Folded away to give the table room. Persisted like the amount toggle, so the
+ * cashier's choice survives a reload instead of springing back every morning.
+ */
+function loadCollapsed(): boolean {
+  if (typeof window === 'undefined') return false;
+  try {
+    return window.localStorage.getItem(COLLAPSED_KEY) === '1';
+  } catch {
+    return false;
+  }
+}
+
+function saveCollapsed(collapsed: boolean) {
+  if (typeof window === 'undefined') return;
+  try {
+    window.localStorage.setItem(COLLAPSED_KEY, collapsed ? '1' : '0');
+  } catch {
+    // localStorage full / disabled — the toggle still works for this session.
+  }
+}
+
 interface DailySummaryProps {
   date: string;
 }
@@ -63,8 +87,17 @@ const METHOD_TILES = [
 export function DailySummary({ date }: DailySummaryProps) {
   const { data, isLoading } = useDailySummary(date);
   const [hideAmounts, setHideAmounts] = useState(loadHideAmounts);
+  const [collapsed, setCollapsed] = useState(loadCollapsed);
 
   const money = (v: number) => (hideAmounts ? MASK : fmt(v));
+
+  function toggleCollapsed() {
+    setCollapsed((prev) => {
+      const next = !prev;
+      saveCollapsed(next);
+      return next;
+    });
+  }
 
   function toggleAmounts() {
     setHideAmounts((prev) => {
@@ -99,6 +132,41 @@ export function DailySummary({ date }: DailySummaryProps) {
   );
   const tileCount = visibleMethods.length + (unpaidTotal > 0 ? 1 : 0);
 
+  // ~44px instead of ~250px, with the two figures worth glancing at kept on the
+  // strip. Collapsing is for room, not for going blind — and the amount toggle
+  // still wins, so a masked caja stays masked here too.
+  if (collapsed) {
+    return (
+      <button
+        type="button"
+        onClick={toggleCollapsed}
+        aria-expanded={false}
+        aria-label="Mostrar la caja del día"
+        className="flex w-full items-center gap-3 rounded-xl border border-[var(--border)] bg-[var(--bg-surface)] px-4 py-2.5 text-left transition-colors hover:bg-[var(--bg-sunken)]/50"
+      >
+        <span className="text-[11px] font-semibold uppercase tracking-[0.04em] text-[var(--fg-muted)]">
+          Caja del día
+        </span>
+        <span
+          className="text-[15px] font-bold tabular-nums text-[var(--fg-strong)]"
+          style={{ fontFamily: 'var(--font-mono)' }}
+        >
+          {money(collected)}
+        </span>
+        {unpaidTotal > 0 && (
+          <span className="inline-flex items-center gap-1.5 rounded-full bg-[var(--warning-50)] px-2 py-0.5 text-[11.5px] font-semibold text-[var(--warning-700)] ring-1 ring-[var(--warning-200)]">
+            <Wallet className="h-3 w-3" aria-hidden="true" />
+            {money(unpaidTotal)} sin cobrar
+          </span>
+        )}
+        <ChevronDown
+          className="ml-auto h-4 w-4 shrink-0 text-[var(--fg-muted)]"
+          aria-hidden="true"
+        />
+      </button>
+    );
+  }
+
   return (
     <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
       {/* Hero: Ingresos del día */}
@@ -123,6 +191,16 @@ export function DailySummary({ date }: DailySummaryProps) {
             ) : (
               <Eye className="h-4 w-4" aria-hidden="true" />
             )}
+          </button>
+          <button
+            type="button"
+            onClick={toggleCollapsed}
+            aria-expanded
+            aria-label="Ocultar la caja del día"
+            title="Ocultar la caja del día"
+            className="-mr-1 -mt-1 shrink-0 rounded-lg p-1.5 text-[var(--fg-muted)] transition-colors hover:bg-[var(--bg-sunken)] hover:text-[var(--fg-strong)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+          >
+            <ChevronDown className="h-4 w-4 rotate-180" aria-hidden="true" />
           </button>
         </div>
         <p
