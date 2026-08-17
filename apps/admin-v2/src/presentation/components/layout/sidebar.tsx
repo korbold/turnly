@@ -18,6 +18,7 @@ import {
   Settings,
   ChevronsLeft,
   ChevronsRight,
+  ChevronRight,
   LogOut,
   Receipt,
 } from 'lucide-react';
@@ -75,6 +76,7 @@ interface TenantPlanData {
     reservations_this_month: number;
     employees: number;
   };
+  available?: { id: string; price: number }[];
 }
 
 export function Sidebar({ collapsed = false, onToggle }: SidebarProps) {
@@ -91,6 +93,22 @@ export function Sidebar({ collapsed = false, onToggle }: SidebarProps) {
     enabled: !!me?.tenant,
     staleTime: 60_000,
   });
+
+  // Nothing left to sell on the top tier, so the card stops nudging and just
+  // reports. Compared by price rather than by slug, so adding a plan above
+  // Premium brings the upgrade button back on its own.
+  const topPrice = Math.max(0, ...(planData?.available ?? []).map((p) => p.price));
+  const onTopPlan =
+    !planData?.is_trial &&
+    !!planData?.current &&
+    (planData.available?.length ?? 0) > 0 &&
+    planData.current.price >= topPrice;
+
+  const reservationsUsed = planData?.usage.reservations_this_month ?? 0;
+  const reservationsLabel =
+    planData?.current?.max_reservations_per_month == null
+      ? `${reservationsUsed} ${reservationsUsed === 1 ? 'reserva' : 'reservas'} este mes`
+      : `${reservationsUsed} / ${planData.current.max_reservations_per_month} reservas este mes`;
 
   const isActive = (href: string) => pathname?.startsWith(href);
 
@@ -144,24 +162,44 @@ export function Sidebar({ collapsed = false, onToggle }: SidebarProps) {
           </div>
           {!collapsed && planData?.current && (
             <div className="px-4 pb-3">
-              <div className="flex items-center gap-2 rounded-lg border border-[var(--brand-100)] bg-[var(--brand-50)] px-2.5 py-2">
-                <div className="min-w-0 flex-1">
-                  <p className="text-[9.5px] font-bold uppercase tracking-wider text-[var(--brand-600)]">
-                    {planData.is_trial ? 'Prueba' : `Plan ${planData.current.name}`}
-                  </p>
-                  <p className="truncate text-[11.5px] font-semibold text-[var(--brand-700)]">
-                    {planData.current.max_reservations_per_month === null
-                      ? `${planData.usage.reservations_this_month} reservas`
-                      : `${planData.usage.reservations_this_month} / ${planData.current.max_reservations_per_month} reservas`}
-                  </p>
-                </div>
+              {onTopPlan ? (
+                // Whole card is the link: no call to action, but the plan and
+                // its billing are still one click away.
                 <Link
                   href="/plan"
-                  className="shrink-0 rounded-md bg-[var(--brand-500)] px-2 py-1 text-[11px] font-medium text-white hover:bg-[var(--brand-600)] transition-colors"
+                  className="flex items-center gap-2 rounded-lg border border-[var(--brand-100)] bg-[var(--brand-50)] px-2.5 py-2 transition-colors hover:bg-[var(--brand-100)]"
                 >
-                  Subir
+                  <div className="min-w-0 flex-1">
+                    <p className="text-[9.5px] font-bold uppercase tracking-wider text-[var(--brand-600)]">
+                      Plan {planData.current.name}
+                    </p>
+                    <p className="truncate text-[11.5px] font-semibold text-[var(--brand-700)]">
+                      {reservationsLabel}
+                    </p>
+                  </div>
+                  <ChevronRight
+                    className="h-4 w-4 shrink-0 text-[var(--brand-600)]"
+                    aria-hidden="true"
+                  />
                 </Link>
-              </div>
+              ) : (
+                <div className="flex items-center gap-2 rounded-lg border border-[var(--brand-100)] bg-[var(--brand-50)] px-2.5 py-2">
+                  <div className="min-w-0 flex-1">
+                    <p className="text-[9.5px] font-bold uppercase tracking-wider text-[var(--brand-600)]">
+                      {planData.is_trial ? 'Prueba' : `Plan ${planData.current.name}`}
+                    </p>
+                    <p className="truncate text-[11.5px] font-semibold text-[var(--brand-700)]">
+                      {reservationsLabel}
+                    </p>
+                  </div>
+                  <Link
+                    href="/plan"
+                    className="shrink-0 rounded-md bg-[var(--brand-500)] px-2 py-1 text-[11px] font-medium text-white hover:bg-[var(--brand-600)] transition-colors"
+                  >
+                    Subir
+                  </Link>
+                </div>
+              )}
             </div>
           )}
         </div>
