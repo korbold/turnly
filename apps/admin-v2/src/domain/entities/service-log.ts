@@ -71,6 +71,12 @@ export interface DailySummary {
   totalRevenue: number;
   byPaymentMethod: Record<string, { count: number; total: number }>;
   byStatus: Record<string, number>;
+  /**
+   * Charged but not collected yet ("Cobrar al retirar"). Not a payment method
+   * — those rows have none — so it travels on its own. Paid tiles plus this
+   * reconcile to totalRevenue.
+   */
+  unpaid: { count: number; total: number };
 }
 
 export interface ServiceLogFilters {

@@ -36,9 +36,15 @@ return new class extends Migration
         // the cashier records the actual payment later.
         if (DB::getDriverName() === 'mysql') {
             DB::statement("ALTER TABLE service_logs MODIFY COLUMN payment_method ENUM('cash','card','transfer','other') NULL");
+        } else {
+            // SQLite stores the enum as TEXT but kept the NOT NULL from the
+            // create migration, so tests could not insert the very rows
+            // production allows. Relax it explicitly to keep the test schema
+            // honest about "cobrar al retirar".
+            Schema::table('service_logs', function (Blueprint $table) {
+                $table->string('payment_method')->nullable()->change();
+            });
         }
-        // SQLite stores enums as TEXT, so no schema change is required —
-        // NULL is already allowed on string columns by default.
     }
 
     public function down(): void

@@ -95,11 +95,20 @@ class EloquentServiceLogRepository implements ServiceLogRepositoryInterface
             'completed'   => $rows->where('status', 'completed')->count(),
         ];
 
+        // "Cobrar al retirar" rows carry a price but no payment_method yet, so
+        // they land in total_revenue while every tile above ignores them. Report
+        // them on their own: paid tiles + unpaid must reconcile to the headline.
+        $unpaidRows = $rows->where('payment_status', 'unpaid');
+
         return [
             'total_washes'       => $rows->count() + $reservations->count(),
             'total_revenue'      => $serviceRevenue + $reservationRevenue,
             'by_payment_method'  => $byPaymentMethod,
             'by_status'          => $byStatus,
+            'unpaid'             => [
+                'count' => $unpaidRows->count(),
+                'total' => (float) $unpaidRows->sum('price_charged'),
+            ],
         ];
     }
 

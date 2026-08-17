@@ -1,6 +1,6 @@
 'use client';
 
-import { CreditCard, Banknote, ArrowLeftRight, MoreHorizontal } from 'lucide-react';
+import { CreditCard, Banknote, ArrowLeftRight, MoreHorizontal, Wallet } from 'lucide-react';
 import { Skeleton } from '@/presentation/components/ui/skeleton';
 import { useDailySummary } from '@/presentation/hooks/use-service-logs';
 
@@ -47,6 +47,13 @@ export function DailySummary({ date }: DailySummaryProps) {
 
   const total = data?.totalWashes ?? 0;
   const revenue = data?.totalRevenue ?? 0;
+  const unpaidTotal = data?.unpaid?.total ?? 0;
+  const unpaidCount = data?.unpaid?.count ?? 0;
+
+  const visibleMethods = METHOD_TILES.filter(
+    (m) => m.key !== 'other' || (data?.byPaymentMethod?.other?.total ?? 0) > 0,
+  );
+  const tileCount = visibleMethods.length + (unpaidTotal > 0 ? 1 : 0);
 
   return (
     <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
@@ -72,11 +79,11 @@ export function DailySummary({ date }: DailySummaryProps) {
       </section>
 
       {/* One tile per payment method. "Otro" only shows up once it has
-          money in it, so the common two-method day stays uncluttered. */}
-      <div className="grid grid-cols-2 gap-3 lg:grid-cols-3">
-        {METHOD_TILES.filter(
-          (m) => m.key !== 'other' || (data?.byPaymentMethod?.other?.total ?? 0) > 0,
-        ).map(({ key, label, Icon, iconBg, iconFg }) => (
+          money in it, so the common two-method day stays uncluttered.
+          Exactly four tiles sit as a 2×2 block instead of 3+1, which would
+          leave the hero card beside a half-empty row. */}
+      <div className={`grid grid-cols-2 gap-3 ${tileCount === 4 ? 'lg:grid-cols-2' : 'lg:grid-cols-3'}`}>
+        {visibleMethods.map(({ key, label, Icon, iconBg, iconFg }) => (
           <section
             key={key}
             aria-label={`Pagos: ${label}`}
@@ -98,6 +105,38 @@ export function DailySummary({ date }: DailySummaryProps) {
             </p>
           </section>
         ))}
+
+        {/* Charged but not collected yet. Without it the tiles under-report the
+            day: they only cover rows that already have a payment method, while
+            "Ingresos del día" counts the pending ones too. Hidden at zero so a
+            fully-collected day stays quiet. Amber matches the "Pendiente" badge
+            in the table below, so both read as the same thing. */}
+        {unpaidTotal > 0 && (
+          <section
+            aria-label="Sin cobrar"
+            className="flex flex-col justify-between rounded-xl border border-[var(--warning-200)] bg-[var(--warning-50)] p-4"
+          >
+            <div className="flex items-center gap-2">
+              <span className="grid h-8 w-8 shrink-0 place-items-center rounded-lg bg-[var(--warning-100)]">
+                <Wallet className="h-4 w-4 text-[var(--warning-700)]" aria-hidden="true" />
+              </span>
+              <p className="truncate text-[11px] font-semibold uppercase tracking-[0.04em] text-[var(--warning-700)]">
+                Sin cobrar
+              </p>
+            </div>
+            <div className="mt-3">
+              <p
+                className="text-[22px] font-bold leading-none tabular-nums text-[var(--warning-700)]"
+                style={{ fontFamily: 'var(--font-mono)' }}
+              >
+                {fmt(unpaidTotal)}
+              </p>
+              <p className="mt-1.5 text-[11.5px] text-[var(--warning-700)]/80">
+                {unpaidCount} {unpaidCount === 1 ? 'servicio' : 'servicios'}
+              </p>
+            </div>
+          </section>
+        )}
       </div>
     </div>
   );
