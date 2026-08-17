@@ -25,6 +25,7 @@ import {
 import { cn } from '@/shared/utils/cn';
 import { useUpdateServiceLog, useUpdateServiceLogItems } from '@/presentation/hooks/use-service-logs';
 import { useTeam } from '@/presentation/hooks/use-team';
+import { useMe } from '@/presentation/hooks/use-auth';
 import { useServices } from '@/presentation/hooks/use-services';
 import { BankChip } from '@/presentation/components/features/reservations/bank-chip';
 import { ECUADOR_BANKS } from '@/shared/constants/banks';
@@ -122,6 +123,10 @@ export function EditServiceLogDialog({ log, open, onClose }: Props) {
   const updateLog = useUpdateServiceLog();
   const updateItems = useUpdateServiceLogItems();
   const { data: teamData } = useTeam({ excludeRole: 'client' as const });
+  const { data: me } = useMe();
+  // Locking the create but not the edit leaves the hole open: register as
+  // yourself, then reassign. The backend pins this too.
+  const lockedToSelf = me?.user?.role === 'cashier';
   const { data: servicesData, isLoading: servicesLoading } = useServices();
   const team = teamData?.data ?? [];
   const services = servicesData?.data ?? [];
@@ -458,7 +463,11 @@ export function EditServiceLogDialog({ log, open, onClose }: Props) {
           {/* ── Employee ───────────────────────────────────────────── */}
           <div>
             <Label className="mb-1.5 block">Empleado</Label>
-            <Select value={attendedBy} onValueChange={setAttendedBy}>
+            <Select
+              value={attendedBy}
+              onValueChange={setAttendedBy}
+              disabled={lockedToSelf}
+            >
               <SelectTrigger>
                 <SelectValue placeholder="Seleccionar empleado" />
               </SelectTrigger>

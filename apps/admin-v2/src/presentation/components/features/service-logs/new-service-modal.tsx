@@ -28,6 +28,7 @@ import { useServices } from '@/presentation/hooks/use-services';
 import { useProducts } from '@/presentation/hooks/use-products';
 import { useClients, useCreateClient } from '@/presentation/hooks/use-clients';
 import { useSettings } from '@/presentation/hooks/use-settings';
+import { useMe } from '@/presentation/hooks/use-auth';
 import { useTeam } from '@/presentation/hooks/use-team';
 import { useCreateServiceLog } from '@/presentation/hooks/use-service-logs';
 import { ServiceCombobox } from '@/presentation/components/features/service-logs/service-combobox';
@@ -289,6 +290,13 @@ export function NewServiceModal({ open, onClose, embedded = false }: NewServiceM
   const { data: clientsData, isLoading: clientsLoading } = useClients(1, clientSearch || undefined);
   const { data: settings } = useSettings();
   const { data: teamData } = useTeam({ excludeRole: 'client' as const });
+  const { data: me } = useMe();
+  // A cashier logs their own work: the field is theirs and locked. The backend
+  // pins it too — this only spares them a pointless choice.
+  const lockedToSelf = me?.user?.role === 'cashier';
+  // Derived rather than synced through an effect: for a cashier the field simply
+  // *is* their own id, so there is no second source of truth to keep in step.
+  const effectiveAttendedBy = lockedToSelf ? (me?.user?.id ?? '') : attendedBy;
   const createMutation = useCreateServiceLog();
   const createClient = useCreateClient();
 
@@ -547,7 +555,7 @@ export function NewServiceModal({ open, onClose, embedded = false }: NewServiceM
   }
 
   function handleSubmit() {
-    if (!selectedClientResourceId || !attendedBy) return;
+    if (!selectedClientResourceId || !effectiveAttendedBy) return;
     if (lineItems.length === 0 && productLines.length === 0) return;
     if (paymentTiming === 'now' && paymentMethod === 'transfer' && !paymentBank) {
       toast.error('Selecciona el banco emisor');
@@ -568,7 +576,7 @@ export function NewServiceModal({ open, onClose, embedded = false }: NewServiceM
     createMutation.mutate(
       {
         clientResourceId: selectedClientResourceId,
-        attendedBy,
+        attendedBy: effectiveAttendedBy,
         items: [
           ...lineItems.map((it) => ({
             itemType: 'service_variant' as const,
@@ -607,7 +615,7 @@ export function NewServiceModal({ open, onClose, embedded = false }: NewServiceM
   const canSubmit =
     (lineItems.length > 0 || productLines.length > 0) &&
     !!selectedClientResourceId &&
-    !!attendedBy &&
+    !!effectiveAttendedBy &&
     total > 0 &&
     // Every line with variants registered must have one picked. Lines
     // whose service has no variants pass through.
@@ -1134,7 +1142,11 @@ export function NewServiceModal({ open, onClose, embedded = false }: NewServiceM
           {/* Employee select */}
           <div className="order-3">
             <label className="mb-1.5 block text-sm font-medium">Empleado</label>
-            <Select value={attendedBy} onValueChange={setAttendedBy}>
+            <Select
+              value={effectiveAttendedBy}
+              onValueChange={setAttendedBy}
+              disabled={lockedToSelf}
+            >
               <SelectTrigger>
                 <SelectValue placeholder="Seleccionar empleado" />
               </SelectTrigger>
@@ -1146,6 +1158,11 @@ export function NewServiceModal({ open, onClose, embedded = false }: NewServiceM
                 ))}
               </SelectContent>
             </Select>
+            {lockedToSelf && (
+              <p className="mt-1 text-[11.5px] text-[var(--fg-muted)]">
+                El servicio se registra a tu nombre.
+              </p>
+            )}
           </div>
 
           {/* Timing toggle — cobrar ahora vs cobrar al retirar.

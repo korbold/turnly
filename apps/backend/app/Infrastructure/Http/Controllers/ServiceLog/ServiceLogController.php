@@ -19,6 +19,7 @@ use App\Infrastructure\Persistence\Models\ProductModel;
 use App\Infrastructure\Persistence\Models\ServiceLogItemModel;
 use App\Infrastructure\Persistence\Models\ServiceLogModel;
 use App\Infrastructure\Persistence\Models\TenantModel;
+use App\Infrastructure\Persistence\Models\TenantUserModel;
 use App\Infrastructure\Persistence\Models\UserBillingProfileModel;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
@@ -32,6 +33,22 @@ class ServiceLogController extends Controller
         private ConsumptionEngine $consumption,
         private StockLedger $stock,
     ) {}
+
+    /**
+     * A cashier's work is always attributed to the cashier. The picker is
+     * disabled for them in the UI, but that is a suggestion — commissions and
+     * per-employee reports read this column, so it is pinned here too. Owners
+     * and admins keep the free choice: they do need to log work on behalf of
+     * the staff. Returns the id that must be stored, whatever was requested.
+     */
+    private function resolveAttendedBy(Request $request, ?string $requested): ?string
+    {
+        $role = TenantUserModel::where('tenant_id', app('current_tenant_id'))
+            ->where('user_id', $request->user()->id)
+            ->value('role');
+
+        return $role === 'cashier' ? $request->user()->id : $requested;
+    }
 
     public function index(Request $request)
     {
@@ -120,7 +137,7 @@ class ServiceLogController extends Controller
             tenantId: app('current_tenant_id'),
             clientResourceId: $request->client_resource_id,
             serviceId: $primaryServiceId,
-            attendedBy: $request->attended_by,
+            attendedBy: $this->resolveAttendedBy($request, $request->attended_by),
             createdBy: $request->user()->id,
             priceCharged: $priceCharged,
             paymentMethod: $request->payment_method,
@@ -288,9 +305,17 @@ class ServiceLogController extends Controller
             'notes' => 'nullable|string|max:500',
         ]);
 
-        $serviceLog->update($request->only([
+        $payload = $request->only([
             'service_id', 'attended_by', 'price_charged', 'payment_method', 'payment_bank', 'notes',
-        ]));
+        ]);
+
+        // Blocking the create but not the edit would leave the hole open: log
+        // it as yourself, then reassign a second later.
+        if (array_key_exists('attended_by', $payload)) {
+            $payload['attended_by'] = $this->resolveAttendedBy($request, $payload['attended_by']);
+        }
+
+        $serviceLog->update($payload);
 
         return new ServiceLogResource($serviceLog->load(['clientResource', 'service', 'attendant']));
     }
