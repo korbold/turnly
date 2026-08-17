@@ -164,6 +164,19 @@ export function LogList({
         const statusCfg = STATUS_CONFIG[log.status];
         const pmCfg = log.paymentMethod ? PAYMENT_METHOD_CONFIG[log.paymentMethod] : null;
         const isUnpaid = log.paymentStatus === 'unpaid';
+        const inProgress = log.status === 'in_progress';
+        // The row carries both axes at once: blue for work still open (the
+        // "En progreso" badge's own colour), amber for money still owed (the
+        // "Sin cobrar" tile's). A row that is both fades one into the other
+        // rather than picking a winner. Done and paid stays plain — nothing
+        // left to do on it.
+        const rowTint = inProgress
+          ? isUnpaid
+            ? 'border-[var(--warning-200)] bg-gradient-to-r from-[var(--status-progress-bg)] to-[var(--warning-50)] hover:from-[var(--info-200)] hover:to-[var(--warning-100)]'
+            : 'border-[var(--info-200)] bg-[var(--status-progress-bg)] hover:bg-[var(--info-200)]'
+          : isUnpaid
+            ? 'border-[var(--warning-200)] bg-[var(--warning-50)] hover:bg-[var(--warning-100)]'
+            : 'border-[var(--border)] bg-white hover:bg-[var(--bg-sunken)]/40';
         // Recurso = the vehicle/resource, never the client name (the client
         // has its own column/sub-line). Prefer the composed label, then plate.
         const recursoLabel =
@@ -189,11 +202,7 @@ export function LogList({
             className={cn(
               'rounded-lg border p-3 transition-colors',
               'lg:grid lg:grid-cols-[60px_minmax(0,1.3fr)_minmax(0,1.3fr)_minmax(0,1fr)_84px_112px_minmax(280px,auto)] lg:items-center lg:gap-3',
-              // Same amber as the "Sin cobrar" tile, so the total up top and the
-              // rows it is made of read as one thing.
-              isUnpaid
-                ? 'border-[var(--warning-200)] bg-[var(--warning-50)] hover:bg-[var(--warning-100)]'
-                : 'border-[var(--border)] bg-white hover:bg-[var(--bg-sunken)]/40',
+              rowTint,
             )}
           >
             {/* Hora — bigger weight on mobile to read like a chip,
