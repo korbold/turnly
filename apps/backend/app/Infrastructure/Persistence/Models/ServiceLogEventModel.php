@@ -1,0 +1,56 @@
+<?php
+
+declare(strict_types=1);
+
+namespace App\Infrastructure\Persistence\Models;
+
+use App\Infrastructure\Persistence\Casts\DetailArrayCast;
+use App\Infrastructure\Persistence\Concerns\BelongsToTenant;
+use Illuminate\Database\Eloquent\Concerns\HasUuids;
+use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\Relations\BelongsTo;
+
+/**
+ * Una fila de la bitácora. Append-only: no hay update ni delete, y por eso
+ * no hay updated_at.
+ */
+class ServiceLogEventModel extends Model
+{
+    use HasUuids, BelongsToTenant;
+
+    protected $table = 'service_log_events';
+
+    public const UPDATED_AT = null;
+    public $timestamps = false;
+
+    public const EVENT_CREATED                = 'created';
+    public const EVENT_ASSIGNEE_CHANGED       = 'assignee_changed';
+    public const EVENT_ITEMS_CHANGED          = 'items_changed';
+    public const EVENT_PAYMENT_RECORDED       = 'payment_recorded';
+    public const EVENT_STATUS_CHANGED         = 'status_changed';
+    public const EVENT_INVOICE_REQUESTED      = 'invoice_requested';
+    public const EVENT_INVOICE_STATUS_CHANGED = 'invoice_status_changed';
+
+    protected $fillable = [
+        'tenant_id', 'service_log_id', 'event', 'detail',
+        'changed_by_user_id', 'changed_at',
+    ];
+
+    protected function casts(): array
+    {
+        return [
+            'detail'     => DetailArrayCast::class,
+            'changed_at' => 'datetime',
+        ];
+    }
+
+    public function serviceLog(): BelongsTo
+    {
+        return $this->belongsTo(ServiceLogModel::class, 'service_log_id');
+    }
+
+    public function changedBy(): BelongsTo
+    {
+        return $this->belongsTo(UserModel::class, 'changed_by_user_id');
+    }
+}
