@@ -807,11 +807,26 @@ class ServiceLogController extends Controller
 
     public function complete(Request $request, string $id): JsonResponse
     {
+        $log = ServiceLogModel::findOrFail($id);
+
+        // Completar es el momento en que el dato se congela, así que es el
+        // momento de exigirlo: un servicio cerrado sin lavador ni secador es
+        // exactamente el agujero que esta feature existe para tapar.
+        $isCarWash = TenantModel::find(app('current_tenant_id'))?->business_type === 'car_wash';
+
+        if ($isCarWash && (!$log->washed_by || !$log->dried_by)) {
+            return response()->json([
+                'error' => [
+                    'code'    => 'ASSIGNEES_REQUIRED',
+                    'message' => 'Asigná lavador y secador antes de completar el servicio.',
+                ],
+            ], 422);
+        }
+
         $this->serviceLogRepository->complete($id, new \DateTimeImmutable());
 
         // Apply BOM consumption now that the service is done. Engine is
         // idempotent so a manual retry won't double-debit stock.
-        $log = ServiceLogModel::find($id);
         if ($log) {
             $this->consumption->applyForServiceLog($log);
             $this->events->statusChanged($log, 'in_progress', 'completed', $request->user()?->id);
