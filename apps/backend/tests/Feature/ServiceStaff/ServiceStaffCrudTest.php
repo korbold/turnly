@@ -90,6 +90,20 @@ test('an owner deactivates a staff member instead of deleting one', function () 
     expect(ServiceStaffModel::withoutGlobalScopes()->find($staff->id))->not->toBeNull();
 });
 
+test('a cashier cannot deactivate a staff member', function () {
+    $staff = ServiceStaffModel::create([
+        'tenant_id' => $this->tenant->id, 'name' => 'Federman', 'position' => 'washer',
+    ]);
+
+    ($this->as)($this->cashier)
+        ->patchJson("/api/v1/service-staff/{$staff->id}", ['is_active' => false])
+        ->assertStatus(403)
+        ->assertJsonPath('error.code', 'FORBIDDEN');
+
+    // El gate tiene que sostener el dato, no sólo el status code.
+    expect($staff->fresh()->is_active)->toBeTrue();
+});
+
 test('there is no route to delete a staff member', function () {
     $staff = ServiceStaffModel::create([
         'tenant_id' => $this->tenant->id, 'name' => 'Federman', 'position' => 'washer',
