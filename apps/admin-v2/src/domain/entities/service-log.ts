@@ -93,6 +93,10 @@ export type PageSize = '10' | '15' | '20' | 'all';
 
 export interface ServiceLogFilters {
   date?: string;
+  /** Reports list a range instead of a single day. */
+  dateFrom?: string;
+  dateTo?: string;
+  paymentBank?: string;
   page?: number;
   perPage?: PageSize;
   payment?: PaymentFilter;

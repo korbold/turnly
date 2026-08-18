@@ -16,6 +16,9 @@ export class ApiServiceLogRepository implements ServiceLogRepository {
   async getAll(filters: ServiceLogFilters): Promise<PaginatedResult<ServiceLog>> {
     const params: Record<string, unknown> = {};
     if (filters.date) params.date = filters.date;
+    if (filters.dateFrom) params.date_from = filters.dateFrom;
+    if (filters.dateTo) params.date_to = filters.dateTo;
+    if (filters.paymentBank) params.payment_bank = filters.paymentBank;
     if (filters.page) params.page = filters.page;
     if (filters.perPage) params.per_page = filters.perPage;
     if (filters.payment) params.payment = filters.payment;

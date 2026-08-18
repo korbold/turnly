@@ -14,6 +14,7 @@ import { StatsCards } from '@/presentation/components/features/reports/stats-car
 import { RevenueChart } from '@/presentation/components/features/reports/revenue-chart';
 import { PaymentDonut } from '@/presentation/components/features/reports/payment-donut';
 import { DailyTable } from '@/presentation/components/features/reports/daily-table';
+import { ServiceLogTable } from '@/presentation/components/features/reports/service-log-table';
 import { MethodFilter } from '@/presentation/components/features/reports/method-filter';
 import { findBank } from '@/shared/constants/banks';
 
@@ -192,6 +193,10 @@ function ReportsContent() {
           }}
         />
       )}
+
+      {/* The rows behind the totals, so the report can be handed over as-is
+          instead of "trust me, it adds up". Follows the filters above. */}
+      <ServiceLogTable from={from} to={to} paymentMethod={method} paymentBank={bank} />
     </div>
   );
 }

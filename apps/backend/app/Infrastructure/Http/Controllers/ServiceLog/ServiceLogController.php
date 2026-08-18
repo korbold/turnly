@@ -57,10 +57,21 @@ class ServiceLogController extends Controller
         // services_summary block in the resource without per-row queries.
         $query = ServiceLogModel::with(['clientResource.client', 'service', 'attendant', 'items.variant']);
 
-        if ($request->has('date')) {
+        // A single day for the Registro Diario, a range for the reports, which
+        // list the rows behind their own totals.
+        if ($request->filled('date_from') || $request->filled('date_to')) {
+            $from = $request->get('date_from', $request->get('date_to'));
+            $to   = $request->get('date_to', $from);
+            $query->whereBetween('log_date', [$from, $to]);
+        } elseif ($request->has('date')) {
             $query->whereDate('log_date', $request->date);
         } else {
             $query->whereDate('log_date', now()->toDateString());
+        }
+
+        // The reports slice transfers by bank; the column lives on the log.
+        if ($request->filled('payment_bank')) {
+            $query->where('payment_bank', $request->get('payment_bank'));
         }
 
         // One control in the UI, mirroring the PAGO column: either a payment
