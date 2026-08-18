@@ -15,6 +15,7 @@ use App\Infrastructure\Http\Controllers\Auth\ClaimController;
 use App\Infrastructure\Http\Controllers\ClientResource\ClientResourceLookupController;
 use App\Infrastructure\Http\Controllers\Billing\UserBillingProfileController;
 use App\Infrastructure\Http\Controllers\ServiceLog\ServiceLogController;
+use App\Infrastructure\Http\Controllers\ServiceStaff\ServiceStaffController;
 use App\Infrastructure\Http\Controllers\ClientResource\ClientResourceController;
 use App\Infrastructure\Http\Controllers\BusinessResource\BusinessResourceController;
 use App\Infrastructure\Http\Controllers\Service\ServiceController;
@@ -194,6 +195,13 @@ Route::prefix('v1')->group(function () {
             Route::delete('reservation-items/{id}', [ReservationItemController::class, 'destroy']);
             Route::patch('reservation-items/{id}/price', [ReservationItemController::class, 'overridePrice']);
             Route::get('reservations/{id}/changes', [ReservationItemController::class, 'changes']);
+
+            // Personal que ejecuta el servicio sin ser usuario de la app
+            // (lavador / secador). Lectura abierta a miembros porque el
+            // select del Registro Diario la necesita; escritura del dueño.
+            Route::get('service-staff', [ServiceStaffController::class, 'index']);
+            Route::post('service-staff', [ServiceStaffController::class, 'store']);
+            Route::patch('service-staff/{id}', [ServiceStaffController::class, 'update']);
 
             // Service logs
             Route::get('service-logs/summary', [ServiceLogController::class, 'summary']);
