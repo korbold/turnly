@@ -129,11 +129,12 @@ export function EditServiceLogDialog({ log, open, onClose }: Props) {
   // Locking the create but not the edit leaves the hole open: register as
   // yourself, then reassign. The backend pins this too.
   const lockedToSelf = me?.user?.role === 'cashier';
-  // Only owner/admin sets what a service costs. Everyone else edits the
-  // ticket around a price that stays whatever the catalog (or the admin)
-  // says. The backend rejects a tampered unit_price for them too.
-  const { isManager } = usePermissions();
-  const priceLocked = itemsLocked || !isManager;
+  // Naming the price is granted per role in Configuración → Permisos
+  // (default: Admin only). Without it the ticket is still editable, but
+  // around a price that stays whatever the catalog — or the admin — said.
+  // The backend rejects a tampered unit_price the same way.
+  const { canSetPrice } = usePermissions();
+  const priceLocked = itemsLocked || !canSetPrice;
   const { data: servicesData, isLoading: servicesLoading } = useServices();
   const team = teamData?.data ?? [];
   const services = servicesData?.data ?? [];
@@ -353,7 +354,7 @@ export function EditServiceLogDialog({ log, open, onClose }: Props) {
                     Facturado · solo lectura
                   </span>
                 )}
-                {!itemsLocked && !isManager && (
+                {!itemsLocked && !canSetPrice && (
                   <span className="ml-2 inline-flex items-center gap-1 rounded-full bg-[var(--bg-sunken)] px-2 py-0.5 text-[10.5px] font-semibold uppercase tracking-[0.05em] text-[var(--fg-secondary)]">
                     Precio fijo
                   </span>
@@ -422,8 +423,8 @@ export function EditServiceLogDialog({ log, open, onClose }: Props) {
                           value={it.unitPrice}
                           disabled={priceLocked}
                           title={
-                            !itemsLocked && !isManager
-                              ? 'Solo el administrador puede cambiar el precio'
+                            !itemsLocked && !canSetPrice
+                              ? 'Tu rol no tiene permiso para cambiar el precio'
                               : undefined
                           }
                           onChange={(e) =>

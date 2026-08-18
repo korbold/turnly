@@ -7,7 +7,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/presentation/compone
 import { Skeleton } from '@/presentation/components/ui/skeleton';
 import { cn } from '@/shared/utils/cn';
 import { useSettings, useUpdateSettings } from '@/presentation/hooks/use-settings';
-import { DEFAULT_PERMISSIONS } from '@/shared/constants/permissions';
+import { DEFAULT_PERMISSIONS, PRIVILEGES } from '@/shared/constants/permissions';
 import { washerLabel } from '@/shared/constants/roles';
 
 const ROLES = ['Admin', 'Cajero', 'Lavador', 'Cliente'] as const;
@@ -22,10 +22,19 @@ const SECTIONS = [
 type Permission = 'full' | 'view' | 'none';
 
 const PERMISSION_CYCLE: Permission[] = ['full', 'view', 'none'];
+// A privilege is granted or it isn't — "solo lectura" says nothing about
+// being allowed to name a price, so those two columns skip it.
+const PRIVILEGE_CYCLE: Permission[] = ['full', 'none'];
 const PERMISSION_LABEL: Record<Permission, string> = {
   full: 'Acceso completo',
   view: 'Solo lectura',
   none: 'Sin acceso',
+};
+// A privilege reads as a yes/no, not as a level of access.
+const PRIVILEGE_LABEL: Record<Permission, string> = {
+  full: 'Permitido',
+  view: 'Permitido',
+  none: 'No permitido',
 };
 const PERMISSION_DISPLAY: Record<
   Permission,
@@ -50,6 +59,37 @@ const PERMISSION_DISPLAY: Record<
 
 type PermissionsMatrix = Record<string, Record<string, Permission>>;
 
+function MatrixCell({
+  perm,
+  label,
+  onClick,
+  divider = false,
+}: {
+  perm: Permission;
+  label: string;
+  onClick: () => void;
+  divider?: boolean;
+}) {
+  const { Icon, className } = PERMISSION_DISPLAY[perm];
+
+  return (
+    <td className={cn('px-2 py-2 text-center', divider && 'border-l border-[var(--border-soft)]')}>
+      <button
+        type="button"
+        onClick={onClick}
+        className={cn(
+          'inline-flex h-9 w-9 items-center justify-center rounded-md border transition-[background-color,color,transform] duration-150 ease-out active:scale-[0.94] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[rgba(42,109,244,0.20)] focus-visible:ring-offset-1',
+          className,
+        )}
+        aria-label={label}
+        title={label}
+      >
+        <Icon className="h-4 w-4" aria-hidden="true" />
+      </button>
+    </td>
+  );
+}
+
 // The matrix keys are persisted inside the tenant's settings JSON, so
 // 'Lavador' stays the key forever; only what the owner reads changes with
 // the trade (Barbero, Terapeuta, Entrenador…).
@@ -61,8 +101,8 @@ function buildDefaultMatrix(): PermissionsMatrix {
   const matrix: PermissionsMatrix = {};
   for (const role of ROLES) {
     matrix[role] = {};
-    for (const section of SECTIONS) {
-      matrix[role][section] = DEFAULT_PERMISSIONS[role]?.[section] ?? 'none';
+    for (const column of [...SECTIONS, ...PRIVILEGES]) {
+      matrix[role][column] = DEFAULT_PERMISSIONS[role]?.[column] ?? 'none';
     }
   }
   return matrix;
@@ -107,9 +147,14 @@ export function PermissionsTab() {
 
   function cyclePermission(role: string, section: string) {
     setMatrix((prev) => {
+      const cycle = (PRIVILEGES as readonly string[]).includes(section)
+        ? PRIVILEGE_CYCLE
+        : PERMISSION_CYCLE;
       const current = prev[role]?.[section] ?? 'none';
-      const nextIdx = (PERMISSION_CYCLE.indexOf(current) + 1) % PERMISSION_CYCLE.length;
-      const next = PERMISSION_CYCLE[nextIdx];
+      // indexOf is -1 for a value outside this column's cycle (a matrix saved
+      // when the column still had three states) → lands on index 0, 'full'.
+      const nextIdx = (cycle.indexOf(current) + 1) % cycle.length;
+      const next = cycle[nextIdx];
       const newMatrix = {
         ...prev,
         [role]: { ...prev[role], [section]: next },
@@ -129,11 +174,32 @@ export function PermissionsTab() {
         <CardTitle className="text-[15px] font-semibold">Matriz de permisos</CardTitle>
         <p className="text-xs text-[var(--fg-muted)]">
           Haz clic en una celda para alternar: completo · solo lectura · sin acceso.
+          Las dos últimas columnas son permisos sueltos dentro del Registro
+          Diario — se dan o no se dan.
         </p>
       </CardHeader>
       <CardContent className="overflow-x-auto p-0">
         <table className="w-full text-sm">
           <thead>
+            {/* Two tiers: the modules answer "what can this role open", the
+                privileges "what may it do once inside". Same storage, but
+                reading them as one flat row invites granting the price by
+                accident while aiming for a menu item. */}
+            <tr className="bg-[var(--niebla-clara,#F4F5F7)]">
+              <th />
+              <th
+                colSpan={SECTIONS.length}
+                className="px-2 pt-2.5 text-center text-[10px] font-semibold uppercase tracking-[0.06em] text-[var(--fg-muted)]"
+              >
+                Módulos
+              </th>
+              <th
+                colSpan={PRIVILEGES.length}
+                className="border-l border-[var(--border-soft)] px-2 pt-2.5 text-center text-[10px] font-semibold uppercase tracking-[0.06em] text-[var(--fg-muted)]"
+              >
+                Registro Diario
+              </th>
+            </tr>
             <tr className="border-b border-[var(--border-soft)] bg-[var(--niebla-clara,#F4F5F7)]">
               <th className="px-4 py-2.5 text-left text-[11px] font-semibold uppercase tracking-[0.04em] text-[var(--fg-muted)]">
                 Rol
@@ -146,6 +212,17 @@ export function PermissionsTab() {
                   {s}
                 </th>
               ))}
+              {PRIVILEGES.map((p, i) => (
+                <th
+                  key={p}
+                  className={cn(
+                    'px-2 py-2.5 text-center text-[11px] font-semibold uppercase tracking-[0.04em] text-[var(--fg-muted)]',
+                    i === 0 && 'border-l border-[var(--border-soft)]',
+                  )}
+                >
+                  {p}
+                </th>
+              ))}
             </tr>
           </thead>
           <tbody>
@@ -156,23 +233,25 @@ export function PermissionsTab() {
                 </td>
                 {SECTIONS.map((section) => {
                   const perm = matrix[role]?.[section] ?? 'none';
-                  const display = PERMISSION_DISPLAY[perm];
-                  const Icon = display.Icon;
                   return (
-                    <td key={section} className="px-2 py-2 text-center">
-                      <button
-                        type="button"
-                        onClick={() => cyclePermission(role, section)}
-                        className={cn(
-                          'inline-flex h-9 w-9 items-center justify-center rounded-md border transition-[background-color,color,transform] duration-150 ease-out active:scale-[0.94] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[rgba(42,109,244,0.20)] focus-visible:ring-offset-1',
-                          display.className
-                        )}
-                        aria-label={`${roleLabel(role, settings?.businessType)}, ${section}: ${PERMISSION_LABEL[perm]}`}
-                        title={`${roleLabel(role, settings?.businessType)} · ${section}: ${PERMISSION_LABEL[perm]}`}
-                      >
-                        <Icon className="h-4 w-4" aria-hidden="true" />
-                      </button>
-                    </td>
+                    <MatrixCell
+                      key={section}
+                      perm={perm}
+                      label={`${roleLabel(role, settings?.businessType)} · ${section}: ${PERMISSION_LABEL[perm]}`}
+                      onClick={() => cyclePermission(role, section)}
+                    />
+                  );
+                })}
+                {PRIVILEGES.map((privilege, i) => {
+                  const perm = matrix[role]?.[privilege] ?? 'none';
+                  return (
+                    <MatrixCell
+                      key={privilege}
+                      perm={perm}
+                      divider={i === 0}
+                      label={`${roleLabel(role, settings?.businessType)} · ${privilege}: ${PRIVILEGE_LABEL[perm]}`}
+                      onClick={() => cyclePermission(role, privilege)}
+                    />
                   );
                 })}
               </tr>

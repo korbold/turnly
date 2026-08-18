@@ -10,9 +10,10 @@ use App\Infrastructure\Persistence\Models\UserModel;
 use Illuminate\Support\Str;
 
 /**
- * Two privileges inside Registro Diario belong to the owner/admin alone:
- * setting what a service costs, and erasing a row from the day. The UI hides
- * both from staff; these cover the half that actually holds.
+ * Two privileges inside Registro Diario are granted per role in the
+ * permissions matrix: setting what a service costs (Precio) and erasing a row
+ * from the day (Eliminar). Both default to Admin-only. The UI hides the
+ * controls; these cover the half that actually holds.
  */
 beforeEach(function () {
     $this->tenant = TenantModel::factory()->create(['status' => 'active']);
@@ -57,6 +58,15 @@ beforeEach(function () {
 
     $this->as = fn (UserModel $user) => $this->actingAs($user)
         ->withHeader('X-Tenant', $this->tenant->slug);
+
+    // Hands a matrix row the privilege the owner would tick in Configuración.
+    $this->grant = function (string $matrixRole, string $privilege) {
+        $settings = $this->tenant->settings ?? [];
+        $permissions = $settings['permissions'] ?? [];
+        $permissions[$matrixRole][$privilege] = 'full';
+        $settings['permissions'] = $permissions;
+        $this->tenant->update(['settings' => $settings]);
+    };
 });
 
 // ── eliminación ──────────────────────────────────────────────────────────────
@@ -236,4 +246,149 @@ test('a cashier can still edit the notes on a log', function () {
         ->assertOk();
 
     expect($log->fresh()->notes)->toBe('Cliente espera en sala');
+});
+
+// ── otorgado en la matriz ────────────────────────────────────────────────────
+
+test('a cashier granted Precio in the matrix can re-price a line', function () {
+    ($this->grant)('Cajero', 'Precio');
+
+    $log = ($this->log)(['price_charged' => 10.00]);
+    ServiceLogItemModel::create([
+        'tenant_id'      => $this->tenant->id,
+        'service_log_id' => $log->id,
+        'item_type'      => 'service_variant',
+        'ref_id'         => $this->service->id,
+        'label'          => 'Lavado express',
+        'qty'            => 1,
+        'unit_price'     => 10.00,
+        'line_total'     => 10.00,
+        'sort_order'     => 0,
+    ]);
+
+    ($this->as)($this->cashier)
+        ->putJson("/api/v1/service-logs/{$log->id}/items", [
+            'items' => [[
+                'service_id' => $this->service->id,
+                'label'      => 'Lavado express',
+                'qty'        => 1,
+                'unit_price' => 3.00,
+            ]],
+        ])
+        ->assertOk();
+
+    expect((float) $log->fresh()->price_charged)->toBe(3.00);
+});
+
+test('a cashier granted Eliminar in the matrix can delete a log', function () {
+    ($this->grant)('Cajero', 'Eliminar');
+    $log = ($this->log)();
+
+    ($this->as)($this->cashier)
+        ->deleteJson("/api/v1/service-logs/{$log->id}")
+        ->assertOk();
+
+    $this->assertDatabaseMissing('service_logs', ['id' => $log->id]);
+});
+
+test('the two privileges are granted independently', function () {
+    // Precio only: the price opens, deletion stays shut.
+    ($this->grant)('Cajero', 'Precio');
+    $log = ($this->log)();
+
+    ($this->as)($this->cashier)
+        ->deleteJson("/api/v1/service-logs/{$log->id}")
+        ->assertStatus(403);
+
+    ($this->as)($this->cashier)
+        ->patchJson("/api/v1/service-logs/{$log->id}", ['price_charged' => 4.00])
+        ->assertOk();
+});
+
+test('granting a washer Precio does not grant it to the cashier', function () {
+    ($this->grant)('Lavador', 'Precio');
+    $log = ($this->log)(['price_charged' => 10.00]);
+
+    ($this->as)($this->cashier)
+        ->patchJson("/api/v1/service-logs/{$log->id}", ['price_charged' => 1.00])
+        ->assertStatus(403)
+        ->assertJsonPath('error.code', 'PRICE_LOCKED');
+});
+
+test('a matrix that predates the columns keeps the price shut', function () {
+    // A tenant that saved its permissions before Precio/Eliminar existed: the
+    // row is there, the privilege keys are not. Must not read as granted.
+    $this->tenant->update(['settings' => ['permissions' => [
+        'Cajero' => ['Dashboard' => 'view', 'Registro' => 'full'],
+    ]]]);
+
+    $log = ($this->log)(['price_charged' => 10.00]);
+
+    ($this->as)($this->cashier)
+        ->patchJson("/api/v1/service-logs/{$log->id}", ['price_charged' => 1.00])
+        ->assertStatus(403);
+
+    ($this->as)($this->cashier)
+        ->deleteJson("/api/v1/service-logs/{$log->id}")
+        ->assertStatus(403);
+});
+
+test('an admin keeps both privileges without any matrix saved', function () {
+    $admin = UserModel::factory()->create();
+    TenantUserModel::create([
+        'id'        => (string) Str::uuid(),
+        'tenant_id' => $this->tenant->id,
+        'user_id'   => $admin->id,
+        'role'      => 'tenant_admin',
+        'is_active' => true,
+    ]);
+
+    $log = ($this->log)(['price_charged' => 10.00]);
+
+    ($this->as)($admin)
+        ->patchJson("/api/v1/service-logs/{$log->id}", ['price_charged' => 2.00])
+        ->assertOk();
+
+    ($this->as)($admin)
+        ->deleteJson("/api/v1/service-logs/{$log->id}")
+        ->assertOk();
+});
+
+test('an admin the owner stripped of Precio loses it', function () {
+    // The matrix is the authority, not the role name: an owner who unticks
+    // Admin · Precio means it.
+    $admin = UserModel::factory()->create();
+    TenantUserModel::create([
+        'id'        => (string) Str::uuid(),
+        'tenant_id' => $this->tenant->id,
+        'user_id'   => $admin->id,
+        'role'      => 'tenant_admin',
+        'is_active' => true,
+    ]);
+    $this->tenant->update(['settings' => ['permissions' => [
+        'Admin' => ['Precio' => 'none'],
+    ]]]);
+
+    $log = ($this->log)(['price_charged' => 10.00]);
+
+    ($this->as)($admin)
+        ->patchJson("/api/v1/service-logs/{$log->id}", ['price_charged' => 2.00])
+        ->assertStatus(403);
+});
+
+test('an owner keeps both privileges even if the matrix says otherwise', function () {
+    // The owner has no row in the matrix and cannot lock themselves out.
+    $this->tenant->update(['settings' => ['permissions' => [
+        'Admin' => ['Precio' => 'none', 'Eliminar' => 'none'],
+    ]]]);
+
+    $log = ($this->log)(['price_charged' => 10.00]);
+
+    ($this->as)($this->owner)
+        ->patchJson("/api/v1/service-logs/{$log->id}", ['price_charged' => 2.00])
+        ->assertOk();
+
+    ($this->as)($this->owner)
+        ->deleteJson("/api/v1/service-logs/{$log->id}")
+        ->assertOk();
 });

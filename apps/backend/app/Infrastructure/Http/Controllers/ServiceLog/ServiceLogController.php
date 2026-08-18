@@ -10,6 +10,7 @@ use App\Domain\Identity\EcuadorIdValidator;
 use App\Domain\Inventory\ConsumptionEngine;
 use App\Domain\Inventory\StockLedger;
 use App\Domain\ServiceLog\Contracts\ServiceLogRepositoryInterface;
+use App\Domain\Tenant\StaffPrivileges;
 use App\Infrastructure\Billing\BillingServiceClient;
 use App\Infrastructure\Http\Controllers\Controller;
 use App\Infrastructure\Http\Requests\ServiceLog\CreateServiceLogRequest;
@@ -57,12 +58,11 @@ class ServiceLogController extends Controller
     }
 
     /**
-     * Deciding what a service costs, and whether a record ever existed, is an
-     * owner/admin call. Staff register work at the price the catalog (or the
-     * admin) already set. The admin UI hides both controls; this is the half
-     * that actually holds.
+     * Deciding what a service costs, and whether a record ever existed, are
+     * granted per role in Configuración → Permisos (default: Admin only). The
+     * admin UI hides both controls; this is the half that actually holds.
      */
-    private function isManager(Request $request): bool
+    private function may(Request $request, string $privilege): bool
     {
         // A super-admin has no tenant_users row — EnsureTenantMemberMiddleware
         // waves them through, so this has to as well or support can't touch a
@@ -71,7 +71,13 @@ class ServiceLogController extends Controller
             return true;
         }
 
-        return in_array($this->tenantRole($request), ['owner', 'tenant_admin'], true);
+        $permissions = TenantModel::find(app('current_tenant_id'))?->settings['permissions'] ?? [];
+
+        return StaffPrivileges::granted(
+            $this->tenantRole($request),
+            $privilege,
+            is_array($permissions) ? $permissions : [],
+        );
     }
 
     /**
@@ -94,7 +100,7 @@ class ServiceLogController extends Controller
     }
 
     /**
-     * Rejects a non-manager who tries to price a line himself.
+     * Rejects a caller without the Precio privilege who prices a line himself.
      *
      * A line that already exists on the log keeps whatever it was worth — the
      * admin may well have discounted it, and re-pricing to catalog on every
@@ -130,7 +136,7 @@ class ServiceLogController extends Controller
         return response()->json([
             'error' => [
                 'code'    => 'PRICE_LOCKED',
-                'message' => "Solo el administrador puede cambiar el precio de \"{$label}\".",
+                'message' => "Tu rol no tiene permiso para cambiar el precio de \"{$label}\".",
             ],
         ], 403);
     }
@@ -217,9 +223,10 @@ class ServiceLogController extends Controller
         $items = $request->input('items', []);
         $hasItems = is_array($items) && count($items) > 0;
 
-        // Staff register at the catalog price. Nothing is stored before this
-        // check, so a tampered payload never lands as a half-written ticket.
-        if (!$this->isManager($request)) {
+        // Without the Precio privilege, staff register at the catalog price.
+        // Nothing is stored before this check, so a tampered payload never
+        // lands as a half-written ticket.
+        if (!$this->may($request, StaffPrivileges::PRICE)) {
             $lines = $hasItems ? $items : [[
                 'service_id' => $request->service_id,
                 'variant_id' => $request->service_variant_id,
@@ -410,7 +417,7 @@ class ServiceLogController extends Controller
 
         // price_charged is the ticket total. Staff may edit everything else on
         // the row (employee, método de pago, notas) but not the money.
-        if ($request->has('price_charged') && !$this->isManager($request)) {
+        if ($request->has('price_charged') && !$this->may($request, StaffPrivileges::PRICE)) {
             return $this->priceLockedResponse('este registro');
         }
 
@@ -456,11 +463,12 @@ class ServiceLogController extends Controller
         $items  = $request->input('items');
         $userId = $request->user()?->id;
 
-        // Staff may still add, remove and re-count lines — that is the daily
-        // job. What they can't do is re-price one. Lines already on the log
-        // keep their stored price (an admin discount survives a cashier edit);
-        // anything new has to come in at catalog.
-        if (!$this->isManager($request)) {
+        // Without the Precio privilege staff may still add, remove and
+        // re-count lines — that is the daily job. What they can't do is
+        // re-price one. Lines already on the log keep their stored price (an
+        // admin discount survives a cashier edit); anything new has to come in
+        // at catalog.
+        if (!$this->may($request, StaffPrivileges::PRICE)) {
             $tampered = $this->firstTamperedPrice(
                 $items,
                 $serviceLog->items()->pluck('unit_price', 'ref_id')
@@ -508,13 +516,13 @@ class ServiceLogController extends Controller
     {
         $serviceLog = ServiceLogModel::findOrFail($id);
 
-        // Erasing a day's row is an owner/admin call: it moves the caja total
-        // and leaves no trace. Staff who mis-registered ask for it.
-        if (!$this->isManager($request)) {
+        // Erasing a day's row moves the caja total and leaves no trace, so it
+        // needs the Eliminar privilege. Staff without it ask instead.
+        if (!$this->may($request, StaffPrivileges::DELETE)) {
             return response()->json([
                 'error' => [
                     'code'    => 'FORBIDDEN',
-                    'message' => 'Solo el administrador puede eliminar un registro.',
+                    'message' => 'Tu rol no tiene permiso para eliminar registros.',
                 ],
             ], 403);
         }

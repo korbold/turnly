@@ -3,7 +3,7 @@
 import { useMe } from '@/presentation/hooks/use-auth';
 import { useSettings } from '@/presentation/hooks/use-settings';
 import type { UserRole } from '@/domain/entities/user';
-import { DEFAULT_PERMISSIONS } from '@/shared/constants/permissions';
+import { DEFAULT_PERMISSIONS, type Privilege } from '@/shared/constants/permissions';
 
 // Maps UserRole code → permissions matrix display key
 const ROLE_TO_MATRIX: Partial<Record<UserRole, string>> = {
@@ -32,20 +32,35 @@ const HREF_TO_SECTION: Record<string, string | undefined> = {
 
 const RESTRICTED_ROLES: UserRole[] = ['washer', 'cashier'];
 
-/** Roles that run the business, as opposed to operating it day to day.
-    Money-shaped decisions — what a service costs, whether a record ever
-    existed — belong to them and are not part of the permissions matrix:
-    the matrix grants sections, not privileges inside a section. */
-const MANAGER_ROLES: UserRole[] = ['owner', 'tenant_admin'];
-
 export function usePermissions() {
   const { data: me } = useMe();
   const { data: settings } = useSettings();
 
   const role = me?.user?.role;
-  // Undefined while /me is in flight — treat as restricted so the price
-  // field never flashes editable for a cashier on a slow connection.
-  const isManager = !!role && MANAGER_ROLES.includes(role);
+
+  /**
+   * Money-shaped decisions inside a section the role can already open:
+   * naming a price, erasing a row from the day. Granted per role in the
+   * same matrix as the sections (Configuración → Permisos), defaulting to
+   * Admin-only. The owner is never gated — it's their shop.
+   *
+   * `undefined` role means /me is still in flight: treat it as denied so a
+   * price field never flashes editable on a slow connection.
+   */
+  function hasPrivilege(privilege: Privilege): boolean {
+    if (!role || role === 'client') return false;
+    if (role === 'owner') return true;
+
+    const matrixKey = ROLE_TO_MATRIX[role];
+    if (!matrixKey) return false;
+
+    const granted =
+      settings?.permissions?.[matrixKey]?.[privilege]
+      ?? DEFAULT_PERMISSIONS[matrixKey]?.[privilege]
+      ?? 'none';
+
+    return granted === 'full';
+  }
 
   function canAccess(href: string): boolean {
     // Owner and admin always have full access.
@@ -73,5 +88,10 @@ export function usePermissions() {
     return true;
   }
 
-  return { canAccess, isManager };
+  return {
+    canAccess,
+    hasPrivilege,
+    canSetPrice: hasPrivilege('Precio'),
+    canDeleteLog: hasPrivilege('Eliminar'),
+  };
 }

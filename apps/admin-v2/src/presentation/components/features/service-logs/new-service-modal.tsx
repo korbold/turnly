@@ -295,9 +295,10 @@ export function NewServiceModal({ open, onClose, embedded = false }: NewServiceM
   // A cashier logs their own work: the field is theirs and locked. The backend
   // pins it too — this only spares them a pointless choice.
   const lockedToSelf = me?.user?.role === 'cashier';
-  // Setting what a service costs is an owner/admin call — staff register at
-  // the catalog price. Enforced server-side as well.
-  const { isManager } = usePermissions();
+  // Setting what a service costs is granted per role in Configuración →
+  // Permisos (default: Admin only). Without it, staff register at the
+  // catalog price. Enforced server-side as well.
+  const { canSetPrice } = usePermissions();
   // Derived rather than synced through an effect: for a cashier the field simply
   // *is* their own id, so there is no second source of truth to keep in step.
   const effectiveAttendedBy = lockedToSelf ? (me?.user?.id ?? '') : attendedBy;
@@ -723,11 +724,11 @@ export function NewServiceModal({ open, onClose, embedded = false }: NewServiceM
                           min={0}
                           step="0.01"
                           value={it.unitPrice}
-                          disabled={!isManager}
+                          disabled={!canSetPrice}
                           title={
-                            isManager
+                            canSetPrice
                               ? undefined
-                              : 'Solo el administrador puede cambiar el precio'
+                              : 'Tu rol no tiene permiso para cambiar el precio'
                           }
                           onChange={(e) =>
                             handleUpdateLineItem(it.service.id, {

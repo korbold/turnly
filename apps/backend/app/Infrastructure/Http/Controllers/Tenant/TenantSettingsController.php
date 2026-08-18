@@ -5,6 +5,8 @@ namespace App\Infrastructure\Http\Controllers\Tenant;
 use App\Infrastructure\Http\Controllers\Controller;
 use App\Infrastructure\Http\Resources\TenantResource;
 use App\Infrastructure\Persistence\Models\TenantModel;
+use App\Infrastructure\Persistence\Models\TenantUserModel;
+use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 
 class TenantSettingsController extends Controller
@@ -15,8 +17,39 @@ class TenantSettingsController extends Controller
         return new TenantResource($tenant);
     }
 
-    public function update(Request $request): TenantResource
+    /**
+     * Reading settings stays open to every member — the sidebar, the matrix
+     * and the business type are needed to render the app at all. Writing them
+     * is owner/admin only.
+     */
+    private function mayEditSettings(Request $request): bool
     {
+        if ($request->user()?->is_super_admin) {
+            return true;
+        }
+
+        $role = TenantUserModel::where('tenant_id', app('current_tenant_id'))
+            ->where('user_id', $request->user()->id)
+            ->value('role');
+
+        return in_array($role, ['owner', 'tenant_admin'], true);
+    }
+
+    public function update(Request $request): TenantResource|JsonResponse
+    {
+        // The matrix now grants privileges that move money (Precio, Eliminar),
+        // so whoever can write it can grant them to themselves. Config is
+        // 'none' for cashier/washer in the matrix, but that only ever hid the
+        // menu item — the endpoint took anyone's PATCH.
+        if (!$this->mayEditSettings($request)) {
+            return response()->json([
+                'error' => [
+                    'code'    => 'FORBIDDEN',
+                    'message' => 'Solo el administrador puede cambiar la configuración.',
+                ],
+            ], 403);
+        }
+
         $request->validate([
             'name' => 'sometimes|string|max:255',
             'description' => 'sometimes|nullable|string',

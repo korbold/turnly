@@ -83,9 +83,10 @@ export function LogList({
   const completeMutation = useCompleteServiceLog();
   const deleteMutation = useDeleteServiceLog();
   const emitInvoiceMutation = useEmitInvoice();
-  // Erasing a service is an owner/admin call — a cashier who mis-typed asks
-  // for it instead. The backend rejects it for everyone else too.
-  const { isManager } = usePermissions();
+  // Erasing a service is granted per role in Configuración → Permisos
+  // (default: Admin only). A cashier without it asks instead. The backend
+  // reads the same matrix.
+  const { canDeleteLog } = usePermissions();
   const [payTarget, setPayTarget] = useState<ServiceLog | null>(null);
   const [billingTarget, setBillingTarget] = useState<ServiceLog | null>(null);
 
@@ -404,8 +405,8 @@ export function LogList({
                   )}
                   {/* A paid or invoiced log is a financial/fiscal record —
                       deletion is blocked (backend enforces too), and even an
-                      unpaid one only the owner/admin may erase. */}
-                  {isManager && log.paymentStatus !== 'paid' && log.invoiceStatus === null && (
+                      unpaid one needs the Eliminar privilege. */}
+                  {canDeleteLog && log.paymentStatus !== 'paid' && log.invoiceStatus === null && (
                     <>
                       <DropdownMenuSeparator />
                       <DropdownMenuItem
