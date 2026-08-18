@@ -197,8 +197,11 @@ test('omitting a field leaves that assignee untouched', function () {
     $log = ($this->log)();
     $log->update(['washed_by' => $this->washer->id, 'dried_by' => $this->dryer->id]);
 
-    // Sólo se manda el secador; el lavador se omite, que NO es lo mismo que
-    // mandarlo en null. Con filled() en vez de has() este test se cae.
+    // Sólo se manda el secador; el lavador se omite. Omitir un campo tiene que
+    // dejarlo intacto incluso cuando ya tiene un valor — ningún otro test cubría
+    // eso, porque todos omiten sobre columnas que arrancan en null.
+    // (Nota: esto NO distingue has() de filled(); esos dos sólo difieren cuando
+    // el campo llega explícito en null, y de eso se ocupa el test de "clearing".)
     $otherDryer = ServiceStaffModel::create([
         'tenant_id' => $this->tenant->id, 'name' => 'Otro Secador', 'position' => 'dryer',
     ]);
