@@ -4,7 +4,6 @@ declare(strict_types=1);
 
 namespace App\Infrastructure\Persistence\Models;
 
-use App\Infrastructure\Persistence\Casts\DetailArrayCast;
 use App\Infrastructure\Persistence\Concerns\BelongsToTenant;
 use Illuminate\Database\Eloquent\Concerns\HasUuids;
 use Illuminate\Database\Eloquent\Model;
@@ -39,7 +38,7 @@ class ServiceLogEventModel extends Model
     protected function casts(): array
     {
         return [
-            'detail'     => DetailArrayCast::class,
+            'detail'     => 'array',
             'changed_at' => 'datetime',
         ];
     }

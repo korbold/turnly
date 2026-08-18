@@ -93,8 +93,10 @@ test('paymentRecorded keeps the method, the bank and the amount', function () {
 test('itemsChanged keeps both totals', function () {
     $this->recorder->itemsChanged($this->log, 12.00, 18.00, $this->user->id);
 
+    // toEqual y no toBe: 12.0 vuelve de JSON como int 12, y a la bitácora no le
+    // importa el tipo de PHP — su afirmación es "el total pasó de 12 a 18".
     expect(ServiceLogEventModel::withoutGlobalScopes()->first()->detail)
-        ->toBe(['total_before' => 12.0, 'total_after' => 18.0]);
+        ->toEqual(['total_before' => 12, 'total_after' => 18]);
 });
 
 test('statusChanged keeps the transition', function () {
