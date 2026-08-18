@@ -61,11 +61,16 @@ class SyncServiceLogInvoiceStatusJob implements ShouldQueue
         $estado = $inv['estado'] ?? null;
 
         if ($estado === 'autorizada') {
+            $previousStatus = $log->invoice_status;
+
             $log->update([
                 'invoice_status'              => 'autorizada',
                 'invoice_numero_autorizacion' => $inv['numero_autorizacion'] ?? $log->invoice_numero_autorizacion,
                 'invoice_error'               => null,
             ]);
+
+            app(\App\Application\Services\ServiceLogEventRecorder::class)
+                ->invoiceStatusChanged($log, $previousStatus, 'autorizada', null);
 
             $this->broadcast($log);
 
@@ -92,10 +97,15 @@ class SyncServiceLogInvoiceStatusJob implements ShouldQueue
         }
 
         if (in_array($estado, ['rechazada', 'devuelta', 'no_autorizada'], true)) {
+            $previousStatus = $log->invoice_status;
+
             $log->update([
                 'invoice_status' => 'rechazada',
                 'invoice_error'  => $this->firstMessage($inv),
             ]);
+
+            app(\App\Application\Services\ServiceLogEventRecorder::class)
+                ->invoiceStatusChanged($log, $previousStatus, 'rechazada', $this->firstMessage($inv));
 
             $this->broadcast($log);
 

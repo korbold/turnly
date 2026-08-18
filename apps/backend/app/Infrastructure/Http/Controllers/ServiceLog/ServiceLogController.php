@@ -3,6 +3,7 @@
 namespace App\Infrastructure\Http\Controllers\ServiceLog;
 
 use App\Application\DTOs\ServiceLog\CreateServiceLogDTO;
+use App\Application\Services\ServiceLogEventRecorder;
 use App\Application\UseCases\ServiceLog\CreateServiceLogUseCase;
 use App\Application\UseCases\ServiceLog\GetDailyLogUseCase;
 use App\Domain\Billing\ConsumidorFinalLimit;
@@ -35,6 +36,7 @@ class ServiceLogController extends Controller
         private ServiceLogRepositoryInterface $serviceLogRepository,
         private ConsumptionEngine $consumption,
         private StockLedger $stock,
+        private ServiceLogEventRecorder $events,
     ) {}
 
     /**
@@ -319,7 +321,11 @@ class ServiceLogController extends Controller
             }
         }
 
-        $model = ServiceLogModel::with(['clientResource', 'service', 'attendant', 'items.variant'])
+        // La bitácora arranca acá: el resto de los eventos se cuelgan de este.
+        $logModel = ServiceLogModel::findOrFail($serviceLog->id);
+        $this->events->created($logModel, $request->user()?->id);
+
+        $model = ServiceLogModel::with(['clientResource', 'service', 'attendant', 'items.variant', 'washer', 'dryer'])
             ->find($serviceLog->id);
 
         return (new ServiceLogResource($model))
@@ -474,6 +480,8 @@ class ServiceLogController extends Controller
         $items  = $request->input('items');
         $userId = $request->user()?->id;
 
+        $totalBefore = (float) $serviceLog->price_charged;
+
         // Without the Precio privilege staff may still add, remove and
         // re-count lines — that is the daily job. What they can't do is
         // re-price one. Lines already on the log keep their stored price (an
@@ -495,7 +503,7 @@ class ServiceLogController extends Controller
         // Wrap the delete + insert + parent-update in a single transaction
         // so a mid-loop constraint failure can never leave the log in a
         // corrupt state (old items gone, new items half-written).
-        \Illuminate\Support\Facades\DB::transaction(function () use ($serviceLog, $items, $userId) {
+        \Illuminate\Support\Facades\DB::transaction(function () use ($serviceLog, $items, $userId, $totalBefore) {
             // Sold units go back on the shelf before the lines are
             // replaced; persistItems then books the new sale. Editing a
             // ticket twice would otherwise discount the stock twice.
@@ -516,6 +524,9 @@ class ServiceLogController extends Controller
                 'price_charged'      => $newTotal,
                 'service_variant_id' => $firstService['variant_id'] ?? null,
             ]);
+
+            // Dentro de la transacción: un evento sin su cambio miente.
+            $this->events->itemsChanged($serviceLog, $totalBefore, $newTotal, $userId);
         });
 
         return new ServiceLogResource(
@@ -592,6 +603,14 @@ class ServiceLogController extends Controller
             'notes'          => trim(($log->notes ?? '') . ($data['reference'] ?? '' ? "\nRef: {$data['reference']}" : '')) ?: null,
         ]);
 
+        $this->events->paymentRecorded(
+            $log,
+            $data['method'],
+            $data['method'] === 'transfer' ? ($data['bank'] ?? null) : null,
+            (float) $log->price_charged,
+            $request->user()?->id,
+        );
+
         // Facturación is now a manual step: recording payment only marks
         // the log paid. The SRI invoice is emitted on demand via invoice()
         // (POST /service-logs/{id}/invoice), surfaced as the "Facturar"
@@ -602,7 +621,7 @@ class ServiceLogController extends Controller
         ))->response()->setStatusCode(200);
     }
 
-    public function invoice(string $id): JsonResponse
+    public function invoice(Request $request, string $id): JsonResponse
     {
         $log = ServiceLogModel::with('clientResource.client')->findOrFail($id);
 
@@ -630,6 +649,8 @@ class ServiceLogController extends Controller
                 ],
             ], 422);
         }
+
+        $this->events->invoiceRequested($log, $request->user()?->id);
 
         EmitServiceLogInvoiceJob::dispatch($id);
 
@@ -784,7 +805,7 @@ class ServiceLogController extends Controller
         return ServiceLogResource::collection($logs);
     }
 
-    public function complete(string $id): JsonResponse
+    public function complete(Request $request, string $id): JsonResponse
     {
         $this->serviceLogRepository->complete($id, new \DateTimeImmutable());
 
@@ -793,6 +814,7 @@ class ServiceLogController extends Controller
         $log = ServiceLogModel::find($id);
         if ($log) {
             $this->consumption->applyForServiceLog($log);
+            $this->events->statusChanged($log, 'in_progress', 'completed', $request->user()?->id);
         }
 
         return response()->json([

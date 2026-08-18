@@ -47,10 +47,15 @@ class EmitServiceLogInvoiceJob implements ShouldQueue
             $billingProfile['tipo'] === '07',
             ConsumidorFinalLimit::totalWithIva((float) $log->price_charged, $ivaMode),
         )) {
+            $previousStatus = $log->invoice_status;
+
             $log->update([
                 'invoice_status' => 'rechazada',
                 'invoice_error'  => ConsumidorFinalLimit::MESSAGE,
             ]);
+
+            app(\App\Application\Services\ServiceLogEventRecorder::class)
+                ->invoiceStatusChanged($log, $previousStatus, 'rechazada', ConsumidorFinalLimit::MESSAGE);
 
             $this->broadcast($log);
 
@@ -83,6 +88,8 @@ class EmitServiceLogInvoiceJob implements ShouldQueue
         try {
             $result = $client->emitInvoice($payload);
 
+            $previousStatus = $log->invoice_status;
+
             $log->update([
                 'invoice_external_id'         => $result['id'] ?? null,
                 'invoice_status'              => $result['estado'] ?? 'enviada',
@@ -92,6 +99,9 @@ class EmitServiceLogInvoiceJob implements ShouldQueue
                 'invoiced'                    => true,
                 'invoiced_at'                 => now(),
             ]);
+
+            app(\App\Application\Services\ServiceLogEventRecorder::class)
+                ->invoiceStatusChanged($log, $previousStatus, $result['estado'] ?? 'enviada', null);
 
             $this->broadcast($log);
 
@@ -122,10 +132,16 @@ class EmitServiceLogInvoiceJob implements ShouldQueue
                     ->delay(now()->addSeconds(15));
             }
         } catch (Throwable $e) {
+            $previousStatus = $log->invoice_status;
+
             $log->update([
                 'invoice_status' => 'rechazada',
                 'invoice_error'  => $e->getMessage(),
             ]);
+
+            app(\App\Application\Services\ServiceLogEventRecorder::class)
+                ->invoiceStatusChanged($log, $previousStatus, 'rechazada', $e->getMessage());
+
             throw $e;
         }
     }

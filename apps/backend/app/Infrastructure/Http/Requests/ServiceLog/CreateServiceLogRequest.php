@@ -91,6 +91,7 @@ class CreateServiceLogRequest extends FormRequest
 
                 $belongs = \App\Infrastructure\Persistence\Models\ServiceStaffModel::query()
                     ->where('id', $id)
+                    ->where('is_active', true)
                     ->exists();
 
                 if (!$belongs) {
