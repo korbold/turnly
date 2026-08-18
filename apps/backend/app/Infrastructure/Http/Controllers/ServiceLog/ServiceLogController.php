@@ -21,6 +21,7 @@ use App\Infrastructure\Persistence\Models\ProductModel;
 use App\Infrastructure\Persistence\Models\ServiceLogItemModel;
 use App\Infrastructure\Persistence\Models\ServiceLogModel;
 use App\Infrastructure\Persistence\Models\ServiceModel;
+use App\Infrastructure\Persistence\Models\ServiceStaffModel;
 use App\Infrastructure\Persistence\Models\ServiceVariantModel;
 use App\Infrastructure\Persistence\Models\TenantModel;
 use App\Infrastructure\Persistence\Models\TenantUserModel;
@@ -534,6 +535,114 @@ class ServiceLogController extends Controller
         );
     }
 
+    /**
+     * Asigna o corrige lavador y secador. Dos gates, y el estado del
+     * registro decide cuál aplica:
+     *
+     * - en progreso → privilegio `Asignados` de la matriz (default: Admin y
+     *   Cajero). Es la acción del día: el cajero asigna al lavador cuando
+     *   arranca y al secador cuando seca.
+     * - completado → owner/tenant_admin, regla fija y no configurable. Si
+     *   fuera una casilla, alguien podría devolvérsela al cajero y el rastro
+     *   pierde el sentido que lo justifica: el reclamo del dueño del
+     *   vehículo llega al mostrador, y quien lo atiende no puede ser quien
+     *   reescribe el historial.
+     */
+    public function updateAssignees(Request $request, string $id): ServiceLogResource|JsonResponse
+    {
+        $log = ServiceLogModel::findOrFail($id);
+
+        if ($log->status === 'completed') {
+            $isManager = $request->user()?->is_super_admin
+                || in_array($this->tenantRole($request), ['owner', 'tenant_admin'], true);
+
+            if (!$isManager) {
+                return response()->json([
+                    'error' => [
+                        'code'    => 'ASSIGNEES_LOCKED',
+                        'message' => 'El servicio ya está completado: solo el administrador puede corregir los asignados.',
+                    ],
+                ], 403);
+            }
+        } elseif (!$this->may($request, StaffPrivileges::ASSIGNEES)) {
+            return response()->json([
+                'error' => [
+                    'code'    => 'ASSIGNEES_FORBIDDEN',
+                    'message' => 'Tu rol no tiene permiso para asignar personal.',
+                ],
+            ], 403);
+        }
+
+        $request->validate([
+            'washed_by' => 'nullable|uuid',
+            'dried_by'  => 'nullable|uuid',
+        ]);
+
+        // Solo los puestos que el request menciona. Omitir un campo es "no lo
+        // toques"; mandarlo en null es "sacá al asignado", y son cosas
+        // distintas.
+        $positions = [
+            'washed_by' => ServiceStaffModel::POSITION_WASHER,
+            'dried_by'  => ServiceStaffModel::POSITION_DRYER,
+        ];
+
+        $resolved = [];
+        foreach ($positions as $field => $position) {
+            if (!$request->has($field)) {
+                continue;
+            }
+
+            $staffId = $request->input($field);
+            if ($staffId === null) {
+                $resolved[$field] = null;
+                continue;
+            }
+
+            // forPosition ya filtra activos y acepta 'both'; el TenantScope
+            // se encarga de la pertenencia.
+            $staff = ServiceStaffModel::forPosition($position)->find($staffId);
+            if (!$staff) {
+                return response()->json([
+                    'message' => 'El personal seleccionado no es válido para ese puesto.',
+                    'errors'  => [$field => ['El personal seleccionado no es válido para ese puesto.']],
+                ], 422);
+            }
+
+            $resolved[$field] = $staff;
+        }
+
+        \Illuminate\Support\Facades\DB::transaction(function () use ($log, $resolved, $positions, $request) {
+            $patch = [];
+
+            foreach ($resolved as $field => $staff) {
+                $currentId = $log->{$field};
+                $nextId    = $staff?->id;
+
+                if ($currentId === $nextId) {
+                    continue;
+                }
+
+                $patch[$field] = $nextId;
+
+                $this->events->assigneeChanged(
+                    $log,
+                    $positions[$field],
+                    $currentId ? ServiceStaffModel::withoutGlobalScopes()->find($currentId) : null,
+                    $staff,
+                    $request->user()?->id,
+                );
+            }
+
+            if ($patch !== []) {
+                $log->update($patch);
+            }
+        });
+
+        return new ServiceLogResource(
+            $log->fresh()->load(['clientResource.client', 'service', 'attendant', 'washer', 'dryer'])
+        );
+    }
+
     public function destroy(Request $request, string $id): JsonResponse
     {
         $serviceLog = ServiceLogModel::findOrFail($id);
@@ -827,10 +936,8 @@ class ServiceLogController extends Controller
 
         // Apply BOM consumption now that the service is done. Engine is
         // idempotent so a manual retry won't double-debit stock.
-        if ($log) {
-            $this->consumption->applyForServiceLog($log);
-            $this->events->statusChanged($log, 'in_progress', 'completed', $request->user()?->id);
-        }
+        $this->consumption->applyForServiceLog($log);
+        $this->events->statusChanged($log, 'in_progress', 'completed', $request->user()?->id);
 
         return response()->json([
             'data' => ['message' => 'Service log completed'],

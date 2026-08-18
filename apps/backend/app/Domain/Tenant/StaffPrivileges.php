@@ -10,7 +10,12 @@ namespace App\Domain\Tenant;
  * money, so they are granted explicitly rather than implied by the role.
  *
  * Both columns default to Admin-only, which is exactly the behaviour that
- * shipped hard-coded — a tenant whose matrix predates them keeps it.
+ * shipped hard-coded — a tenant whose matrix predates them keeps it. A third
+ * privilege, Asignados, governs who may set the washer/dryer on a service
+ * log while it is still `in_progress` (defaults: Admin and Cajero). It only
+ * governs that in-progress window — correcting the assignees once a log is
+ * `completed` is a fixed owner/tenant_admin-only rule that deliberately does
+ * NOT go through this matrix; see ServiceLogController::updateAssignees.
  *
  * Mirrors the admin's PRIVILEGES / DEFAULT_PERMISSIONS / ROLE_TO_MATRIX. The
  * keys are display names because that is what the editor persists; they are
@@ -18,8 +23,9 @@ namespace App\Domain\Tenant;
  */
 final class StaffPrivileges
 {
-    public const PRICE  = 'Precio';
-    public const DELETE = 'Eliminar';
+    public const PRICE     = 'Precio';
+    public const DELETE    = 'Eliminar';
+    public const ASSIGNEES = 'Asignados';
 
     private const ROLE_TO_MATRIX = [
         'tenant_admin' => 'Admin',
@@ -29,10 +35,10 @@ final class StaffPrivileges
     ];
 
     private const DEFAULTS = [
-        'Admin'   => [self::PRICE => 'full', self::DELETE => 'full'],
-        'Cajero'  => [self::PRICE => 'none', self::DELETE => 'none'],
-        'Lavador' => [self::PRICE => 'none', self::DELETE => 'none'],
-        'Cliente' => [self::PRICE => 'none', self::DELETE => 'none'],
+        'Admin'   => [self::PRICE => 'full', self::DELETE => 'full', self::ASSIGNEES => 'full'],
+        'Cajero'  => [self::PRICE => 'none', self::DELETE => 'none', self::ASSIGNEES => 'full'],
+        'Lavador' => [self::PRICE => 'none', self::DELETE => 'none', self::ASSIGNEES => 'none'],
+        'Cliente' => [self::PRICE => 'none', self::DELETE => 'none', self::ASSIGNEES => 'none'],
     ];
 
     /**

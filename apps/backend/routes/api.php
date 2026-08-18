@@ -210,6 +210,9 @@ Route::prefix('v1')->group(function () {
             Route::get('service-logs/{id}', [ServiceLogController::class, 'show']);
             Route::patch('service-logs/{id}', [ServiceLogController::class, 'update']);
             Route::put('service-logs/{id}/items', [ServiceLogController::class, 'updateItems']);
+            // Asignar lavador y secador. Gate doble: privilegio en progreso,
+            // solo admin una vez completado.
+            Route::patch('service-logs/{id}/assignees', [ServiceLogController::class, 'updateAssignees']);
             Route::delete('service-logs/{id}', [ServiceLogController::class, 'destroy']);
             Route::patch('service-logs/{id}/complete', [ServiceLogController::class, 'complete']);
             // Late payment registration — cashier marks a "cobrar al
