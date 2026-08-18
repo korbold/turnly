@@ -338,7 +338,7 @@ class ServiceLogController extends Controller
     {
         $serviceLog = ServiceLogModel::with([
             'clientResource.client', 'service', 'attendant', 'reservation', 'items.variant',
-            'washer', 'dryer',
+            'washer', 'dryer', 'events.changedBy',
         ])->findOrFail($id);
         return new ServiceLogResource($serviceLog);
     }
@@ -624,6 +624,11 @@ class ServiceLogController extends Controller
 
                 $patch[$field] = $nextId;
 
+                // withoutGlobalScopes() bypasses TenantScope on purpose here:
+                // $currentId is the log's own already-validated column, never
+                // request input, so there's nothing to smuggle across
+                // tenants. Never copy this pattern to a value that comes
+                // from the request — that's an IDOR waiting to happen.
                 $this->events->assigneeChanged(
                     $log,
                     $positions[$field],

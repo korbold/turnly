@@ -96,6 +96,18 @@ class ServiceLogResource extends JsonResource
                     ->filter()
                     ->values(),
             ]),
+
+            // Bitácora. Solo cuando el llamador la pidió: son N filas por
+            // registro y la lista del día no la usa.
+            'events' => $this->whenLoaded('events', fn () => $this->events->map(fn ($e) => [
+                'id'         => $e->id,
+                'event'      => $e->event,
+                'detail'     => $e->detail ?? [],
+                'changed_at' => $e->changed_at?->toIso8601String(),
+                'changed_by' => $e->relationLoaded('changedBy') && $e->changedBy
+                    ? ['id' => $e->changedBy->id, 'name' => $e->changedBy->name]
+                    : null,
+            ])),
         ];
     }
 

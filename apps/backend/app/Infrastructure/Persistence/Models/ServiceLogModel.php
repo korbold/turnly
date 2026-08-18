@@ -48,6 +48,13 @@ class ServiceLogModel extends Model
         return $this->hasMany(ServiceLogItemModel::class, 'service_log_id')->orderBy('sort_order');
     }
 
+    /** Bitácora del servicio, del más viejo al más nuevo: se lee como relato. */
+    public function events()
+    {
+        return $this->hasMany(ServiceLogEventModel::class, 'service_log_id')
+            ->orderBy('changed_at');
+    }
+
     public function tenant()
     {
         return $this->belongsTo(TenantModel::class, 'tenant_id');

@@ -193,6 +193,27 @@ test('clearing an assignee is a change and is recorded', function () {
     expect($event->detail['to_name'])->toBeNull();
 });
 
+test('omitting a field leaves that assignee untouched', function () {
+    $log = ($this->log)();
+    $log->update(['washed_by' => $this->washer->id, 'dried_by' => $this->dryer->id]);
+
+    // Sólo se manda el secador; el lavador se omite, que NO es lo mismo que
+    // mandarlo en null. Con filled() en vez de has() este test se cae.
+    $otherDryer = ServiceStaffModel::create([
+        'tenant_id' => $this->tenant->id, 'name' => 'Otro Secador', 'position' => 'dryer',
+    ]);
+
+    ($this->as)($this->cashier)
+        ->patchJson("/api/v1/service-logs/{$log->id}/assignees", [
+            'dried_by' => $otherDryer->id,
+        ])
+        ->assertOk();
+
+    $fresh = $log->fresh();
+    expect($fresh->washed_by)->toBe($this->washer->id);
+    expect($fresh->dried_by)->toBe($otherDryer->id);
+});
+
 test('a dryer cannot be assigned as the washer', function () {
     $log = ($this->log)();
 
