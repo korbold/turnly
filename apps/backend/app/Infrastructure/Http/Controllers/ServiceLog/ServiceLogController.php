@@ -146,7 +146,10 @@ class ServiceLogController extends Controller
         // `items` is eager-loaded so the LogList row can render the
         // multi-service rollup ("Lavada + Pulido +1 más") off the
         // services_summary block in the resource without per-row queries.
-        $query = ServiceLogModel::with(['clientResource.client', 'service', 'attendant', 'items.variant']);
+        $query = ServiceLogModel::with([
+            'clientResource.client', 'service', 'attendant', 'items.variant',
+            'washer', 'dryer',
+        ]);
 
         // A single day for the Registro Diario, a range for the reports, which
         // list the rows behind their own totals.
@@ -275,6 +278,13 @@ class ServiceLogController extends Controller
         if ($request->service_variant_id) {
             $patch['service_variant_id'] = $request->service_variant_id;
         }
+        // Asignados al registrar: opcionales. Van por el modelo y no por el
+        // DTO para no arrastrar el pipeline de dominio por dos columnas.
+        foreach (['washed_by', 'dried_by'] as $field) {
+            if ($request->filled($field)) {
+                $patch[$field] = $request->input($field);
+            }
+        }
         if ($paymentStatus === 'unpaid') {
             $patch['payment_status'] = 'unpaid';
             $patch['paid_at'] = null;
@@ -321,6 +331,7 @@ class ServiceLogController extends Controller
     {
         $serviceLog = ServiceLogModel::with([
             'clientResource.client', 'service', 'attendant', 'reservation', 'items.variant',
+            'washer', 'dryer',
         ])->findOrFail($id);
         return new ServiceLogResource($serviceLog);
     }

@@ -15,6 +15,8 @@ class ServiceLogResource extends JsonResource
             'service_id'     => $this->service_id,
             'reservation_id' => $this->reservation_id,
             'attended_by'    => $this->attended_by,
+            'washed_by'      => $this->washed_by,
+            'dried_by'       => $this->dried_by,
             'created_by'     => $this->created_by,
             'started_at'     => $this->started_at?->toIso8601String(),
             'finished_at'    => $this->finished_at?->toIso8601String(),
@@ -52,6 +54,18 @@ class ServiceLogResource extends JsonResource
             'attendant' => $this->whenLoaded('attendant', fn () => [
                 'name' => $this->attendant->name,
             ]),
+
+            // Nombres del personal que ejecutó el trabajo. La fila de la
+            // lista los muestra y el detalle los usa para el reclamo.
+            'washer' => $this->whenLoaded('washer', fn () => $this->washer ? [
+                'id'   => $this->washer->id,
+                'name' => $this->washer->name,
+            ] : null),
+
+            'dryer' => $this->whenLoaded('dryer', fn () => $this->dryer ? [
+                'id'   => $this->dryer->id,
+                'name' => $this->dryer->name,
+            ] : null),
 
             // Multi-service breakdown — loaded only when the caller
             // asked for `items` so we don't fan-out queries on list

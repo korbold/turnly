@@ -15,7 +15,7 @@ class ServiceLogModel extends Model
 
     protected $fillable = [
         'tenant_id', 'client_resource_id', 'service_id', 'service_variant_id', 'reservation_id',
-        'attended_by', 'created_by', 'started_at', 'finished_at',
+        'attended_by', 'created_by', 'washed_by', 'dried_by', 'started_at', 'finished_at',
         'price_charged', 'payment_method', 'payment_bank', 'payment_status', 'paid_at',
         'invoiced', 'invoiced_at',
         'invoice_external_id', 'invoice_status', 'invoice_clave_acceso',
@@ -71,6 +71,18 @@ class ServiceLogModel extends Model
     public function attendant()
     {
         return $this->belongsTo(UserModel::class, 'attended_by');
+    }
+
+    /** Quién lavó — catálogo service_staff, no un usuario de la app. */
+    public function washer()
+    {
+        return $this->belongsTo(ServiceStaffModel::class, 'washed_by');
+    }
+
+    /** Quién secó. */
+    public function dryer()
+    {
+        return $this->belongsTo(ServiceStaffModel::class, 'dried_by');
     }
 
     public function creator()

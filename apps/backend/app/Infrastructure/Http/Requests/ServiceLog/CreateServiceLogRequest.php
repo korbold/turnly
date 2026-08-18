@@ -24,6 +24,8 @@ class CreateServiceLogRequest extends FormRequest
             'service_id'         => ['nullable', 'required_without:items', 'uuid'],
             'service_variant_id' => ['nullable', 'uuid'],
             'attended_by'     => ['required', 'uuid'],
+            'washed_by' => 'nullable|uuid|exists:service_staff,id',
+            'dried_by'  => 'nullable|uuid|exists:service_staff,id',
             'price_charged'   => ['required_without:items', 'numeric', 'min:0'],
             // Multi-service items — when present, the controller sums
             // their line totals into price_charged and persists each as
@@ -59,6 +61,11 @@ class CreateServiceLogRequest extends FormRequest
         ];
     }
 
+    /**
+     * `exists:service_staff,id` deja pasar personal de otro tenant. El
+     * scope no se puede expresar en la regla porque el tenant vive en el
+     * contenedor, no en el request.
+     */
     public function withValidator($validator): void
     {
         $validator->after(function ($validator) {
@@ -73,6 +80,21 @@ class CreateServiceLogRequest extends FormRequest
                             ? 'Falta el producto de la línea.'
                             : 'Falta el servicio de la línea.',
                     );
+                }
+            }
+
+            foreach (['washed_by', 'dried_by'] as $field) {
+                $id = $this->input($field);
+                if (!$id) {
+                    continue;
+                }
+
+                $belongs = \App\Infrastructure\Persistence\Models\ServiceStaffModel::query()
+                    ->where('id', $id)
+                    ->exists();
+
+                if (!$belongs) {
+                    $validator->errors()->add($field, 'El personal seleccionado no pertenece a este negocio.');
                 }
             }
         });
