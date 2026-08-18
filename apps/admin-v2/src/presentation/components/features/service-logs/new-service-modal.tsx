@@ -29,6 +29,7 @@ import { useProducts } from '@/presentation/hooks/use-products';
 import { useClients, useCreateClient } from '@/presentation/hooks/use-clients';
 import { useSettings } from '@/presentation/hooks/use-settings';
 import { useMe } from '@/presentation/hooks/use-auth';
+import { usePermissions } from '@/presentation/hooks/use-permissions';
 import { useTeam } from '@/presentation/hooks/use-team';
 import { useCreateServiceLog } from '@/presentation/hooks/use-service-logs';
 import { ServiceCombobox } from '@/presentation/components/features/service-logs/service-combobox';
@@ -294,6 +295,9 @@ export function NewServiceModal({ open, onClose, embedded = false }: NewServiceM
   // A cashier logs their own work: the field is theirs and locked. The backend
   // pins it too — this only spares them a pointless choice.
   const lockedToSelf = me?.user?.role === 'cashier';
+  // Setting what a service costs is an owner/admin call — staff register at
+  // the catalog price. Enforced server-side as well.
+  const { isManager } = usePermissions();
   // Derived rather than synced through an effect: for a cashier the field simply
   // *is* their own id, so there is no second source of truth to keep in step.
   const effectiveAttendedBy = lockedToSelf ? (me?.user?.id ?? '') : attendedBy;
@@ -719,6 +723,12 @@ export function NewServiceModal({ open, onClose, embedded = false }: NewServiceM
                           min={0}
                           step="0.01"
                           value={it.unitPrice}
+                          disabled={!isManager}
+                          title={
+                            isManager
+                              ? undefined
+                              : 'Solo el administrador puede cambiar el precio'
+                          }
                           onChange={(e) =>
                             handleUpdateLineItem(it.service.id, {
                               unitPrice: Math.max(0, Number(e.target.value) || 0),

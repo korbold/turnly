@@ -28,6 +28,7 @@ import { RegisterPaymentDialog } from '@/presentation/components/features/servic
 import { FiscalProfileDialog } from '@/presentation/components/features/service-logs/fiscal-profile-dialog';
 import { InvoiceStatusBadge } from '@/presentation/components/features/service-logs/invoice-status-badge';
 import { useEmitInvoice } from '@/presentation/hooks/use-invoices';
+import { usePermissions } from '@/presentation/hooks/use-permissions';
 import {
   Select,
   SelectContent,
@@ -82,6 +83,9 @@ export function LogList({
   const completeMutation = useCompleteServiceLog();
   const deleteMutation = useDeleteServiceLog();
   const emitInvoiceMutation = useEmitInvoice();
+  // Erasing a service is an owner/admin call — a cashier who mis-typed asks
+  // for it instead. The backend rejects it for everyone else too.
+  const { isManager } = usePermissions();
   const [payTarget, setPayTarget] = useState<ServiceLog | null>(null);
   const [billingTarget, setBillingTarget] = useState<ServiceLog | null>(null);
 
@@ -103,7 +107,7 @@ export function LogList({
     if (!confirm('Eliminar este registro?')) return;
     deleteMutation.mutate(id, {
       onSuccess: () => toast.success('Registro eliminado'),
-      onError: () => toast.error('Error al eliminar'),
+      onError: (e) => toast.error(apiErrorMessage(e, 'Error al eliminar')),
     });
   }
 
@@ -399,8 +403,9 @@ export function LogList({
                     </DropdownMenuItem>
                   )}
                   {/* A paid or invoiced log is a financial/fiscal record —
-                      deletion is blocked (backend enforces too). */}
-                  {log.paymentStatus !== 'paid' && log.invoiceStatus === null && (
+                      deletion is blocked (backend enforces too), and even an
+                      unpaid one only the owner/admin may erase. */}
+                  {isManager && log.paymentStatus !== 'paid' && log.invoiceStatus === null && (
                     <>
                       <DropdownMenuSeparator />
                       <DropdownMenuItem

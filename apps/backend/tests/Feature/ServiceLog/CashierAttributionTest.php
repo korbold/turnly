@@ -31,7 +31,13 @@ beforeEach(function () {
     $this->cashier = ($this->member)('cashier');
     $this->otherCashier = ($this->member)('cashier');
 
-    $this->service = ServiceModel::factory()->create(['tenant_id' => $this->tenant->id]);
+    // Priced explicitly: staff may only register at the catalog price, so
+    // postLogAs() has to send that number for these attribution cases to
+    // reach the controller at all.
+    $this->service = ServiceModel::factory()->create([
+        'tenant_id' => $this->tenant->id,
+        'price'     => 15.00,
+    ]);
     $client = UserModel::factory()->create();
     $this->resource = ClientResourceModel::create([
         'tenant_id' => $this->tenant->id,

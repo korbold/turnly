@@ -18,6 +18,8 @@ use App\Infrastructure\Jobs\EmitServiceLogInvoiceJob;
 use App\Infrastructure\Persistence\Models\ProductModel;
 use App\Infrastructure\Persistence\Models\ServiceLogItemModel;
 use App\Infrastructure\Persistence\Models\ServiceLogModel;
+use App\Infrastructure\Persistence\Models\ServiceModel;
+use App\Infrastructure\Persistence\Models\ServiceVariantModel;
 use App\Infrastructure\Persistence\Models\TenantModel;
 use App\Infrastructure\Persistence\Models\TenantUserModel;
 use App\Infrastructure\Persistence\Models\UserBillingProfileModel;
@@ -43,11 +45,94 @@ class ServiceLogController extends Controller
      */
     private function resolveAttendedBy(Request $request, ?string $requested): ?string
     {
-        $role = TenantUserModel::where('tenant_id', app('current_tenant_id'))
+        return $this->tenantRole($request) === 'cashier' ? $request->user()->id : $requested;
+    }
+
+    /** The caller's role inside the tenant currently being served. */
+    private function tenantRole(Request $request): ?string
+    {
+        return TenantUserModel::where('tenant_id', app('current_tenant_id'))
             ->where('user_id', $request->user()->id)
             ->value('role');
+    }
 
-        return $role === 'cashier' ? $request->user()->id : $requested;
+    /**
+     * Deciding what a service costs, and whether a record ever existed, is an
+     * owner/admin call. Staff register work at the price the catalog (or the
+     * admin) already set. The admin UI hides both controls; this is the half
+     * that actually holds.
+     */
+    private function isManager(Request $request): bool
+    {
+        // A super-admin has no tenant_users row — EnsureTenantMemberMiddleware
+        // waves them through, so this has to as well or support can't touch a
+        // tenant's registro at all.
+        if ($request->user()?->is_super_admin) {
+            return true;
+        }
+
+        return in_array($this->tenantRole($request), ['owner', 'tenant_admin'], true);
+    }
+
+    /**
+     * The price a line is *allowed* to carry when the caller can't set prices:
+     * the variant's, the service's, or the product's, as registered.
+     * Null when the referenced record is gone — the caller-side check then
+     * falls back to whatever the line already had.
+     */
+    private function catalogPrice(array $line): ?float
+    {
+        if ($this->isProductLine($line)) {
+            $price = ProductModel::where('id', $line['product_id'] ?? null)->value('price');
+        } elseif (!empty($line['variant_id'])) {
+            $price = ServiceVariantModel::where('id', $line['variant_id'])->value('price');
+        } else {
+            $price = ServiceModel::where('id', $line['service_id'] ?? null)->value('price');
+        }
+
+        return $price === null ? null : (float) $price;
+    }
+
+    /**
+     * Rejects a non-manager who tries to price a line himself.
+     *
+     * A line that already exists on the log keeps whatever it was worth — the
+     * admin may well have discounted it, and re-pricing to catalog on every
+     * cashier edit would silently undo that. A new line has to match catalog.
+     *
+     * @param  array<string,float>  $existing  ref_id → unit_price already stored
+     * @return string|null  the offending line's label, or null when all check out
+     */
+    private function firstTamperedPrice(array $items, array $existing = []): ?string
+    {
+        foreach ($items as $line) {
+            $submitted = (float) $line['unit_price'];
+            $refId = $this->isProductLine($line)
+                ? ($line['product_id'] ?? null)
+                : (!empty($line['variant_id']) ? $line['variant_id'] : ($line['service_id'] ?? null));
+
+            $allowed = $existing[$refId] ?? $this->catalogPrice($line);
+            if ($allowed === null) {
+                continue;
+            }
+
+            // Cents, not exact equality: the price round-trips through JSON.
+            if (abs($submitted - $allowed) > 0.005) {
+                return (string) ($line['label'] ?? 'servicio');
+            }
+        }
+
+        return null;
+    }
+
+    private function priceLockedResponse(string $label): JsonResponse
+    {
+        return response()->json([
+            'error' => [
+                'code'    => 'PRICE_LOCKED',
+                'message' => "Solo el administrador puede cambiar el precio de \"{$label}\".",
+            ],
+        ], 403);
     }
 
     public function index(Request $request)
@@ -131,6 +216,22 @@ class ServiceLogController extends Controller
         // lands in service_log_items for the granular breakdown.
         $items = $request->input('items', []);
         $hasItems = is_array($items) && count($items) > 0;
+
+        // Staff register at the catalog price. Nothing is stored before this
+        // check, so a tampered payload never lands as a half-written ticket.
+        if (!$this->isManager($request)) {
+            $lines = $hasItems ? $items : [[
+                'service_id' => $request->service_id,
+                'variant_id' => $request->service_variant_id,
+                'unit_price' => (float) $request->price_charged,
+                'label'      => 'servicio',
+            ]];
+
+            $tampered = $this->firstTamperedPrice($lines);
+            if ($tampered !== null) {
+                return $this->priceLockedResponse($tampered);
+            }
+        }
 
         // A counter sale can be products only, so the "primary service"
         // is the first *service* line — null when nothing was rendered.
@@ -303,9 +404,15 @@ class ServiceLogController extends Controller
         }
     }
 
-    public function update(Request $request, string $id): ServiceLogResource
+    public function update(Request $request, string $id): ServiceLogResource|JsonResponse
     {
         $serviceLog = ServiceLogModel::findOrFail($id);
+
+        // price_charged is the ticket total. Staff may edit everything else on
+        // the row (employee, método de pago, notas) but not the money.
+        if ($request->has('price_charged') && !$this->isManager($request)) {
+            return $this->priceLockedResponse('este registro');
+        }
 
         $request->validate([
             'service_id' => 'nullable|uuid',
@@ -331,7 +438,7 @@ class ServiceLogController extends Controller
         return new ServiceLogResource($serviceLog->load(['clientResource', 'service', 'attendant']));
     }
 
-    public function updateItems(Request $request, string $id): ServiceLogResource
+    public function updateItems(Request $request, string $id): ServiceLogResource|JsonResponse
     {
         $serviceLog = ServiceLogModel::findOrFail($id);
 
@@ -348,6 +455,23 @@ class ServiceLogController extends Controller
 
         $items  = $request->input('items');
         $userId = $request->user()?->id;
+
+        // Staff may still add, remove and re-count lines — that is the daily
+        // job. What they can't do is re-price one. Lines already on the log
+        // keep their stored price (an admin discount survives a cashier edit);
+        // anything new has to come in at catalog.
+        if (!$this->isManager($request)) {
+            $tampered = $this->firstTamperedPrice(
+                $items,
+                $serviceLog->items()->pluck('unit_price', 'ref_id')
+                    ->map(fn ($p) => (float) $p)
+                    ->all(),
+            );
+
+            if ($tampered !== null) {
+                return $this->priceLockedResponse($tampered);
+            }
+        }
 
         // Wrap the delete + insert + parent-update in a single transaction
         // so a mid-loop constraint failure can never leave the log in a
@@ -383,6 +507,17 @@ class ServiceLogController extends Controller
     public function destroy(Request $request, string $id): JsonResponse
     {
         $serviceLog = ServiceLogModel::findOrFail($id);
+
+        // Erasing a day's row is an owner/admin call: it moves the caja total
+        // and leaves no trace. Staff who mis-registered ask for it.
+        if (!$this->isManager($request)) {
+            return response()->json([
+                'error' => [
+                    'code'    => 'FORBIDDEN',
+                    'message' => 'Solo el administrador puede eliminar un registro.',
+                ],
+            ], 403);
+        }
 
         // A paid or invoiced log is a financial/fiscal record — it must not
         // be deleted (an emitted factura is corrected via nota de crédito,

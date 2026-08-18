@@ -32,13 +32,22 @@ const HREF_TO_SECTION: Record<string, string | undefined> = {
 
 const RESTRICTED_ROLES: UserRole[] = ['washer', 'cashier'];
 
+/** Roles that run the business, as opposed to operating it day to day.
+    Money-shaped decisions — what a service costs, whether a record ever
+    existed — belong to them and are not part of the permissions matrix:
+    the matrix grants sections, not privileges inside a section. */
+const MANAGER_ROLES: UserRole[] = ['owner', 'tenant_admin'];
+
 export function usePermissions() {
   const { data: me } = useMe();
   const { data: settings } = useSettings();
 
-  function canAccess(href: string): boolean {
-    const role = me?.user?.role;
+  const role = me?.user?.role;
+  // Undefined while /me is in flight — treat as restricted so the price
+  // field never flashes editable for a cashier on a slow connection.
+  const isManager = !!role && MANAGER_ROLES.includes(role);
 
+  function canAccess(href: string): boolean {
     // Owner and admin always have full access.
     if (!role || role === 'owner' || role === 'tenant_admin') return true;
 
@@ -64,5 +73,5 @@ export function usePermissions() {
     return true;
   }
 
-  return { canAccess };
+  return { canAccess, isManager };
 }

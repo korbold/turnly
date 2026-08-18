@@ -23,9 +23,11 @@ import {
   SelectValue,
 } from '@/presentation/components/ui/select';
 import { cn } from '@/shared/utils/cn';
+import { apiErrorMessage } from '@/shared/utils/api-error';
 import { useUpdateServiceLog, useUpdateServiceLogItems } from '@/presentation/hooks/use-service-logs';
 import { useTeam } from '@/presentation/hooks/use-team';
 import { useMe } from '@/presentation/hooks/use-auth';
+import { usePermissions } from '@/presentation/hooks/use-permissions';
 import { useServices } from '@/presentation/hooks/use-services';
 import { BankChip } from '@/presentation/components/features/reservations/bank-chip';
 import { ECUADOR_BANKS } from '@/shared/constants/banks';
@@ -127,6 +129,11 @@ export function EditServiceLogDialog({ log, open, onClose }: Props) {
   // Locking the create but not the edit leaves the hole open: register as
   // yourself, then reassign. The backend pins this too.
   const lockedToSelf = me?.user?.role === 'cashier';
+  // Only owner/admin sets what a service costs. Everyone else edits the
+  // ticket around a price that stays whatever the catalog (or the admin)
+  // says. The backend rejects a tampered unit_price for them too.
+  const { isManager } = usePermissions();
+  const priceLocked = itemsLocked || !isManager;
   const { data: servicesData, isLoading: servicesLoading } = useServices();
   const team = teamData?.data ?? [];
   const services = servicesData?.data ?? [];
@@ -310,8 +317,8 @@ export function EditServiceLogDialog({ log, open, onClose }: Props) {
     Promise.all([patchLog, patchItems]).then(() => {
       toast.success('Registro actualizado');
       onClose();
-    }).catch(() => {
-      toast.error('Error al actualizar');
+    }).catch((e) => {
+      toast.error(apiErrorMessage(e, 'Error al actualizar'));
     });
   }
 
@@ -344,6 +351,11 @@ export function EditServiceLogDialog({ log, open, onClose }: Props) {
                 {itemsLocked && (
                   <span className="ml-2 inline-flex items-center gap-1 rounded-full bg-[var(--warning-100)] px-2 py-0.5 text-[10.5px] font-semibold uppercase tracking-[0.05em] text-[var(--warning-700)]">
                     Facturado · solo lectura
+                  </span>
+                )}
+                {!itemsLocked && !isManager && (
+                  <span className="ml-2 inline-flex items-center gap-1 rounded-full bg-[var(--bg-sunken)] px-2 py-0.5 text-[10.5px] font-semibold uppercase tracking-[0.05em] text-[var(--fg-secondary)]">
+                    Precio fijo
                   </span>
                 )}
               </Label>
@@ -408,7 +420,12 @@ export function EditServiceLogDialog({ log, open, onClose }: Props) {
                           min={0}
                           step="0.01"
                           value={it.unitPrice}
-                          disabled={itemsLocked}
+                          disabled={priceLocked}
+                          title={
+                            !itemsLocked && !isManager
+                              ? 'Solo el administrador puede cambiar el precio'
+                              : undefined
+                          }
                           onChange={(e) =>
                             handleUpdateLineItem(it.key, {
                               unitPrice: Math.max(0, Number(e.target.value) || 0),
