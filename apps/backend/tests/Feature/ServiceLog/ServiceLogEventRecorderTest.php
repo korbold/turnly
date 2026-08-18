@@ -123,3 +123,33 @@ test('the log is append-only: the model carries no updated_at', function () {
     expect(ServiceLogEventModel::withoutGlobalScopes()->first()->timestamps)->toBeFalse();
     expect(ServiceLogEventModel::UPDATED_AT)->toBeNull();
 });
+
+test('the event takes its tenant from the log, not from the container', function () {
+    // Un tenant distinto bindeado a propósito: si write() leyera del
+    // contenedor, el evento caería en el tenant equivocado y este test lo
+    // agarra. Con los 8 tests originales, ese cambio pasaba desapercibido.
+    $otherTenant = TenantModel::factory()->create(['status' => 'active']);
+    app()->instance('current_tenant_id', $otherTenant->id);
+
+    $this->recorder->created($this->log, $this->user->id);
+
+    $event = ServiceLogEventModel::withoutGlobalScopes()->first();
+
+    expect($event->tenant_id)->toBe($this->tenant->id);
+    expect($event->tenant_id)->not->toBe($otherTenant->id);
+});
+
+test('an event still lands when no tenant is bound, as in a queue job', function () {
+    // Los jobs del SRI corren sin current_tenant_id. Si el recorder dependiera
+    // del contenedor, escribiría tenant_id null y la fila quedaría invisible
+    // para toda consulta con scope de tenant.
+    app()->forgetInstance('current_tenant_id');
+    app()->forgetInstance('current_tenant');
+
+    $this->recorder->invoiceStatusChanged($this->log, 'enviada', 'autorizada');
+
+    $event = ServiceLogEventModel::withoutGlobalScopes()->first();
+
+    expect($event->tenant_id)->toBe($this->tenant->id);
+    expect($event->changed_by_user_id)->toBeNull();
+});
