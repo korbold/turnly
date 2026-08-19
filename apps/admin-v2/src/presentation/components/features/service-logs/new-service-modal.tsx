@@ -30,6 +30,7 @@ import { useClients, useCreateClient } from '@/presentation/hooks/use-clients';
 import { useSettings } from '@/presentation/hooks/use-settings';
 import { useMe } from '@/presentation/hooks/use-auth';
 import { usePermissions } from '@/presentation/hooks/use-permissions';
+import { useServiceStaff } from '@/presentation/hooks/use-service-staff';
 import { useTeam } from '@/presentation/hooks/use-team';
 import { useCreateServiceLog } from '@/presentation/hooks/use-service-logs';
 import { ServiceCombobox } from '@/presentation/components/features/service-logs/service-combobox';
@@ -302,6 +303,13 @@ export function NewServiceModal({ open, onClose, embedded = false }: NewServiceM
   // Derived rather than synced through an effect: for a cashier the field simply
   // *is* their own id, so there is no second source of truth to keep in step.
   const effectiveAttendedBy = lockedToSelf ? (me?.user?.id ?? '') : attendedBy;
+  // En una lavadora el trabajo lo hacen dos personas del catálogo, no el
+  // usuario que registra: el select de Empleado se parte en Lavador y Secador.
+  const isCarWash = settings?.businessType === 'car_wash';
+  const { data: washers } = useServiceStaff('washer');
+  const { data: dryers } = useServiceStaff('dryer');
+  const [washedBy, setWashedBy] = useState('');
+  const [driedBy, setDriedBy] = useState('');
   const createMutation = useCreateServiceLog();
   const createClient = useCreateClient();
 
@@ -560,7 +568,8 @@ export function NewServiceModal({ open, onClose, embedded = false }: NewServiceM
   }
 
   function handleSubmit() {
-    if (!selectedClientResourceId || !effectiveAttendedBy) return;
+    if (!selectedClientResourceId) return;
+    if (!isCarWash && !effectiveAttendedBy) return;
     if (lineItems.length === 0 && productLines.length === 0) return;
     if (paymentTiming === 'now' && paymentMethod === 'transfer' && !paymentBank) {
       toast.error('Selecciona el banco emisor');
@@ -581,7 +590,12 @@ export function NewServiceModal({ open, onClose, embedded = false }: NewServiceM
     createMutation.mutate(
       {
         clientResourceId: selectedClientResourceId,
-        attendedBy: effectiveAttendedBy,
+        // attended_by sigue siendo obligatoria en el backend y conserva su
+        // regla anti-fraude. Al desaparecer el select en car_wash, se manda
+        // el usuario que registra — que es lo que el pin ya escribía.
+        attendedBy: isCarWash ? (me?.user?.id ?? '') : effectiveAttendedBy,
+        washedBy: isCarWash && washedBy ? washedBy : null,
+        driedBy: isCarWash && driedBy ? driedBy : null,
         items: [
           ...lineItems.map((it) => ({
             itemType: 'service_variant' as const,
@@ -620,7 +634,7 @@ export function NewServiceModal({ open, onClose, embedded = false }: NewServiceM
   const canSubmit =
     (lineItems.length > 0 || productLines.length > 0) &&
     !!selectedClientResourceId &&
-    !!effectiveAttendedBy &&
+    (isCarWash || !!effectiveAttendedBy) &&
     total > 0 &&
     // Every line with variants registered must have one picked. Lines
     // whose service has no variants pass through.
@@ -1150,7 +1164,57 @@ export function NewServiceModal({ open, onClose, embedded = false }: NewServiceM
             )}
           </div>
 
+          {/* Lavador y secador — sólo lavadora. Ambos opcionales al registrar:
+              a esta hora suele no saberse quién va a secar, y completar el
+              servicio es lo que los va a exigir. */}
+          {isCarWash && (
+            <div className="order-3 grid grid-cols-1 gap-3 sm:grid-cols-2">
+              <div>
+                <label className="mb-1.5 block text-sm font-medium">
+                  Lavador{' '}
+                  <span className="text-[12px] font-normal text-[var(--fg-muted)]">
+                    (opcional)
+                  </span>
+                </label>
+                <Select value={washedBy} onValueChange={setWashedBy}>
+                  <SelectTrigger>
+                    <SelectValue placeholder="Sin asignar" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {(washers ?? []).map((p) => (
+                      <SelectItem key={p.id} value={p.id}>
+                        {p.name}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+
+              <div>
+                <label className="mb-1.5 block text-sm font-medium">
+                  Secador{' '}
+                  <span className="text-[12px] font-normal text-[var(--fg-muted)]">
+                    (opcional)
+                  </span>
+                </label>
+                <Select value={driedBy} onValueChange={setDriedBy}>
+                  <SelectTrigger>
+                    <SelectValue placeholder="Sin asignar" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {(dryers ?? []).map((p) => (
+                      <SelectItem key={p.id} value={p.id}>
+                        {p.name}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+            </div>
+          )}
+
           {/* Employee select */}
+          {!isCarWash && (
           <div className="order-3">
             <label className="mb-1.5 block text-sm font-medium">Empleado</label>
             <Select
@@ -1175,6 +1239,7 @@ export function NewServiceModal({ open, onClose, embedded = false }: NewServiceM
               </p>
             )}
           </div>
+          )}
 
           {/* Timing toggle — cobrar ahora vs cobrar al retirar.
               Default "ahora" preserves the legacy flow; "al retirar"

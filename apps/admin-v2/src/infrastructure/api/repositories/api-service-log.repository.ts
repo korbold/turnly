@@ -38,6 +38,8 @@ export class ApiServiceLogRepository implements ServiceLogRepository {
     const body: Record<string, unknown> = {
       client_resource_id: data.clientResourceId,
       attended_by: data.attendedBy,
+      washed_by: data.washedBy ?? null,
+      dried_by: data.driedBy ?? null,
       payment_method: data.paymentMethod,
       payment_bank: data.paymentBank ?? null,
       payment_status: data.paymentStatus ?? 'paid',

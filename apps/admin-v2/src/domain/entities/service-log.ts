@@ -38,6 +38,10 @@ export interface ServiceLog {
   serviceId: string;
   reservationId: string | null;
   attendedBy: string;
+  /** Catálogo service_staff, no usuarios de la app: quién lavó y quién secó.
+      Sólo los usa car_wash. */
+  washedBy: string | null;
+  driedBy: string | null;
   createdBy: string;
   startedAt: Date;
   finishedAt: Date | null;
@@ -57,6 +61,8 @@ export interface ServiceLog {
   notes: string | null;
   logDate: string;
   createdAt: Date;
+  washer?: { id: string; name: string } | null;
+  dryer?: { id: string; name: string } | null;
   clientResource?: ServiceLogClientResource;
   service?: ServiceLogService;
   attendant?: ServiceLogAttendant;

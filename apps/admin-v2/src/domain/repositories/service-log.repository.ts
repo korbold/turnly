@@ -24,6 +24,8 @@ export interface CreateServiceLogData {
       — the backend derives it from `items[0]`. */
   serviceId?: string;
   attendedBy: string;
+  washedBy?: string | null;
+  driedBy?: string | null;
   /** Required only when `items` is not provided. Otherwise the backend
       sums `items[].unitPrice * qty`. */
   priceCharged?: number;
