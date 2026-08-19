@@ -149,7 +149,7 @@ de confirmar**:
 ```
 Cobrar $30 a ABC-123 · debe $50
 
-                                    debe   se aplica   queda
+                                    debe    se abona   queda
   15 jul  Deuda del cuaderno         $15        $15      $0
   02 ago  Lavado completo            $20        $15      $5
   11 ago  Lavado + encerado          $15         $0     $15
