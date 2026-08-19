@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useState } from 'react';
 import { toast } from 'sonner';
 import {
   Dialog,
@@ -47,14 +47,11 @@ export function AssignStaffDialog({ log, open, onClose, reason }: Props) {
   const isCompleted = log.status === 'completed';
   const locked = !canAssign(isCompleted);
 
-  const [washedBy, setWashedBy] = useState('');
-  const [driedBy, setDriedBy] = useState('');
-
-  useEffect(() => {
-    if (!open) return;
-    setWashedBy(log.washedBy ?? '');
-    setDriedBy(log.driedBy ?? '');
-  }, [open, log.washedBy, log.driedBy]);
+  // Estado inicial y no un efecto de siembra: los dos llamadores montan el
+  // dialog recién al abrirlo ({open && <AssignStaffDialog …>}), así que el
+  // primer render ya ve los valores del registro.
+  const [washedBy, setWashedBy] = useState(log.washedBy ?? '');
+  const [driedBy, setDriedBy] = useState(log.driedBy ?? '');
 
   function handleSave() {
     assign.mutate(

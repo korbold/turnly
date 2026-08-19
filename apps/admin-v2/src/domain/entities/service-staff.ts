@@ -17,7 +17,7 @@ export interface CreateServiceStaffInput {
   isActive?: boolean;
 }
 
-export interface UpdateServiceStaffInput extends Partial<CreateServiceStaffInput> {}
+export type UpdateServiceStaffInput = Partial<CreateServiceStaffInput>;
 
 export const STAFF_POSITION_LABEL: Record<StaffPosition, string> = {
   washer: 'Lavador',
