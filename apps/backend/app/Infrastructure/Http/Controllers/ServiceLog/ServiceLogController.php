@@ -191,6 +191,67 @@ class ServiceLogController extends Controller
         ], 422);
     }
 
+    /**
+     * Los dos campos que acompañan un desvío ya validado por
+     * `priceReasonProblem`: el motivo, y la nota sólo cuando el motivo es
+     * "otro". Se llama una vez desde `store()` y otra desde `updateItems()`
+     * — mismo cálculo, un solo lugar donde una tercera regla de persistencia
+     * tendría que cambiar.
+     *
+     * Normaliza "" a null: un llamador con el privilegio `Precio` puede
+     * mandar el campo vacío en vez de omitirlo, y una fila con motivo ''
+     * en vez de null se ve rara en el reporte y en la bitácora.
+     *
+     * @return array{price_change_reason:?string,price_change_note:?string}
+     */
+    private function priceChangeFields(Request $request): array
+    {
+        $reason = $request->input('price_change_reason');
+        $reason = $reason === '' ? null : $reason;
+
+        return [
+            'price_change_reason' => $reason,
+            'price_change_note'   => $reason === PriceChangeReason::REQUIRES_NOTE
+                ? $request->input('price_change_note')
+                : null,
+        ];
+    }
+
+    /**
+     * Deja la huella del desvío en la bitácora: cuánto decía el catálogo,
+     * cuánto se cobró, y por qué. El catálogo no vive en ninguna columna del
+     * ticket — sólo por línea en `catalog_price` — así que se recalcula acá
+     * a partir de las mismas líneas que ya se usaron para cobrar.
+     *
+     * store() y updateItems() llaman a esto con el mismo log en dos formas
+     * (antes y dentro de una transacción) y el actor ya resuelto de maneras
+     * distintas — eso se pasa como parámetro en vez de forzar una firma
+     * común que tendría que adivinarlo.
+     *
+     * @param  array<int,array<string,mixed>>  $lines
+     */
+    private function recordPriceChange(
+        ServiceLogModel $log,
+        array $lines,
+        float $charged,
+        Request $request,
+        ?string $actorId,
+    ): void {
+        $catalogo = array_sum(array_map(
+            fn ($l) => (float) ($this->catalogPrice($l) ?? $l['unit_price']) * (float) ($l['qty'] ?? 1),
+            $lines,
+        ));
+
+        $this->events->priceChanged(
+            $log,
+            round($catalogo, 2),
+            $charged,
+            $request->input('price_change_reason'),
+            $request->input('price_change_note'),
+            $actorId,
+        );
+    }
+
     public function index(Request $request)
     {
         // `items` is eager-loaded so the LogList row can render the
@@ -365,10 +426,7 @@ class ServiceLogController extends Controller
             $patch['payment_bank'] = null;
         }
         if ($desviada !== null) {
-            $patch['price_change_reason'] = $request->input('price_change_reason');
-            $patch['price_change_note']   = $request->input('price_change_reason') === PriceChangeReason::REQUIRES_NOTE
-                ? $request->input('price_change_note')
-                : null;
+            $patch = array_merge($patch, $this->priceChangeFields($request));
         }
         ServiceLogModel::where('id', $serviceLog->id)->update($patch);
 
@@ -397,19 +455,7 @@ class ServiceLogController extends Controller
         $this->events->created($logModel, $request->user()?->id);
 
         if ($desviada !== null) {
-            $catalogo = array_sum(array_map(
-                fn ($l) => (float) ($this->catalogPrice($l) ?? $l['unit_price']) * (float) ($l['qty'] ?? 1),
-                $lines,
-            ));
-
-            $this->events->priceChanged(
-                $logModel,
-                round($catalogo, 2),
-                (float) $logModel->price_charged,
-                $request->input('price_change_reason'),
-                $request->input('price_change_note'),
-                $request->user()?->id,
-            );
+            $this->recordPriceChange($logModel, $lines, (float) $logModel->price_charged, $request, $request->user()?->id);
         }
 
         // "Cobrar ahora" es un cobro igual que el diferido: sin esto la
@@ -671,10 +717,7 @@ class ServiceLogController extends Controller
                 'service_variant_id' => $firstService['variant_id'] ?? null,
             ];
             if ($desviada !== null) {
-                $patch['price_change_reason'] = $request->input('price_change_reason');
-                $patch['price_change_note']   = $request->input('price_change_reason') === PriceChangeReason::REQUIRES_NOTE
-                    ? $request->input('price_change_note')
-                    : null;
+                $patch = array_merge($patch, $this->priceChangeFields($request));
             }
             $serviceLog->update($patch);
 
@@ -682,19 +725,7 @@ class ServiceLogController extends Controller
             $this->events->itemsChanged($serviceLog, $totalBefore, $newTotal, $userId);
 
             if ($desviada !== null) {
-                $catalogo = array_sum(array_map(
-                    fn ($l) => (float) ($this->catalogPrice($l) ?? $l['unit_price']) * (float) ($l['qty'] ?? 1),
-                    $items,
-                ));
-
-                $this->events->priceChanged(
-                    $serviceLog,
-                    round($catalogo, 2),
-                    $newTotal,
-                    $request->input('price_change_reason'),
-                    $request->input('price_change_note'),
-                    $userId,
-                );
+                $this->recordPriceChange($serviceLog, $items, $newTotal, $request, $userId);
             }
         });
 
