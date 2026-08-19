@@ -184,7 +184,7 @@ export function LogList({
           the "Cobrar"/"Completar" labeled buttons no longer fit in
           180px next to the status badge + overflow ⋯, which was
           clipping them at the right edge. */}
-      <div className="hidden rounded-lg bg-[var(--bg-sunken)] px-4 py-2 text-[11px] font-semibold uppercase tracking-[0.04em] text-[var(--fg-muted)] lg:grid lg:grid-cols-[60px_minmax(0,1.3fr)_minmax(0,1.3fr)_minmax(0,1fr)_84px_112px_minmax(280px,auto)] lg:items-center lg:gap-3">
+      <div className="hidden rounded-lg bg-[var(--bg-sunken)] px-3 py-2 text-[11px] font-semibold uppercase tracking-[0.04em] text-[var(--fg-muted)] lg:grid lg:grid-cols-[60px_minmax(0,1.3fr)_minmax(0,1.3fr)_minmax(0,1fr)_84px_112px_minmax(368px,auto)] lg:items-center lg:gap-3">
         <span>Hora</span>
         <span>Recurso</span>
         <span>Servicio</span>
@@ -255,7 +255,15 @@ export function LogList({
               // deuda, el empleado tres líneas) y centrarlas dejaba la placa
               // arriba del nombre del servicio. La primera línea es la que el
               // ojo usa para escanear.
-              'lg:grid-cols-[60px_minmax(0,1.3fr)_minmax(0,1.3fr)_minmax(0,1fr)_84px_112px_minmax(280px,auto)] lg:items-start lg:gap-3',
+              //
+              // El piso de 368px en la última columna no es estético: cada
+              // fila es su PROPIA grilla, así que una columna `auto` cambia de
+              // ancho según cuántos botones tenga la fila y arrastra a todas
+              // las demás. Con `auto` puro los precios caían en tres x
+              // distintos (350 / 280 / 359 medidos). El piso cubre el caso más
+              // ancho normal y deja que sólo el raro —"Reintentar factura" con
+              // badge de estado— lo supere.
+              'lg:grid-cols-[60px_minmax(0,1.3fr)_minmax(0,1.3fr)_minmax(0,1fr)_84px_112px_minmax(368px,auto)] lg:items-start lg:gap-3',
               rowTint,
             )}
           >
