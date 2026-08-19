@@ -3,6 +3,7 @@
 namespace App\Infrastructure\Http\Controllers\ServiceLog;
 
 use App\Application\DTOs\ServiceLog\CreateServiceLogDTO;
+use App\Application\Services\PaymentLedger;
 use App\Application\Services\ServiceLogEventRecorder;
 use App\Application\UseCases\ServiceLog\CreateServiceLogUseCase;
 use App\Application\UseCases\ServiceLog\GetDailyLogUseCase;
@@ -38,6 +39,7 @@ class ServiceLogController extends Controller
         private ConsumptionEngine $consumption,
         private StockLedger $stock,
         private ServiceLogEventRecorder $events,
+        private PaymentLedger $ledger,
     ) {}
 
     /**
@@ -288,17 +290,13 @@ class ServiceLogController extends Controller
                 $patch[$field] = $request->input($field);
             }
         }
+        // El estado pagado ya no se escribe acá: lo produce el libro de pagos
+        // más abajo, y estas columnas quedan como reflejo suyo.
         if ($paymentStatus === 'unpaid') {
             $patch['payment_status'] = 'unpaid';
             $patch['paid_at'] = null;
             $patch['payment_method'] = null;
             $patch['payment_bank'] = null;
-        } else {
-            $patch['payment_status'] = 'paid';
-            $patch['paid_at'] = now();
-            if ($request->payment_method === 'transfer' && $request->filled('payment_bank')) {
-                $patch['payment_bank'] = $request->payment_bank;
-            }
         }
         ServiceLogModel::where('id', $serviceLog->id)->update($patch);
 
@@ -329,7 +327,17 @@ class ServiceLogController extends Controller
         // "Cobrar ahora" es un cobro igual que el diferido: sin esto la
         // bitácora mostraba un servicio pagado sin decir nunca cuándo ni con
         // qué método, que es justo lo que se discute cuando falta plata.
-        if ($logModel->payment_status === 'paid') {
+        // Cobrar al registrar es un cobro: entra al libro como cualquier otro.
+        if ($paymentStatus !== 'unpaid') {
+            $this->ledger->recordForServiceLog(
+                $logModel,
+                (float) $logModel->price_charged,
+                (string) $request->payment_method,
+                $request->payment_bank,
+                $request->user()?->id,
+            );
+            $logModel->refresh();
+
             $this->events->paymentRecorded(
                 $logModel,
                 (string) $logModel->payment_method,
@@ -740,16 +748,23 @@ class ServiceLogController extends Controller
             ], 422);
         }
 
-        $log->update([
-            'payment_method' => $data['method'],
-            'payment_bank'   => $data['method'] === 'transfer' ? ($data['bank'] ?? null) : null,
-            'payment_status' => 'paid',
-            'paid_at'        => now(),
-            // Append reference into notes when supplied; service_logs
-            // doesn't carry a dedicated payment_reference column yet
-            // and the typical car-wash use case doesn't need one.
-            'notes'          => trim(($log->notes ?? '') . ($data['reference'] ?? '' ? "\nRef: {$data['reference']}" : '')) ?: null,
-        ]);
+        $this->ledger->recordForServiceLog(
+            $log,
+            (float) $log->price_charged,
+            $data['method'],
+            $data['bank'] ?? null,
+            $request->user()?->id,
+        );
+
+        // La referencia sigue yendo a notas: service_logs no tiene columna
+        // propia para ella y el caso típico no la usa.
+        if (!empty($data['reference'])) {
+            $log->update([
+                'notes' => trim(($log->notes ?? '') . "\nRef: {$data['reference']}") ?: null,
+            ]);
+        }
+
+        $log->refresh();
 
         $this->events->paymentRecorded(
             $log,
