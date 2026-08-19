@@ -1,6 +1,8 @@
 'use client';
 
 import { useState } from 'react';
+import { format } from 'date-fns';
+import { es } from 'date-fns/locale';
 import { Wallet } from 'lucide-react';
 import { Button } from '@/presentation/components/ui/button';
 import { Skeleton } from '@/presentation/components/ui/skeleton';
@@ -15,6 +17,14 @@ const METHOD_LABEL: Record<string, string> = {
 
 const money = (v: number) =>
   new Intl.NumberFormat('es-EC', { style: 'currency', currency: 'USD' }).format(v);
+
+/**
+ * Cuándo entró la plata, con hora: dos cobros del mismo día son la norma y sin
+ * la hora no se distinguen. Va con date-fns y no con `toISOString()`, que
+ * convierte a UTC — un cobro de las 21:00 en Ecuador aparecería con la fecha
+ * del día siguiente.
+ */
+const paidAtLabel = (d: Date) => format(d, "d MMM HH:mm", { locale: es });
 
 export function DebtSection({ clientResourceId }: { clientResourceId: string }) {
   const { data, isLoading } = useDebt(clientResourceId);
@@ -87,8 +97,11 @@ export function DebtSection({ clientResourceId }: { clientResourceId: string }) 
               {payments.map((p) => (
                 <li key={p.id}>
                   <div className="flex items-baseline gap-2 text-[12.5px]">
-                    <span className="w-[80px] shrink-0 tabular-nums text-[var(--fg-muted)]">
-                      {p.paidAt.toISOString().slice(0, 10)}
+                    <span
+                      className="w-[104px] shrink-0 tabular-nums text-[var(--fg-muted)]"
+                      title={format(p.paidAt, "d 'de' MMMM 'de' yyyy, HH:mm", { locale: es })}
+                    >
+                      {paidAtLabel(p.paidAt)}
                     </span>
                     <span className="min-w-0 flex-1 text-[var(--fg-secondary)]">
                       {METHOD_LABEL[p.method] ?? p.method}
@@ -100,7 +113,7 @@ export function DebtSection({ clientResourceId }: { clientResourceId: string }) 
                   {/* A qué se aplicó. "Efectivo $20" no responde la pregunta
                       del cliente; el desglose sí. */}
                   {p.allocations.length > 0 && (
-                    <ul className="ml-[80px] mt-0.5 space-y-0.5 border-l border-[var(--border)] pl-2.5">
+                    <ul className="ml-[104px] mt-0.5 space-y-0.5 border-l border-[var(--border)] pl-2.5">
                       {p.allocations.map((a) => (
                         <li
                           key={`${a.type}-${a.id}`}
