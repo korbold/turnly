@@ -34,7 +34,7 @@ export interface ClientBillingProfile {
 }
 
 export interface ClientResourceRepository {
-  getAll(page?: number, search?: string): Promise<PaginatedResult<ClientResource>>;
+  getAll(page?: number, search?: string, withDebt?: boolean): Promise<PaginatedResult<ClientResource>>;
   getById(id: string): Promise<ClientResource>;
   create(data: CreateClientResourceData): Promise<ClientResource>;
   update(id: string, data: Partial<CreateClientResourceData>): Promise<ClientResource>;

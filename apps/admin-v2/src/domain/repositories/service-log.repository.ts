@@ -95,7 +95,9 @@ export interface ServiceLogRepository {
   assignStaff(id: string, data: AssignStaffData): Promise<ServiceLog>;
   updateItems(id: string, items: UpdateServiceLogItemsData): Promise<ServiceLog>;
   delete(id: string): Promise<void>;
-  complete(id: string): Promise<ServiceLog>;
+  /** `leftOwing` convierte el saldo pendiente en deuda. Ausente deja un
+      pendiente del día, que es el comportamiento histórico. */
+  complete(id: string, leftOwing?: boolean): Promise<ServiceLog>;
   recordPayment(id: string, data: RecordPaymentData): Promise<ServiceLog>;
   getSummary(date: string): Promise<DailySummary>;
   getBilling(id: string): Promise<ServiceLogBillingProfile>;

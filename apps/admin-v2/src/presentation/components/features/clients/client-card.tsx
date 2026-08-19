@@ -3,7 +3,7 @@
 import Link from 'next/link';
 import { formatDistanceToNow } from 'date-fns';
 import { es } from 'date-fns/locale';
-import { ChevronRight, Star } from 'lucide-react';
+import { ChevronRight, Star, Wallet } from 'lucide-react';
 import { Avatar, AvatarFallback } from '@/presentation/components/ui/avatar';
 import type { ClientResource } from '@/domain/entities/client-resource';
 
@@ -11,6 +11,9 @@ interface ClientCardProps {
   client: ClientResource;
   index?: number;
 }
+
+const money = (v: number) =>
+  new Intl.NumberFormat('es-EC', { style: 'currency', currency: 'USD' }).format(v);
 
 function getInitials(text: string | null | undefined): string {
   if (!text) return '?';
@@ -77,6 +80,14 @@ export function ClientCard({ client, index = 0 }: ClientCardProps) {
               fill="currentColor"
               aria-label="Cliente frecuente"
             />
+          )}
+          {/* La deuda va junto al nombre, no al final de la fila: es lo
+              primero que el dueño busca el lunes a la mañana. */}
+          {client.debt > 0 && (
+            <span className="inline-flex shrink-0 items-center gap-1.5 rounded-full bg-[var(--warning-50)] px-2 py-0.5 text-[11.5px] font-semibold text-[var(--warning-700)] ring-1 ring-[var(--warning-200)]">
+              <Wallet className="h-3 w-3" aria-hidden="true" />
+              debe {money(client.debt)}
+            </span>
           )}
         </div>
         {clientName ? (

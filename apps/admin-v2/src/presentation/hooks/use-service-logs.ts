@@ -101,9 +101,16 @@ export function useCompleteServiceLog() {
   const repo = useRepository('serviceLog');
   const queryClient = useQueryClient();
   return useMutation({
-    mutationFn: (id: string) => new CompleteServiceLogUseCase(repo).execute(id),
+    // Acepta el id solo (los llamadores viejos) o el objeto con la marca.
+    mutationFn: (input: string | { id: string; leftOwing?: boolean }) => {
+      const { id, leftOwing } = typeof input === 'string' ? { id: input, leftOwing: undefined } : input;
+      return new CompleteServiceLogUseCase(repo).execute(id, leftOwing);
+    },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['service-logs'] });
+      // Salir debiendo cambia la deuda de la placa y la columna de Clientes.
+      queryClient.invalidateQueries({ queryKey: ['debt'] });
+      queryClient.invalidateQueries({ queryKey: ['clients'] });
     },
   });
 }

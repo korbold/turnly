@@ -25,6 +25,7 @@ import {
 } from '@/presentation/hooks/use-service-logs';
 import { PAYMENT_METHOD_CONFIG } from '@/shared/constants/status';
 import { RegisterPaymentDialog } from '@/presentation/components/features/service-logs/register-payment-dialog';
+import { CompleteServiceDialog } from '@/presentation/components/features/service-logs/complete-service-dialog';
 import { FiscalProfileDialog } from '@/presentation/components/features/service-logs/fiscal-profile-dialog';
 import { InvoiceStatusBadge } from '@/presentation/components/features/service-logs/invoice-status-badge';
 import { useEmitInvoice } from '@/presentation/hooks/use-invoices';
@@ -102,6 +103,8 @@ export function LogList({
   const rangeStart = total === 0 ? 0 : (currentPage - 1) * (data?.meta?.perPage ?? 0) + 1;
   const rangeEnd = Math.min(rangeStart + logs.length - 1, total);
 
+  const [completeTarget, setCompleteTarget] = useState<ServiceLog | null>(null);
+
   function handleComplete(log: ServiceLog) {
     // El 422 del backend es la red de seguridad, no la experiencia: si falta
     // alguien, se pide acá mismo en vez de tirar el error.
@@ -111,6 +114,13 @@ export function LogList({
         reason: 'Asigná lavador y secador para poder completar el servicio.',
         requireBoth: true,
       });
+      return;
+    }
+
+    // Con saldo pendiente hay una pregunta que hacer antes de cerrar: esto
+    // es deuda o es un olvido. Nadie más va a saber la respuesta después.
+    if (log.amountDue > 0.005) {
+      setCompleteTarget(log);
       return;
     }
 
@@ -304,9 +314,11 @@ export function LogList({
               {isOwing ? (
                 <span className="inline-flex items-center gap-1.5 rounded-full bg-[var(--warning-50)] px-2.5 py-1 text-[11.5px] font-semibold text-[var(--warning-700)] ring-1 ring-[var(--warning-200)]">
                   <Wallet className="h-3 w-3" aria-hidden="true" />
-                  {isPartial
-                    ? `Abonado ${fmt(log.amountPaid)} · falta ${fmt(log.amountDue)}`
-                    : 'Pendiente'}
+                  {log.leftOwing
+                    ? `Debe ${fmt(log.amountDue)}`
+                    : isPartial
+                      ? `Abonado ${fmt(log.amountPaid)} · falta ${fmt(log.amountDue)}`
+                      : 'Pendiente'}
                 </span>
               ) : pmCfg ? (
                 <span className="inline-flex items-center gap-1.5 rounded-full bg-[var(--bg-sunken)] px-2.5 py-1 text-[11.5px] font-medium text-[var(--fg-strong)]">
@@ -539,9 +551,35 @@ export function LogList({
       {payTarget && (
         <RegisterPaymentDialog
           serviceLogId={payTarget.id}
+          clientResourceId={payTarget.clientResourceId}
           total={payTarget.amountDue}
           open
           onClose={() => setPayTarget(null)}
+        />
+      )}
+
+      {completeTarget && (
+        <CompleteServiceDialog
+          open
+          amountDue={completeTarget.amountDue}
+          pending={completeMutation.isPending}
+          onCharge={() => {
+            setPayTarget(completeTarget);
+            setCompleteTarget(null);
+          }}
+          onLeaveOwing={() =>
+            completeMutation.mutate(
+              { id: completeTarget.id, leftOwing: true },
+              {
+                onSuccess: () => {
+                  toast.success('Se lleva el vehículo debiendo');
+                  setCompleteTarget(null);
+                },
+                onError: () => toast.error('Error al completar'),
+              },
+            )
+          }
+          onClose={() => setCompleteTarget(null)}
         />
       )}
 

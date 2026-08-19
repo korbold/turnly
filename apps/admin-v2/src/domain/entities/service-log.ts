@@ -69,6 +69,8 @@ export interface ServiceLog {
   /** Lo abonado y lo que falta, del libro de pagos. */
   amountPaid: number;
   amountDue: number;
+  /** Se llevó el vehículo debiendo. Es lo que separa deuda de olvido. */
+  leftOwing: boolean;
   paidAt: Date | null;
   invoiced: boolean;
   invoicedAt: Date | null;

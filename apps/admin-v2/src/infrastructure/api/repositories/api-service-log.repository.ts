@@ -132,8 +132,11 @@ export class ApiServiceLogRepository implements ServiceLogRepository {
     await api.delete(`/service-logs/${id}`);
   }
 
-  async complete(id: string): Promise<ServiceLog> {
-    const { data: res } = await api.patch(`/service-logs/${id}/complete`);
+  async complete(id: string, leftOwing?: boolean): Promise<ServiceLog> {
+    const { data: res } = await api.patch(
+      `/service-logs/${id}/complete`,
+      leftOwing ? { left_owing: true } : {},
+    );
     return mapServiceLog(res.data);
   }
 

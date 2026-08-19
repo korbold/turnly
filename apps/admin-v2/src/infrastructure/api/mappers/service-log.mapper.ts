@@ -34,6 +34,7 @@ export function mapServiceLog(raw: Record<string, unknown>): ServiceLog {
     paymentMethod: (raw.payment_method as ServiceLog['paymentMethod']) ?? null,
     paymentBank: (raw.payment_bank as string | null) ?? null,
     paymentStatus: ((raw.payment_status as 'paid' | 'unpaid' | 'partial' | null) ?? 'paid') as ServiceLog['paymentStatus'],
+    leftOwing: Boolean(raw.left_owing ?? false),
     amountPaid: Number(raw.amount_paid ?? 0),
     // Sin el campo (respuesta vieja en caché), lo que falta es todo el precio
     // si no está pagado: nunca mostrar "$0 pendiente" por un dato ausente.

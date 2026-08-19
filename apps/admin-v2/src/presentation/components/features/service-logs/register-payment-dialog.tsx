@@ -15,6 +15,7 @@ import { Button } from '@/presentation/components/ui/button';
 import { Input } from '@/presentation/components/ui/input';
 import { Label } from '@/presentation/components/ui/label';
 import { useRecordServiceLogPayment } from '@/presentation/hooks/use-service-logs';
+import { useDebt } from '@/presentation/hooks/use-debt';
 import { BankChip } from '@/presentation/components/features/reservations/bank-chip';
 import { ECUADOR_BANKS } from '@/shared/constants/banks';
 import { cn } from '@/shared/utils/cn';
@@ -22,6 +23,8 @@ import type { PaymentMethod } from '@/domain/entities/service-log';
 
 interface Props {
   serviceLogId: string;
+  /** La placa, para avisar si además debe de antes. */
+  clientResourceId?: string;
   /** Saldo pendiente, no el precio del servicio. */
   total: number;
   open: boolean;
@@ -40,7 +43,7 @@ const METHODS: { value: PaymentMethod; label: string; icon: typeof Banknote }[] 
  * needs to mark a "cobrar al retirar" service as paid. Mirrors the
  * reservation payment modal shape so the muscle memory carries.
  */
-export function RegisterPaymentDialog({ serviceLogId, total, open, onClose }: Props) {
+export function RegisterPaymentDialog({ serviceLogId, clientResourceId, total, open, onClose }: Props) {
   const [method, setMethod] = useState<PaymentMethod>('cash');
   const [bank, setBank] = useState<string | null>(null);
   const [reference, setReference] = useState('');
@@ -48,6 +51,13 @@ export function RegisterPaymentDialog({ serviceLogId, total, open, onClose }: Pr
   // y el cajero sólo toca esto cuando el cliente abona menos.
   const [amount, setAmount] = useState('');
   const mutation = useRecordServiceLogPayment();
+
+  // La deuda vieja de esta placa. Se descuenta este servicio: lo que estás
+  // por cobrar no es "deuda de antes". Es el momento en que se puede pedir.
+  const { data: debt } = useDebt(clientResourceId ?? '', open && !!clientResourceId);
+  const previa = (debt?.items ?? [])
+    .filter((it) => it.id !== serviceLogId)
+    .reduce((sum, it) => sum + it.due, 0);
 
   useEffect(() => {
     if (open) {
@@ -227,6 +237,14 @@ export function RegisterPaymentDialog({ serviceLogId, total, open, onClose }: Pr
             />
           </div>
         </div>
+
+        {previa > 0 && (
+          <p className="rounded-lg bg-[var(--warning-50)] px-3 py-2 text-[12.5px] font-medium text-[var(--warning-700)] ring-1 ring-[var(--warning-200)]">
+            Además debe{' '}
+            {new Intl.NumberFormat('es-EC', { style: 'currency', currency: 'USD' }).format(previa)}{' '}
+            de antes.
+          </p>
+        )}
 
         <DialogFooter>
           <Button variant="outline" onClick={onClose} disabled={mutation.isPending}>

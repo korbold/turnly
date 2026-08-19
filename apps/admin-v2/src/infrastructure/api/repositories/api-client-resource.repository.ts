@@ -10,10 +10,17 @@ import { mapClientResource } from '../mappers/client-resource.mapper';
 import { mapPaginatedResponse } from '../mappers/pagination';
 
 export class ApiClientResourceRepository implements ClientResourceRepository {
-  async getAll(page?: number, search?: string): Promise<PaginatedResult<ClientResource>> {
+  async getAll(
+    page?: number,
+    search?: string,
+    withDebt?: boolean,
+  ): Promise<PaginatedResult<ClientResource>> {
     const params: Record<string, unknown> = {};
     if (page) params.page = page;
     if (search) params.search = search;
+    // Sólo cuando está activo: mandarlo siempre haría que el backend
+    // evaluara el filtro en cada listado.
+    if (withDebt) params.with_debt = 1;
 
     const { data: res } = await api.get('/client-resources', { params: { ...params, all: 1 } });
     return mapPaginatedResponse(res, mapClientResource);

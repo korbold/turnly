@@ -9,11 +9,11 @@ import { UpdateClientUseCase } from '@/application/use-cases/clients/update-clie
 import { GetClientHistoryUseCase } from '@/application/use-cases/clients/get-client-history.use-case';
 import type { CreateClientResourceData, ClientBillingProfile } from '@/domain/repositories/client-resource.repository';
 
-export function useClients(page?: number, search?: string) {
+export function useClients(page?: number, search?: string, withDebt?: boolean) {
   const repo = useRepository('clientResource');
   return useQuery({
-    queryKey: ['clients', page, search],
-    queryFn: () => new GetClientsUseCase(repo).execute(page, search),
+    queryKey: ['clients', page, search, withDebt ?? false],
+    queryFn: () => new GetClientsUseCase(repo).execute(page, search, withDebt),
   });
 }
 

@@ -1,10 +1,12 @@
 'use client';
 
-import { useState, useEffect, Suspense } from 'react';
-import { Plus, Search, Users } from 'lucide-react';
+import { useState, useEffect, useMemo, Suspense } from 'react';
+import { Plus, Search, Users, Wallet } from 'lucide-react';
 import { Button } from '@/presentation/components/ui/button';
 import { Input } from '@/presentation/components/ui/input';
 import { Skeleton } from '@/presentation/components/ui/skeleton';
+import { useQueryState, parseAsBoolean } from 'nuqs';
+import { cn } from '@/shared/utils/cn';
 import { useClients } from '@/presentation/hooks/use-clients';
 import { useSettings } from '@/presentation/hooks/use-settings';
 import { ClientCard } from '@/presentation/components/features/clients/client-card';
@@ -22,9 +24,20 @@ function ClientsContent() {
     return () => clearTimeout(timer);
   }, [search]);
 
-  const { data, isLoading } = useClients(page, debouncedSearch || undefined);
+  // El toggle vive en la URL: la pantalla del lunes se comparte y se marca.
+  const [onlyDebt, setOnlyDebt] = useQueryState(
+    'with_debt', parseAsBoolean.withDefault(false),
+  );
+
+  const { data, isLoading } = useClients(page, debouncedSearch || undefined, onlyDebt);
   const { data: settings } = useSettings();
-  const clients = data?.data ?? [];
+  // El orden por deuda es en memoria y SOBRE LA PÁGINA, no sobre el tenant:
+  // con el filtro activo la lista son los deudores, que son pocos. Hacerlo en
+  // SQL obligaría a arrastrar la agregación a la consulta principal.
+  const clients = useMemo(() => {
+    const rows = data?.data ?? [];
+    return onlyDebt ? [...rows].sort((a, b) => b.debt - a.debt) : rows;
+  }, [data, onlyDebt]);
   const meta = data?.meta;
   const firstField = settings?.customFields?.[0]?.label?.toLowerCase();
   const placeholder = firstField
@@ -48,10 +61,29 @@ function ClientsContent() {
             }}
           />
         </div>
-        <Button onClick={() => setCreateOpen(true)} className="sm:self-auto">
-          <Plus className="mr-1.5 h-4 w-4" aria-hidden="true" />
-          Nuevo cliente
-        </Button>
+        <div className="flex items-center gap-2">
+          <button
+            type="button"
+            onClick={() => {
+              setOnlyDebt(onlyDebt ? null : true);
+              setPage(1);
+            }}
+            aria-pressed={onlyDebt}
+            className={cn(
+              'inline-flex h-9 shrink-0 items-center gap-1.5 rounded-lg border px-3 text-[13px] font-medium transition-colors cursor-pointer',
+              onlyDebt
+                ? 'border-[var(--warning-200)] bg-[var(--warning-50)] text-[var(--warning-700)]'
+                : 'border-[var(--border)] text-[var(--fg-secondary)] hover:bg-[var(--bg-sunken)]',
+            )}
+          >
+            <Wallet className="h-3.5 w-3.5" aria-hidden="true" />
+            Solo con deuda
+          </button>
+          <Button onClick={() => setCreateOpen(true)} className="sm:self-auto">
+            <Plus className="mr-1.5 h-4 w-4" aria-hidden="true" />
+            Nuevo cliente
+          </Button>
+        </div>
       </div>
 
       {/* List */}

@@ -20,6 +20,7 @@ import { useClient, useClientHistory } from '@/presentation/hooks/use-clients';
 import { useSettings } from '@/presentation/hooks/use-settings';
 import { ClientForm } from '@/presentation/components/features/clients/client-form';
 import { ClientBillingSection } from '@/presentation/components/features/clients/client-billing-section';
+import { DebtSection } from '@/presentation/components/features/debt/debt-section';
 import { cn } from '@/shared/utils/cn';
 
 const fmt = (v: number) =>
@@ -271,6 +272,11 @@ function ClientDetailContent() {
           </section>
         </div>
       </div>
+
+      {/* Deuda. Va antes de facturación y del historial: es lo que se
+          pregunta al abrir la ficha de alguien que debe, y no depende de que
+          el recurso tenga un cliente asociado — la placa alcanza. */}
+      <DebtSection clientResourceId={id} />
 
       {/* Datos de facturación — the client's real fiscal identity, editable
           here; this is the profile the SRI factura reads. Only for clients
