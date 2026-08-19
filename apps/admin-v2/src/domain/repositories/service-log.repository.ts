@@ -32,6 +32,9 @@ export interface CreateServiceLogData {
   paymentMethod: PaymentMethod | null;
   paymentBank?: string | null;
   paymentStatus?: 'paid' | 'unpaid';
+  /** Abono al registrar. Ausente cobra el total, que es el comportamiento
+      histórico. */
+  amountReceived?: number;
   /** Multi-service breakdown. Each line maps to a service_log_items
       row; the parent log carries the sum so legacy reports keep
       grouping correctly. */
@@ -43,6 +46,8 @@ export interface RecordPaymentData {
   method: PaymentMethod;
   bank?: string | null;
   reference?: string | null;
+  /** Abono: cobrar menos que el saldo. Ausente cobra todo lo que falta. */
+  amount?: number;
 }
 
 export interface UpdateServiceLogData {

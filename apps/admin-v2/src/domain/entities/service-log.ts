@@ -65,7 +65,10 @@ export interface ServiceLog {
   priceCharged: number;
   paymentMethod: PaymentMethod | null;
   paymentBank: string | null;
-  paymentStatus: 'paid' | 'unpaid';
+  paymentStatus: 'paid' | 'unpaid' | 'partial';
+  /** Lo abonado y lo que falta, del libro de pagos. */
+  amountPaid: number;
+  amountDue: number;
   paidAt: Date | null;
   invoiced: boolean;
   invoicedAt: Date | null;
@@ -110,7 +113,7 @@ export interface DailySummary {
  * `payment` is one control, mirroring the PAGO column: a state (paid/pending)
  * or a concrete method. They never combine — a pending row has no method yet.
  */
-export type PaymentFilter = 'paid' | 'pending' | 'cash' | 'card' | 'transfer';
+export type PaymentFilter = 'paid' | 'pending' | 'partial' | 'cash' | 'card' | 'transfer';
 
 /** Page sizes the UI offers; "all" collapses the day into a single page. */
 export type PageSize = '10' | '15' | '20' | 'all';

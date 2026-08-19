@@ -46,6 +46,11 @@ export class ApiServiceLogRepository implements ServiceLogRepository {
       payment_status: data.paymentStatus ?? 'paid',
       notes: data.notes,
     };
+    // Sólo si tiene valor: mandar null o 0 haría que el backend registre un
+    // cobro de cero en vez de cobrar el total.
+    if (data.amountReceived) {
+      body.amount_received = data.amountReceived;
+    }
     if (data.items && data.items.length > 0) {
       body.items = data.items.map((it) => ({
         item_type: it.itemType ?? 'service_variant',
@@ -78,6 +83,8 @@ export class ApiServiceLogRepository implements ServiceLogRepository {
       method: data.method,
       bank: data.bank ?? null,
       reference: data.reference ?? null,
+      // Sin monto el backend cobra el saldo entero, que es lo que hacía antes.
+      ...(data.amount ? { amount: data.amount } : {}),
     });
     return mapServiceLog(res.data);
   }

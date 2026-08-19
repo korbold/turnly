@@ -187,7 +187,11 @@ export function LogList({
       {logs.map((log, idx) => {
         const statusCfg = STATUS_CONFIG[log.status];
         const pmCfg = log.paymentMethod ? PAYMENT_METHOD_CONFIG[log.paymentMethod] : null;
-        const isUnpaid = log.paymentStatus === 'unpaid';
+        // "Falta cobrar", no "no se cobró nada": un servicio con $10 de $30
+        // sigue necesitando el botón de Cobrar. Comparar contra 'unpaid'
+        // dejaba los abonos sin forma de cobrarse desde la lista.
+        const isOwing = log.paymentStatus !== 'paid';
+        const isPartial = log.paymentStatus === 'partial';
         const inProgress = log.status === 'in_progress';
         // The row carries both axes at once: blue for work still open (the
         // "En progreso" badge's own colour), amber for money still owed (the
@@ -195,10 +199,10 @@ export function LogList({
         // rather than picking a winner. Done and paid stays plain — nothing
         // left to do on it.
         const rowTint = inProgress
-          ? isUnpaid
+          ? isOwing
             ? 'border-[var(--warning-200)] bg-gradient-to-r from-[var(--status-progress-bg)] to-[var(--warning-50)] hover:from-[var(--info-200)] hover:to-[var(--warning-100)]'
             : 'border-[var(--info-200)] bg-[var(--status-progress-bg)] hover:bg-[var(--info-200)]'
-          : isUnpaid
+          : isOwing
             ? 'border-[var(--warning-200)] bg-[var(--warning-50)] hover:bg-[var(--warning-100)]'
             : 'border-[var(--border)] bg-white hover:bg-[var(--bg-sunken)]/40';
         // Recurso = the vehicle/resource, never the client name (the client
@@ -297,10 +301,12 @@ export function LogList({
 
             {/* Pago */}
             <div className="mt-2 lg:mt-0">
-              {isUnpaid ? (
+              {isOwing ? (
                 <span className="inline-flex items-center gap-1.5 rounded-full bg-[var(--warning-50)] px-2.5 py-1 text-[11.5px] font-semibold text-[var(--warning-700)] ring-1 ring-[var(--warning-200)]">
                   <Wallet className="h-3 w-3" aria-hidden="true" />
-                  Pendiente
+                  {isPartial
+                    ? `Abonado ${fmt(log.amountPaid)} · falta ${fmt(log.amountDue)}`
+                    : 'Pendiente'}
                 </span>
               ) : pmCfg ? (
                 <span className="inline-flex items-center gap-1.5 rounded-full bg-[var(--bg-sunken)] px-2.5 py-1 text-[11.5px] font-medium text-[var(--fg-strong)]">
@@ -341,7 +347,7 @@ export function LogList({
                   facturación is a manual step: Completar (while in progress)
                   and Facturar (until the SRI invoice is autorizada) can both
                   show. */}
-              {isUnpaid ? (
+              {isOwing ? (
                 <Button
                   size="sm"
                   onClick={() => setPayTarget(log)}
@@ -383,7 +389,10 @@ export function LogList({
                             onError: (e) => toast.error(apiErrorMessage(e, 'Error al iniciar facturación'), { duration: 8000 }),
                           })
                         }
-                        disabled={isEmitting}
+                        disabled={isEmitting || isOwing}
+                        title={isOwing
+                          ? `No se puede facturar con saldo pendiente: faltan ${fmt(log.amountDue)}.`
+                          : undefined}
                         className="h-9 shrink-0 cursor-pointer gap-1.5 bg-[var(--info-500)] px-3 text-white hover:bg-[var(--info-700)] disabled:opacity-100"
                       >
                         {isEmitting ? (
@@ -530,7 +539,7 @@ export function LogList({
       {payTarget && (
         <RegisterPaymentDialog
           serviceLogId={payTarget.id}
-          total={payTarget.priceCharged}
+          total={payTarget.amountDue}
           open
           onClose={() => setPayTarget(null)}
         />

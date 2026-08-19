@@ -32,6 +32,7 @@ import type { ServiceLog, PaymentFilter, PageSize } from '@/domain/entities/serv
 /** Mirrors the PAGO column: a payment state, or the concrete method. */
 const PAYMENT_OPTIONS: Array<{ value: PaymentFilter; label: string }> = [
   { value: 'pending', label: 'Pendiente' },
+  { value: 'partial', label: 'Abonado' },
   { value: 'paid', label: 'Pagado' },
   { value: 'cash', label: 'Efectivo' },
   { value: 'card', label: 'Tarjeta' },

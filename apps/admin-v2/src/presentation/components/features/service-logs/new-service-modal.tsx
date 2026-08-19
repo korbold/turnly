@@ -194,6 +194,9 @@ export function NewServiceModal({ open, onClose, embedded = false }: NewServiceM
   const [paymentMethod, setPaymentMethod] = useState<PaymentMethod>('cash');
   const [paymentBank, setPaymentBank] = useState<string | null>(null);
   const [paymentTiming, setPaymentTiming] = useState<'now' | 'later'>('now');
+  // Abono al registrar: el cliente deja el auto y paga una parte. Vacío cobra
+  // el total, que es como se comportaba antes.
+  const [amountReceived, setAmountReceived] = useState('');
   const [notes, setNotes] = useState('');
   const [recentServiceIds, setRecentServiceIds] = useState<string[]>([]);
 
@@ -215,7 +218,10 @@ export function NewServiceModal({ open, onClose, embedded = false }: NewServiceM
   // Drop method + bank when deferring cobro — the cashier captures
   // them later via the dedicated payment endpoint.
   useEffect(() => {
-    if (paymentTiming === 'later') setPaymentBank(null);
+    if (paymentTiming === 'later') {
+      setPaymentBank(null);
+      setAmountReceived('');
+    }
   }, [paymentTiming]);
 
   // Seed recent-services list once on mount (and refresh when the panel
@@ -623,6 +629,9 @@ export function NewServiceModal({ open, onClose, embedded = false }: NewServiceM
         paymentMethod: payNow ? paymentMethod : null,
         paymentBank: payNow && paymentMethod === 'transfer' ? paymentBank : null,
         paymentStatus: payNow ? 'paid' : 'unpaid',
+        // `paymentStatus: 'paid'` significa "cobra al registrar"; es
+        // amountReceived el que decide si eso alcanza o queda en partial.
+        ...(payNow && amountReceived ? { amountReceived: Number(amountReceived) } : {}),
         notes: notes || undefined,
       },
       {
@@ -1353,6 +1362,33 @@ export function NewServiceModal({ open, onClose, embedded = false }: NewServiceM
                 </div>
               </div>
             )}
+
+            {/* Abono: el cliente deja el auto y paga una parte. Vacío cobra
+                el total. */}
+            <div className="mt-3 space-y-1.5">
+              <label
+                htmlFor="amount-received"
+                className="block text-[11px] font-semibold uppercase tracking-[0.04em] text-[var(--fg-muted)]"
+              >
+                Recibe ahora (opcional)
+              </label>
+              <input
+                id="amount-received"
+                type="number"
+                inputMode="decimal"
+                min={0.01}
+                step="0.01"
+                placeholder={total.toFixed(2)}
+                value={amountReceived}
+                onChange={(e) => setAmountReceived(e.target.value)}
+                className="h-9 w-full rounded-lg border border-[var(--border)] bg-[var(--bg-surface)] px-3 text-[14px] tabular-nums focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--brand-300)]"
+              />
+              <p className="text-[11.5px] text-[var(--fg-muted)]">
+                {Number(amountReceived) > 0 && Number(amountReceived) < total
+                  ? `Abono. Quedan $${(total - Number(amountReceived)).toFixed(2)} por cobrar.`
+                  : 'Vacío cobra el total. Poné menos si el cliente abona una parte.'}
+              </p>
+            </div>
           </div>
           )}
           </div>

@@ -22,6 +22,7 @@ import type { PaymentMethod } from '@/domain/entities/service-log';
 
 interface Props {
   serviceLogId: string;
+  /** Saldo pendiente, no el precio del servicio. */
   total: number;
   open: boolean;
   onClose: () => void;
@@ -43,6 +44,9 @@ export function RegisterPaymentDialog({ serviceLogId, total, open, onClose }: Pr
   const [method, setMethod] = useState<PaymentMethod>('cash');
   const [bank, setBank] = useState<string | null>(null);
   const [reference, setReference] = useState('');
+  // Arranca en el saldo: el caso normal sigue siendo cobrar todo lo que falta,
+  // y el cajero sólo toca esto cuando el cliente abona menos.
+  const [amount, setAmount] = useState('');
   const mutation = useRecordServiceLogPayment();
 
   useEffect(() => {
@@ -50,8 +54,9 @@ export function RegisterPaymentDialog({ serviceLogId, total, open, onClose }: Pr
       setMethod('cash');
       setBank(null);
       setReference('');
+      setAmount(total.toFixed(2));
     }
-  }, [open]);
+  }, [open, total]);
 
   useEffect(() => {
     if (method !== 'transfer') setBank(null);
@@ -62,6 +67,11 @@ export function RegisterPaymentDialog({ serviceLogId, total, open, onClose }: Pr
       toast.error('Selecciona el banco emisor');
       return;
     }
+    const monto = Number(amount);
+    if (!Number.isFinite(monto) || monto <= 0) {
+      toast.error('Poné cuánto cobrás');
+      return;
+    }
     mutation.mutate(
       {
         id: serviceLogId,
@@ -69,6 +79,7 @@ export function RegisterPaymentDialog({ serviceLogId, total, open, onClose }: Pr
           method,
           bank: method === 'transfer' ? bank : null,
           reference: reference.trim() || null,
+          amount: monto,
         },
       },
       {
@@ -102,7 +113,7 @@ export function RegisterPaymentDialog({ serviceLogId, total, open, onClose }: Pr
         <div className="space-y-4">
           <div className="flex items-baseline justify-between rounded-lg border border-[var(--border)] bg-[var(--bg-app)] px-4 py-3">
             <span className="text-[12px] font-semibold uppercase tracking-[0.06em] text-[var(--fg-muted)]">
-              Total
+              Por cobrar
             </span>
             <span
               className="font-mono text-[18px] font-bold tabular-nums text-[var(--fg-strong)]"
@@ -110,6 +121,33 @@ export function RegisterPaymentDialog({ serviceLogId, total, open, onClose }: Pr
             >
               {moneyFmt}
             </span>
+          </div>
+
+          <div className="space-y-2">
+            <Label
+              htmlFor="payment-amount"
+              className="text-[12px] font-semibold uppercase tracking-[0.04em] text-[var(--fg-muted)]"
+            >
+              Monto
+            </Label>
+            <Input
+              id="payment-amount"
+              type="number"
+              inputMode="decimal"
+              min={0.01}
+              max={total}
+              step="0.01"
+              value={amount}
+              onChange={(e) => setAmount(e.target.value)}
+            />
+            {Number(amount) > 0 && Number(amount) < total && (
+              <p className="text-[12px] text-[var(--warning-700)]">
+                Abono. Quedan{' '}
+                {new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD' })
+                  .format(total - Number(amount))}{' '}
+                por cobrar.
+              </p>
+            )}
           </div>
 
           <div className="space-y-2">
