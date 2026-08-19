@@ -62,6 +62,19 @@ export function usePermissions() {
     return granted === 'full';
   }
 
+  /**
+   * Asignar lavador y secador. Mientras el servicio está en progreso lo
+   * gobierna la matriz; una vez completado es owner/admin y nada más — regla
+   * fija, no configurable. El reclamo del dueño del vehículo llega al
+   * mostrador, y quien lo atiende no puede ser quien reescribe quién lavó.
+   */
+  function canAssign(isCompleted: boolean): boolean {
+    if (isCompleted) {
+      return role === 'owner' || role === 'tenant_admin';
+    }
+    return hasPrivilege('Asignados');
+  }
+
   function canAccess(href: string): boolean {
     // Owner and admin always have full access.
     if (!role || role === 'owner' || role === 'tenant_admin') return true;
@@ -93,5 +106,6 @@ export function usePermissions() {
     hasPrivilege,
     canSetPrice: hasPrivilege('Precio'),
     canDeleteLog: hasPrivilege('Eliminar'),
+    canAssign,
   };
 }
