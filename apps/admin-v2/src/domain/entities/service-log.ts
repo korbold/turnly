@@ -32,6 +32,22 @@ export interface ServiceLogItem {
   sortOrder: number;
 }
 
+export interface ServiceLogEvent {
+  id: string;
+  event:
+    | 'created'
+    | 'assignee_changed'
+    | 'items_changed'
+    | 'payment_recorded'
+    | 'status_changed'
+    | 'invoice_requested'
+    | 'invoice_status_changed';
+  detail: Record<string, unknown>;
+  changedAt: Date;
+  /** Null = lo hizo el sistema (el veredicto del SRI, vía job). */
+  changedBy: { id: string; name: string } | null;
+}
+
 export interface ServiceLog {
   id: string;
   clientResourceId: string;
@@ -61,6 +77,7 @@ export interface ServiceLog {
   notes: string | null;
   logDate: string;
   createdAt: Date;
+  events?: ServiceLogEvent[];
   washer?: { id: string; name: string } | null;
   dryer?: { id: string; name: string } | null;
   clientResource?: ServiceLogClientResource;

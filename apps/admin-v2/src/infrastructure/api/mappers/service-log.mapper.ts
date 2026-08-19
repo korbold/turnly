@@ -1,4 +1,4 @@
-import type { ServiceLog, ServiceLogItem, DailySummary } from '@/domain/entities/service-log';
+import type { ServiceLog, ServiceLogItem, ServiceLogEvent, DailySummary } from '@/domain/entities/service-log';
 
 export function mapServiceLog(raw: Record<string, unknown>): ServiceLog {
   const clientResource = raw.client_resource as Record<string, unknown> | undefined;
@@ -13,6 +13,15 @@ export function mapServiceLog(raw: Record<string, unknown>): ServiceLog {
     attendedBy: raw.attended_by as string,
     washedBy: (raw.washed_by as string | null) ?? null,
     driedBy: (raw.dried_by as string | null) ?? null,
+    events: Array.isArray(raw.events)
+      ? (raw.events as Record<string, unknown>[]).map((e) => ({
+          id: e.id as string,
+          event: e.event as ServiceLogEvent['event'],
+          detail: (e.detail as Record<string, unknown>) ?? {},
+          changedAt: new Date(e.changed_at as string),
+          changedBy: (e.changed_by as { id: string; name: string } | null) ?? null,
+        }))
+      : undefined,
     washer: (raw.washer as { id: string; name: string } | null) ?? null,
     dryer: (raw.dryer as { id: string; name: string } | null) ?? null,
     createdBy: raw.created_by as string,

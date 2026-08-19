@@ -28,6 +28,10 @@ import {
   useCompleteServiceLog,
 } from '@/presentation/hooks/use-service-logs';
 import { useEmitInvoice } from '@/presentation/hooks/use-invoices';
+import { usePermissions } from '@/presentation/hooks/use-permissions';
+import { useSettings } from '@/presentation/hooks/use-settings';
+import { describeServiceLogEvent } from '@/shared/utils/service-log-events';
+import { AssignStaffDialog } from '@/presentation/components/features/service-logs/assign-staff-dialog';
 import { InvoiceStatusBadge } from '@/presentation/components/features/service-logs/invoice-status-badge';
 import { RegisterPaymentDialog } from '@/presentation/components/features/service-logs/register-payment-dialog';
 import { FiscalProfileDialog } from '@/presentation/components/features/service-logs/fiscal-profile-dialog';
@@ -73,6 +77,10 @@ function ServiceLogDetail({ id }: { id: string }) {
   const [payOpen, setPayOpen] = useState(false);
   const [editOpen, setEditOpen] = useState(false);
   const [billingOpen, setBillingOpen] = useState(false);
+  const [assignOpen, setAssignOpen] = useState(false);
+  const { canAssign } = usePermissions();
+  const { data: settings } = useSettings();
+  const isCarWash = settings?.businessType === 'car_wash';
 
   if (isLoading || !log) {
     return (
@@ -316,12 +324,52 @@ function ServiceLogDetail({ id }: { id: string }) {
               </div>
             </div>
           </Card>
+
+          {isCarWash && (
+            <Card title="Asignados">
+              <Row label="Lavador" value={log.washer?.name ?? 'Sin asignar'} />
+              <Row label="Secador" value={log.dryer?.name ?? 'Sin asignar'} />
+              {canAssign(log.status === 'completed') && (
+                <Button
+                  variant="outline"
+                  size="sm"
+                  className="mt-2 w-full"
+                  onClick={() => setAssignOpen(true)}
+                >
+                  Cambiar
+                </Button>
+              )}
+            </Card>
+          )}
+
+          {(log.events ?? []).length > 0 && (
+            <Card title="Bitácora">
+              <ol className="space-y-2.5">
+                {(log.events ?? []).map((event) => (
+                  <li key={event.id} className="border-l-2 border-[var(--border)] pl-2.5">
+                    <p className="text-[12.5px] text-[var(--fg-strong)]">
+                      {describeServiceLogEvent(event)}
+                    </p>
+                    <p className="mt-0.5 text-[11.5px] text-[var(--fg-muted)]">
+                      {format(new Date(event.changedAt), "d MMM, HH:mm", { locale: es })}
+                      {' · '}
+                      {/* Sin actor = lo hizo el SRI, no una persona. */}
+                      {event.changedBy?.name ?? 'SRI'}
+                    </p>
+                  </li>
+                ))}
+              </ol>
+            </Card>
+          )}
         </div>
       </div>
 
       {/* Dialogs (reused from the list) */}
       <RegisterPaymentDialog serviceLogId={log.id} total={total} open={payOpen} onClose={() => setPayOpen(false)} />
       <EditServiceLogDialog log={editOpen ? log : null} open={editOpen} onClose={() => setEditOpen(false)} />
+      {assignOpen && (
+        <AssignStaffDialog log={log} open onClose={() => setAssignOpen(false)} />
+      )}
       <FiscalProfileDialog
         serviceLogId={log.id}
         clientName={log.clientResource?.client?.name}
