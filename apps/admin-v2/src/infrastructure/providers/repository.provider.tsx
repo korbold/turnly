@@ -20,6 +20,7 @@ import type { ServiceVariantRepository } from '@/domain/repositories/service-var
 import type { BusinessResourceRepository } from '@/domain/repositories/business-resource.repository';
 import type { InvoiceRepository } from '@/domain/repositories/invoice.repository';
 import type { ServiceStaffRepository } from '@/domain/repositories/service-staff.repository';
+import type { CashSessionRepository } from '@/domain/repositories/cash-session.repository';
 
 import { ApiAuthRepository } from '../api/repositories/api-auth.repository';
 import { ApiOnboardingRepository } from '../api/repositories/api-onboarding.repository';
@@ -40,6 +41,7 @@ import { ApiProductRepository } from '../api/repositories/api-product.repository
 import { ApiServiceVariantRepository } from '../api/repositories/api-service-variant.repository';
 import { ApiBusinessResourceRepository } from '../api/repositories/api-business-resource.repository';
 import { ApiInvoiceRepository } from '../api/repositories/api-invoice.repository';
+import { ApiCashSessionRepository } from '../api/repositories/api-cash-session.repository';
 
 interface Repositories {
   auth: AuthRepository;
@@ -60,6 +62,7 @@ interface Repositories {
   serviceVariant: ServiceVariantRepository;
   businessResource: BusinessResourceRepository;
   serviceStaff: ServiceStaffRepository;
+  cashSession: CashSessionRepository;
   invoice: InvoiceRepository;
 }
 
@@ -86,6 +89,7 @@ export function RepositoryProvider({ children }: { children: ReactNode }) {
       serviceVariant: new ApiServiceVariantRepository(),
       businessResource: new ApiBusinessResourceRepository(),
       serviceStaff: new ApiServiceStaffRepository(),
+      cashSession: new ApiCashSessionRepository(),
       invoice: new ApiInvoiceRepository(),
     }),
     [],
