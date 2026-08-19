@@ -2,7 +2,7 @@
 
 import { Suspense } from 'react';
 import { useQueryState, parseAsString } from 'nuqs';
-import { Settings, Clock, Image, List, Shield, Palette, Receipt, Layers } from 'lucide-react';
+import { Settings, Clock, Image, List, Shield, Palette, Receipt, Layers, Users } from 'lucide-react';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/presentation/components/ui/tabs';
 import { Skeleton } from '@/presentation/components/ui/skeleton';
 import { GeneralTab } from '@/presentation/components/features/settings/general-tab';
@@ -13,8 +13,10 @@ import { PermissionsTab } from '@/presentation/components/features/settings/perm
 import { BrandTab } from '@/presentation/components/features/settings/brand-tab';
 import { BillingTab } from '@/presentation/components/features/settings/billing-tab';
 import { ResourcesTab } from '@/presentation/components/features/settings/resources-tab';
+import { StaffTab } from '@/presentation/components/features/settings/staff-tab';
+import { useSettings } from '@/presentation/hooks/use-settings';
 
-const TABS = [
+const BASE_TABS = [
   { value: 'general', label: 'General', icon: Settings },
   { value: 'schedule', label: 'Horario', icon: Clock },
   { value: 'gallery', label: 'Galería', icon: Image },
@@ -25,8 +27,15 @@ const TABS = [
   { value: 'resources', label: 'Recursos', icon: Layers },
 ] as const;
 
+// El personal de lavado es vocabulario de lavadora: en los demás rubros la
+// pestaña no existe.
+const STAFF_TAB = { value: 'staff', label: 'Personal', icon: Users } as const;
+
 function SettingsContent() {
   const [tab, setTab] = useQueryState('tab', parseAsString.withDefault('general'));
+  const { data: settings } = useSettings();
+  const isCarWash = settings?.businessType === 'car_wash';
+  const TABS = isCarWash ? [...BASE_TABS, STAFF_TAB] : BASE_TABS;
 
   return (
     <div>
@@ -73,6 +82,9 @@ function SettingsContent() {
             <TabsContent value="brand" className="mt-0"><BrandTab /></TabsContent>
             <TabsContent value="billing" className="mt-0"><BillingTab /></TabsContent>
             <TabsContent value="resources" className="mt-0"><ResourcesTab /></TabsContent>
+            {isCarWash && (
+              <TabsContent value="staff" className="mt-0"><StaffTab /></TabsContent>
+            )}
           </div>
         </div>
       </Tabs>
