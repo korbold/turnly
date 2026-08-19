@@ -184,7 +184,7 @@ export function LogList({
           the "Cobrar"/"Completar" labeled buttons no longer fit in
           180px next to the status badge + overflow ⋯, which was
           clipping them at the right edge. */}
-      <div className="hidden rounded-lg bg-[var(--bg-sunken)] px-4 py-2 text-[11px] font-semibold uppercase tracking-[0.04em] text-[var(--fg-muted)] lg:grid lg:grid-cols-[60px_minmax(0,1.3fr)_minmax(0,1.3fr)_minmax(0,1fr)_84px_112px_minmax(280px,auto)] lg:gap-3 lg:items-center">
+      <div className="hidden rounded-lg bg-[var(--bg-sunken)] px-4 py-2 text-[11px] font-semibold uppercase tracking-[0.04em] text-[var(--fg-muted)] lg:grid lg:grid-cols-[60px_minmax(0,1.3fr)_minmax(0,1.3fr)_minmax(0,1fr)_84px_112px_minmax(280px,auto)] lg:items-center lg:gap-3">
         <span>Hora</span>
         <span>Recurso</span>
         <span>Servicio</span>
@@ -239,18 +239,34 @@ export function LogList({
             transition={{ delay: idx * 0.03 }}
             className={cn(
               'rounded-lg border p-3 transition-colors',
-              'lg:grid lg:grid-cols-[60px_minmax(0,1.3fr)_minmax(0,1.3fr)_minmax(0,1fr)_84px_112px_minmax(280px,auto)] lg:items-center lg:gap-3',
+              // Alineado por la PRIMERA línea, no por el centro: las celdas tienen
+              // alturas distintas (el recurso puede traer chip de deuda, el
+              // empleado tres líneas) y centrarlas dejaba la placa arriba del
+              // nombre del servicio. La primera línea es la que el ojo usa
+              // para escanear la fila.
+              // Debajo de `lg` no es una tabla: es una tarjeta de dos columnas.
+              // Meter siete columnas en una tablet trunca todo a "PBT…", y
+              // apilarlas hace que un servicio coma media pantalla. La
+              // tarjeta pone hora y precio en la misma línea, y el chip de
+              // pago junto a los botones: cuatro filas en vez de ocho.
+              'grid grid-cols-[auto_1fr_auto] items-center gap-x-3 gap-y-1.5',
+              // Alineado por la PRIMERA línea, no por el centro: las celdas
+              // tienen alturas distintas (el recurso puede traer chip de
+              // deuda, el empleado tres líneas) y centrarlas dejaba la placa
+              // arriba del nombre del servicio. La primera línea es la que el
+              // ojo usa para escanear.
+              'lg:grid-cols-[60px_minmax(0,1.3fr)_minmax(0,1.3fr)_minmax(0,1fr)_84px_112px_minmax(280px,auto)] lg:items-start lg:gap-3',
               rowTint,
             )}
           >
             {/* Hora — bigger weight on mobile to read like a chip,
                 lighter on desktop where the column header carries it. */}
-            <span className="block font-mono text-[14px] font-semibold tabular-nums text-[var(--fg-strong)] lg:font-normal" style={{ fontFamily: 'var(--font-mono)' }}>
+            <span className="col-start-1 row-start-1 block font-mono text-[14px] font-semibold tabular-nums text-[var(--fg-strong)] lg:col-auto lg:row-auto lg:font-normal" style={{ fontFamily: 'var(--font-mono)' }}>
               {format(new Date(log.startedAt), 'HH:mm')}
             </span>
 
             {/* Recurso */}
-            <div className="mt-2 lg:mt-0">
+            <div className="col-span-3 row-start-2 min-w-0 lg:col-span-1 lg:row-auto">
               <p className="truncate text-[13.5px] font-medium text-[var(--fg-strong)]" title={recursoLabel}>
                 {recursoLabel}
               </p>
@@ -265,7 +281,7 @@ export function LogList({
                   que es el único momento en que se puede pedir. */}
               {log.otherDebt > 0 && (
                 <span
-                  className="mt-1 inline-flex items-center gap-1 rounded-full bg-[var(--danger-50)] px-2 py-0.5 text-[11px] font-semibold text-[var(--danger-700)] ring-1 ring-[var(--danger-200)]"
+                  className="mt-1 inline-flex max-w-full items-center gap-1 truncate rounded-full bg-[var(--danger-50)] px-2 py-0.5 text-[11px] font-semibold text-[var(--danger-700)] ring-1 ring-[var(--danger-200)]"
                   title="Deuda anterior de esta placa, aparte de este servicio"
                 >
                   <Wallet className="h-3 w-3" aria-hidden="true" />
@@ -275,7 +291,7 @@ export function LogList({
             </div>
 
             {/* Servicio */}
-            <div className="mt-1 lg:mt-0">
+            <div className="col-span-3 row-start-3 min-w-0 lg:col-span-1 lg:row-auto">
               <p className="truncate text-[13.5px] text-[var(--fg-strong)]" title={serviceLabel}>
                 {serviceLabel}
               </p>
@@ -316,16 +332,16 @@ export function LogList({
 
             {/* Precio */}
             <span
-              className="mt-2 block font-mono text-[15px] font-semibold tabular-nums text-[var(--fg-strong)] lg:mt-0 lg:text-right lg:text-[14px]"
+              className="col-start-3 row-start-1 block justify-self-end font-mono text-[15px] font-semibold tabular-nums text-[var(--fg-strong)] lg:col-auto lg:row-auto lg:justify-self-auto lg:text-right lg:text-[14px]"
               style={{ fontFamily: 'var(--font-mono)' }}
             >
               {fmt(log.priceCharged)}
             </span>
 
             {/* Pago */}
-            <div className="mt-2 lg:mt-0">
+            <div className="col-start-2 row-start-1 justify-self-end lg:col-auto lg:row-auto lg:justify-self-auto">
               {isOwing ? (
-                <span className="inline-flex items-center gap-1.5 rounded-full bg-[var(--warning-50)] px-2.5 py-1 text-[11.5px] font-semibold text-[var(--warning-700)] ring-1 ring-[var(--warning-200)]">
+                <span className="inline-flex items-center gap-1.5 whitespace-nowrap rounded-full bg-[var(--warning-50)] lg:whitespace-normal px-2.5 py-1 text-[11.5px] font-semibold text-[var(--warning-700)] ring-1 ring-[var(--warning-200)]">
                   <Wallet className="h-3 w-3" aria-hidden="true" />
                   {log.leftOwing
                     ? `Debe ${fmt(log.amountDue)}`
@@ -334,7 +350,7 @@ export function LogList({
                       : 'Pendiente'}
                 </span>
               ) : pmCfg ? (
-                <span className="inline-flex items-center gap-1.5 rounded-full bg-[var(--bg-sunken)] px-2.5 py-1 text-[11.5px] font-medium text-[var(--fg-strong)]">
+                <span className="inline-flex items-center gap-1.5 whitespace-nowrap rounded-full bg-[var(--bg-sunken)] lg:whitespace-normal px-2.5 py-1 text-[11.5px] font-medium text-[var(--fg-strong)]">
                   <span aria-hidden="true">{pmCfg.icon}</span>
                   {pmCfg.label}
                 </span>
@@ -349,7 +365,7 @@ export function LogList({
                 primary CTA so it never clips at intermediate breakpoints
                 (the bug that made the Cobrar button only show on
                 hover). */}
-            <div className="mt-3 flex flex-nowrap items-center justify-end gap-2 lg:mt-0">
+            <div className="col-span-3 row-start-4 flex flex-nowrap items-center justify-end gap-2 lg:col-span-1 lg:row-auto lg:self-center">
               <InvoiceStatusBadge status={log.invoiceStatus} className="ml-1" />
 
               <Badge
