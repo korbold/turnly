@@ -196,10 +196,17 @@ test('POST service-logs/{id}/invoice returns 202 and dispatches job', function (
         'service_id'         => $this->service->id,
         'attended_by'        => $this->user->id,
         'created_by'         => $this->user->id,
-        'payment_method'     => 'cash',
-        'payment_status'     => 'paid',
+        'payment_method'     => null,
+        'payment_status'     => 'unpaid',
+        'paid_at'            => null,
         'invoice_status'     => null,
     ]);
+
+    // Facturar exige pago total, y "pagado" lo dice el libro: la columna es un
+    // reflejo suyo. Marcarla a mano ya no basta.
+    app(\App\Application\Services\PaymentLedger::class)->recordForServiceLog(
+        $log, (float) $log->price_charged, 'cash', null, $this->user->id,
+    );
 
     $response = $this->actingAs($this->user)
         ->withHeader('X-Tenant', $this->tenant->slug)

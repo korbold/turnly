@@ -40,17 +40,31 @@ beforeEach(function () {
     app()->instance('current_tenant_id', $this->tenant->id);
 });
 
+/**
+ * Facturar exige pago total, y "pagado" lo dice el libro, no la columna: la
+ * columna es un reflejo. Un log marcado 'paid' a mano sin pago detrás ya no es
+ * un estado que la app pueda producir, así que este fixture cobra de verdad.
+ */
 function makeLog(array $attrs = []): ServiceLogModel
 {
-    return ServiceLogModel::factory()->create(array_merge([
+    $log = ServiceLogModel::factory()->create(array_merge([
         'tenant_id'          => test()->tenant->id,
         'client_resource_id' => test()->clientResource->id,
         'service_id'         => test()->service->id,
         'attended_by'        => test()->user->id,
         'created_by'         => test()->user->id,
-        'payment_method'     => 'cash',
-        'payment_status'     => 'paid',
+        'payment_method'     => null,
+        'payment_status'     => 'unpaid',
+        'paid_at'            => null,
     ], $attrs));
+
+    if (($attrs['payment_status'] ?? 'paid') === 'paid') {
+        app(\App\Application\Services\PaymentLedger::class)->recordForServiceLog(
+            $log, (float) $log->price_charged, 'cash', null, test()->user->id,
+        );
+    }
+
+    return $log->fresh();
 }
 
 // The SRI caps CONSUMIDOR FINAL at $50 per comprobante. Emitting anyway

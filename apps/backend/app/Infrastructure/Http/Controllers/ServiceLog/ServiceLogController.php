@@ -816,6 +816,25 @@ class ServiceLogController extends Controller
             ], 422);
         }
 
+        // Una factura del SRI es por el total del servicio. Con saldo
+        // pendiente el comprobante no refleja lo cobrado — y desde 2026 una
+        // factura a consumidor final no se puede anular nunca, así que el
+        // error no tiene vuelta atrás.
+        //
+        // El umbral es el mismo centavo que usa PaymentLedger::statusFor():
+        // sin él, un servicio pagado en dos partes quedaría sin poder
+        // facturarse por un resto de punto flotante.
+        $pendiente = max(0.0, (float) $log->price_charged - $this->ledger->paidFor($log));
+        if ($pendiente > 0.005) {
+            return response()->json([
+                'error' => [
+                    'code'    => 'PAYMENT_INCOMPLETE',
+                    'message' => 'No se puede facturar con saldo pendiente: faltan $'
+                        . number_format($pendiente, 2) . '.',
+                ],
+            ], 422);
+        }
+
         // Answer before the SRI does: a consumidor final over $50 is a
         // guaranteed rejection that would burn a secuencial.
         $ivaMode = TenantModel::find($log->tenant_id)?->settings['iva_mode'] ?? 'excluded';
