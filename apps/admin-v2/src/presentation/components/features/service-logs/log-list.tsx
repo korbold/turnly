@@ -3,7 +3,7 @@
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { format } from 'date-fns';
-import { MoreHorizontal, CheckCircle2, Pencil, Trash2, Plus, ClipboardList, Wallet, Play, Trophy, FileText, Receipt, Eye, Loader2, ChevronLeft, ChevronRight } from 'lucide-react';
+import { MoreHorizontal, CheckCircle2, Pencil, Trash2, Plus, ClipboardList, Wallet, Play, Trophy, FileText, Receipt, Eye, Loader2, ChevronLeft, ChevronRight, UserCog } from 'lucide-react';
 import { toast } from 'sonner';
 import { motion } from 'framer-motion';
 import { Badge } from '@/presentation/components/ui/badge';
@@ -29,6 +29,8 @@ import { FiscalProfileDialog } from '@/presentation/components/features/service-
 import { InvoiceStatusBadge } from '@/presentation/components/features/service-logs/invoice-status-badge';
 import { useEmitInvoice } from '@/presentation/hooks/use-invoices';
 import { usePermissions } from '@/presentation/hooks/use-permissions';
+import { useSettings } from '@/presentation/hooks/use-settings';
+import { AssignStaffDialog } from '@/presentation/components/features/service-logs/assign-staff-dialog';
 import {
   Select,
   SelectContent,
@@ -87,6 +89,9 @@ export function LogList({
   // (default: Admin only). A cashier without it asks instead. The backend
   // reads the same matrix.
   const { canDeleteLog } = usePermissions();
+  const { data: settings } = useSettings();
+  const isCarWash = settings?.businessType === 'car_wash';
+  const [assignTarget, setAssignTarget] = useState<{ log: ServiceLog; reason?: string } | null>(null);
   const [payTarget, setPayTarget] = useState<ServiceLog | null>(null);
   const [billingTarget, setBillingTarget] = useState<ServiceLog | null>(null);
 
@@ -97,8 +102,18 @@ export function LogList({
   const rangeStart = total === 0 ? 0 : (currentPage - 1) * (data?.meta?.perPage ?? 0) + 1;
   const rangeEnd = Math.min(rangeStart + logs.length - 1, total);
 
-  function handleComplete(id: string) {
-    completeMutation.mutate(id, {
+  function handleComplete(log: ServiceLog) {
+    // El 422 del backend es la red de seguridad, no la experiencia: si falta
+    // alguien, se pide acá mismo en vez de tirar el error.
+    if (isCarWash && (!log.washedBy || !log.driedBy)) {
+      setAssignTarget({
+        log,
+        reason: 'Asigná lavador y secador para poder completar el servicio.',
+      });
+      return;
+    }
+
+    completeMutation.mutate(log.id, {
       onSuccess: () => toast.success('Servicio completado'),
       onError: () => toast.error('Error al completar'),
     });
@@ -237,15 +252,31 @@ export function LogList({
                 {serviceLabel}
               </p>
               <p className="mt-0.5 truncate text-[11.5px] text-[var(--fg-muted)] lg:hidden">
-                {log.attendant?.name ?? '-'}
+                {isCarWash
+                  ? [log.washer?.name, log.dryer?.name].filter(Boolean).join(' · ') || 'Sin asignar'
+                  : (log.attendant?.name ?? '-')}
               </p>
             </div>
 
             {/* Empleado (desktop only — moved into the servicio sub-line
-                on mobile so the row stays compact). */}
-            <span className="hidden truncate text-[13px] text-[var(--fg-secondary)] lg:inline">
-              {log.attendant?.name ?? '-'}
-            </span>
+                on mobile so the row stays compact). En lavadora son dos
+                personas: lavador arriba, secador debajo. */}
+            {isCarWash ? (
+              <div className="hidden min-w-0 lg:block">
+                <p className="truncate text-[13px] text-[var(--fg-secondary)]">
+                  {log.washer?.name ?? (
+                    <span className="text-[var(--fg-muted)]">Sin asignar</span>
+                  )}
+                </p>
+                <p className="mt-0.5 truncate text-[11.5px] text-[var(--fg-muted)]">
+                  {log.dryer?.name ?? 'Sin secador'}
+                </p>
+              </div>
+            ) : (
+              <span className="hidden truncate text-[13px] text-[var(--fg-secondary)] lg:inline">
+                {log.attendant?.name ?? '-'}
+              </span>
+            )}
 
             {/* Precio */}
             <span
@@ -316,7 +347,7 @@ export function LogList({
                     <Button
                       size="sm"
                       variant="outline"
-                      onClick={() => handleComplete(log.id)}
+                      onClick={() => handleComplete(log)}
                       disabled={completeMutation.isPending}
                       className="h-9 shrink-0 cursor-pointer gap-1.5 border-[var(--success-200)] px-3 text-[var(--success-700)] hover:bg-[var(--success-50)] hover:text-[var(--success-800)]"
                     >
@@ -383,12 +414,18 @@ export function LogList({
                   <DropdownMenuSeparator />
                   {log.status === 'in_progress' && (
                     <>
-                      <DropdownMenuItem onClick={() => handleComplete(log.id)} disabled={completeMutation.isPending}>
+                      <DropdownMenuItem onClick={() => handleComplete(log)} disabled={completeMutation.isPending}>
                         <CheckCircle2 className="mr-2 h-3.5 w-3.5" />
                         Completar
                       </DropdownMenuItem>
                       <DropdownMenuSeparator />
                     </>
+                  )}
+                  {isCarWash && (
+                    <DropdownMenuItem onClick={() => setAssignTarget({ log })}>
+                      <UserCog className="mr-2 h-3.5 w-3.5" />
+                      Asignar
+                    </DropdownMenuItem>
                   )}
                   <DropdownMenuItem onClick={() => onEdit?.(log)}>
                     <Pencil className="mr-2 h-3.5 w-3.5" />
@@ -487,6 +524,16 @@ export function LogList({
           total={payTarget.priceCharged}
           open
           onClose={() => setPayTarget(null)}
+        />
+      )}
+
+      {/* Asignar lavador y secador. */}
+      {assignTarget && isCarWash && (
+        <AssignStaffDialog
+          log={assignTarget.log}
+          reason={assignTarget.reason}
+          open
+          onClose={() => setAssignTarget(null)}
         />
       )}
 

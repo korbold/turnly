@@ -75,11 +75,19 @@ export interface ServiceLogBillingProfile {
   phone: string;
 }
 
+/** Omitir un campo es "no lo toques"; mandarlo en null es "sacá al asignado".
+    El backend distingue los dos casos, así que el repositorio también. */
+export interface AssignStaffData {
+  washedBy?: string | null;
+  driedBy?: string | null;
+}
+
 export interface ServiceLogRepository {
   getAll(filters: ServiceLogFilters): Promise<PaginatedResult<ServiceLog>>;
   getById(id: string): Promise<ServiceLog>;
   create(data: CreateServiceLogData): Promise<ServiceLog>;
   update(id: string, data: UpdateServiceLogData): Promise<ServiceLog>;
+  assignStaff(id: string, data: AssignStaffData): Promise<ServiceLog>;
   updateItems(id: string, items: UpdateServiceLogItemsData): Promise<ServiceLog>;
   delete(id: string): Promise<void>;
   complete(id: string): Promise<ServiceLog>;

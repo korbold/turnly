@@ -1,5 +1,6 @@
 import type {
   ServiceLogRepository,
+  AssignStaffData,
   CreateServiceLogData,
   UpdateServiceLogData,
   UpdateServiceLogItemsData,
@@ -91,6 +92,19 @@ export class ApiServiceLogRepository implements ServiceLogRepository {
     if (data.notes !== undefined) body.notes = data.notes;
 
     const { data: res } = await api.patch(`/service-logs/${id}`, body);
+    return mapServiceLog(res.data);
+  }
+
+  async assignStaff(id: string, data: AssignStaffData): Promise<ServiceLog> {
+    // Sólo se mandan las claves presentes: omitir es distinto de null.
+    const payload: Record<string, unknown> = {};
+    if (data.washedBy !== undefined) payload.washed_by = data.washedBy;
+    if (data.driedBy !== undefined) payload.dried_by = data.driedBy;
+
+    const { data: res } = await api.patch<{ data: Record<string, unknown> }>(
+      `/service-logs/${id}/assignees`,
+      payload,
+    );
     return mapServiceLog(res.data);
   }
 
