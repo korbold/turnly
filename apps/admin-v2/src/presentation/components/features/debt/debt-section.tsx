@@ -83,18 +83,36 @@ export function DebtSection({ clientResourceId }: { clientResourceId: string }) 
             <p className="text-[11px] font-semibold uppercase tracking-[0.04em] text-[var(--fg-muted)]">
               Pagos recibidos
             </p>
-            <ul className="mt-1.5 space-y-1">
+            <ul className="mt-1.5 space-y-2.5">
               {payments.map((p) => (
-                <li key={p.id} className="flex items-baseline gap-2 text-[12.5px]">
-                  <span className="w-[80px] shrink-0 tabular-nums text-[var(--fg-muted)]">
-                    {p.paidAt.toISOString().slice(0, 10)}
-                  </span>
-                  <span className="min-w-0 flex-1 text-[var(--fg-secondary)]">
-                    {METHOD_LABEL[p.method] ?? p.method}
-                  </span>
-                  <span className="shrink-0 tabular-nums font-semibold text-[var(--success-700)]">
-                    {money(p.amount)}
-                  </span>
+                <li key={p.id}>
+                  <div className="flex items-baseline gap-2 text-[12.5px]">
+                    <span className="w-[80px] shrink-0 tabular-nums text-[var(--fg-muted)]">
+                      {p.paidAt.toISOString().slice(0, 10)}
+                    </span>
+                    <span className="min-w-0 flex-1 text-[var(--fg-secondary)]">
+                      {METHOD_LABEL[p.method] ?? p.method}
+                    </span>
+                    <span className="shrink-0 tabular-nums font-semibold text-[var(--success-700)]">
+                      {money(p.amount)}
+                    </span>
+                  </div>
+                  {/* A qué se aplicó. "Efectivo $20" no responde la pregunta
+                      del cliente; el desglose sí. */}
+                  {p.allocations.length > 0 && (
+                    <ul className="ml-[80px] mt-0.5 space-y-0.5 border-l border-[var(--border)] pl-2.5">
+                      {p.allocations.map((a) => (
+                        <li
+                          key={`${a.type}-${a.id}`}
+                          className="flex items-baseline gap-2 text-[11.5px] text-[var(--fg-muted)]"
+                        >
+                          <span className="tabular-nums">{a.date}</span>
+                          <span className="min-w-0 flex-1 truncate">{a.label}</span>
+                          <span className="shrink-0 tabular-nums">{money(a.amount)}</span>
+                        </li>
+                      ))}
+                    </ul>
+                  )}
                 </li>
               ))}
             </ul>

@@ -33,6 +33,13 @@ export class ApiDebtRepository implements DebtRepository {
         amount: Number(p.amount ?? 0),
         method: p.method as string,
         paidAt: new Date(p.paid_at as string),
+        allocations: ((p.allocations as Raw[]) ?? []).map((a) => ({
+          type: a.type as DebtItemType,
+          id: a.id as string,
+          label: a.label as string,
+          date: a.date as string,
+          amount: Number(a.amount ?? 0),
+        })),
       })),
     };
   }

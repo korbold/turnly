@@ -127,3 +127,48 @@ test('a plate that never owed anything has an empty history', function () {
         ->assertOk()
         ->assertJsonCount(0, 'data.payments');
 });
+
+test('each payment says what it was applied to', function () {
+    // "Efectivo $20" no responde la pregunta del cliente. La que responde es
+    // "abonó $15 al cuaderno de julio y $5 al lavado del 2".
+    ManualDebtModel::create([
+        'tenant_id' => $this->tenant->id, 'client_resource_id' => $this->resource->id,
+        'amount' => 15.00, 'reason' => 'Cuaderno de julio', 'incurred_on' => '2026-07-15',
+    ]);
+    ($this->debe)(20.00, '2026-08-02');
+
+    $this->ledger->recordAgainstResource(
+        $this->tenant->id, $this->resource->id, 20.00, 'cash', null, $this->owner->id,
+    );
+
+    $res = ($this->as)()
+        ->getJson("/api/v1/client-resources/{$this->resource->id}/debt")
+        ->assertOk();
+
+    $alloc = $res->json('data.payments.0.allocations');
+    expect($alloc)->toHaveCount(2);
+    expect($alloc[0]['label'])->toBe('Cuaderno de julio');
+    expect((float) $alloc[0]['amount'])->toBe(15.0);
+    expect((float) $alloc[1]['amount'])->toBe(5.0);
+});
+
+test('the breakdown keeps its label after the debt is settled and gone', function () {
+    // La etiqueta no puede salir de la lista de deudas abiertas: cuando la
+    // deuda se salda desaparece de ahí, y el historial quedaría diciendo
+    // "abonó $15 a (nada)".
+    ManualDebtModel::create([
+        'tenant_id' => $this->tenant->id, 'client_resource_id' => $this->resource->id,
+        'amount' => 15.00, 'reason' => 'Cuaderno de julio', 'incurred_on' => '2026-07-15',
+    ]);
+
+    $this->ledger->recordAgainstResource(
+        $this->tenant->id, $this->resource->id, 15.00, 'cash', null, $this->owner->id,
+    );
+
+    $res = ($this->as)()
+        ->getJson("/api/v1/client-resources/{$this->resource->id}/debt")
+        ->assertOk();
+
+    expect($res->json('data.total'))->toBe(0);
+    expect($res->json('data.payments.0.allocations.0.label'))->toBe('Cuaderno de julio');
+});

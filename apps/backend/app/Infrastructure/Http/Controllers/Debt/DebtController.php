@@ -39,11 +39,15 @@ class DebtController extends Controller
         // lo que sigue abierto: si colgara de lo abierto, un pago se borraría
         // justo cuando termina de saldar una deuda, y ese pago es el único
         // registro de que el cliente pagó.
+        $etiquetas = $this->debts->labelsFor($tenantId, $resource->id);
+        $idsDeLaPlaca = array_keys($etiquetas);
+
         $pagos = PaymentModel::query()
             ->forTenant($tenantId)
+            ->with(['allocations' => fn ($q) => $q->whereIn('payable_id', $idsDeLaPlaca ?: ['-'])])
             ->whereIn('id', PaymentAllocationModel::query()
                 ->forTenant($tenantId)
-                ->whereIn('payable_id', $this->debts->payableIdsFor($tenantId, $resource->id) ?: ['-'])
+                ->whereIn('payable_id', $idsDeLaPlaca ?: ['-'])
                 ->select('payment_id'))
             ->orderByDesc('paid_at')
             ->orderByDesc('id')
@@ -53,6 +57,20 @@ class DebtController extends Controller
                 'amount'  => (float) $p->amount,
                 'method'  => $p->method,
                 'paid_at' => $p->paid_at?->toIso8601String(),
+                // A qué se aplicó. "Efectivo $20" no responde la pregunta del
+                // cliente; "abonó $15 al cuaderno de julio y $5 al lavado del
+                // 2" sí. Las etiquetas salen de `labelsFor`, que incluye lo
+                // ya saldado.
+                'allocations' => $p->allocations
+                    ->sortBy(fn ($a) => $etiquetas[$a->payable_id]['date'] ?? '')
+                    ->values()
+                    ->map(fn ($a) => [
+                        'type'   => $a->payable_type,
+                        'id'     => $a->payable_id,
+                        'label'  => $etiquetas[$a->payable_id]['label'] ?? 'Deuda',
+                        'date'   => $etiquetas[$a->payable_id]['date'] ?? '',
+                        'amount' => (float) $a->amount,
+                    ]),
             ]);
 
         return response()->json([

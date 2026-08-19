@@ -13,11 +13,23 @@ export interface DebtItem {
   due: number;
 }
 
+/** A qué se aplicó una parte de un pago. La etiqueta sobrevive a la deuda:
+    cuando se salda desaparece del detalle, pero el historial la sigue
+    nombrando. */
+export interface DebtPaymentAllocation {
+  type: DebtItemType;
+  id: string;
+  label: string;
+  date: string;
+  amount: number;
+}
+
 export interface DebtPaymentRecord {
   id: string;
   amount: number;
   method: string;
   paidAt: Date;
+  allocations: DebtPaymentAllocation[];
 }
 
 export interface Debt {

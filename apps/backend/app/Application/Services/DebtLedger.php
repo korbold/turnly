@@ -207,6 +207,50 @@ class DebtLedger
     }
 
     /**
+     * Cómo se llama cada cosa que esta placa alguna vez debió, saldada o no.
+     *
+     * Las etiquetas NO pueden salir de `outstandingFor`: cuando una deuda se
+     * salda desaparece de ahí, y el historial quedaría diciendo "abonó $15 a
+     * (nada)" justo sobre el pago que la canceló.
+     *
+     * @return array<string, array{type:string,label:string,date:string}>
+     */
+    public function labelsFor(string $tenantId, string $clientResourceId): array
+    {
+        $mapa = [];
+
+        $logs = ServiceLogModel::query()
+            ->forTenant($tenantId)
+            ->with(['service', 'items'])
+            ->where('client_resource_id', $clientResourceId)
+            ->where('left_owing', true)
+            ->get();
+
+        foreach ($logs as $log) {
+            $mapa[$log->id] = [
+                'type'  => PaymentAllocationModel::PAYABLE_SERVICE_LOG,
+                'label' => $this->labelFor($log),
+                'date'  => ($log->log_date ?? $log->created_at)?->toDateString() ?? '',
+            ];
+        }
+
+        $manuales = ManualDebtModel::query()
+            ->forTenant($tenantId)
+            ->where('client_resource_id', $clientResourceId)
+            ->get();
+
+        foreach ($manuales as $d) {
+            $mapa[$d->id] = [
+                'type'  => PaymentAllocationModel::PAYABLE_MANUAL_DEBT,
+                'label' => $d->reason,
+                'date'  => $d->incurred_on?->toDateString() ?? '',
+            ];
+        }
+
+        return $mapa;
+    }
+
+    /**
      * Lo abonado a cada cosa, en una consulta. Se hace acá y no por fila
      * porque `outstandingFor` puede tener veinte líneas y el detalle de un
      * deudor no debería costar veinte consultas.
