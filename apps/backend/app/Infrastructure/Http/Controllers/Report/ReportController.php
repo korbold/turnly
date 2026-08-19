@@ -149,21 +149,47 @@ class ReportController extends Controller
         // charged but not collected sat in total_revenue and in no bucket: the
         // donut never added up to the headline. Report both figures instead of
         // making the accountant find the difference.
-        $unpaidLogs = $washLogs->where('payment_status', 'unpaid');
+        // Un log en 'partial' no es 'unpaid', así que el filtro viejo lo dejaba
+        // fuera del impago — y como collected = total − unpaid, sus $30
+        // completos se contaban como cobrados con $10 en la caja. Lo que se
+        // debe de un servicio es su precio menos lo que se le abonó.
+        $ledger = app(\App\Application\Services\PaymentLedger::class);
+
+        $unpaidLogs = $washLogs->filter(fn ($l) => $l->payment_status !== 'paid');
         $unpaidRes  = $reservations->where('payment_status', 'unpaid');
-        $unpaidRevenue = (float) $unpaidLogs->sum('price_charged')
-            + (float) $unpaidRes->sum($totalForReservation);
+
+        $unpaidRevenue = (float) $unpaidLogs->sum(
+            fn ($l) => max(0.0, (float) $l->price_charged - $ledger->paidFor($l))
+        ) + (float) $unpaidRes->sum($totalForReservation);
+
         $collectedRevenue = $totalRevenue - $unpaidRevenue;
 
-        // Per-method buckets (Phase 1 payments live on the reservation
-        // row; the older wash logs still carry their own payment_method).
+        // Plata recibida en el rango, del libro de pagos. Sumar price_charged
+        // por método miente en cuanto existe un abono: un servicio de $30 con
+        // $10 cobrados sumaría $30 al bucket de efectivo.
+        //
+        // Se filtra por `paid_at` y no por log_date: un servicio de ayer
+        // cobrado hoy es plata de hoy. Es el mismo criterio que la caja.
+        $pagos = \App\Infrastructure\Persistence\Models\PaymentModel::query()
+            ->forTenant(app('current_tenant_id'))
+            ->whereBetween('paid_at', [$from . ' 00:00:00', $to . ' 23:59:59'])
+            ->get();
+
+        if ($methodFilter) {
+            $pagos = $pagos->where('method', $methodFilter);
+        }
+        if ($bankFilter) {
+            $pagos = $pagos->where('bank', $bankFilter);
+        }
+
         $paidReservations = $reservations->where('payment_status', 'paid');
-        $methodTotal = function (string $method) use ($washLogs, $paidReservations, $totalForReservation): array {
-            $logs = $washLogs->where('payment_method', $method);
-            $res  = $paidReservations->where('payment_method', $method);
+
+        $methodTotal = function (string $method) use ($pagos, $paidReservations, $totalForReservation): array {
+            $delMetodo = $pagos->where('method', $method);
+            $res       = $paidReservations->where('payment_method', $method);
             return [
-                'count' => $logs->count() + $res->count(),
-                'total' => (float) $logs->sum('price_charged') + (float) $res->sum($totalForReservation),
+                'count' => $delMetodo->count() + $res->count(),
+                'total' => (float) $delMetodo->sum('amount') + (float) $res->sum($totalForReservation),
             ];
         };
         $byPaymentMethod = [
@@ -172,14 +198,12 @@ class ReportController extends Controller
             'transfer' => $methodTotal('transfer'),
         ];
 
-        // Bank-level breakdown for the transfer slice. Only computed off
-        // reservations because wash logs don't track bank. Grouped on
-        // the slug so the UI can decorate each entry with the bank's
-        // brand chip / logo from its own constants table.
+        // Desglose por banco de la tajada de transferencias. Las reservas
+        // siguen aportando desde su propia columna; los cobros del mostrador
+        // ahora salen del libro, por la misma razón que los buckets de arriba.
+        // Agrupado por slug para que la UI decore cada entrada con el chip de
+        // la marca desde su tabla de constantes.
         $transferReservations = $paidReservations
-            ->where('payment_method', 'transfer')
-            ->whereNotNull('payment_bank');
-        $transferLogs = $washLogs
             ->where('payment_method', 'transfer')
             ->whereNotNull('payment_bank');
 
@@ -193,10 +217,10 @@ class ReportController extends Controller
         // Same reason as the filter above: the counter's transfers are service
         // logs, so a breakdown built only off reservations reports no banks at
         // all for a tenant that takes transfers all day.
-        foreach ($transferLogs->groupBy('payment_bank') as $slug => $rows) {
+        foreach ($pagos->where('method', 'transfer')->whereNotNull('bank')->groupBy('bank') as $slug => $rows) {
             $byBank[$slug] = [
                 'count' => ($byBank[$slug]['count'] ?? 0) + $rows->count(),
-                'total' => ($byBank[$slug]['total'] ?? 0.0) + (float) $rows->sum('price_charged'),
+                'total' => ($byBank[$slug]['total'] ?? 0.0) + (float) $rows->sum('amount'),
             ];
         }
 
@@ -379,6 +403,12 @@ class ReportController extends Controller
         $totalCount = $washLogs->count() + $reservations->count();
         $totalRevenue = (float) $washLogs->sum('price_charged') + $reservationRevenue;
 
+        // Misma razón que en range(): los buckets cuentan plata recibida.
+        $pagosDelMes = \App\Infrastructure\Persistence\Models\PaymentModel::query()
+            ->forTenant(app('current_tenant_id'))
+            ->whereBetween('paid_at', [$startDate . ' 00:00:00', $endDate . ' 23:59:59'])
+            ->get();
+
         $activeDays = $washLogs->groupBy(fn($l) => $l->log_date->format('Y-m-d'))->count();
         $resDays = $reservations->groupBy(fn($r) => substr($r->scheduled_at, 0, 10))->count();
         $uniqueDays = max($activeDays, $resDays, 1);
@@ -389,9 +419,9 @@ class ReportController extends Controller
                 'total_washes' => $totalCount,
                 'total_revenue' => $totalRevenue,
                 'by_payment_method' => [
-                    'cash' => (float) $washLogs->where('payment_method', 'cash')->sum('price_charged'),
-                    'card' => (float) $washLogs->where('payment_method', 'card')->sum('price_charged'),
-                    'transfer' => (float) $washLogs->where('payment_method', 'transfer')->sum('price_charged'),
+                    'cash'     => (float) $pagosDelMes->where('method', 'cash')->sum('amount'),
+                    'card'     => (float) $pagosDelMes->where('method', 'card')->sum('amount'),
+                    'transfer' => (float) $pagosDelMes->where('method', 'transfer')->sum('amount'),
                 ],
                 'average_daily_washes' => $totalCount > 0
                     ? round($totalCount / $uniqueDays, 1)

@@ -53,18 +53,44 @@ beforeEach(function () {
         'data' => ['plate' => 'IBB9762'],
     ]);
 
-    $this->log = function (string $date, float $price, ?string $method, string $status = 'paid') {
-        return ServiceLogModel::factory()->create([
+    // Los buckets del reporte salen del libro de pagos, no de las columnas del
+    // servicio. Un log marcado 'paid' a mano ya no es un estado que la app
+    // pueda producir: todo cobro nace en el libro. Este fixture cobra de
+    // verdad, y el banco viaja con el pago en vez de estamparse después.
+    $this->log = function (
+        string $date,
+        float $price,
+        ?string $method,
+        string $status = 'paid',
+        ?string $bank = null,
+    ) {
+        $log = ServiceLogModel::factory()->create([
             'tenant_id' => $this->tenant->id,
             'client_resource_id' => $this->resource->id,
             'service_id' => $this->service->id,
             'attended_by' => $this->owner->id,
             'created_by' => $this->owner->id,
             'price_charged' => $price,
-            'payment_method' => $method,
-            'payment_status' => $status,
+            'payment_method' => null,
+            'payment_status' => 'unpaid',
+            'paid_at' => null,
             'log_date' => $date,
         ]);
+
+        if ($status === 'paid' && $method !== null) {
+            app(\App\Application\Services\PaymentLedger::class)->recordForServiceLog(
+                $log,
+                $price,
+                $method,
+                $bank,
+                $this->owner->id,
+                // El pago pertenece al día del servicio, no al de la corrida:
+                // el reporte filtra por paid_at.
+                \Carbon\Carbon::parse($date . ' 12:00:00'),
+            );
+        }
+
+        return $log->fresh();
     };
 });
 
@@ -169,8 +195,8 @@ test('a range with no activity reports zeros without dividing by zero', function
  * are service logs, so the filter returned nothing at all.
  */
 test('filtering by bank keeps the services paid with that bank', function () {
-    ($this->log)('2026-08-17', 100.00, 'transfer')->update(['payment_bank' => 'pichincha']);
-    ($this->log)('2026-08-17', 50.00, 'transfer')->update(['payment_bank' => 'guayaquil']);
+    ($this->log)('2026-08-17', 100.00, 'transfer', 'paid', 'pichincha');
+    ($this->log)('2026-08-17', 50.00, 'transfer', 'paid', 'guayaquil');
     ($this->log)('2026-08-17', 30.00, 'cash');
 
     $res = test()
@@ -186,9 +212,9 @@ test('filtering by bank keeps the services paid with that bank', function () {
 });
 
 test('the bank breakdown counts services, not only reservations', function () {
-    ($this->log)('2026-08-17', 100.00, 'transfer')->update(['payment_bank' => 'pichincha']);
-    ($this->log)('2026-08-17', 130.00, 'transfer')->update(['payment_bank' => 'pichincha']);
-    ($this->log)('2026-08-17', 50.00, 'transfer')->update(['payment_bank' => 'guayaquil']);
+    ($this->log)('2026-08-17', 100.00, 'transfer', 'paid', 'pichincha');
+    ($this->log)('2026-08-17', 130.00, 'transfer', 'paid', 'pichincha');
+    ($this->log)('2026-08-17', 50.00, 'transfer', 'paid', 'guayaquil');
 
     $res = fetchRange('2026-08-17', '2026-08-17')->assertOk();
 
@@ -202,8 +228,8 @@ test('the bank breakdown counts services, not only reservations', function () {
 // result: picking Pichincha dropped every other bank from the list and left the
 // user with no way back except clearing the filter.
 test('the bank list survives filtering by one bank', function () {
-    ($this->log)('2026-08-17', 100.00, 'transfer')->update(['payment_bank' => 'pichincha']);
-    ($this->log)('2026-08-17', 50.00, 'transfer')->update(['payment_bank' => 'guayaquil']);
+    ($this->log)('2026-08-17', 100.00, 'transfer', 'paid', 'pichincha');
+    ($this->log)('2026-08-17', 50.00, 'transfer', 'paid', 'guayaquil');
 
     $sinFiltro = fetchRange('2026-08-17', '2026-08-17')->assertOk();
     expect($sinFiltro->json('data.available_banks'))
