@@ -38,6 +38,13 @@ class ReportController extends Controller
         $reservationRevenue = (float) $completedReservations->sum(fn ($r) => $r->service?->price ?? 0);
         $serviceRevenue = (float) $washLogs->sum('price_charged');
 
+        // Plata recibida por método, del libro de pagos. Sumar price_charged
+        // por método miente en cuanto existe un abono.
+        $pagosDelDia = \App\Infrastructure\Persistence\Models\PaymentModel::query()
+            ->forTenant($tenantId)
+            ->whereDate('paid_at', $date)
+            ->get();
+
         return response()->json([
             'data' => [
                 'date' => $date,
@@ -47,9 +54,9 @@ class ReportController extends Controller
                     'in_progress' => $washLogs->where('status', 'in_progress')->count(),
                     'revenue' => $serviceRevenue + $reservationRevenue,
                     'by_payment_method' => [
-                        'cash' => $washLogs->where('payment_method', 'cash')->sum('price_charged'),
-                        'card' => $washLogs->where('payment_method', 'card')->sum('price_charged'),
-                        'transfer' => $washLogs->where('payment_method', 'transfer')->sum('price_charged'),
+                        'cash'     => (float) $pagosDelDia->where('method', 'cash')->sum('amount'),
+                        'card'     => (float) $pagosDelDia->where('method', 'card')->sum('amount'),
+                        'transfer' => (float) $pagosDelDia->where('method', 'transfer')->sum('amount'),
                     ],
                 ],
                 'reservations' => [
