@@ -77,7 +77,26 @@ class ClientResourceController extends Controller
             });
         }
 
+        // El saldo de TODAS las placas del tenant en dos consultas agregadas.
+        // Una consulta por fila convertiría la pantalla del lunes en un
+        // timeout con doscientos vehículos.
+        $deudas = app(\App\Application\Services\DebtLedger::class)
+            ->debtByResource(app('current_tenant_id'));
+
+        // El toggle "Solo con deuda". El `?: ['-']` es lo que hace que un
+        // tenant sin deudores devuelva vacío en vez de devolver todo.
+        if ($request->boolean('with_debt')) {
+            $query->whereIn('id', array_keys($deudas) ?: ['-']);
+        }
+
         $clientResources = $query->paginate($request->get('per_page', 15));
+
+        // El saldo viaja en el modelo, no en `meta`: el recurso lo lee sin
+        // que el front tenga que cruzar dos estructuras.
+        $clientResources->getCollection()->transform(function ($r) use ($deudas) {
+            $r->setAttribute('debt_amount', (float) ($deudas[$r->id] ?? 0));
+            return $r;
+        });
 
         return ClientResourceResource::collection($clientResources);
     }

@@ -1,6 +1,7 @@
 <?php
 
 use App\Infrastructure\Http\Controllers\Cash\CashSessionController;
+use App\Infrastructure\Http\Controllers\Debt\DebtController;
 use App\Infrastructure\Http\Controllers\Auth\AuthController;
 use App\Infrastructure\Http\Controllers\Auth\GoogleAuthController;
 use App\Infrastructure\Http\Controllers\Auth\MagicLinkController;
@@ -124,6 +125,8 @@ Route::prefix('v1')->group(function () {
             Route::patch('client-resources/{id}', [ClientResourceController::class, 'update']);
             Route::delete('client-resources/{id}', [ClientResourceController::class, 'destroy']);
             Route::get('client-resources/{id}/history', [ClientResourceController::class, 'history']);
+            // Deuda de una placa: de qué está hecha y qué se le pagó.
+            Route::get('client-resources/{id}/debt', [DebtController::class, 'show']);
             // Fiscal data: view / edit the client's default billing profile.
             Route::get('client-resources/{id}/billing', [ClientResourceController::class, 'showBilling']);
             Route::put('client-resources/{id}/billing', [ClientResourceController::class, 'updateBilling']);
@@ -236,6 +239,10 @@ Route::prefix('v1')->group(function () {
             Route::post('cash-sessions', [CashSessionController::class, 'open']);
             Route::post('cash-sessions/{id}/movements', [CashSessionController::class, 'addMovement']);
             Route::post('cash-sessions/{id}/close', [CashSessionController::class, 'close']);
+
+            // Deuda: la libreta del dueño y el cobro repartido.
+            Route::post('debts/manual', [DebtController::class, 'storeManual']);
+            Route::post('debts/payments', [DebtController::class, 'storePayment']);
             // Billing: proxy direct access to billing service invoice list + RIDE PDF.
             Route::get('billing/invoices', [InvoiceProxyController::class, 'index']);
             Route::get('billing/invoices/{id}/ride', [InvoiceProxyController::class, 'ride']);

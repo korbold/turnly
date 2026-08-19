@@ -15,6 +15,9 @@ class ClientResourceResource extends JsonResource
             'label'      => $this->buildLabel(),
             'data'       => $this->data,
             'created_at' => $this->created_at?->toIso8601String(),
+            // Saldo de esta placa. Viene calculado en bloque desde el
+            // controlador: nunca una consulta por fila.
+            'debt'       => (float) ($this->debt_amount ?? 0),
 
             // client_id is nullable (walk-in with no identified owner),
             // so the loaded relation can still be null.
