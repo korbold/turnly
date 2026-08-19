@@ -122,6 +122,13 @@ class PaymentLedger
                 ->select('payment_id'))
             ->orderByDesc('paid_at')
             ->orderByDesc('created_at')
+            // Desempate determinístico. MySQL guarda los timestamps con
+            // precisión de segundo, así que dos cobros seguidos —registrar y
+            // cobrar el resto, que es lo normal con un abono— empatan en las
+            // dos claves de arriba y el "último pago" quedaba al azar: la fila
+            // mostraba el método equivocado. El id es UUIDv7, o sea monótono
+            // en el tiempo, así que ordena bien sin agregar columnas.
+            ->orderByDesc('id')
             ->first();
 
         $log->forceFill([
