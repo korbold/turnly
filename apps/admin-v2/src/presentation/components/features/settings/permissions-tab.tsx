@@ -110,6 +110,12 @@ function buildDefaultMatrix(): PermissionsMatrix {
 
 export function PermissionsTab() {
   const { data: settings, isLoading } = useSettings();
+  // Asignados sólo tiene sentido donde existen lavador y secador. En los demás
+  // rubros la columna sería una casilla que no gobierna nada: la clave sigue
+  // guardada, pero no se dibuja.
+  const privileges = settings?.businessType === 'car_wash'
+    ? PRIVILEGES
+    : PRIVILEGES.filter((p) => p !== 'Asignados');
   const update = useUpdateSettings();
   const [matrix, setMatrix] = useState<PermissionsMatrix>(buildDefaultMatrix());
   const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -194,7 +200,7 @@ export function PermissionsTab() {
                 Módulos
               </th>
               <th
-                colSpan={PRIVILEGES.length}
+                colSpan={privileges.length}
                 className="border-l border-[var(--border-soft)] px-2 pt-2.5 text-center text-[10px] font-semibold uppercase tracking-[0.06em] text-[var(--fg-muted)]"
               >
                 Registro Diario
@@ -212,7 +218,7 @@ export function PermissionsTab() {
                   {s}
                 </th>
               ))}
-              {PRIVILEGES.map((p, i) => (
+              {privileges.map((p, i) => (
                 <th
                   key={p}
                   className={cn(
@@ -242,7 +248,7 @@ export function PermissionsTab() {
                     />
                   );
                 })}
-                {PRIVILEGES.map((privilege, i) => {
+                {privileges.map((privilege, i) => {
                   const perm = matrix[role]?.[privilege] ?? 'none';
                   return (
                     <MatrixCell
