@@ -24,7 +24,7 @@ class PaymentModel extends Model
 
     protected $fillable = [
         'tenant_id', 'client_id', 'amount', 'method', 'bank',
-        'paid_at', 'received_by', 'notes',
+        'paid_at', 'received_by', 'cash_session_id', 'notes',
     ];
 
     protected function casts(): array
@@ -48,6 +48,11 @@ class PaymentModel extends Model
     public function receiver(): BelongsTo
     {
         return $this->belongsTo(UserModel::class, 'received_by');
+    }
+
+    public function cashSession(): BelongsTo
+    {
+        return $this->belongsTo(CashSessionModel::class, 'cash_session_id');
     }
 
     /** Lo que todavía no se aplicó a nada: saldo a favor del cliente. */

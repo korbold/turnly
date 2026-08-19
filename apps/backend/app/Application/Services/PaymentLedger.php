@@ -25,6 +25,8 @@ class PaymentLedger
      */
     private const CENT = 0.005;
 
+    public function __construct(private CashRegister $cash) {}
+
     public function recordForServiceLog(
         ServiceLogModel $log,
         float $amount,
@@ -35,15 +37,22 @@ class PaymentLedger
         ?string $notes = null,
     ): PaymentModel {
         return DB::transaction(function () use ($log, $amount, $method, $bank, $receivedBy, $paidAt, $notes) {
+            // La caja abierta es el contexto del cobro. Se estampa acá y no
+            // se infiere después por ventana de tiempo: la caja que se abre
+            // tarde y el pago de las 23:58 son los bordes reales, y son
+            // justo los días que el dueño revisa.
+            $sesion = $this->cash->currentSession($log->tenant_id);
+
             $payment = PaymentModel::create([
-                'tenant_id'   => $log->tenant_id,
-                'client_id'   => $log->clientResource?->client_id,
-                'amount'      => $amount,
-                'method'      => $method,
-                'bank'        => $method === 'transfer' ? $bank : null,
-                'paid_at'     => $paidAt ?? now(),
-                'received_by' => $receivedBy,
-                'notes'       => $notes,
+                'tenant_id'       => $log->tenant_id,
+                'client_id'       => $log->clientResource?->client_id,
+                'amount'          => $amount,
+                'method'          => $method,
+                'bank'            => $method === 'transfer' ? $bank : null,
+                'paid_at'         => $paidAt ?? now(),
+                'received_by'     => $receivedBy,
+                'cash_session_id' => $sesion?->id,
+                'notes'           => $notes,
             ]);
 
             // Se asigna hasta lo que falta, no todo el pago: cobrar de más
