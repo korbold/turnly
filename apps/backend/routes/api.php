@@ -1,5 +1,6 @@
 <?php
 
+use App\Infrastructure\Http\Controllers\Cash\CashSessionController;
 use App\Infrastructure\Http\Controllers\Auth\AuthController;
 use App\Infrastructure\Http\Controllers\Auth\GoogleAuthController;
 use App\Infrastructure\Http\Controllers\Auth\MagicLinkController;
@@ -228,6 +229,13 @@ Route::prefix('v1')->group(function () {
             Route::get('invoices', [ServiceLogController::class, 'indexInvoiced']);
             // Billing: proxy XML download through backend to enforce auth.
             Route::get('service-logs/{id}/invoice/xml', [ServiceLogController::class, 'downloadInvoiceXml']);
+
+            // Caja del día. Ver el spec: el esperado no se expone hasta el
+            // cierre, así que no hay endpoint que lo devuelva.
+            Route::get('cash-session', [CashSessionController::class, 'current']);
+            Route::post('cash-sessions', [CashSessionController::class, 'open']);
+            Route::post('cash-sessions/{id}/movements', [CashSessionController::class, 'addMovement']);
+            Route::post('cash-sessions/{id}/close', [CashSessionController::class, 'close']);
             // Billing: proxy direct access to billing service invoice list + RIDE PDF.
             Route::get('billing/invoices', [InvoiceProxyController::class, 'index']);
             Route::get('billing/invoices/{id}/ride', [InvoiceProxyController::class, 'ride']);
