@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Application\Services;
 
+use App\Infrastructure\Persistence\Models\ClientResourceModel;
 use App\Infrastructure\Persistence\Models\PaymentAllocationModel;
 use App\Infrastructure\Persistence\Models\PaymentModel;
 use App\Infrastructure\Persistence\Models\ServiceLogModel;
@@ -25,7 +26,10 @@ class PaymentLedger
      */
     private const CENT = 0.005;
 
-    public function __construct(private CashRegister $cash) {}
+    public function __construct(
+        private CashRegister $cash,
+        private DebtLedger $debts,
+    ) {}
 
     public function recordForServiceLog(
         ServiceLogModel $log,
@@ -102,6 +106,80 @@ class PaymentLedger
         }
 
         return $paid + self::CENT >= $total ? 'paid' : 'partial';
+    }
+
+    /**
+     * Un pago contra la placa, repartido entre sus deudas.
+     *
+     * Cobrar cuatro deudas de a una es donde el cajero se equivoca, así que
+     * esto es un solo pago con varias asignaciones. Sin `$allocations`
+     * reparte del más viejo al más nuevo; con ellas respeta lo que el cajero
+     * corrigió antes de confirmar.
+     *
+     * @param array<int, array{type:string,id:string,amount:float}> $allocations
+     */
+    public function recordAgainstResource(
+        string $tenantId,
+        string $clientResourceId,
+        float $amount,
+        string $method,
+        ?string $bank,
+        ?string $receivedBy,
+        array $allocations = [],
+        ?string $notes = null,
+    ): PaymentModel {
+        $plan = $allocations !== []
+            ? $allocations
+            : $this->debts->planFor($tenantId, $clientResourceId, $amount);
+
+        return DB::transaction(function () use (
+            $tenantId, $clientResourceId, $amount, $method, $bank, $receivedBy, $plan, $notes
+        ) {
+            $resource = ClientResourceModel::query()
+                ->forTenant($tenantId)
+                ->whereKey($clientResourceId)
+                ->first();
+
+            $sesion = $this->cash->currentSession($tenantId);
+
+            $payment = PaymentModel::create([
+                'tenant_id'       => $tenantId,
+                'client_id'       => $resource?->client_id,
+                'amount'          => $amount,
+                'method'          => $method,
+                'bank'            => $method === 'transfer' ? $bank : null,
+                'paid_at'         => now(),
+                'received_by'     => $receivedBy,
+                'cash_session_id' => $sesion?->id,
+                'notes'           => $notes,
+            ]);
+
+            foreach ($plan as $linea) {
+                if ((float) $linea['amount'] <= 0) {
+                    continue;
+                }
+
+                PaymentAllocationModel::create([
+                    'tenant_id'    => $tenantId,
+                    'payment_id'   => $payment->id,
+                    'payable_type' => $linea['type'],
+                    'payable_id'   => $linea['id'],
+                    'amount'       => $linea['amount'],
+                ]);
+
+                // Las columnas de la fila del servicio son un reflejo del
+                // libro: sin esto, la lista del día seguiría diciendo
+                // "Pendiente" sobre algo que acaba de cobrarse.
+                if ($linea['type'] === PaymentAllocationModel::PAYABLE_SERVICE_LOG) {
+                    $log = ServiceLogModel::query()->forTenant($tenantId)->find($linea['id']);
+                    if ($log) {
+                        $this->syncLogPaymentState($log);
+                    }
+                }
+            }
+
+            return $payment->fresh('allocations');
+        });
     }
 
     /**
