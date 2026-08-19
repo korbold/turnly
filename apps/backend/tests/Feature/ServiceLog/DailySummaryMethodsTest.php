@@ -1,6 +1,17 @@
 <?php
+use App\Application\Services\PaymentLedger;
 use App\Infrastructure\Persistence\Models\{ClientResourceModel,ServiceLogModel,ServiceModel,TenantModel,TenantUserModel,UserModel};
 use Illuminate\Support\Str;
+
+// Los tiles de caja salen del libro de pagos, no de las columnas del
+// servicio. Un log marcado 'paid' a mano ya no es un estado que la app pueda
+// producir: todo cobro nace en el libro. Estos fixtures cobran de verdad.
+function cobrar(ServiceLogModel $log, string $method, string $receivedBy): void
+{
+    app(PaymentLedger::class)->recordForServiceLog(
+        $log, (float) $log->price_charged, $method, null, $receivedBy
+    );
+}
 
 // A day paid by transfer must show up in the caja tiles, not just in the
 // revenue headline.
@@ -14,11 +25,12 @@ test('the daily summary breaks down transfer and other', function () {
     app()->instance('current_tenant_id', $tenant->id);
 
     foreach ([['transfer', 63.00], ['other', 10.00], ['cash', 5.00]] as [$method, $price]) {
-        ServiceLogModel::factory()->create([
+        $log = ServiceLogModel::factory()->create([
             'tenant_id' => $tenant->id, 'client_resource_id' => $cr->id, 'service_id' => $service->id,
-            'attended_by' => $user->id, 'created_by' => $user->id, 'payment_method' => $method,
-            'payment_status' => 'paid', 'price_charged' => $price, 'log_date' => now()->toDateString(),
+            'attended_by' => $user->id, 'created_by' => $user->id, 'payment_method' => null,
+            'payment_status' => 'unpaid', 'price_charged' => $price, 'log_date' => now()->toDateString(),
         ]);
+        cobrar($log, $method, $user->id);
     }
 
     $res = $this->actingAs($user)->withHeader('X-Tenant', $tenant->slug)
@@ -43,10 +55,16 @@ test('the daily summary reports what is still uncollected', function () {
     app()->instance('current_tenant_id', $tenant->id);
 
     $make = function (array $attrs) use ($tenant, $cr, $service, $user) {
-        ServiceLogModel::factory()->create($attrs + [
-            'tenant_id' => $tenant->id, 'client_resource_id' => $cr->id, 'service_id' => $service->id,
-            'attended_by' => $user->id, 'created_by' => $user->id, 'log_date' => now()->toDateString(),
-        ]);
+        $cobradoCon = $attrs['payment_status'] === 'paid' ? $attrs['payment_method'] : null;
+        $log = ServiceLogModel::factory()->create(
+            ['payment_method' => null, 'payment_status' => 'unpaid'] + $attrs + [
+                'tenant_id' => $tenant->id, 'client_resource_id' => $cr->id, 'service_id' => $service->id,
+                'attended_by' => $user->id, 'created_by' => $user->id, 'log_date' => now()->toDateString(),
+            ]
+        );
+        if ($cobradoCon !== null) {
+            cobrar($log, $cobradoCon, $user->id);
+        }
     };
 
     // Collected: 36 + 36 = 72
@@ -85,11 +103,11 @@ test('the collected and uncollected figures account for reservations', function 
     app()->instance('current_tenant_id', $tenant->id);
 
     // One service log, collected.
-    ServiceLogModel::factory()->create([
+    cobrar(ServiceLogModel::factory()->create([
         'tenant_id' => $tenant->id, 'client_resource_id' => $cr->id, 'service_id' => $service->id,
-        'attended_by' => $user->id, 'created_by' => $user->id, 'payment_method' => 'cash',
-        'payment_status' => 'paid', 'price_charged' => 10.00, 'log_date' => now()->toDateString(),
-    ]);
+        'attended_by' => $user->id, 'created_by' => $user->id, 'payment_method' => null,
+        'payment_status' => 'unpaid', 'price_charged' => 10.00, 'log_date' => now()->toDateString(),
+    ]), 'cash', $user->id);
 
     // Two reservations at $25: one prepaid, one still to be paid at pickup.
     foreach (['paid', 'unpaid'] as $status) {
@@ -126,11 +144,11 @@ test('the daily summary reports zero uncollected when everything is paid', funct
     app()->instance('current_tenant', $tenant);
     app()->instance('current_tenant_id', $tenant->id);
 
-    ServiceLogModel::factory()->create([
+    cobrar(ServiceLogModel::factory()->create([
         'tenant_id' => $tenant->id, 'client_resource_id' => $cr->id, 'service_id' => $service->id,
-        'attended_by' => $user->id, 'created_by' => $user->id, 'payment_method' => 'cash',
-        'payment_status' => 'paid', 'price_charged' => 20.00, 'log_date' => now()->toDateString(),
-    ]);
+        'attended_by' => $user->id, 'created_by' => $user->id, 'payment_method' => null,
+        'payment_status' => 'unpaid', 'price_charged' => 20.00, 'log_date' => now()->toDateString(),
+    ]), 'cash', $user->id);
 
     $this->actingAs($user)->withHeader('X-Tenant', $tenant->slug)
         ->getJson('/api/v1/service-logs/summary?date=' . now()->toDateString())

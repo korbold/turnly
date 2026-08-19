@@ -80,15 +80,25 @@ class EloquentServiceLogRepository implements ServiceLogRepositoryInterface
         $serviceRevenue = (float) $rows->sum('price_charged');
         $reservationRevenue = (float) $reservations->sum($reservationPrice);
 
+        // Los tiles cuentan plata recibida, no precios de servicios. Con
+        // abonos parciales esas dos cifras dejan de coincidir, y la que le
+        // importa a la caja es la primera. Se filtra por `paid_at`: un
+        // servicio de ayer cobrado hoy es plata de hoy.
+        //
         // Mirrors the enum the cashier picks from; leaving `other` out
         // meant those sales landed in the revenue figure with no tile
         // accounting for them.
+        $pagosDelDia = \App\Infrastructure\Persistence\Models\PaymentModel::query()
+            ->forTenant($tenantId)
+            ->whereDate('paid_at', $date)
+            ->get();
+
         $byPaymentMethod = [];
         foreach (['cash', 'card', 'transfer', 'other'] as $method) {
-            $subset = $rows->where('payment_method', $method);
+            $subset = $pagosDelDia->where('method', $method);
             $byPaymentMethod[$method] = [
                 'count' => $subset->count(),
-                'total' => (float) $subset->sum('price_charged'),
+                'total' => (float) $subset->sum('amount'),
             ];
         }
 
@@ -102,7 +112,6 @@ class EloquentServiceLogRepository implements ServiceLogRepositoryInterface
         // retirar" leaves either one unpaid — so each figure has to split both
         // sources. Deriving one from the other in the client would bill an
         // unpaid reservation as collected, since reservations default to unpaid.
-        $paidRows           = $rows->where('payment_status', 'paid');
         $unpaidRows         = $rows->where('payment_status', 'unpaid');
         $paidReservations   = $reservations->where('payment_status', 'paid');
         $unpaidReservations = $reservations->where('payment_status', 'unpaid');
@@ -114,8 +123,8 @@ class EloquentServiceLogRepository implements ServiceLogRepositoryInterface
             'by_payment_method'  => $byPaymentMethod,
             'by_status'          => $byStatus,
             'collected'          => [
-                'count' => $paidRows->count() + $paidReservations->count(),
-                'total' => (float) $paidRows->sum('price_charged')
+                'count' => $pagosDelDia->count() + $paidReservations->count(),
+                'total' => (float) $pagosDelDia->sum('amount')
                     + (float) $paidReservations->sum($reservationPrice),
             ],
             'unpaid'             => [
