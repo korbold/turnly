@@ -17,16 +17,17 @@ class ServiceLogItemModel extends Model
 
     protected $fillable = [
         'tenant_id', 'service_log_id', 'item_type', 'ref_id',
-        'label', 'qty', 'unit_price', 'line_total', 'sort_order',
+        'label', 'qty', 'unit_price', 'catalog_price', 'line_total', 'sort_order',
     ];
 
     protected function casts(): array
     {
         return [
-            'qty'        => 'decimal:2',
-            'unit_price' => 'decimal:2',
-            'line_total' => 'decimal:2',
-            'sort_order' => 'integer',
+            'qty'           => 'decimal:2',
+            'unit_price'    => 'decimal:2',
+            'catalog_price' => 'decimal:2',
+            'line_total'    => 'decimal:2',
+            'sort_order'    => 'integer',
         ];
     }
 

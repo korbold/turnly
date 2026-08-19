@@ -28,7 +28,7 @@ class ReservationItemChangeModel extends Model
     protected $fillable = [
         'tenant_id', 'reservation_id', 'action', 'item_type',
         'old_ref_id', 'new_ref_id', 'label',
-        'old_price', 'new_price', 'reason',
+        'old_price', 'new_price', 'reason', 'reason_code',
         'changed_by_user_id', 'changed_at',
     ];
 
