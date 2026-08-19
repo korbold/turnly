@@ -80,11 +80,16 @@ class ServiceLogEventRecorder
         ?string $bank,
         float $amount,
         ?string $actorId,
+        float $remaining = 0.0,
     ): void {
         $this->write($log, ServiceLogEventModel::EVENT_PAYMENT_RECORDED, [
-            'method' => $method,
-            'bank'   => $bank,
-            'amount' => $amount,
+            'method'    => $method,
+            'bank'      => $bank,
+            'amount'    => $amount,
+            // Lo que faltaba después de este cobro. Sin esto la bitácora
+            // muestra tres pagos sueltos y nadie puede reconstruir si el
+            // servicio quedó saldado o no.
+            'remaining' => $remaining,
         ], $actorId);
     }
 

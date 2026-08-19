@@ -87,7 +87,22 @@ test('paymentRecorded keeps the method, the bank and the amount', function () {
     $event = ServiceLogEventModel::withoutGlobalScopes()->first();
 
     expect($event->event)->toBe(ServiceLogEventModel::EVENT_PAYMENT_RECORDED);
-    expect($event->detail)->toBe(['method' => 'transfer', 'bank' => 'pichincha', 'amount' => 12.5]);
+    // `remaining` es 0 por default: un llamador que no lo pasa está cobrando
+    // todo, que es como se comportaba antes del abono.
+    expect($event->detail)->toBe([
+        'method' => 'transfer', 'bank' => 'pichincha', 'amount' => 12.5, 'remaining' => 0,
+    ]);
+});
+
+test('paymentRecorded keeps what was still owed after the payment', function () {
+    // Sin esto la bitácora muestra tres cobros sueltos y nadie puede
+    // reconstruir si el servicio quedó saldado o no.
+    $this->recorder->paymentRecorded($this->log, 'cash', null, 10.00, $this->user->id, 20.00);
+
+    $event = ServiceLogEventModel::withoutGlobalScopes()->first();
+
+    expect((float) $event->detail['amount'])->toBe(10.0);
+    expect((float) $event->detail['remaining'])->toBe(20.0);
 });
 
 test('itemsChanged keeps both totals', function () {

@@ -329,9 +329,18 @@ class ServiceLogController extends Controller
         // qué método, que es justo lo que se discute cuando falta plata.
         // Cobrar al registrar es un cobro: entra al libro como cualquier otro.
         if ($paymentStatus !== 'unpaid') {
+            $total = (float) $logModel->price_charged;
+            // Sin `amount_received` se cobra todo: es el registro de siempre.
+            // El min() con el total no es defensa contra el usuario: es lo que
+            // evita que un dedo gordo en el mostrador convierta $300 en saldo
+            // a favor de un walk-in que no vuelve nunca.
+            $recibido = $request->filled('amount_received')
+                ? min((float) $request->input('amount_received'), $total)
+                : $total;
+
             $this->ledger->recordForServiceLog(
                 $logModel,
-                (float) $logModel->price_charged,
+                $recibido,
                 (string) $request->payment_method,
                 $request->payment_bank,
                 $request->user()?->id,
@@ -342,8 +351,9 @@ class ServiceLogController extends Controller
                 $logModel,
                 (string) $logModel->payment_method,
                 $logModel->payment_bank,
-                (float) $logModel->price_charged,
+                $recibido,
                 $request->user()?->id,
+                max(0.0, $total - $this->ledger->paidFor($logModel)),
             );
         }
 
@@ -736,6 +746,9 @@ class ServiceLogController extends Controller
             'method'    => ['required', 'in:cash,card,transfer,other'],
             'bank'      => ['nullable', 'string', 'max:40'],
             'reference' => ['nullable', 'string', 'max:100'],
+            // Abono: cobrar menos que el saldo. Sin el campo se cobra todo lo
+            // que falta, que es lo que hacía antes.
+            'amount'    => ['nullable', 'numeric', 'min:0.01'],
         ]);
 
         $log = ServiceLogModel::findOrFail($id);
@@ -748,9 +761,14 @@ class ServiceLogController extends Controller
             ], 422);
         }
 
+        $pendiente = max(0.0, (float) $log->price_charged - $this->ledger->paidFor($log));
+        $monto = isset($data['amount'])
+            ? min((float) $data['amount'], $pendiente)
+            : $pendiente;
+
         $this->ledger->recordForServiceLog(
             $log,
-            (float) $log->price_charged,
+            $monto,
             $data['method'],
             $data['bank'] ?? null,
             $request->user()?->id,
@@ -770,8 +788,9 @@ class ServiceLogController extends Controller
             $log,
             $data['method'],
             $data['method'] === 'transfer' ? ($data['bank'] ?? null) : null,
-            (float) $log->price_charged,
+            $monto,
             $request->user()?->id,
+            max(0.0, (float) $log->price_charged - $this->ledger->paidFor($log)),
         );
 
         // Facturación is now a manual step: recording payment only marks

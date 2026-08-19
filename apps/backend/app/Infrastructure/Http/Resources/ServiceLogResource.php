@@ -24,6 +24,10 @@ class ServiceLogResource extends JsonResource
             'payment_method' => $this->payment_method,
             'payment_bank'   => $this->payment_bank,
             'payment_status' => $this->payment_status,
+            // Lo abonado y lo que falta. Salen del libro, no de la fila: la
+            // fila sólo sabe si está pagado, no cuánto entró.
+            'amount_paid'    => round($this->amountPaidFromLedger(), 2),
+            'amount_due'     => round(max(0.0, (float) $this->price_charged - $this->amountPaidFromLedger()), 2),
             'paid_at'        => $this->paid_at?->toIso8601String(),
             'invoiced'       => (bool) $this->invoiced,
             'invoiced_at'    => $this->invoiced_at?->toIso8601String(),
@@ -119,5 +123,17 @@ class ServiceLogResource extends JsonResource
                 'timestamp' => now()->toIso8601String(),
             ],
         ];
+    }
+
+    /**
+     * Memoizado por instancia: `toArray` lo necesita dos veces y una colección
+     * de 15 filas haría 30 consultas por una sola pantalla.
+     */
+    private ?float $paidCache = null;
+
+    private function amountPaidFromLedger(): float
+    {
+        return $this->paidCache ??= app(\App\Application\Services\PaymentLedger::class)
+            ->paidFor($this->resource);
     }
 }

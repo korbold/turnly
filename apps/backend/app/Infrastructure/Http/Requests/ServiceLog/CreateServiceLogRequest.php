@@ -48,6 +48,9 @@ class CreateServiceLogRequest extends FormRequest
             // the cashier registers the service first and stamps the
             // method later via the dedicated payment endpoint.
             'payment_method'  => ['nullable', 'in:cash,card,transfer,other'],
+            // Abono al registrar: el cliente deja el auto y paga una parte.
+            // Sin el campo, se cobra el total, que es como se comportaba antes.
+            'amount_received' => ['nullable', 'numeric', 'min:0.01'],
             // Bank slug (pichincha, pacifico, …) only meaningful when
             // payment_method = transfer.
             'payment_bank'    => ['nullable', 'string', 'max:40'],
