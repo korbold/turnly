@@ -29,6 +29,10 @@ class ServiceLogResource extends JsonResource
             'amount_paid'    => round($this->amountPaidFromLedger(), 2),
             'amount_due'     => round(max(0.0, (float) $this->price_charged - $this->amountPaidFromLedger()), 2),
             'left_owing'     => (bool) $this->left_owing,
+            // Lo que la placa debe APARTE de este servicio. El saldo propio ya
+            // vive en `amount_due` y la fila lo muestra en su columna; sumarlo
+            // acá contaría la misma plata dos veces.
+            'other_debt'     => round($this->otherDebt(), 2),
             'paid_at'        => $this->paid_at?->toIso8601String(),
             'invoiced'       => (bool) $this->invoiced,
             'invoiced_at'    => $this->invoiced_at?->toIso8601String(),
@@ -136,5 +140,28 @@ class ServiceLogResource extends JsonResource
     {
         return $this->paidCache ??= app(\App\Application\Services\PaymentLedger::class)
             ->paidFor($this->resource);
+    }
+
+    /**
+     * El saldo de la placa menos lo que este mismo servicio debe.
+     *
+     * Sólo se descuenta si el servicio está marcado `left_owing`: un impago
+     * sin la marca no entra en la deuda de la placa, así que restarlo daría
+     * de menos.
+     *
+     * `resource_debt` lo presetea el controlador en bloque. Sin él —una
+     * respuesta de un solo log— devuelve 0 en vez de disparar una consulta
+     * por fila.
+     */
+    private function otherDebt(): float
+    {
+        $total = (float) ($this->resource_debt ?? 0);
+
+        if ($this->left_owing && $this->payment_status !== 'paid') {
+            $propio = max(0.0, (float) $this->price_charged - $this->amountPaidFromLedger());
+            $total -= $propio;
+        }
+
+        return max(0.0, $total);
     }
 }

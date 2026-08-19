@@ -227,6 +227,17 @@ class ServiceLogController extends Controller
 
         $logs = $query->paginate($perPage);
 
+        // Lo que la placa debe de antes, para que el mostrador pueda pedirlo
+        // al cobrar. Sale de DOS consultas agregadas para toda la página: una
+        // por fila convertiría el Registro Diario en un timeout.
+        $deudas = app(\App\Application\Services\DebtLedger::class)
+            ->debtByResource(app('current_tenant_id'));
+
+        $logs->getCollection()->transform(function ($log) use ($deudas) {
+            $log->setAttribute('resource_debt', (float) ($deudas[$log->client_resource_id] ?? 0));
+            return $log;
+        });
+
         return ServiceLogResource::collection($logs);
     }
 

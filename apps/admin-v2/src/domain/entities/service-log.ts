@@ -71,6 +71,9 @@ export interface ServiceLog {
   amountDue: number;
   /** Se llevó el vehículo debiendo. Es lo que separa deuda de olvido. */
   leftOwing: boolean;
+  /** Lo que esta placa debe APARTE de este servicio: la deuda vieja que el
+      mostrador puede pedir al cobrar. */
+  otherDebt: number;
   paidAt: Date | null;
   invoiced: boolean;
   invoicedAt: Date | null;

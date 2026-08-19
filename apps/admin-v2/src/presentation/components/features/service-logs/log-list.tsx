@@ -259,6 +259,19 @@ export function LogList({
                   {log.clientResource.client.name}
                 </p>
               )}
+              {/* Deuda vieja de la placa. Va junto al vehículo y no en la
+                  columna PAGO porque no es de este servicio: es lo que el
+                  cajero puede pedir mientras el cliente está en el mostrador,
+                  que es el único momento en que se puede pedir. */}
+              {log.otherDebt > 0 && (
+                <span
+                  className="mt-1 inline-flex items-center gap-1 rounded-full bg-[var(--danger-50)] px-2 py-0.5 text-[11px] font-semibold text-[var(--danger-700)] ring-1 ring-[var(--danger-200)]"
+                  title="Deuda anterior de esta placa, aparte de este servicio"
+                >
+                  <Wallet className="h-3 w-3" aria-hidden="true" />
+                  debe {fmt(log.otherDebt)}
+                </span>
+              )}
             </div>
 
             {/* Servicio */}
