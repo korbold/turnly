@@ -28,6 +28,7 @@ class ServiceLogResource extends JsonResource
             // fila sólo sabe si está pagado, no cuánto entró.
             'amount_paid'    => round($this->amountPaidFromLedger(), 2),
             'amount_due'     => round(max(0.0, (float) $this->price_charged - $this->amountPaidFromLedger()), 2),
+            'left_owing'     => (bool) $this->left_owing,
             'paid_at'        => $this->paid_at?->toIso8601String(),
             'invoiced'       => (bool) $this->invoiced,
             'invoiced_at'    => $this->invoiced_at?->toIso8601String(),

@@ -1032,6 +1032,18 @@ class ServiceLogController extends Controller
             ], 422);
         }
 
+        // "¿Cobrás ahora, o se va debiendo?" El cajero responde en el único
+        // momento en que sabe la respuesta. Sin la marca, un impago sigue
+        // siendo un pendiente del día — no un deudor.
+        //
+        // El `> 0.005` es lo que impide un deudor de cero: marcar un servicio
+        // ya saldado lo pondría en la lista debiendo nada.
+        $pendiente = max(0.0, (float) $log->price_charged - $this->ledger->paidFor($log));
+        if ($request->boolean('left_owing') && $pendiente > 0.005) {
+            $log->forceFill(['left_owing' => true])->save();
+            $this->events->leftOwing($log, $pendiente, $request->user()?->id);
+        }
+
         $this->serviceLogRepository->complete($id, new \DateTimeImmutable());
 
         // Apply BOM consumption now that the service is done. Engine is

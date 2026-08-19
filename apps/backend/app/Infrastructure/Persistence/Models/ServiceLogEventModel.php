@@ -28,6 +28,8 @@ class ServiceLogEventModel extends Model
     public const EVENT_LOG_UPDATED            = 'log_updated';
     public const EVENT_PAYMENT_RECORDED       = 'payment_recorded';
     public const EVENT_STATUS_CHANGED         = 'status_changed';
+    /** Se llevó el vehículo debiendo. Es lo que separa deuda de olvido. */
+    public const EVENT_LEFT_OWING             = 'left_owing';
     public const EVENT_INVOICE_REQUESTED      = 'invoice_requested';
     public const EVENT_INVOICE_STATUS_CHANGED = 'invoice_status_changed';
 

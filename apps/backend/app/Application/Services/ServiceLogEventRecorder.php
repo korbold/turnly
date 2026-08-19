@@ -93,6 +93,18 @@ class ServiceLogEventRecorder
         ], $actorId);
     }
 
+    /**
+     * El cliente se fue con el saldo pendiente. Sin este evento, la fila y la
+     * lista de deudores dicen que debe pero nadie puede reconstruir quién lo
+     * dejó salir ni cuándo.
+     */
+    public function leftOwing(ServiceLogModel $log, float $amount, ?string $actorId): void
+    {
+        $this->write($log, ServiceLogEventModel::EVENT_LEFT_OWING, [
+            'amount' => $amount,
+        ], $actorId);
+    }
+
     public function statusChanged(
         ServiceLogModel $log,
         string $from,
