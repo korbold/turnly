@@ -183,10 +183,11 @@ final class ReservationItemEditor
         float $newPrice,
         ?string $userId,
         ?string $reason,
+        ?string $reasonCode = null,
     ): ReservationItemModel {
         $this->assertCanOverridePrice($reservation);
 
-        return DB::transaction(function () use ($reservation, $item, $newPrice, $userId, $reason) {
+        return DB::transaction(function () use ($reservation, $item, $newPrice, $userId, $reason, $reasonCode) {
             $oldPrice = (float) $item->unit_price;
             $item->update([
                 'unit_price' => $newPrice,
@@ -204,6 +205,7 @@ final class ReservationItemEditor
                 $newPrice,
                 $reason,
                 $userId,
+                $reasonCode,
             );
 
             return $item;
@@ -319,6 +321,7 @@ final class ReservationItemEditor
         ?float $newPrice,
         ?string $reason,
         ?string $userId,
+        ?string $reasonCode = null,
     ): void {
         ReservationItemChangeModel::create([
             'tenant_id'          => $reservation->tenant_id,
@@ -331,6 +334,7 @@ final class ReservationItemEditor
             'old_price'          => $oldPrice,
             'new_price'          => $newPrice,
             'reason'             => $reason,
+            'reason_code'        => $reasonCode,
             'changed_by_user_id' => $userId,
             'changed_at'         => now(),
         ]);
