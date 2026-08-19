@@ -176,9 +176,17 @@ class ServiceLogController extends Controller
         // One control in the UI, mirroring the PAGO column: either a payment
         // state or a concrete method. They can't be combined — a pending row
         // has no method yet — so they share a single parameter.
+        //
+        // `pending` significa "algo falta cobrar", no "no se cobró nada": un
+        // servicio con $10 de $30 tiene plata pendiente, y esconderlo del
+        // filtro es cómo se pierde un cobro. `partial` es el filtro fino.
         $payment = (string) $request->get('payment', '');
-        if ($payment === 'paid' || $payment === 'pending') {
-            $query->where('payment_status', $payment === 'paid' ? 'paid' : 'unpaid');
+        if ($payment === 'paid') {
+            $query->where('payment_status', 'paid');
+        } elseif ($payment === 'pending') {
+            $query->where('payment_status', '!=', 'paid');
+        } elseif ($payment === 'partial') {
+            $query->where('payment_status', 'partial');
         } elseif (in_array($payment, ['cash', 'card', 'transfer', 'other'], true)) {
             $query->where('payment_method', $payment);
         }
