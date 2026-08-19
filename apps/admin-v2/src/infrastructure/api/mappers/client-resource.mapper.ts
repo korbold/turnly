@@ -15,6 +15,7 @@ export function mapClientResource(raw: Record<string, unknown>): ClientResource 
     color: (raw.color as string) ?? null,
     type: (raw.type as string) ?? null,
     createdAt: new Date(raw.created_at as string),
+    debt: Number(raw.debt ?? 0),
     client: client
       ? {
           name: client.name as string,

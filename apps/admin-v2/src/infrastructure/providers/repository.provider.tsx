@@ -21,6 +21,7 @@ import type { BusinessResourceRepository } from '@/domain/repositories/business-
 import type { InvoiceRepository } from '@/domain/repositories/invoice.repository';
 import type { ServiceStaffRepository } from '@/domain/repositories/service-staff.repository';
 import type { CashSessionRepository } from '@/domain/repositories/cash-session.repository';
+import type { DebtRepository } from '@/domain/repositories/debt.repository';
 
 import { ApiAuthRepository } from '../api/repositories/api-auth.repository';
 import { ApiOnboardingRepository } from '../api/repositories/api-onboarding.repository';
@@ -42,6 +43,7 @@ import { ApiServiceVariantRepository } from '../api/repositories/api-service-var
 import { ApiBusinessResourceRepository } from '../api/repositories/api-business-resource.repository';
 import { ApiInvoiceRepository } from '../api/repositories/api-invoice.repository';
 import { ApiCashSessionRepository } from '../api/repositories/api-cash-session.repository';
+import { ApiDebtRepository } from '../api/repositories/api-debt.repository';
 
 interface Repositories {
   auth: AuthRepository;
@@ -63,6 +65,7 @@ interface Repositories {
   businessResource: BusinessResourceRepository;
   serviceStaff: ServiceStaffRepository;
   cashSession: CashSessionRepository;
+  debt: DebtRepository;
   invoice: InvoiceRepository;
 }
 
@@ -90,6 +93,7 @@ export function RepositoryProvider({ children }: { children: ReactNode }) {
       businessResource: new ApiBusinessResourceRepository(),
       serviceStaff: new ApiServiceStaffRepository(),
       cashSession: new ApiCashSessionRepository(),
+      debt: new ApiDebtRepository(),
       invoice: new ApiInvoiceRepository(),
     }),
     [],

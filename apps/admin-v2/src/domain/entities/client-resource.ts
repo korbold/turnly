@@ -16,4 +16,6 @@ export interface ClientResource {
   type: string | null;
   createdAt: Date;
   client?: ClientResourceClient;
+  /** Saldo que esta placa debe. Calculado en bloque por el backend. */
+  debt: number;
 }
