@@ -18,6 +18,8 @@ class PaymentAllocationModel extends Model
 
     public const PAYABLE_SERVICE_LOG = 'service_log';
     public const PAYABLE_RESERVATION = 'reservation';
+    /** La libreta del dueño, cargada a mano. */
+    public const PAYABLE_MANUAL_DEBT = 'manual_debt';
 
     protected $fillable = [
         'tenant_id', 'payment_id', 'payable_type', 'payable_id', 'amount',

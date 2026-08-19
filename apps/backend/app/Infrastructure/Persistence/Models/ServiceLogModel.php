@@ -16,7 +16,7 @@ class ServiceLogModel extends Model
     protected $fillable = [
         'tenant_id', 'client_resource_id', 'service_id', 'service_variant_id', 'reservation_id',
         'attended_by', 'created_by', 'washed_by', 'dried_by', 'started_at', 'finished_at',
-        'price_charged', 'payment_method', 'payment_bank', 'payment_status', 'paid_at',
+        'price_charged', 'payment_method', 'payment_bank', 'payment_status', 'left_owing', 'paid_at',
         'invoiced', 'invoiced_at',
         'invoice_external_id', 'invoice_status', 'invoice_clave_acceso',
         'invoice_numero_autorizacion', 'invoice_error',
@@ -33,6 +33,7 @@ class ServiceLogModel extends Model
             'log_date' => 'date',
             'consumption_applied_at' => 'datetime',
             'paid_at' => 'datetime',
+            'left_owing' => 'boolean',
             'invoiced' => 'boolean',
             'invoiced_at' => 'datetime',
         ];
