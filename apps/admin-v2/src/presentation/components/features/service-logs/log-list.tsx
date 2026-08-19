@@ -254,7 +254,8 @@ export function LogList({
               </p>
               <p className="mt-0.5 truncate text-[11.5px] text-[var(--fg-muted)] lg:hidden">
                 {isCarWash
-                  ? [log.washer?.name, log.dryer?.name].filter(Boolean).join(' · ') || 'Sin asignar'
+                  ? ([log.washer?.name, log.dryer?.name].filter(Boolean).join(' · ') || 'Sin asignar')
+                    + (log.attendant?.name ? ` · Caja: ${log.attendant.name}` : '')
                   : (log.attendant?.name ?? '-')}
               </p>
             </div>
@@ -272,6 +273,13 @@ export function LogList({
                 <p className="mt-0.5 truncate text-[11.5px] text-[var(--fg-muted)]">
                   {log.dryer?.name ?? 'Sin secador'}
                 </p>
+                {/* Quién cobró, no quién trabajó: más chico y con etiqueta,
+                    para que no se lea como un tercer asignado. */}
+                {log.attendant?.name && (
+                  <p className="mt-0.5 truncate text-[11px] text-[var(--fg-muted)]">
+                    Caja: {log.attendant.name}
+                  </p>
+                )}
               </div>
             ) : (
               <span className="hidden truncate text-[13px] text-[var(--fg-secondary)] lg:inline">

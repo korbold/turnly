@@ -360,6 +360,9 @@ function ServiceLogDetail({ id }: { id: string }) {
             <Card title="Asignados">
               <Row label="Lavador" value={log.washer?.name ?? 'Sin asignar'} />
               <Row label="Secador" value={log.dryer?.name ?? 'Sin asignar'} />
+              {/* Quién atendió el mostrador y cobró. No es un asignado, pero es
+                  lo primero que se pregunta cuando la caja no cuadra. */}
+              <Row label="Registrado por" value={log.attendant?.name ?? '—'} />
               {canAssign(log.status === 'completed') && (
                 <Button
                   variant="outline"

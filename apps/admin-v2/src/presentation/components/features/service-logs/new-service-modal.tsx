@@ -300,12 +300,17 @@ export function NewServiceModal({ open, onClose, embedded = false }: NewServiceM
   // Permisos (default: Admin only). Without it, staff register at the
   // catalog price. Enforced server-side as well.
   const { canSetPrice } = usePermissions();
-  // Derived rather than synced through an effect: for a cashier the field simply
-  // *is* their own id, so there is no second source of truth to keep in step.
-  const effectiveAttendedBy = lockedToSelf ? (me?.user?.id ?? '') : attendedBy;
   // En una lavadora el trabajo lo hacen dos personas del catálogo, no el
   // usuario que registra: el select de Empleado se parte en Lavador y Secador.
   const isCarWash = settings?.businessType === 'car_wash';
+  // Derived rather than synced through an effect: for a cashier the field simply
+  // *is* their own id, so there is no second source of truth to keep in step.
+  // El cajero queda fijo en sí mismo (el backend lo pinea igual). El admin
+  // arranca con su propio nombre pero puede registrar a nombre del cajero que
+  // está en el mostrador.
+  const effectiveAttendedBy = lockedToSelf
+    ? (me?.user?.id ?? '')
+    : (attendedBy || (isCarWash ? (me?.user?.id ?? '') : ''));
   const { data: washers } = useServiceStaff('washer');
   const { data: dryers } = useServiceStaff('dryer');
   const [washedBy, setWashedBy] = useState('');
@@ -569,7 +574,7 @@ export function NewServiceModal({ open, onClose, embedded = false }: NewServiceM
 
   function handleSubmit() {
     if (!selectedClientResourceId) return;
-    if (!isCarWash && !effectiveAttendedBy) return;
+    if (!effectiveAttendedBy) return;
     if (lineItems.length === 0 && productLines.length === 0) return;
     if (paymentTiming === 'now' && paymentMethod === 'transfer' && !paymentBank) {
       toast.error('Selecciona el banco emisor');
@@ -593,7 +598,7 @@ export function NewServiceModal({ open, onClose, embedded = false }: NewServiceM
         // attended_by sigue siendo obligatoria en el backend y conserva su
         // regla anti-fraude. Al desaparecer el select en car_wash, se manda
         // el usuario que registra — que es lo que el pin ya escribía.
-        attendedBy: isCarWash ? (me?.user?.id ?? '') : effectiveAttendedBy,
+        attendedBy: effectiveAttendedBy,
         washedBy: isCarWash && washedBy ? washedBy : null,
         driedBy: isCarWash && driedBy ? driedBy : null,
         items: [
@@ -634,7 +639,7 @@ export function NewServiceModal({ open, onClose, embedded = false }: NewServiceM
   const canSubmit =
     (lineItems.length > 0 || productLines.length > 0) &&
     !!selectedClientResourceId &&
-    (isCarWash || !!effectiveAttendedBy) &&
+    !!effectiveAttendedBy &&
     total > 0 &&
     // Every line with variants registered must have one picked. Lines
     // whose service has no variants pass through.
@@ -1213,10 +1218,13 @@ export function NewServiceModal({ open, onClose, embedded = false }: NewServiceM
             </div>
           )}
 
-          {/* Employee select */}
-          {!isCarWash && (
+          {/* Quién registra. En lavadora no es quien hace el trabajo — ese es
+              el lavador — sino quien atiende el mostrador y cobra, así que se
+              llama Cajero para no confundirlo con los asignados de arriba. */}
           <div className="order-3">
-            <label className="mb-1.5 block text-sm font-medium">Empleado</label>
+            <label className="mb-1.5 block text-sm font-medium">
+              {isCarWash ? 'Cajero' : 'Empleado'}
+            </label>
             <Select
               value={effectiveAttendedBy}
               onValueChange={setAttendedBy}
@@ -1239,7 +1247,6 @@ export function NewServiceModal({ open, onClose, embedded = false }: NewServiceM
               </p>
             )}
           </div>
-          )}
 
           {/* Timing toggle — cobrar ahora vs cobrar al retirar.
               Default "ahora" preserves the legacy flow; "al retirar"
