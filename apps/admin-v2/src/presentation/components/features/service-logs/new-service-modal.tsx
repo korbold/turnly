@@ -1385,7 +1385,7 @@ export function NewServiceModal({ open, onClose, embedded = false }: NewServiceM
               />
               <p className="text-[11.5px] text-[var(--fg-muted)]">
                 {Number(amountReceived) > 0 && Number(amountReceived) < total
-                  ? `Abono. Quedan $${(total - Number(amountReceived)).toFixed(2)} por cobrar.`
+                  ? `Abono. Quedan ${new Intl.NumberFormat('es-EC', { style: 'currency', currency: 'USD' }).format(total - Number(amountReceived))} por cobrar.`
                   : 'Vacío cobra el total. Poné menos si el cliente abona una parte.'}
               </p>
             </div>
