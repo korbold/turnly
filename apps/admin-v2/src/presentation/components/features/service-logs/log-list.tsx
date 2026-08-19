@@ -358,16 +358,35 @@ export function LogList({
                   cashier doesn't fish for icons. Unpaid → Cobrar. Once paid,
                   facturación is a manual step: Completar (while in progress)
                   and Facturar (until the SRI invoice is autorizada) can both
-                  show. */}
+                  show.
+
+                  Una fila que debe también muestra Completar mientras está en
+                  progreso: el auto puede estar listo y el cliente deber, y sin
+                  ese botón la pregunta "¿cobrás o se va debiendo?" no tendría
+                  por dónde entrar. */}
               {isOwing ? (
-                <Button
-                  size="sm"
-                  onClick={() => setPayTarget(log)}
-                  className="h-9 shrink-0 cursor-pointer gap-1.5 bg-[var(--warning-600)] px-3 text-white hover:bg-[var(--warning-700)]"
-                >
-                  <Wallet className="h-3.5 w-3.5" aria-hidden="true" />
-                  Cobrar
-                </Button>
+                <>
+                  {log.status === 'in_progress' && (
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      onClick={() => handleComplete(log)}
+                      disabled={completeMutation.isPending}
+                      className="h-9 shrink-0 cursor-pointer gap-1.5 border-[var(--success-200)] px-3 text-[var(--success-700)] hover:bg-[var(--success-50)] hover:text-[var(--success-800)]"
+                    >
+                      <CheckCircle2 className="h-3.5 w-3.5" aria-hidden="true" />
+                      Completar
+                    </Button>
+                  )}
+                  <Button
+                    size="sm"
+                    onClick={() => setPayTarget(log)}
+                    className="h-9 shrink-0 cursor-pointer gap-1.5 bg-[var(--warning-600)] px-3 text-white hover:bg-[var(--warning-700)]"
+                  >
+                    <Wallet className="h-3.5 w-3.5" aria-hidden="true" />
+                    Cobrar
+                  </Button>
+                </>
               ) : (
                 <>
                   {log.status === 'in_progress' && (
