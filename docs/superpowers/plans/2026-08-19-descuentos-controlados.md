@@ -1265,13 +1265,35 @@ En `ReportController`, agregá el método y el import `use App\Application\Servi
 
 ```php
     /**
-     * Descuentos del rango. Detrás de `ensureFeature()` como el resto de
-     * Reportes, que el Cajero no tiene por default: un reporte de descuentos
-     * visible para quien los hace no controla nada.
+     * Descuentos del rango.
+     *
+     * Dos puertas. `ensureFeature()` es la del plan, como el resto de
+     * Reportes. La segunda es de rol y es dura: sólo dueño o admin.
+     *
+     * No pasa por la matriz de permisos a propósito. "¿Esta persona se audita
+     * a sí misma?" no puede ser una casilla que marque quien va a ser
+     * auditado — el mismo razonamiento que esconde los totales del día
+     * durante un arqueo, y que fija en owner/admin la corrección de asignados
+     * una vez completado el servicio.
      */
     public function discounts(Request $request, DiscountReport $report): JsonResponse
     {
         $this->ensureFeature();
+
+        $rol = TenantUserModel::where('tenant_id', app('current_tenant_id'))
+            ->where('user_id', $request->user()?->id)
+            ->value('role');
+
+        // El super-admin no tiene fila en tenant_users: sin esto, soporte no
+        // podría mirar el reporte de ningún tenant.
+        if (!$request->user()?->is_super_admin && !in_array($rol, ['owner', 'tenant_admin'], true)) {
+            return response()->json([
+                'error' => [
+                    'code'    => 'FORBIDDEN',
+                    'message' => 'Sólo el dueño o un administrador ven el reporte de descuentos.',
+                ],
+            ], 403);
+        }
 
         $request->validate([
             'date_from' => 'sometimes|date',
@@ -1293,11 +1315,17 @@ y en `routes/api.php`, junto a las otras rutas de reportes:
             Route::get('reports/discounts', [ReportController::class, 'discounts']);
 ```
 
-**Verificá que `ensureFeature()` devuelva 403 para el cajero.** Hoy comprueba el
-plan (`hasFeature('reports')`), no el rol. Si el Cajero de un plan Premium
-pasa, agregá el gate de sección: la matriz ya tiene `Reportes` en `none` para
-Cajero, y el chequeo es el mismo patrón de `ServiceLogController::may()`. El
-test `a cashier cannot read the discount report` es el que lo decide.
+con el import `use App\Infrastructure\Persistence\Models\TenantUserModel;`.
+
+**Por qué el gate es de rol y no de la matriz** (decidido en el pre-flight, no
+lo re-litigues): `ensureFeature()` sólo mira el plan, así que un cajero de un
+tenant Premium pasaría. Y el backend **no tiene ningún gate de sección** —
+`grep -rln "'Reportes'" app/` está vacío, la matriz de secciones es frontend.
+`StaffPrivileges::granted()` aceptaría `'Reportes'` como string, pero sólo
+devuelve `true` en `'full'` (la matriz también permite `'view'`) y sus DEFAULTS
+no incluyen la sección, así que un tenant que nunca guardó su matriz dejaría
+afuera a su propio Admin. Construir el primer gate de sección del backend acá
+sería arriesgar accesos existentes por una feature de reporte.
 
 - [ ] **Step 5: Run test to verify it passes**
 
