@@ -35,13 +35,18 @@ class DebtController extends Controller
 
         $items = $this->debts->outstandingFor($tenantId, $resource->id);
 
+        // El historial cuelga de TODO lo que la placa alguna vez debió, no de
+        // lo que sigue abierto: si colgara de lo abierto, un pago se borraría
+        // justo cuando termina de saldar una deuda, y ese pago es el único
+        // registro de que el cliente pagó.
         $pagos = PaymentModel::query()
             ->forTenant($tenantId)
             ->whereIn('id', PaymentAllocationModel::query()
                 ->forTenant($tenantId)
-                ->whereIn('payable_id', array_column($items, 'id') ?: ['-'])
+                ->whereIn('payable_id', $this->debts->payableIdsFor($tenantId, $resource->id) ?: ['-'])
                 ->select('payment_id'))
             ->orderByDesc('paid_at')
+            ->orderByDesc('id')
             ->get()
             ->map(fn (PaymentModel $p) => [
                 'id'      => $p->id,

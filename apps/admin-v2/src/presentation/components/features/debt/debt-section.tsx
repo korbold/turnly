@@ -9,6 +9,10 @@ import { PayDebtDialog } from '@/presentation/components/features/debt/pay-debt-
 import { AddManualDebtDialog } from '@/presentation/components/features/debt/add-manual-debt-dialog';
 import { DEBT_ITEM_LABEL } from '@/domain/entities/debt';
 
+const METHOD_LABEL: Record<string, string> = {
+  cash: 'Efectivo', card: 'Tarjeta', transfer: 'Transferencia', other: 'Otro',
+};
+
 const money = (v: number) =>
   new Intl.NumberFormat('es-EC', { style: 'currency', currency: 'USD' }).format(v);
 
@@ -20,6 +24,7 @@ export function DebtSection({ clientResourceId }: { clientResourceId: string }) 
 
   const total = data?.total ?? 0;
   const items = data?.items ?? [];
+  const payments = data?.payments ?? [];
 
   return (
     <>
@@ -68,6 +73,32 @@ export function DebtSection({ clientResourceId }: { clientResourceId: string }) 
           </ul>
         ) : (
           <p className="mt-3 text-[13px] text-[var(--fg-secondary)]">Sin deuda pendiente.</p>
+        )}
+
+        {/* Lo que ya pagó. Va aunque la deuda esté en cero: es la respuesta a
+            "yo ya te pagué", y es justo cuando el saldo llega a cero que hace
+            falta poder mostrarlo. */}
+        {payments.length > 0 && (
+          <div className="mt-4 border-t border-[var(--border)] pt-3">
+            <p className="text-[11px] font-semibold uppercase tracking-[0.04em] text-[var(--fg-muted)]">
+              Pagos recibidos
+            </p>
+            <ul className="mt-1.5 space-y-1">
+              {payments.map((p) => (
+                <li key={p.id} className="flex items-baseline gap-2 text-[12.5px]">
+                  <span className="w-[80px] shrink-0 tabular-nums text-[var(--fg-muted)]">
+                    {p.paidAt.toISOString().slice(0, 10)}
+                  </span>
+                  <span className="min-w-0 flex-1 text-[var(--fg-secondary)]">
+                    {METHOD_LABEL[p.method] ?? p.method}
+                  </span>
+                  <span className="shrink-0 tabular-nums font-semibold text-[var(--success-700)]">
+                    {money(p.amount)}
+                  </span>
+                </li>
+              ))}
+            </ul>
+          </div>
         )}
 
         <div className="mt-4 flex gap-2">

@@ -179,6 +179,34 @@ class DebtLedger
     }
 
     /**
+     * Todo lo que esta placa alguna vez debió, saldado o no.
+     *
+     * Distinto de `outstandingFor`, que sólo devuelve lo abierto: el historial
+     * de pagos cuelga de acá porque si colgara de lo abierto, un pago
+     * desaparecería justo cuando termina de saldar una deuda — y ese pago es
+     * el único registro de que el cliente pagó.
+     *
+     * @return array<int, string>
+     */
+    public function payableIdsFor(string $tenantId, string $clientResourceId): array
+    {
+        $logs = ServiceLogModel::query()
+            ->forTenant($tenantId)
+            ->where('client_resource_id', $clientResourceId)
+            ->where('left_owing', true)
+            ->pluck('id')
+            ->all();
+
+        $manuales = ManualDebtModel::query()
+            ->forTenant($tenantId)
+            ->where('client_resource_id', $clientResourceId)
+            ->pluck('id')
+            ->all();
+
+        return array_merge($logs, $manuales);
+    }
+
+    /**
      * Lo abonado a cada cosa, en una consulta. Se hace acá y no por fila
      * porque `outstandingFor` puede tener veinte líneas y el detalle de un
      * deudor no debería costar veinte consultas.
