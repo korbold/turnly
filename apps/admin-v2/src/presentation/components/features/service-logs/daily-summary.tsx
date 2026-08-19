@@ -4,6 +4,8 @@ import { useState } from 'react';
 import { CreditCard, Banknote, ArrowLeftRight, MoreHorizontal, Wallet, Eye, EyeOff, ChevronDown } from 'lucide-react';
 import { Skeleton } from '@/presentation/components/ui/skeleton';
 import { useDailySummary } from '@/presentation/hooks/use-service-logs';
+import { useCashSession } from '@/presentation/hooks/use-cash-session';
+import { usePermissions } from '@/presentation/hooks/use-permissions';
 
 const fmt = (v: number) =>
   new Intl.NumberFormat('es-EC', {
@@ -86,6 +88,8 @@ const METHOD_TILES = [
 
 export function DailySummary({ date }: DailySummaryProps) {
   const { data, isLoading } = useDailySummary(date);
+  const { isOwnerOrAdmin } = usePermissions();
+  const { data: cash, isLoading: cashLoading } = useCashSession(date);
   const [hideAmounts, setHideAmounts] = useState(loadHideAmounts);
   const [collapsed, setCollapsed] = useState(loadCollapsed);
 
@@ -107,7 +111,18 @@ export function DailySummary({ date }: DailySummaryProps) {
     });
   }
 
-  if (isLoading) {
+  // El cierre de caja es ciego: el cajero cuenta y declara, y recién
+  // entonces el sistema revela el esperado. Ese control se cae si el
+  // esperado se puede leer en esta misma pantalla — base + EFECTIVO da el
+  // número con centavos de error. Con la caja abierta, quien va a ser
+  // arqueado no ve la plata del día; al cerrarla vuelve a verla.
+  //
+  // No lo vuelve imposible: la tabla de abajo sigue listando cada cobro con
+  // su método, y sumarla a mano funciona. Lo vuelve trabajo.
+  const cajaAbierta = cash?.session?.status === 'open';
+  const ocultarPorArqueo = !isOwnerOrAdmin && (cashLoading || cajaAbierta);
+
+  if (isLoading || (cashLoading && !isOwnerOrAdmin)) {
     return (
       <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
         <Skeleton className="h-28 rounded-xl" />
@@ -115,6 +130,17 @@ export function DailySummary({ date }: DailySummaryProps) {
           <Skeleton className="h-28 rounded-xl" />
           <Skeleton className="h-28 rounded-xl" />
         </div>
+      </div>
+    );
+  }
+
+  if (ocultarPorArqueo) {
+    return (
+      <div className="flex items-center gap-2.5 rounded-xl border border-dashed border-[var(--border-strong)] bg-[var(--bg-surface)] px-4 py-3">
+        <EyeOff className="h-4 w-4 shrink-0 text-[var(--fg-muted)]" aria-hidden="true" />
+        <p className="text-[12.5px] text-[var(--fg-secondary)]">
+          Los totales del día aparecen al cerrar la caja. Contá el efectivo antes de declararlo.
+        </p>
       </div>
     );
   }

@@ -107,6 +107,12 @@ export function usePermissions() {
     canSetPrice: hasPrivilege('Precio'),
     canDeleteLog: hasPrivilege('Eliminar'),
     canManageCash: hasPrivilege('Caja'),
+    /**
+     * Dueño o admin del tenant. No es un privilegio de la matriz: es la
+     * pregunta "¿esta persona se arquea a sí misma?", y la respuesta no
+     * puede ser configurable por quien va a ser arqueado.
+     */
+    isOwnerOrAdmin: role === 'owner' || role === 'tenant_admin',
     canAssign,
   };
 }
