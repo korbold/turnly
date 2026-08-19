@@ -172,12 +172,18 @@ function ServiceLogDetail({ id }: { id: string }) {
           {log.status === 'in_progress' && (
             <Button
               variant="outline"
-              onClick={() =>
+              onClick={() => {
+                // Mismo trato que en la lista: si falta alguien, se pide acá
+                // en vez de dejar que el backend conteste con un 422 crudo.
+                if (isCarWash && (!log.washedBy || !log.driedBy)) {
+                  setAssignOpen(true);
+                  return;
+                }
                 completeMutation.mutate(log.id, {
                   onSuccess: () => toast.success('Servicio completado'),
-                  onError: () => toast.error('Error al completar'),
-                })
-              }
+                  onError: (e) => toast.error(apiErrorMessage(e, 'Error al completar')),
+                });
+              }}
               disabled={completeMutation.isPending}
               className="cursor-pointer gap-1.5 border-[var(--success-200)] text-[var(--success-700)] hover:bg-[var(--success-50)]"
             >
@@ -268,6 +274,28 @@ function ServiceLogDetail({ id }: { id: string }) {
               <p className="whitespace-pre-line text-[13px] text-[var(--fg-strong)]">{log.notes}</p>
             </Card>
           )}
+
+          {/* La bitácora vive en la columna ancha: es lo único de esta pantalla
+              que se lee de corrido, y la derecha es una pila de resúmenes. */}
+          {(log.events ?? []).length > 0 && (
+            <Card title="Bitácora">
+              <ol className="space-y-2.5">
+                {(log.events ?? []).map((event) => (
+                  <li key={event.id} className="border-l-2 border-[var(--border)] pl-2.5">
+                    <p className="text-[12.5px] text-[var(--fg-strong)]">
+                      {describeServiceLogEvent(event)}
+                    </p>
+                    <p className="mt-0.5 text-[11.5px] text-[var(--fg-muted)]">
+                      {format(new Date(event.changedAt), "d MMM, HH:mm", { locale: es })}
+                      {' · '}
+                      {/* Sin actor = lo hizo el SRI, no una persona. */}
+                      {event.changedBy?.name ?? 'SRI'}
+                    </p>
+                  </li>
+                ))}
+              </ol>
+            </Card>
+          )}
         </div>
 
         {/* Sidebar */}
@@ -342,25 +370,6 @@ function ServiceLogDetail({ id }: { id: string }) {
             </Card>
           )}
 
-          {(log.events ?? []).length > 0 && (
-            <Card title="Bitácora">
-              <ol className="space-y-2.5">
-                {(log.events ?? []).map((event) => (
-                  <li key={event.id} className="border-l-2 border-[var(--border)] pl-2.5">
-                    <p className="text-[12.5px] text-[var(--fg-strong)]">
-                      {describeServiceLogEvent(event)}
-                    </p>
-                    <p className="mt-0.5 text-[11.5px] text-[var(--fg-muted)]">
-                      {format(new Date(event.changedAt), "d MMM, HH:mm", { locale: es })}
-                      {' · '}
-                      {/* Sin actor = lo hizo el SRI, no una persona. */}
-                      {event.changedBy?.name ?? 'SRI'}
-                    </p>
-                  </li>
-                ))}
-              </ol>
-            </Card>
-          )}
         </div>
       </div>
 

@@ -19,6 +19,15 @@ const INVOICE_LABEL: Record<string, string> = {
   rechazada: 'Factura rechazada',
 };
 
+/** Nombre legible de cada campo que el editor puede tocar. */
+const FIELD_LABEL: Record<string, string> = {
+  attended_by: 'Empleado',
+  payment_method: 'Método de pago',
+  payment_bank: 'Banco',
+  notes: 'Notas',
+  price_charged: 'Precio',
+};
+
 function money(value: unknown): string {
   const n = typeof value === 'number' ? value : Number(value ?? 0);
   return new Intl.NumberFormat('es-EC', { style: 'currency', currency: 'USD' }).format(n);
@@ -40,6 +49,22 @@ export function describeServiceLogEvent(event: ServiceLogEvent): string {
       const from = (d.from_name as string | null) ?? '—';
       const to = (d.to_name as string | null) ?? '—';
       return `${position}: ${from} → ${to}`;
+    }
+
+    case 'log_updated': {
+      const changes = Array.isArray(d.changes) ? (d.changes as Array<Record<string, unknown>>) : [];
+      const parts = changes.map((c) => {
+        const label = FIELD_LABEL[String(c.field)] ?? String(c.field);
+        // El método de pago se lee en castellano; el resto tal cual quedó.
+        const val = (v: unknown) => {
+          if (v === null || v === undefined || v === '') return '—';
+          if (c.field === 'payment_method') return METHOD_LABEL[String(v)] ?? String(v);
+          if (c.field === 'price_charged') return money(v);
+          return String(v);
+        };
+        return `${label}: ${val(c.from)} → ${val(c.to)}`;
+      });
+      return parts.length ? `Editó el registro · ${parts.join(' · ')}` : 'Editó el registro';
     }
 
     case 'items_changed':

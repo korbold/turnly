@@ -25,6 +25,7 @@ class ServiceLogEventModel extends Model
     public const EVENT_CREATED                = 'created';
     public const EVENT_ASSIGNEE_CHANGED       = 'assignee_changed';
     public const EVENT_ITEMS_CHANGED          = 'items_changed';
+    public const EVENT_LOG_UPDATED            = 'log_updated';
     public const EVENT_PAYMENT_RECORDED       = 'payment_recorded';
     public const EVENT_STATUS_CHANGED         = 'status_changed';
     public const EVENT_INVOICE_REQUESTED      = 'invoice_requested';

@@ -38,6 +38,7 @@ export interface ServiceLogEvent {
     | 'created'
     | 'assignee_changed'
     | 'items_changed'
+    | 'log_updated'
     | 'payment_recorded'
     | 'status_changed'
     | 'invoice_requested'

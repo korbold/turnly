@@ -56,6 +56,24 @@ class ServiceLogEventRecorder
         ], $actorId);
     }
 
+    /**
+     * Edición del registro por el editor: método de pago, banco, empleado,
+     * notas. Un solo evento con la lista de lo que cambió — el editor guarda
+     * todo junto y separarlo en cuatro líneas leería peor que una.
+     *
+     * @param  array<int,array{field:string,from:mixed,to:mixed}>  $changes
+     */
+    public function logUpdated(ServiceLogModel $log, array $changes, ?string $actorId): void
+    {
+        if ($changes === []) {
+            return;
+        }
+
+        $this->write($log, ServiceLogEventModel::EVENT_LOG_UPDATED, [
+            'changes' => array_values($changes),
+        ], $actorId);
+    }
+
     public function paymentRecorded(
         ServiceLogModel $log,
         string $method,

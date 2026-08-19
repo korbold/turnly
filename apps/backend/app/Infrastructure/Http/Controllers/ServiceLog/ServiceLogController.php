@@ -326,6 +326,19 @@ class ServiceLogController extends Controller
         $logModel = ServiceLogModel::findOrFail($serviceLog->id);
         $this->events->created($logModel, $request->user()?->id);
 
+        // "Cobrar ahora" es un cobro igual que el diferido: sin esto la
+        // bitácora mostraba un servicio pagado sin decir nunca cuándo ni con
+        // qué método, que es justo lo que se discute cuando falta plata.
+        if ($logModel->payment_status === 'paid') {
+            $this->events->paymentRecorded(
+                $logModel,
+                (string) $logModel->payment_method,
+                $logModel->payment_bank,
+                (float) $logModel->price_charged,
+                $request->user()?->id,
+            );
+        }
+
         $model = ServiceLogModel::with(['clientResource', 'service', 'attendant', 'items.variant', 'washer', 'dryer'])
             ->find($serviceLog->id);
 
@@ -458,7 +471,28 @@ class ServiceLogController extends Controller
             $payload['attended_by'] = $this->resolveAttendedBy($request, $payload['attended_by']);
         }
 
+        // Qué cambió, antes de escribir. El editor guarda método de pago,
+        // empleado y notas — sin esto, corregir un cobro de efectivo a
+        // transferencia no dejaba ninguna huella.
+        $audited = ['attended_by', 'payment_method', 'payment_bank', 'notes', 'price_charged'];
+        $changes = [];
+        foreach ($audited as $field) {
+            if (!array_key_exists($field, $payload)) {
+                continue;
+            }
+
+            $from = $serviceLog->{$field};
+            $to   = $payload[$field];
+            if ((string) $from === (string) $to) {
+                continue;
+            }
+
+            $changes[] = ['field' => $field, 'from' => $from, 'to' => $to];
+        }
+
         $serviceLog->update($payload);
+
+        $this->events->logUpdated($serviceLog, $changes, $request->user()?->id);
 
         return new ServiceLogResource($serviceLog->load(['clientResource', 'service', 'attendant']));
     }

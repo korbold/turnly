@@ -58,13 +58,66 @@ beforeEach(function () {
         ], $extra));
 });
 
-test('registering a service writes a created event', function () {
+test('registering a service paid at the counter writes the sale and the payment', function () {
+    // "Cobrar ahora" es un cobro igual que el diferido: la bitácora tiene que
+    // decir con qué método entró la plata, no sólo que el servicio existe.
     $id = ($this->register)()->json('data.id');
 
-    expect(($this->events)($id))->toBe([ServiceLogEventModel::EVENT_CREATED]);
+    expect(($this->events)($id))->toBe([
+        ServiceLogEventModel::EVENT_CREATED,
+        ServiceLogEventModel::EVENT_PAYMENT_RECORDED,
+    ]);
 
     $event = ServiceLogEventModel::withoutGlobalScopes()->where('service_log_id', $id)->first();
     expect($event->changed_by_user_id)->toBe($this->owner->id);
+
+    $pago = ServiceLogEventModel::withoutGlobalScopes()
+        ->where('service_log_id', $id)
+        ->where('event', ServiceLogEventModel::EVENT_PAYMENT_RECORDED)
+        ->first();
+    expect($pago->detail['method'])->toBe('cash');
+    expect($pago->detail['amount'])->toEqual(10);
+});
+
+test('registering a service to be paid later writes no payment yet', function () {
+    $id = ($this->register)(['payment_status' => 'unpaid'])->json('data.id');
+
+    expect(($this->events)($id))->toBe([ServiceLogEventModel::EVENT_CREATED]);
+});
+
+test('editing the payment method leaves a trail', function () {
+    $id = ($this->register)()->json('data.id');
+
+    ($this->as)($this->owner)
+        ->patchJson("/api/v1/service-logs/{$id}", [
+            'payment_method' => 'transfer',
+            'payment_bank'   => 'pichincha',
+        ])
+        ->assertOk();
+
+    $event = ServiceLogEventModel::withoutGlobalScopes()
+        ->where('service_log_id', $id)
+        ->where('event', ServiceLogEventModel::EVENT_LOG_UPDATED)
+        ->first();
+
+    $campos = array_column($event->detail['changes'], 'field');
+    expect($campos)->toContain('payment_method')->toContain('payment_bank');
+
+    $metodo = collect($event->detail['changes'])->firstWhere('field', 'payment_method');
+    expect($metodo['from'])->toBe('cash');
+    expect($metodo['to'])->toBe('transfer');
+});
+
+test('an edit that changes nothing writes no event', function () {
+    // La bitácora registra cambios, no guardados. Reenviar el mismo método de
+    // pago no es un hecho que valga la pena contarle a nadie.
+    $id = ($this->register)()->json('data.id');
+
+    ($this->as)($this->owner)
+        ->patchJson("/api/v1/service-logs/{$id}", ['payment_method' => 'cash'])
+        ->assertOk();
+
+    expect(($this->events)($id))->not->toContain(ServiceLogEventModel::EVENT_LOG_UPDATED);
 });
 
 test('editing the items writes both totals', function () {
