@@ -51,6 +51,11 @@ class CreateServiceLogRequest extends FormRequest
             // Abono al registrar: el cliente deja el auto y paga una parte.
             // Sin el campo, se cobra el total, que es como se comportaba antes.
             'amount_received' => ['nullable', 'numeric', 'min:0.01'],
+            // Motivo del desvío de precio. Obligatorio sin el privilegio
+            // Precio; la validación fina vive en el controlador porque
+            // depende de si hubo desvío.
+            'price_change_reason' => ['nullable', 'string', 'max:40'],
+            'price_change_note'   => ['nullable', 'string', 'max:200'],
             // Bank slug (pichincha, pacifico, …) only meaningful when
             // payment_method = transfer.
             'payment_bank'    => ['nullable', 'string', 'max:40'],

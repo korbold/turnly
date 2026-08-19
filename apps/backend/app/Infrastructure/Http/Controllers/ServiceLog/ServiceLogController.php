@@ -11,6 +11,7 @@ use App\Domain\Billing\ConsumidorFinalLimit;
 use App\Domain\Identity\EcuadorIdValidator;
 use App\Domain\Inventory\ConsumptionEngine;
 use App\Domain\Inventory\StockLedger;
+use App\Domain\Pricing\PriceChangeReason;
 use App\Domain\ServiceLog\Contracts\ServiceLogRepositoryInterface;
 use App\Domain\Tenant\StaffPrivileges;
 use App\Infrastructure\Billing\BillingServiceClient;
@@ -146,6 +147,50 @@ class ServiceLogController extends Controller
         ], 403);
     }
 
+    /**
+     * Valida el motivo de un desvío de precio. Devuelve la respuesta de error
+     * o null si está todo bien.
+     *
+     * Sin el privilegio `Precio` el motivo es obligatorio; con él es opcional.
+     * Ese es el cambio de significado del privilegio: de "puede tocar el
+     * precio" a "puede hacerlo sin justificar".
+     */
+    private function priceReasonProblem(Request $request, string $label): ?JsonResponse
+    {
+        $reason = $request->input('price_change_reason');
+        $note   = $request->input('price_change_note');
+
+        if ($reason === null || $reason === '') {
+            if ($this->may($request, StaffPrivileges::PRICE)) {
+                return null;
+            }
+
+            return response()->json([
+                'error' => [
+                    'code'    => 'REASON_REQUIRED',
+                    'message' => "El precio de \"{$label}\" no es el del catálogo. Elegí un motivo.",
+                ],
+            ], 422);
+        }
+
+        if (!PriceChangeReason::isValid($reason)) {
+            return $this->reasonInvalid('Ese motivo no existe.');
+        }
+
+        if ($reason === PriceChangeReason::REQUIRES_NOTE && trim((string) $note) === '') {
+            return $this->reasonInvalid('Elegiste "Otro": escribí de qué se trata.');
+        }
+
+        return null;
+    }
+
+    private function reasonInvalid(string $message): JsonResponse
+    {
+        return response()->json([
+            'error' => ['code' => 'REASON_INVALID', 'message' => $message],
+        ], 422);
+    }
+
     public function index(Request $request)
     {
         // `items` is eager-loaded so the LogList row can render the
@@ -250,20 +295,22 @@ class ServiceLogController extends Controller
         $items = $request->input('items', []);
         $hasItems = is_array($items) && count($items) > 0;
 
-        // Without the Precio privilege, staff register at the catalog price.
-        // Nothing is stored before this check, so a tampered payload never
-        // lands as a half-written ticket.
-        if (!$this->may($request, StaffPrivileges::PRICE)) {
-            $lines = $hasItems ? $items : [[
-                'service_id' => $request->service_id,
-                'variant_id' => $request->service_variant_id,
-                'unit_price' => (float) $request->price_charged,
-                'label'      => 'servicio',
-            ]];
+        // El desvío ya no se bloquea: se justifica. Bloquear obliga a llamar
+        // al dueño por cada cliente especial, y a la tercera vez el dueño
+        // concede el privilegio "para que la caja no se trabe" — que es cómo
+        // se pasa de prohibido a invisible.
+        $lines = $hasItems ? $items : [[
+            'service_id' => $request->service_id,
+            'variant_id' => $request->service_variant_id,
+            'unit_price' => (float) $request->price_charged,
+            'label'      => 'servicio',
+        ]];
 
-            $tampered = $this->firstTamperedPrice($lines);
-            if ($tampered !== null) {
-                return $this->priceLockedResponse($tampered);
+        $desviada = $this->firstTamperedPrice($lines);
+        if ($desviada !== null) {
+            $problema = $this->priceReasonProblem($request, $desviada);
+            if ($problema !== null) {
+                return $problema;
             }
         }
 
@@ -317,6 +364,12 @@ class ServiceLogController extends Controller
             $patch['payment_method'] = null;
             $patch['payment_bank'] = null;
         }
+        if ($desviada !== null) {
+            $patch['price_change_reason'] = $request->input('price_change_reason');
+            $patch['price_change_note']   = $request->input('price_change_reason') === PriceChangeReason::REQUIRES_NOTE
+                ? $request->input('price_change_note')
+                : null;
+        }
         ServiceLogModel::where('id', $serviceLog->id)->update($patch);
 
         // Persist multi-service items[]. Each line becomes a row in
@@ -342,6 +395,22 @@ class ServiceLogController extends Controller
         // La bitácora arranca acá: el resto de los eventos se cuelgan de este.
         $logModel = ServiceLogModel::findOrFail($serviceLog->id);
         $this->events->created($logModel, $request->user()?->id);
+
+        if ($desviada !== null) {
+            $catalogo = array_sum(array_map(
+                fn ($l) => (float) ($this->catalogPrice($l) ?? $l['unit_price']) * (float) ($l['qty'] ?? 1),
+                $lines,
+            ));
+
+            $this->events->priceChanged(
+                $logModel,
+                round($catalogo, 2),
+                (float) $logModel->price_charged,
+                $request->input('price_change_reason'),
+                $request->input('price_change_note'),
+                $request->user()?->id,
+            );
+        }
 
         // "Cobrar ahora" es un cobro igual que el diferido: sin esto la
         // bitácora mostraba un servicio pagado sin decir nunca cuándo ni con
@@ -437,6 +506,9 @@ class ServiceLogController extends Controller
                 'label'          => $line['label'],
                 'qty'            => $qty,
                 'unit_price'     => $unit,
+                // Foto del catálogo, no consulta: el precio de la lista cambia
+                // y este número no puede cambiar con él.
+                'catalog_price'  => $this->catalogPrice($line),
                 'line_total'     => $unit * $qty,
                 'sort_order'     => $sort++,
             ]);
@@ -547,6 +619,8 @@ class ServiceLogController extends Controller
             'items.*.label'          => 'required|string|max:200',
             'items.*.qty'            => 'required|numeric|min:0.01',
             'items.*.unit_price'     => 'required|numeric|min:0',
+            'price_change_reason'    => ['nullable', 'string', 'max:40'],
+            'price_change_note'      => ['nullable', 'string', 'max:200'],
         ]);
 
         $items  = $request->input('items');
@@ -554,28 +628,28 @@ class ServiceLogController extends Controller
 
         $totalBefore = (float) $serviceLog->price_charged;
 
-        // Without the Precio privilege staff may still add, remove and
-        // re-count lines — that is the daily job. What they can't do is
-        // re-price one. Lines already on the log keep their stored price (an
-        // admin discount survives a cashier edit); anything new has to come in
-        // at catalog.
-        if (!$this->may($request, StaffPrivileges::PRICE)) {
-            $tampered = $this->firstTamperedPrice(
-                $items,
-                $serviceLog->items()->pluck('unit_price', 'ref_id')
-                    ->map(fn ($p) => (float) $p)
-                    ->all(),
-            );
+        // El desvío se detecta siempre, tenga o no privilegio quien edita.
+        // Una línea ya en el registro se compara contra su precio guardado, no
+        // el de catálogo: una línea ya descontada a $12 con motivo no vuelve a
+        // pedirlo cada vez que el cajero le corrige la cantidad.
+        $desviada = $this->firstTamperedPrice(
+            $items,
+            $serviceLog->items()->pluck('unit_price', 'ref_id')
+                ->map(fn ($p) => (float) $p)
+                ->all(),
+        );
 
-            if ($tampered !== null) {
-                return $this->priceLockedResponse($tampered);
+        if ($desviada !== null) {
+            $problema = $this->priceReasonProblem($request, $desviada);
+            if ($problema !== null) {
+                return $problema;
             }
         }
 
         // Wrap the delete + insert + parent-update in a single transaction
         // so a mid-loop constraint failure can never leave the log in a
         // corrupt state (old items gone, new items half-written).
-        \Illuminate\Support\Facades\DB::transaction(function () use ($serviceLog, $items, $userId, $totalBefore) {
+        \Illuminate\Support\Facades\DB::transaction(function () use ($request, $serviceLog, $items, $userId, $totalBefore, $desviada) {
             // Sold units go back on the shelf before the lines are
             // replaced; persistItems then books the new sale. Editing a
             // ticket twice would otherwise discount the stock twice.
@@ -591,14 +665,37 @@ class ServiceLogController extends Controller
             // queries (reports grouping by service_id) remain correct.
             $newTotal    = array_sum(array_map(fn ($it) => (float) $it['unit_price'] * (float) $it['qty'], $items));
             $firstService = $this->firstServiceLine($items);
-            $serviceLog->update([
+            $patch = [
                 'service_id'         => $firstService['service_id'] ?? null,
                 'price_charged'      => $newTotal,
                 'service_variant_id' => $firstService['variant_id'] ?? null,
-            ]);
+            ];
+            if ($desviada !== null) {
+                $patch['price_change_reason'] = $request->input('price_change_reason');
+                $patch['price_change_note']   = $request->input('price_change_reason') === PriceChangeReason::REQUIRES_NOTE
+                    ? $request->input('price_change_note')
+                    : null;
+            }
+            $serviceLog->update($patch);
 
             // Dentro de la transacción: un evento sin su cambio miente.
             $this->events->itemsChanged($serviceLog, $totalBefore, $newTotal, $userId);
+
+            if ($desviada !== null) {
+                $catalogo = array_sum(array_map(
+                    fn ($l) => (float) ($this->catalogPrice($l) ?? $l['unit_price']) * (float) ($l['qty'] ?? 1),
+                    $items,
+                ));
+
+                $this->events->priceChanged(
+                    $serviceLog,
+                    round($catalogo, 2),
+                    $newTotal,
+                    $request->input('price_change_reason'),
+                    $request->input('price_change_note'),
+                    $userId,
+                );
+            }
         });
 
         return new ServiceLogResource(

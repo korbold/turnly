@@ -32,6 +32,8 @@ class ServiceLogEventModel extends Model
     public const EVENT_LEFT_OWING             = 'left_owing';
     public const EVENT_INVOICE_REQUESTED      = 'invoice_requested';
     public const EVENT_INVOICE_STATUS_CHANGED = 'invoice_status_changed';
+    /** El precio se apartó del catálogo. Con cuánto, y por qué. */
+    public const EVENT_PRICE_CHANGED = 'price_changed';
 
     protected $fillable = [
         'tenant_id', 'service_log_id', 'event', 'detail',

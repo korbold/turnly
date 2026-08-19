@@ -94,7 +94,7 @@ test('an owner can delete an unpaid service log', function () {
 
 // ── precio al registrar ──────────────────────────────────────────────────────
 
-test('a cashier cannot register a service above the catalog price', function () {
+test('a cashier cannot register a service above the catalog price without a reason', function () {
     ($this->as)($this->cashier)
         ->postJson('/api/v1/service-logs', [
             'client_resource_id' => $this->clientResource->id,
@@ -107,8 +107,8 @@ test('a cashier cannot register a service above the catalog price', function () 
             ]],
             'payment_method' => 'cash',
         ])
-        ->assertStatus(403)
-        ->assertJsonPath('error.code', 'PRICE_LOCKED');
+        ->assertStatus(422)
+        ->assertJsonPath('error.code', 'REASON_REQUIRED');
 
     $this->assertDatabaseCount('service_logs', 0);
 });
@@ -149,7 +149,7 @@ test('an owner can register a service at a discounted price', function () {
 
 // ── precio al editar ─────────────────────────────────────────────────────────
 
-test('a cashier cannot re-price a line on an existing log', function () {
+test('a cashier cannot re-price a line on an existing log without a reason', function () {
     $log = ($this->log)(['price_charged' => 10.00]);
     ServiceLogItemModel::create([
         'tenant_id'      => $this->tenant->id,
@@ -172,8 +172,8 @@ test('a cashier cannot re-price a line on an existing log', function () {
                 'unit_price' => 3.00,
             ]],
         ])
-        ->assertStatus(403)
-        ->assertJsonPath('error.code', 'PRICE_LOCKED');
+        ->assertStatus(422)
+        ->assertJsonPath('error.code', 'REASON_REQUIRED');
 
     expect((float) $log->fresh()->price_charged)->toBe(10.00);
 });

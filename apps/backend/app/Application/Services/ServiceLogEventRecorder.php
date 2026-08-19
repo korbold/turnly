@@ -140,6 +140,27 @@ class ServiceLogEventRecorder
     }
 
     /**
+     * El precio no fue el del catálogo. Sin este evento un descuento se ve
+     * igual que una venta normal, que es exactamente el problema.
+     */
+    public function priceChanged(
+        ServiceLogModel $log,
+        float $catalog,
+        float $charged,
+        ?string $reason,
+        ?string $note,
+        ?string $actorId,
+    ): void {
+        $this->write($log, ServiceLogEventModel::EVENT_PRICE_CHANGED, [
+            'catalog'    => $catalog,
+            'charged'    => $charged,
+            'difference' => round($charged - $catalog, 2),
+            'reason'     => $reason,
+            'note'       => $note,
+        ], $actorId);
+    }
+
+    /**
      * tenant_id sale del log y no del contenedor: los jobs corren sin
      * current_tenant_id bindeado, y TenantScope no rellena en el insert.
      */
