@@ -695,10 +695,12 @@ test('staff from another tenant is rejected at registration', function () {
 });
 ```
 
-Nota sobre el último test: `GET /service-logs/{id}` devuelve el recurso **sin
-envoltorio `data`** (es un `JsonResource` de un solo modelo), por eso los paths
-del tercer test son `washer.name` y no `data.washer.name`. Ese detalle ya
-mordió antes en este repo.
+Nota sobre el envoltorio: `GET /service-logs/{id}` **sí** envuelve en `data`
+(este backend no llama `withoutWrapping` en ninguna parte, y el
+`ServiceLogTest > can show a service log` pre-existente asserta `data.id`). Los
+paths del tercer test van con `data.`. Lo que sí muerde es que
+`assertJsonPath(path, null)` pasa cuando el path no existe: cuando la ausencia
+es load-bearing, probá además que la clave está.
 
 - [ ] **Step 2: Run test to verify it fails**
 
@@ -1421,7 +1423,9 @@ test('editing the items writes both totals', function () {
         ->where('event', ServiceLogEventModel::EVENT_ITEMS_CHANGED)
         ->first();
 
-    expect($event->detail)->toBe(['total_before' => 10.0, 'total_after' => 20.0]);
+    // toEqual y no toBe: un 10.0 vuelve de JSON como int 10, y a la bitácora no
+    // le importa el tipo de PHP.
+    expect($event->detail)->toEqual(['total_before' => 10, 'total_after' => 20]);
 });
 
 test('recording a payment writes the method and the bank', function () {
@@ -1440,7 +1444,7 @@ test('recording a payment writes the method and the bank', function () {
 
     expect($event->detail['method'])->toBe('transfer');
     expect($event->detail['bank'])->toBe('pichincha');
-    expect($event->detail['amount'])->toBe(10.0);
+    expect($event->detail['amount'])->toEqual(10);
 });
 
 test('completing writes the transition', function () {
@@ -2290,13 +2294,19 @@ test('the detail returns the trail oldest first, with the actor name', function 
         ->getJson("/api/v1/service-logs/{$this->log->id}")
         ->assertOk();
 
-    // El recurso de un solo modelo no lleva envoltorio `data`.
-    expect($response->json('events.*.event'))->toBe([
+    // El recurso SÍ envuelve en `data` (no hay withoutWrapping en este
+    // backend; el ServiceLogTest pre-existente asserta `data.id`).
+    expect($response->json('data.events.*.event'))->toBe([
         'created', 'payment_recorded', 'invoice_status_changed',
     ]);
-    expect($response->json('events.0.changed_by.name'))->toBe('Danny Barahona');
-    expect($response->json('events.2.changed_by'))->toBeNull();
-    expect($response->json('events.1.detail.amount'))->toBe(12);
+    expect($response->json('data.events.0.changed_by.name'))->toBe('Danny Barahona');
+
+    // La clave tiene que existir y ser null — un path ausente también
+    // devuelve null y la aserción pasaría sin probar nada.
+    $events = $response->json('data.events');
+    expect($events[2])->toHaveKey('changed_by');
+    expect($events[2]['changed_by'])->toBeNull();
+    expect($response->json('data.events.1.detail.amount'))->toBe(12);
 });
 
 test('the list endpoint does not carry the trail', function () {
