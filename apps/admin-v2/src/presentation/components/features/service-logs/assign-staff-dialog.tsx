@@ -21,7 +21,7 @@ import {
 } from '@/presentation/components/ui/select';
 import { apiErrorMessage } from '@/shared/utils/api-error';
 import { useServiceStaff } from '@/presentation/hooks/use-service-staff';
-import { useAssignServiceLogStaff } from '@/presentation/hooks/use-service-logs';
+import { useAssignServiceLogStaff, useCompleteServiceLog } from '@/presentation/hooks/use-service-logs';
 import { usePermissions } from '@/presentation/hooks/use-permissions';
 import type { ServiceLog } from '@/domain/entities/service-log';
 
@@ -31,6 +31,12 @@ interface Props {
   onClose: () => void;
   /** Por qué se abrió solo, cuando viene de Completar. */
   reason?: string;
+  /**
+   * Abierto desde Completar: los dos puestos son obligatorios y guardar
+   * completa el servicio. Sin esto el usuario queda en un callejón — apretó
+   * Completar, guardó, y el servicio sigue en progreso.
+   */
+  requireBoth?: boolean;
 }
 
 /**
@@ -38,10 +44,11 @@ interface Props {
  * la acción del día: se asigna al lavador cuando arranca y al secador cuando
  * seca, dos veces por auto.
  */
-export function AssignStaffDialog({ log, open, onClose, reason }: Props) {
+export function AssignStaffDialog({ log, open, onClose, reason, requireBoth = false }: Props) {
   const { data: washers } = useServiceStaff('washer');
   const { data: dryers } = useServiceStaff('dryer');
   const assign = useAssignServiceLogStaff();
+  const complete = useCompleteServiceLog();
   const { canAssign } = usePermissions();
 
   const isCompleted = log.status === 'completed';
@@ -54,6 +61,15 @@ export function AssignStaffDialog({ log, open, onClose, reason }: Props) {
   const [driedBy, setDriedBy] = useState(log.driedBy ?? '');
 
   function handleSave() {
+    // Venir de Completar y guardar sin nadie asignado cerraba el dialog con un
+    // toast de éxito, dejando el servicio igual que antes. Nombrar al que
+    // falta es más útil que un "completá los campos".
+    if (requireBoth && (!washedBy || !driedBy)) {
+      const faltan = [!washedBy && 'lavador', !driedBy && 'secador'].filter(Boolean);
+      toast.error(`Falta asignar ${faltan.join(' y ')} para completar el servicio`);
+      return;
+    }
+
     assign.mutate(
       {
         id: log.id,
@@ -64,8 +80,20 @@ export function AssignStaffDialog({ log, open, onClose, reason }: Props) {
       },
       {
         onSuccess: () => {
-          toast.success('Asignados actualizados');
-          onClose();
+          if (!requireBoth) {
+            toast.success('Asignados actualizados');
+            onClose();
+            return;
+          }
+
+          // El usuario apretó Completar: terminar el trabajo que pidió.
+          complete.mutate(log.id, {
+            onSuccess: () => {
+              toast.success('Servicio completado');
+              onClose();
+            },
+            onError: (e) => toast.error(apiErrorMessage(e, 'Error al completar')),
+          });
         },
         onError: (e) => toast.error(apiErrorMessage(e, 'Error al asignar')),
       },
@@ -127,8 +155,8 @@ export function AssignStaffDialog({ log, open, onClose, reason }: Props) {
           <Button variant="outline" onClick={onClose} disabled={assign.isPending}>
             Cancelar
           </Button>
-          <Button onClick={handleSave} disabled={locked || assign.isPending}>
-            Guardar
+          <Button onClick={handleSave} disabled={locked || assign.isPending || complete.isPending}>
+            {requireBoth ? 'Guardar y completar' : 'Guardar'}
           </Button>
         </DialogFooter>
       </DialogContent>

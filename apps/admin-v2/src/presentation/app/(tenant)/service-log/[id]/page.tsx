@@ -78,6 +78,8 @@ function ServiceLogDetail({ id }: { id: string }) {
   const [editOpen, setEditOpen] = useState(false);
   const [billingOpen, setBillingOpen] = useState(false);
   const [assignOpen, setAssignOpen] = useState(false);
+  // Abierto desde Completar: exige ambos y completa al guardar.
+  const [assignToComplete, setAssignToComplete] = useState(false);
   const { canAssign } = usePermissions();
   const { data: settings } = useSettings();
   const isCarWash = settings?.businessType === 'car_wash';
@@ -176,6 +178,7 @@ function ServiceLogDetail({ id }: { id: string }) {
                 // Mismo trato que en la lista: si falta alguien, se pide acá
                 // en vez de dejar que el backend conteste con un 422 crudo.
                 if (isCarWash && (!log.washedBy || !log.driedBy)) {
+                  setAssignToComplete(true);
                   setAssignOpen(true);
                   return;
                 }
@@ -362,7 +365,7 @@ function ServiceLogDetail({ id }: { id: string }) {
                   variant="outline"
                   size="sm"
                   className="mt-2 w-full"
-                  onClick={() => setAssignOpen(true)}
+                  onClick={() => { setAssignToComplete(false); setAssignOpen(true); }}
                 >
                   Cambiar
                 </Button>
@@ -377,7 +380,13 @@ function ServiceLogDetail({ id }: { id: string }) {
       <RegisterPaymentDialog serviceLogId={log.id} total={total} open={payOpen} onClose={() => setPayOpen(false)} />
       <EditServiceLogDialog log={editOpen ? log : null} open={editOpen} onClose={() => setEditOpen(false)} />
       {assignOpen && (
-        <AssignStaffDialog log={log} open onClose={() => setAssignOpen(false)} />
+        <AssignStaffDialog
+          log={log}
+          open
+          requireBoth={assignToComplete}
+          reason={assignToComplete ? 'Asigná lavador y secador para poder completar el servicio.' : undefined}
+          onClose={() => { setAssignOpen(false); setAssignToComplete(false); }}
+        />
       )}
       <FiscalProfileDialog
         serviceLogId={log.id}

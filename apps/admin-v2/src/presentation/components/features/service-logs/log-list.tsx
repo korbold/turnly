@@ -91,7 +91,7 @@ export function LogList({
   const { canDeleteLog } = usePermissions();
   const { data: settings } = useSettings();
   const isCarWash = settings?.businessType === 'car_wash';
-  const [assignTarget, setAssignTarget] = useState<{ log: ServiceLog; reason?: string } | null>(null);
+  const [assignTarget, setAssignTarget] = useState<{ log: ServiceLog; reason?: string; requireBoth?: boolean } | null>(null);
   const [payTarget, setPayTarget] = useState<ServiceLog | null>(null);
   const [billingTarget, setBillingTarget] = useState<ServiceLog | null>(null);
 
@@ -109,6 +109,7 @@ export function LogList({
       setAssignTarget({
         log,
         reason: 'Asigná lavador y secador para poder completar el servicio.',
+        requireBoth: true,
       });
       return;
     }
@@ -532,6 +533,7 @@ export function LogList({
         <AssignStaffDialog
           log={assignTarget.log}
           reason={assignTarget.reason}
+          requireBoth={assignTarget.requireBoth}
           open
           onClose={() => setAssignTarget(null)}
         />
