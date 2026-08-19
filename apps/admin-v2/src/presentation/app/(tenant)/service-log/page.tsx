@@ -22,6 +22,7 @@ import {
   PopoverTrigger,
 } from '@/presentation/components/ui/popover';
 import { Skeleton } from '@/presentation/components/ui/skeleton';
+import { CashSessionCard } from '@/presentation/components/features/cash/cash-session-card';
 import { DailySummary } from '@/presentation/components/features/service-logs/daily-summary';
 import { LogList } from '@/presentation/components/features/service-logs/log-list';
 import { NewServiceModal } from '@/presentation/components/features/service-logs/new-service-modal';
@@ -201,8 +202,12 @@ function ServiceLogContent() {
           </Button>
         </div>
 
-        {/* Summary cards — the day's caja, deliberately not narrowed by the
-            filters below: they exist to find a row, not to restate the till. */}
+        {/* La caja va arriba del resumen: es lo primero que el cajero abre a
+            la mañana y lo último que toca a la noche. */}
+        <CashSessionCard date={dateStr} />
+
+        {/* Resumen del día — deliberadamente no se estrecha con los filtros de
+            abajo: existen para encontrar una fila, no para reformular el día. */}
         <DailySummary date={dateStr} />
 
         {/* Filters */}
