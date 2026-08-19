@@ -19,12 +19,14 @@ import type { ProductRepository } from '@/domain/repositories/product.repository
 import type { ServiceVariantRepository } from '@/domain/repositories/service-variant.repository';
 import type { BusinessResourceRepository } from '@/domain/repositories/business-resource.repository';
 import type { InvoiceRepository } from '@/domain/repositories/invoice.repository';
+import type { ServiceStaffRepository } from '@/domain/repositories/service-staff.repository';
 
 import { ApiAuthRepository } from '../api/repositories/api-auth.repository';
 import { ApiOnboardingRepository } from '../api/repositories/api-onboarding.repository';
 import { ApiReservationRepository } from '../api/repositories/api-reservation.repository';
 import { ApiServiceRepository } from '../api/repositories/api-service.repository';
 import { ApiServiceLogRepository } from '../api/repositories/api-service-log.repository';
+import { ApiServiceStaffRepository } from '../api/repositories/api-service-staff.repository';
 import { ApiClientResourceRepository } from '../api/repositories/api-client-resource.repository';
 import { ApiUserRepository } from '../api/repositories/api-user.repository';
 import { ApiTenantRepository } from '../api/repositories/api-tenant.repository';
@@ -57,6 +59,7 @@ interface Repositories {
   product: ProductRepository;
   serviceVariant: ServiceVariantRepository;
   businessResource: BusinessResourceRepository;
+  serviceStaff: ServiceStaffRepository;
   invoice: InvoiceRepository;
 }
 
@@ -82,6 +85,7 @@ export function RepositoryProvider({ children }: { children: ReactNode }) {
       product: new ApiProductRepository(),
       serviceVariant: new ApiServiceVariantRepository(),
       businessResource: new ApiBusinessResourceRepository(),
+      serviceStaff: new ApiServiceStaffRepository(),
       invoice: new ApiInvoiceRepository(),
     }),
     [],
