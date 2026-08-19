@@ -304,10 +304,17 @@ function ClientDetailContent() {
           ) : (
             <ul role="list" className="space-y-2">
               {serviceHistory.map((item) => (
-                <li
-                  key={item.id}
-                  className="flex items-center justify-between rounded-lg border border-[var(--border)] bg-[var(--bg-surface)] p-3"
-                >
+                <li key={item.id}>
+                  {/* Cuando el dueño de un vehículo reclama, este click es el
+                      camino al detalle: qué se le hizo, quién lo lavó, quién lo
+                      secó, y si alguien tocó algo después. Botón y no un div con
+                      onClick, para que el teclado y los lectores de pantalla
+                      lleguen. */}
+                  <button
+                    type="button"
+                    onClick={() => router.push(`/service-logs/${item.id}`)}
+                    className="flex w-full cursor-pointer items-center justify-between rounded-lg border border-[var(--border)] bg-[var(--bg-surface)] p-3 text-left transition-colors hover:border-[var(--border-strong)] hover:bg-[var(--bg-sunken)]/40 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--brand-300)]"
+                  >
                   <div className="min-w-0 flex-1">
                     <p className="truncate text-[14px] font-semibold text-[var(--fg-strong)]">
                       {item.serviceName ?? 'Servicio'}
@@ -338,6 +345,7 @@ function ClientDetailContent() {
                       </span>
                     )}
                   </div>
+                  </button>
                 </li>
               ))}
             </ul>
