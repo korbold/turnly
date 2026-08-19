@@ -16,6 +16,14 @@ import { MOVEMENT_TYPE_LABEL } from '@/domain/entities/cash-session';
 const money = (v: number) =>
   new Intl.NumberFormat('es-EC', { style: 'currency', currency: 'USD' }).format(v);
 
+/**
+ * El signo va delante del símbolo, no entre el símbolo y el número: dejar que
+ * Intl formatee el negativo da "$-5,00", que se lee como un precio raro en vez
+ * de como un faltante.
+ */
+const signed = (v: number) =>
+  `${v > 0 ? '+' : v < 0 ? '−' : ''}${money(Math.abs(v))}`;
+
 interface Props {
   date: string;
 }
@@ -124,7 +132,7 @@ export function CashSessionCard({ date }: Props) {
                   : 'bg-[var(--danger-50)] text-[var(--danger-700)] ring-[var(--danger-200)]'
             }`}
           >
-            {diff === 0 ? 'Cuadró' : `${diff > 0 ? '+' : ''}${money(diff)}`}
+            {diff === 0 ? 'Cuadró' : signed(diff)}
           </span>
         )}
 

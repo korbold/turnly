@@ -21,6 +21,10 @@ interface Props {
 const money = (v: number) =>
   new Intl.NumberFormat('es-EC', { style: 'currency', currency: 'USD' }).format(v);
 
+/** El signo delante del símbolo: "−$5,00" y no "$-5,00". */
+const signed = (v: number) =>
+  `${v > 0 ? '+' : v < 0 ? '−' : ''}${money(Math.abs(v))}`;
+
 /**
  * Cierre ciego. El cajero cuenta y declara; recién después el diálogo revela
  * esperado y diferencia. No hay camino a la segunda pantalla que no pase por
@@ -136,7 +140,7 @@ export function CloseCashDialog({ open, sessionId, onClose }: Props) {
               <div className="flex items-baseline justify-between border-t border-[var(--border)] pt-2">
                 <dt className="font-semibold">Diferencia</dt>
                 <dd className={`text-[20px] font-bold tabular-nums ${diffTone}`}>
-                  {diff > 0 ? '+' : ''}{money(diff)}
+                  {signed(diff)}
                 </dd>
               </div>
             </dl>
