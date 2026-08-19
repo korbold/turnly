@@ -8,7 +8,7 @@ export type Permission = 'full' | 'view' | 'none';
 // Both default to 'none' for everyone but Admin, which is exactly the
 // behaviour that shipped hard-coded: a tenant that saved its matrix before
 // these columns existed must not silently hand a cashier the price.
-export const PRIVILEGES = ['Precio', 'Eliminar', 'Asignados'] as const;
+export const PRIVILEGES = ['Precio', 'Eliminar', 'Asignados', 'Caja'] as const;
 export type Privilege = (typeof PRIVILEGES)[number];
 
 // Matrix is keyed by DISPLAY role names (matches the Permisos editor and
@@ -23,24 +23,24 @@ export const DEFAULT_PERMISSIONS: Record<string, Record<string, Permission>> = {
     Dashboard: 'full', Reservas: 'full', Registro: 'full', Clientes: 'full',
     Servicios: 'full', Inventario: 'full', Equipo: 'full', Reportes: 'full',
     Facturas: 'full', Plan: 'full', Config: 'full',
-    Precio: 'full', Eliminar: 'full', Asignados: 'full',
+    Precio: 'full', Eliminar: 'full', Asignados: 'full', Caja: 'full',
   },
   Cajero: {
     Dashboard: 'view', Reservas: 'full', Registro: 'full', Clientes: 'full',
     Servicios: 'view', Inventario: 'none', Equipo: 'none', Reportes: 'none',
     Facturas: 'none', Plan: 'none', Config: 'none',
-    Precio: 'none', Eliminar: 'none', Asignados: 'full',
+    Precio: 'none', Eliminar: 'none', Asignados: 'full', Caja: 'full',
   },
   Lavador: {
     Dashboard: 'view', Reservas: 'view', Registro: 'full', Clientes: 'none',
     Servicios: 'none', Inventario: 'none', Equipo: 'none', Reportes: 'none',
     Facturas: 'none', Plan: 'none', Config: 'none',
-    Precio: 'none', Eliminar: 'none', Asignados: 'none',
+    Precio: 'none', Eliminar: 'none', Asignados: 'none', Caja: 'none',
   },
   Cliente: {
     Dashboard: 'none', Reservas: 'none', Registro: 'none', Clientes: 'none',
     Servicios: 'none', Inventario: 'none', Equipo: 'none', Reportes: 'none',
     Facturas: 'none', Plan: 'none', Config: 'none',
-    Precio: 'none', Eliminar: 'none', Asignados: 'none',
+    Precio: 'none', Eliminar: 'none', Asignados: 'none', Caja: 'none',
   },
 };

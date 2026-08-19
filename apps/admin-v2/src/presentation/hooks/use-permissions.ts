@@ -106,6 +106,7 @@ export function usePermissions() {
     hasPrivilege,
     canSetPrice: hasPrivilege('Precio'),
     canDeleteLog: hasPrivilege('Eliminar'),
+    canManageCash: hasPrivilege('Caja'),
     canAssign,
   };
 }

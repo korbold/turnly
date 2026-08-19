@@ -26,6 +26,8 @@ final class StaffPrivileges
     public const PRICE     = 'Precio';
     public const DELETE    = 'Eliminar';
     public const ASSIGNEES = 'Asignados';
+    /** Abrir la caja, mover plata dentro de ella y cerrarla. */
+    public const CASH      = 'Caja';
 
     private const ROLE_TO_MATRIX = [
         'tenant_admin' => 'Admin',
@@ -35,10 +37,13 @@ final class StaffPrivileges
     ];
 
     private const DEFAULTS = [
-        'Admin'   => [self::PRICE => 'full', self::DELETE => 'full', self::ASSIGNEES => 'full'],
-        'Cajero'  => [self::PRICE => 'none', self::DELETE => 'none', self::ASSIGNEES => 'full'],
-        'Lavador' => [self::PRICE => 'none', self::DELETE => 'none', self::ASSIGNEES => 'none'],
-        'Cliente' => [self::PRICE => 'none', self::DELETE => 'none', self::ASSIGNEES => 'none'],
+        'Admin'   => [self::PRICE => 'full', self::DELETE => 'full', self::ASSIGNEES => 'full', self::CASH => 'full'],
+        // Caja arranca en 'full' para el cajero, al revés que Precio y
+        // Eliminar: abrir y cerrar el cajón es su trabajo, y un default en
+        // 'none' desplegaría la feature apagada para quien la usa.
+        'Cajero'  => [self::PRICE => 'none', self::DELETE => 'none', self::ASSIGNEES => 'full', self::CASH => 'full'],
+        'Lavador' => [self::PRICE => 'none', self::DELETE => 'none', self::ASSIGNEES => 'none', self::CASH => 'none'],
+        'Cliente' => [self::PRICE => 'none', self::DELETE => 'none', self::ASSIGNEES => 'none', self::CASH => 'none'],
     ];
 
     /**
