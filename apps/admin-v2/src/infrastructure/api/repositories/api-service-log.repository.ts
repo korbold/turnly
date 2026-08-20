@@ -94,8 +94,12 @@ export class ApiServiceLogRepository implements ServiceLogRepository {
 
   async updateItems(id: string, items: UpdateServiceLogItemsData): Promise<ServiceLog> {
     const { data: res } = await api.put(`/service-logs/${id}/items`, {
+      // item_type and product_id have to survive the round trip: without
+      // them the backend reads a counter-sale product as a service line.
       items: items.map((it) => ({
-        service_id:  it.serviceId,
+        item_type:   it.itemType ?? 'service_variant',
+        service_id:  it.serviceId ?? null,
+        product_id:  it.productId ?? null,
         variant_id:  it.variantId ?? null,
         label:       it.label,
         qty:         it.qty,

@@ -56,8 +56,14 @@ export interface UpdateServiceLogData {
 }
 
 export interface ServiceLogItemDraft {
-  serviceId: string;
-  variantId: string | null;
+  /** Defaults to `service_variant`. A `product` line must carry
+      productId instead of serviceId — sending a product as a service
+      line puts its uuid in service_logs.service_id and breaks the
+      foreign key. */
+  itemType?: 'service_variant' | 'product';
+  serviceId?: string;
+  productId?: string;
+  variantId?: string | null;
   label: string;
   qty: number;
   unitPrice: number;

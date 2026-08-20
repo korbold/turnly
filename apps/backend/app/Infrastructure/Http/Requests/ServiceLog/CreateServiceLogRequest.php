@@ -37,8 +37,11 @@ class CreateServiceLogRequest extends FormRequest
             // or a counter-sale product (product_id). withValidator
             // enforces exactly one of the two per line.
             'items.*.item_type'    => ['nullable', 'in:service_variant,product'],
-            'items.*.service_id'   => ['nullable', 'uuid'],
-            'items.*.product_id'   => ['nullable', 'uuid'],
+            // exists: an unmarked product line would otherwise put a
+            // product uuid in service_logs.service_id and break the
+            // foreign key mid-write. A 422 says what went wrong.
+            'items.*.service_id'   => ['nullable', 'uuid', 'exists:services,id'],
+            'items.*.product_id'   => ['nullable', 'uuid', 'exists:products,id'],
             // Variant picked for the line. Persisted as the item's
             // ref_id so reports + history point at the exact variant
             // the cashier saw on screen.

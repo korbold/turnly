@@ -238,3 +238,64 @@ test('the ticket total keeps the cents', function () {
 
     expect((float) $log->price_charged)->toBe(31.25);
 });
+
+// The 500 this guards against needs MySQL to show itself: SQLite does not
+// enforce the service_id foreign key, so assert the stored value instead
+// of the status. A product id in service_logs.service_id is the corruption.
+test('editing a product-only ticket leaves its service null', function () {
+    $id = postLog([productLine(2)])->json('data.id');
+
+    $this->actingAs($this->user)
+        ->withHeader('X-Tenant', $this->tenant->slug)
+        ->putJson("/api/v1/service-logs/{$id}/items", ['items' => [productLine(1, 7.05)]])
+        ->assertOk();
+
+    $log = ServiceLogModel::find($id);
+
+    expect($log->service_id)->toBeNull()
+        ->and((float) $log->price_charged)->toBe(7.05);
+});
+
+test('editing a mixed ticket keeps the service as the primary one', function () {
+    $id = postLog([productLine(), serviceLine()])->json('data.id');
+
+    $this->actingAs($this->user)
+        ->withHeader('X-Tenant', $this->tenant->slug)
+        ->putJson("/api/v1/service-logs/{$id}/items", [
+            'items' => [productLine(1, 4.25), serviceLine(9.99)],
+        ])
+        ->assertOk();
+
+    $log = ServiceLogModel::find($id);
+
+    expect($log->service_id)->toBe($this->service->id)
+        ->and((float) $log->price_charged)->toBe(14.24);
+});
+
+// The corruption the admin caused: a product sent as a service line, so
+// its uuid landed in service_logs.service_id and broke the foreign key
+// with a 500. An unknown service id has to be a validation error, not a
+// write the database refuses halfway.
+test('a service line pointing at a product is rejected', function () {
+    postLog([[
+        'service_id' => test()->product->id,
+        'label'      => 'Ambientador pino',
+        'qty'        => 1,
+        'unit_price' => 4.25,
+    ]])->assertStatus(422)->assertJsonValidationErrors('items.0.service_id');
+});
+
+test('editing with a service line pointing at a product is rejected', function () {
+    $id = postLog([productLine()])->json('data.id');
+
+    $this->actingAs($this->user)
+        ->withHeader('X-Tenant', $this->tenant->slug)
+        ->putJson("/api/v1/service-logs/{$id}/items", ['items' => [[
+            'service_id' => $this->product->id,
+            'label'      => 'Ambientador pino',
+            'qty'        => 1,
+            'unit_price' => 4.25,
+        ]]])
+        ->assertStatus(422)
+        ->assertJsonValidationErrors('items.0.service_id');
+});
