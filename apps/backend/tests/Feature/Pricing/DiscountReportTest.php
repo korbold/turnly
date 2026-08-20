@@ -2,6 +2,8 @@
 // apps/backend/tests/Feature/Pricing/DiscountReportTest.php
 
 use App\Infrastructure\Persistence\Models\ClientResourceModel;
+use App\Infrastructure\Persistence\Models\ReservationItemChangeModel;
+use App\Infrastructure\Persistence\Models\ReservationModel;
 use App\Infrastructure\Persistence\Models\ServiceLogItemModel;
 use App\Infrastructure\Persistence\Models\ServiceLogModel;
 use App\Infrastructure\Persistence\Models\ServiceModel;
@@ -147,4 +149,45 @@ test('a cashier cannot read the discount report', function () {
         ->withHeader('X-Tenant', $this->tenant->slug)
         ->getJson("/api/v1/reports/discounts?date_from={$this->hoy}&date_to={$this->hoy}")
         ->assertStatus(403);
+});
+
+test('a blank service-log reason and a codeless legacy reservation override are not the same bucket', function () {
+    // El primero es un dueño que no tuvo que justificarse; el segundo es una
+    // fila de antes de que el código existiera. Confundirlos en "__none__"
+    // haría que el bucket mostrara "Sin motivo" u "Otro" según quién entrara
+    // primero en la lista — no determinista, y falso en los dos sentidos.
+    ($this->venta)(15.00, 12.00, null, $this->owner);   // -3, sin motivo
+
+    $resource = ClientResourceModel::factory()->create([
+        'tenant_id' => $this->tenant->id, 'client_id' => $this->owner->id, 'type' => 'sedan',
+    ]);
+    $service = ServiceModel::factory()->create(['tenant_id' => $this->tenant->id, 'price' => 15.00]);
+    $reservation = ReservationModel::factory()->create([
+        'tenant_id' => $this->tenant->id,
+        'client_id' => $this->owner->id,
+        'client_resource_id' => $resource->id,
+        'service_id' => $service->id,
+        'created_by' => $this->cajero->id,
+        'scheduled_at' => now(),
+    ]);
+    ReservationItemChangeModel::create([
+        'id' => (string) Str::uuid(),
+        'tenant_id' => $this->tenant->id,
+        'reservation_id' => $reservation->id,
+        'action' => ReservationItemChangeModel::ACTION_PRICE_OVERRIDE,
+        'item_type' => 'service_variant',
+        'label' => 'Lavado',
+        'old_price' => 15.00,
+        'new_price' => 12.00,
+        'reason' => null,
+        'reason_code' => null,
+        'changed_by_user_id' => $this->cajero->id,
+        'changed_at' => now(),
+    ]);
+
+    $porMotivo = collect(($this->reporte)()->json('data.by_reason'))->keyBy('label');
+
+    expect($porMotivo)->toHaveCount(2);
+    expect((float) $porMotivo['Sin motivo']['total'])->toBe(3.0);
+    expect((float) $porMotivo['Otro']['total'])->toBe(3.0);
 });

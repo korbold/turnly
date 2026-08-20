@@ -89,7 +89,9 @@ class DiscountReport
                 'charged'       => round($cobrado, 2),
                 'difference'    => $dif,
                 'reason_code'   => $log->price_change_reason,
-                'reason_label'  => PriceChangeReason::label($log->price_change_reason),
+                // Mismo default que agrupa group(): un item leído suelto no
+                // debe mostrar un hueco donde otro consumidor ve "Sin motivo".
+                'reason_label'  => PriceChangeReason::label($log->price_change_reason) ?? 'Sin motivo',
                 'note'          => $log->price_change_note,
             ];
         }
@@ -117,8 +119,12 @@ class DiscountReport
                 'catalog'       => (float) $c->old_price,
                 'charged'       => (float) $c->new_price,
                 'difference'    => round((float) $c->new_price - (float) $c->old_price, 2),
-                // Las filas viejas tienen texto libre y ningún código.
-                'reason_code'   => $c->reason_code,
+                // Las filas viejas tienen texto libre y ningún código: no
+                // "sin motivo" (nadie decidió omitirlo) sino de antes de que
+                // el código existiera. Se normaliza a OTRO -no sólo la
+                // etiqueta- para que agrupe con su propio motivo y no con los
+                // "Sin motivo" de service_logs; no lo "simplifiques" a null.
+                'reason_code'   => $c->reason_code ?? PriceChangeReason::OTRO,
                 'reason_label'  => PriceChangeReason::label($c->reason_code) ?? 'Otro',
                 'note'          => $c->reason,
             ])
