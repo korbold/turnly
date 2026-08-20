@@ -1188,7 +1188,10 @@ class DiscountReport
                 'charged'       => round($cobrado, 2),
                 'difference'    => $dif,
                 'reason_code'   => $log->price_change_reason,
-                'reason_label'  => PriceChangeReason::label($log->price_change_reason),
+                // Simétrico con la rama de reservas: quien lea `items[]`
+                // directo no debería recibir null de un lado y etiqueta del
+                // otro para el mismo hecho.
+                'reason_label'  => PriceChangeReason::label($log->price_change_reason) ?? 'Sin motivo',
                 'note'          => $log->price_change_note,
             ];
         }
@@ -1216,8 +1219,13 @@ class DiscountReport
                 'catalog'       => (float) $c->old_price,
                 'charged'       => (float) $c->new_price,
                 'difference'    => round((float) $c->new_price - (float) $c->old_price, 2),
-                // Las filas viejas tienen texto libre y ningún código.
-                'reason_code'   => $c->reason_code,
+                // Las filas viejas tienen texto libre y ningún código. Se
+                // normaliza el CÓDIGO, no sólo la etiqueta: `group()` agrupa
+                // por código, y dejarlo null las metería en el mismo bucket
+                // que el descuento sin motivo del dueño — dos cosas que el
+                // spec trata por separado, con la etiqueta decidida por cuál
+                // ordenó primero.
+                'reason_code'   => $c->reason_code ?? PriceChangeReason::OTRO,
                 'reason_label'  => PriceChangeReason::label($c->reason_code) ?? 'Otro',
                 'note'          => $c->reason,
             ])
