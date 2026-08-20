@@ -4,6 +4,7 @@ import type {
   CreateServiceLogData,
   UpdateServiceLogData,
   UpdateServiceLogItemsData,
+  PriceChangeMeta,
   RecordPaymentData,
   ServiceLogBillingProfile,
 } from '@/domain/repositories/service-log.repository';
@@ -121,8 +122,12 @@ export class ApiServiceLogRepository implements ServiceLogRepository {
     return mapServiceLog(res.data);
   }
 
-  async updateItems(id: string, items: UpdateServiceLogItemsData): Promise<ServiceLog> {
-    const { data: res } = await api.put(`/service-logs/${id}/items`, {
+  async updateItems(
+    id: string,
+    items: UpdateServiceLogItemsData,
+    meta?: PriceChangeMeta,
+  ): Promise<ServiceLog> {
+    const body: Record<string, unknown> = {
       items: items.map((it) => ({
         service_id:  it.serviceId,
         variant_id:  it.variantId ?? null,
@@ -130,7 +135,18 @@ export class ApiServiceLogRepository implements ServiceLogRepository {
         qty:         it.qty,
         unit_price:  it.unitPrice,
       })),
-    });
+    };
+
+    // Omitido, no vacío: el backend distingue "no mandé motivo" de "" y no
+    // pisa con null el que ya tenía el registro.
+    if (meta?.priceChangeReason) {
+      body.price_change_reason = meta.priceChangeReason;
+      if (meta.priceChangeNote) {
+        body.price_change_note = meta.priceChangeNote;
+      }
+    }
+
+    const { data: res } = await api.put(`/service-logs/${id}/items`, body);
     return mapServiceLog(res.data);
   }
 

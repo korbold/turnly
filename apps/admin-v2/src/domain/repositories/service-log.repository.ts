@@ -72,6 +72,14 @@ export interface ServiceLogItemDraft {
 
 export type UpdateServiceLogItemsData = ServiceLogItemDraft[];
 
+/** Acompaña a la edición cuando alguna línea se apartó de lo que valía.
+    Igual que al registrar: el código sale de la lista cerrada, y el backend
+    sólo lo exige a quien no tiene el privilegio Precio. */
+export interface PriceChangeMeta {
+  priceChangeReason?: string;
+  priceChangeNote?: string;
+}
+
 /** Client fiscal profile the factura reads at emit time. Mirrors the
     admin BillingProfileForm draft shape. */
 export interface ServiceLogBillingProfile {
@@ -96,7 +104,11 @@ export interface ServiceLogRepository {
   create(data: CreateServiceLogData): Promise<ServiceLog>;
   update(id: string, data: UpdateServiceLogData): Promise<ServiceLog>;
   assignStaff(id: string, data: AssignStaffData): Promise<ServiceLog>;
-  updateItems(id: string, items: UpdateServiceLogItemsData): Promise<ServiceLog>;
+  updateItems(
+    id: string,
+    items: UpdateServiceLogItemsData,
+    meta?: PriceChangeMeta,
+  ): Promise<ServiceLog>;
   delete(id: string): Promise<void>;
   /** `leftOwing` convierte el saldo pendiente en deuda. Ausente deja un
       pendiente del día, que es el comportamiento histórico. */

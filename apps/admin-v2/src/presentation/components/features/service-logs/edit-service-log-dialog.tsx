@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { toast } from 'sonner';
 import { Banknote, CreditCard, ArrowLeftRight, MoreHorizontal, X } from 'lucide-react';
 import {
@@ -24,6 +24,10 @@ import {
 } from '@/presentation/components/ui/select';
 import { cn } from '@/shared/utils/cn';
 import { apiErrorMessage } from '@/shared/utils/api-error';
+import {
+  PRICE_CHANGE_REASONS,
+  REASON_REQUIRES_NOTE,
+} from '@/shared/constants/price-change-reasons';
 import { useUpdateServiceLog, useUpdateServiceLogItems } from '@/presentation/hooks/use-service-logs';
 import { useTeam } from '@/presentation/hooks/use-team';
 import { useMe } from '@/presentation/hooks/use-auth';
@@ -47,6 +51,11 @@ interface LineItem {
   variantLabel: string | null;
   qty: number;
   unitPrice: number;
+  /** Contra qué se mide el desvío, siguiendo la misma regla que el backend:
+      una línea que ya estaba en el registro se compara con lo que ya valía
+      (un descuento con motivo no vuelve a pedirlo cada vez que se corrige la
+      cantidad); una línea nueva se compara con el catálogo. */
+  basePrice: number;
   availableVariants: ServiceVariantSlim[] | null;
 }
 
@@ -117,6 +126,8 @@ export function EditServiceLogDialog({ log, open, onClose }: Props) {
   const [paymentBank, setPaymentBank] = useState<string | null>(null);
   const [notes, setNotes] = useState('');
   const [lineItems, setLineItems] = useState<LineItem[]>([]);
+  const [priceReason, setPriceReason] = useState('');
+  const [priceNote, setPriceNote] = useState('');
 
   // Items are locked once the log is invoiced — changing prices would
   // require a nota de crédito + new invoice, which the billing service handles.
@@ -129,18 +140,27 @@ export function EditServiceLogDialog({ log, open, onClose }: Props) {
   // Locking the create but not the edit leaves the hole open: register as
   // yourself, then reassign. The backend pins this too.
   const lockedToSelf = me?.user?.role === 'cashier';
-  // Naming the price is granted per role in Configuración → Permisos
-  // (default: Admin only). Without it the ticket is still editable, but
-  // around a price that stays whatever the catalog — or the admin — said.
-  // The backend rejects a tampered unit_price the same way.
+  // El privilegio Precio ya no significa "puede tocar el precio" sino
+  // "puede hacerlo sin justificar". Cualquiera corrige el precio de un
+  // ticket; quien no lo tiene, elige motivo de la lista cerrada. Bloquear
+  // acá dejaba al cajero descontar en el mostrador y no poder corregir ese
+  // mismo ticket un minuto después — dos políticas para la misma pregunta.
   const { canSetPrice } = usePermissions();
-  const priceLocked = itemsLocked || !canSetPrice;
+  // Facturado sí es un candado de verdad: cambiar precios exigiría nota de
+  // crédito y una factura nueva.
+  const priceLocked = itemsLocked;
   const { data: servicesData, isLoading: servicesLoading } = useServices();
   const team = teamData?.data ?? [];
   const services = servicesData?.data ?? [];
 
   const total = lineItems.reduce((acc, it) => acc + it.unitPrice * it.qty, 0);
   const isPaid = log?.paymentStatus === 'paid';
+
+  // Centavos, no igualdad exacta: el precio va y vuelve por JSON.
+  const hayDesvio = useMemo(
+    () => lineItems.some((it) => Math.abs(it.unitPrice - it.basePrice) > 0.005),
+    [lineItems],
+  );
 
   // Seed state from the log when the dialog opens
   useEffect(() => {
@@ -149,6 +169,8 @@ export function EditServiceLogDialog({ log, open, onClose }: Props) {
     setPaymentMethod(log.paymentMethod ?? 'cash');
     setPaymentBank(log.paymentBank ?? null);
     setNotes(log.notes ?? '');
+    setPriceReason('');
+    setPriceNote('');
 
     // Build line items from log.items (multi-service) or fall back to
     // the single service on the parent row (legacy logs with no items).
@@ -170,6 +192,7 @@ export function EditServiceLogDialog({ log, open, onClose }: Props) {
             variantLabel:      hasVariantLabel ? (parts[1] ?? null) : null,
             qty:               it.qty,
             unitPrice:         it.unitPrice,
+            basePrice:         it.unitPrice,
             availableVariants: [],
           };
         })
@@ -183,6 +206,7 @@ export function EditServiceLogDialog({ log, open, onClose }: Props) {
         variantLabel:      null,
         qty:               1,
         unitPrice:         log.priceCharged,
+        basePrice:         log.priceCharged,
         availableVariants: [],
       }]);
     } else {
@@ -218,6 +242,7 @@ export function EditServiceLogDialog({ log, open, onClose }: Props) {
           variantLabel:      null,
           qty:               1,
           unitPrice:         svc.price,
+          basePrice:         svc.price,
           availableVariants: null,
         },
       ];
@@ -243,6 +268,7 @@ export function EditServiceLogDialog({ log, open, onClose }: Props) {
             variantId:         suggested.id,
             variantLabel:      suggested.label,
             unitPrice:         suggested.price,
+            basePrice:         suggested.price,
             availableVariants: variants,
           };
         }
@@ -266,7 +292,16 @@ export function EditServiceLogDialog({ log, open, onClose }: Props) {
       prev.map((it) => {
         if (it.key !== itemKey) return it;
         const newKey = rowKey(it.serviceId, variant.id);
-        return { ...it, key: newKey, variantId: variant.id, variantLabel: variant.label, unitPrice: variant.price };
+        // Otra variante es otra fila del catálogo: el desvío pasa a medirse
+        // contra su precio, no contra el que traía la línea anterior.
+        return {
+          ...it,
+          key: newKey,
+          variantId: variant.id,
+          variantLabel: variant.label,
+          unitPrice: variant.price,
+          basePrice: variant.price,
+        };
       })
     );
   }
@@ -313,6 +348,9 @@ export function EditServiceLogDialog({ log, open, onClose }: Props) {
         qty:        it.qty,
         unitPrice:  it.unitPrice,
       })),
+      meta: hayDesvio && priceReason
+        ? { priceChangeReason: priceReason, priceChangeNote: priceNote.trim() || undefined }
+        : undefined,
     });
 
     Promise.all([patchLog, patchItems]).then(() => {
@@ -327,7 +365,14 @@ export function EditServiceLogDialog({ log, open, onClose }: Props) {
   const canSubmit = !!attendedBy && lineItems.length > 0 &&
     lineItems.every(
       (it) => !Array.isArray(it.availableVariants) || it.availableVariants.length === 0 || !!it.variantId
-    );
+    ) &&
+    // Misma regla que el mostrador: el motivo sólo se exige a quien no tiene
+    // el privilegio Precio, pero "Otro" siempre pide nota lo elija quien lo
+    // elija — una nota a medias es peor que ninguna.
+    (!hayDesvio ||
+      (canSetPrice
+        ? priceReason !== REASON_REQUIRES_NOTE || !!priceNote.trim()
+        : !!priceReason && (priceReason !== REASON_REQUIRES_NOTE || !!priceNote.trim())));
 
   return (
     <Dialog open={open} onOpenChange={(o) => !o && onClose()}>
@@ -352,11 +397,6 @@ export function EditServiceLogDialog({ log, open, onClose }: Props) {
                 {itemsLocked && (
                   <span className="ml-2 inline-flex items-center gap-1 rounded-full bg-[var(--warning-100)] px-2 py-0.5 text-[10.5px] font-semibold uppercase tracking-[0.05em] text-[var(--warning-700)]">
                     Facturado · solo lectura
-                  </span>
-                )}
-                {!itemsLocked && !canSetPrice && (
-                  <span className="ml-2 inline-flex items-center gap-1 rounded-full bg-[var(--bg-sunken)] px-2 py-0.5 text-[10.5px] font-semibold uppercase tracking-[0.05em] text-[var(--fg-secondary)]">
-                    Precio fijo
                   </span>
                 )}
               </Label>
@@ -422,11 +462,6 @@ export function EditServiceLogDialog({ log, open, onClose }: Props) {
                           step="0.01"
                           value={it.unitPrice}
                           disabled={priceLocked}
-                          title={
-                            !itemsLocked && !canSetPrice
-                              ? 'Tu rol no tiene permiso para cambiar el precio'
-                              : undefined
-                          }
                           onChange={(e) =>
                             handleUpdateLineItem(it.key, {
                               unitPrice: Math.max(0, Number(e.target.value) || 0),
@@ -477,6 +512,49 @@ export function EditServiceLogDialog({ log, open, onClose }: Props) {
               </ul>
             )}
           </div>
+
+          {/* El precio se edita siempre; este selector es lo único que se
+              interpone, y sólo cuando alguna línea ya no vale lo que valía. */}
+          {hayDesvio && (
+            <div className="space-y-2 rounded-lg border border-[var(--warning-200)] bg-[var(--warning-50)] p-3">
+              <Label className="block text-[11px] font-semibold uppercase tracking-[0.04em] text-[var(--warning-700)]">
+                El precio no es el del catálogo · motivo
+              </Label>
+              <div className="grid grid-cols-2 gap-2">
+                {PRICE_CHANGE_REASONS.map((r) => (
+                  <button
+                    key={r.code}
+                    type="button"
+                    onClick={() => {
+                      setPriceReason(r.code);
+                      // Una nota escrita bajo "Otro" no debe viajar en
+                      // silencio si el cajero cambia de motivo después.
+                      if (r.code !== REASON_REQUIRES_NOTE) setPriceNote('');
+                    }}
+                    aria-pressed={priceReason === r.code}
+                    className={cn(
+                      'cursor-pointer rounded-lg border px-2.5 py-2 text-left text-[12.5px] font-medium transition-colors',
+                      priceReason === r.code
+                        ? 'border-[var(--brand-500)] bg-[var(--brand-50)] text-[var(--brand-700)]'
+                        : 'border-[var(--border)] bg-[var(--bg-surface)] hover:bg-[var(--bg-sunken)]',
+                    )}
+                  >
+                    {r.label}
+                  </button>
+                ))}
+              </div>
+              {priceReason === REASON_REQUIRES_NOTE && (
+                <input
+                  value={priceNote}
+                  onChange={(e) => setPriceNote(e.target.value)}
+                  maxLength={200}
+                  placeholder="¿De qué se trata?"
+                  aria-label="Detalle del motivo"
+                  className="h-9 w-full rounded-lg border border-[var(--border)] bg-[var(--bg-surface)] px-3 text-[14px]"
+                />
+              )}
+            </div>
+          )}
 
           {/* ── Employee ───────────────────────────────────────────── */}
           <div>

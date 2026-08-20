@@ -11,7 +11,7 @@ import { RecordServiceLogPaymentUseCase } from '@/application/use-cases/service-
 import { GetDailySummaryUseCase } from '@/application/use-cases/service-logs/get-daily-summary.use-case';
 import { UpdateServiceLogItemsUseCase } from '@/application/use-cases/service-logs/update-service-log-items.use-case';
 import type { ServiceLogFilters } from '@/domain/entities/service-log';
-import type { AssignStaffData, CreateServiceLogData, UpdateServiceLogData, RecordPaymentData, UpdateServiceLogItemsData, ServiceLogBillingProfile } from '@/domain/repositories/service-log.repository';
+import type { AssignStaffData, CreateServiceLogData, UpdateServiceLogData, PriceChangeMeta, RecordPaymentData, UpdateServiceLogItemsData, ServiceLogBillingProfile } from '@/domain/repositories/service-log.repository';
 
 export function useServiceLogs(filters: ServiceLogFilters) {
   const repo = useRepository('serviceLog');
@@ -78,8 +78,12 @@ export function useUpdateServiceLogItems() {
   const repo = useRepository('serviceLog');
   const queryClient = useQueryClient();
   return useMutation({
-    mutationFn: ({ id, items }: { id: string; items: UpdateServiceLogItemsData }) =>
-      new UpdateServiceLogItemsUseCase(repo).execute(id, items),
+    mutationFn: ({
+      id,
+      items,
+      meta,
+    }: { id: string; items: UpdateServiceLogItemsData; meta?: PriceChangeMeta }) =>
+      new UpdateServiceLogItemsUseCase(repo).execute(id, items, meta),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['service-logs'] });
     },
