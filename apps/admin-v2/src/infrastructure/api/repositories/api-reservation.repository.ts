@@ -155,10 +155,17 @@ export class ApiReservationRepository implements ReservationRepository {
     await api.delete(`/reservation-items/${itemId}`, { data: { reason } });
   }
 
-  async overrideItemPrice(itemId: string, unitPrice: number, reason: string): Promise<ReservationItem> {
+  async overrideItemPrice(
+    itemId: string,
+    unitPrice: number,
+    reasonCode: string,
+    note?: string,
+  ): Promise<ReservationItem> {
     const { data: res } = await api.patch(`/reservation-items/${itemId}/price`, {
       unit_price: unitPrice,
-      reason,
+      reason_code: reasonCode,
+      // El backend guarda `reason` como la nota libre que acompaña al código.
+      reason: note?.trim() || null,
     });
     return mapReservationItem(res.data);
   }

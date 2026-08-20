@@ -67,7 +67,15 @@ export interface ReservationRepository {
   listItems(id: string): Promise<ReservationItem[]>;
   addItem(id: string, input: AddItemInput): Promise<ReservationItem>;
   removeItem(itemId: string, reason?: string): Promise<void>;
-  overrideItemPrice(itemId: string, unitPrice: number, reason: string): Promise<ReservationItem>;
+  /** `reasonCode` sale de PRICE_CHANGE_REASONS y es obligatorio para todos,
+      con privilegio o sin él: tocar el precio de una reserva ya confirmada es,
+      por definición, un desvío. `note` sólo la exige el código `otro`. */
+  overrideItemPrice(
+    itemId: string,
+    unitPrice: number,
+    reasonCode: string,
+    note?: string,
+  ): Promise<ReservationItem>;
   listChanges(id: string): Promise<ReservationItemChange[]>;
   emitInvoice(id: string): Promise<void>;
 }

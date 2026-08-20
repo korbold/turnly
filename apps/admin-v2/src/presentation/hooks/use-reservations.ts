@@ -187,8 +187,13 @@ export function useOverrideReservationItemPrice(id: string) {
   const repo = useRepository('reservation');
   const qc = useQueryClient();
   return useMutation({
-    mutationFn: ({ itemId, unitPrice, reason }: { itemId: string; unitPrice: number; reason: string }) =>
-      repo.overrideItemPrice(itemId, unitPrice, reason),
+    mutationFn: ({
+      itemId,
+      unitPrice,
+      reasonCode,
+      note,
+    }: { itemId: string; unitPrice: number; reasonCode: string; note?: string }) =>
+      repo.overrideItemPrice(itemId, unitPrice, reasonCode, note),
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ['reservation-items', id] });
       qc.invalidateQueries({ queryKey: ['reservation-changes', id] });

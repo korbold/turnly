@@ -43,6 +43,11 @@ import {
   DialogTitle,
 } from '@/presentation/components/ui/dialog';
 import { cn } from '@/shared/utils/cn';
+import { apiErrorMessage } from '@/shared/utils/api-error';
+import {
+  PRICE_CHANGE_REASONS,
+  REASON_REQUIRES_NOTE,
+} from '@/shared/constants/price-change-reasons';
 import {
   useReservation,
   useReservationItems,
@@ -199,6 +204,7 @@ export default function ReservationDetailPage({ params }: { params: Promise<{ id
   const [overrideTarget, setOverrideTarget] = useState<ReservationItem | null>(null);
   const [overridePrice, setOverridePrice] = useState('');
   const [overrideReason, setOverrideReason] = useState('');
+  const [overrideNote, setOverrideNote] = useState('');
   const [removeTarget, setRemoveTarget] = useState<ReservationItem | null>(null);
   const [removeReason, setRemoveReason] = useState('');
   const [swapTarget, setSwapTarget] = useState<ReservationItem | null>(null);
@@ -257,22 +263,34 @@ export default function ReservationDetailPage({ params }: { params: Promise<{ id
       toast.error('Precio inválido');
       return;
     }
-    if (!overrideReason.trim()) {
-      toast.error('La razón es obligatoria');
+    if (!overrideReason) {
+      toast.error('Elegí el motivo');
+      return;
+    }
+    if (overrideReason === REASON_REQUIRES_NOTE && !overrideNote.trim()) {
+      toast.error('Elegiste "Otro": escribí de qué se trata.');
       return;
     }
     override.mutate(
-      { itemId: overrideTarget.id, unitPrice: price, reason: overrideReason },
+      {
+        itemId: overrideTarget.id,
+        unitPrice: price,
+        reasonCode: overrideReason,
+        note: overrideNote.trim() || undefined,
+      },
       {
         onSuccess: () => {
           toast.success('Precio ajustado');
           setOverrideTarget(null);
           setOverridePrice('');
           setOverrideReason('');
+          setOverrideNote('');
         },
+        // El backend explica por qué rechazó (REASON_INVALID, STATE_BLOCKED);
+        // `e.message` a secas le mostraba al cajero "Request failed with
+        // status code 422".
         onError: (err: unknown) => {
-          const e = err as { message?: string };
-          toast.error(e?.message ?? 'No se pudo ajustar');
+          toast.error(apiErrorMessage(err, 'No se pudo ajustar'));
         },
       }
     );
@@ -552,6 +570,8 @@ export default function ReservationDetailPage({ params }: { params: Promise<{ id
                             onClick={() => {
                               setOverrideTarget(it);
                               setOverridePrice(String(it.unitPrice));
+                              setOverrideReason('');
+                              setOverrideNote('');
                             }}
                             aria-label="Ajustar precio"
                           >
@@ -936,18 +956,62 @@ export default function ReservationDetailPage({ params }: { params: Promise<{ id
                 onChange={(e) => setOverridePrice(e.target.value)}
               />
             </div>
-            <div>
-              <Label className="mb-1.5">Razón</Label>
-              <Input
-                value={overrideReason}
-                onChange={(e) => setOverrideReason(e.target.value)}
-                placeholder="Ej. Descuento cliente frecuente"
-              />
+            {/* Lista cerrada, no texto libre: el reporte de descuentos agrupa
+                por este código, y "cliente especial" escrito a mano no se
+                agrupa con nada. Acá el motivo lo exige a todos, tenga o no el
+                privilegio Precio — retocar una reserva ya confirmada es un
+                desvío por definición. */}
+            <div className="space-y-2 rounded-lg border border-[var(--warning-200)] bg-[var(--warning-50)] p-3">
+              <Label className="block text-[11px] font-semibold uppercase tracking-[0.04em] text-[var(--warning-700)]">
+                Motivo del ajuste
+              </Label>
+              <div className="grid grid-cols-2 gap-2">
+                {PRICE_CHANGE_REASONS.map((r) => (
+                  <button
+                    key={r.code}
+                    type="button"
+                    onClick={() => {
+                      setOverrideReason(r.code);
+                      // Una nota escrita bajo "Otro" no debe viajar en
+                      // silencio si el cajero cambia de motivo después.
+                      if (r.code !== REASON_REQUIRES_NOTE) setOverrideNote('');
+                    }}
+                    aria-pressed={overrideReason === r.code}
+                    className={cn(
+                      'cursor-pointer rounded-lg border px-2.5 py-2 text-left text-[12.5px] font-medium transition-colors',
+                      overrideReason === r.code
+                        ? 'border-[var(--brand-500)] bg-[var(--brand-50)] text-[var(--brand-700)]'
+                        : 'border-[var(--border)] bg-[var(--bg-surface)] hover:bg-[var(--bg-sunken)]',
+                    )}
+                  >
+                    {r.label}
+                  </button>
+                ))}
+              </div>
+              {overrideReason === REASON_REQUIRES_NOTE && (
+                <input
+                  value={overrideNote}
+                  onChange={(e) => setOverrideNote(e.target.value)}
+                  maxLength={200}
+                  placeholder="¿De qué se trata?"
+                  aria-label="Detalle del motivo"
+                  className="h-9 w-full rounded-lg border border-[var(--border)] bg-[var(--bg-surface)] px-3 text-[14px]"
+                />
+              )}
             </div>
           </div>
           <DialogFooter>
             <Button variant="outline" onClick={() => setOverrideTarget(null)}>Cancelar</Button>
-            <Button onClick={doOverride} disabled={override.isPending}>Guardar</Button>
+            <Button
+              onClick={doOverride}
+              disabled={
+                override.isPending ||
+                !overrideReason ||
+                (overrideReason === REASON_REQUIRES_NOTE && !overrideNote.trim())
+              }
+            >
+              Guardar
+            </Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>
