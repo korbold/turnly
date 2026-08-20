@@ -225,6 +225,12 @@ export function NewServiceModal({ open, onClose, embedded = false }: NewServiceM
   // cubre isProductLine), así que acá también hay que mirar los dos o un
   // descuento en un producto queda sin forma de mandar motivo. El centavo de
   // tolerancia es el mismo del backend: el precio va y vuelve por JSON.
+  //
+  // Hoy el brazo de productLines no puede dispararse: este modal no tiene un
+  // input de precio para líneas de producto (handleUpdateProductQty sólo
+  // toca qty; no hay un handleUpdateProductLine para el precio). Queda acá
+  // porque el backend sí lo valida — cuando se agregue ese input, sólo hace
+  // falta sembrarle catalogPrice igual que a las líneas de servicio.
   const hayDesvio = useMemo(
     () =>
       lineItems.some((it) => Math.abs(it.unitPrice - it.catalogPrice) > 0.005) ||
@@ -968,7 +974,12 @@ export function NewServiceModal({ open, onClose, embedded = false }: NewServiceM
                     <button
                       key={r.code}
                       type="button"
-                      onClick={() => setPriceReason(r.code)}
+                      onClick={() => {
+                        setPriceReason(r.code);
+                        // Una nota escrita bajo "Otro" no debe viajar en
+                        // silencio si el cajero cambia de motivo después.
+                        if (r.code !== REASON_REQUIRES_NOTE) setPriceNote('');
+                      }}
                       aria-pressed={priceReason === r.code}
                       className={cn(
                         'rounded-lg border px-2.5 py-2 text-left text-[12.5px] font-medium transition-colors',
@@ -987,6 +998,7 @@ export function NewServiceModal({ open, onClose, embedded = false }: NewServiceM
                     onChange={(e) => setPriceNote(e.target.value)}
                     maxLength={200}
                     placeholder="¿De qué se trata?"
+                    aria-label="Detalle del motivo"
                     className="h-9 w-full rounded-lg border border-[var(--border)] bg-[var(--bg-surface)] px-3 text-[14px]"
                   />
                 )}
