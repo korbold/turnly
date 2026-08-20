@@ -13,6 +13,7 @@ import {
 } from '@/presentation/components/ui/dialog';
 import { Button } from '@/presentation/components/ui/button';
 import { Input } from '@/presentation/components/ui/input';
+import { MoneyInput } from '@/presentation/components/ui/money-input';
 import { Label } from '@/presentation/components/ui/label';
 import { Textarea } from '@/presentation/components/ui/textarea';
 import {
@@ -109,6 +110,15 @@ interface Props {
   log: ServiceLog | null;
   open: boolean;
   onClose: () => void;
+}
+
+function formatMoney(value: number): string {
+  return new Intl.NumberFormat('es-EC', {
+    style: 'currency',
+    currency: 'USD',
+    minimumFractionDigits: 0,
+    maximumFractionDigits: 2,
+  }).format(value);
 }
 
 export function EditServiceLogDialog({ log, open, onClose }: Props) {
@@ -365,7 +375,7 @@ export function EditServiceLogDialog({ log, open, onClose }: Props) {
                   className="font-mono text-[13.5px] font-semibold tabular-nums text-[var(--fg-strong)]"
                   style={{ fontFamily: 'var(--font-mono)' }}
                 >
-                  {new Intl.NumberFormat('es-EC', { style: 'currency', currency: 'USD' }).format(total)}
+                  {formatMoney(total)}
                 </span>
               )}
             </div>
@@ -416,10 +426,7 @@ export function EditServiceLogDialog({ log, open, onClose }: Props) {
                           className="h-8 w-16 text-center"
                           aria-label="Cantidad"
                         />
-                        <Input
-                          type="number"
-                          min={0}
-                          step="0.01"
+                        <MoneyInput
                           value={it.unitPrice}
                           disabled={priceLocked}
                           title={
@@ -427,13 +434,10 @@ export function EditServiceLogDialog({ log, open, onClose }: Props) {
                               ? 'Tu rol no tiene permiso para cambiar el precio'
                               : undefined
                           }
-                          onChange={(e) =>
-                            handleUpdateLineItem(it.key, {
-                              unitPrice: Math.max(0, Number(e.target.value) || 0),
-                            })
+                          onChange={(unitPrice) =>
+                            handleUpdateLineItem(it.key, { unitPrice })
                           }
-                          className="h-8 w-24 text-right font-mono tabular-nums"
-                          style={{ fontFamily: 'var(--font-mono)' }}
+                          className="h-8 w-24"
                           aria-label="Precio unitario"
                         />
                         {!itemsLocked && (

@@ -13,6 +13,7 @@ import {
 } from '@/presentation/components/ui/dialog';
 import { Button } from '@/presentation/components/ui/button';
 import { Input } from '@/presentation/components/ui/input';
+import { MoneyInput } from '@/presentation/components/ui/money-input';
 import { Textarea } from '@/presentation/components/ui/textarea';
 import {
   Select,
@@ -147,7 +148,14 @@ interface ProductLine {
 }
 
 function formatMoney(value: number): string {
-  return new Intl.NumberFormat('es-EC', { style: 'currency', currency: 'USD' }).format(value);
+  // Cents only when they exist — matches the counter list behind the
+  // modal, where a $20 lavada must not read "$20.00".
+  return new Intl.NumberFormat('es-EC', {
+    style: 'currency',
+    currency: 'USD',
+    minimumFractionDigits: 0,
+    maximumFractionDigits: 2,
+  }).format(value);
 }
 
 async function fetchVariantsForService(serviceId: string): Promise<ServiceVariantSlim[]> {
@@ -719,10 +727,7 @@ export function NewServiceModal({ open, onClose, embedded = false }: NewServiceM
                           className="h-8 w-16 text-center"
                           aria-label="Cantidad"
                         />
-                        <Input
-                          type="number"
-                          min={0}
-                          step="0.01"
+                        <MoneyInput
                           value={it.unitPrice}
                           disabled={!canSetPrice}
                           title={
@@ -730,13 +735,10 @@ export function NewServiceModal({ open, onClose, embedded = false }: NewServiceM
                               ? undefined
                               : 'Tu rol no tiene permiso para cambiar el precio'
                           }
-                          onChange={(e) =>
-                            handleUpdateLineItem(it.service.id, {
-                              unitPrice: Math.max(0, Number(e.target.value) || 0),
-                            })
+                          onChange={(unitPrice) =>
+                            handleUpdateLineItem(it.service.id, { unitPrice })
                           }
-                          className="h-8 w-24 text-right font-mono tabular-nums"
-                          style={{ fontFamily: 'var(--font-mono)' }}
+                          className="h-8 w-24"
                           aria-label="Precio unitario"
                         />
                         <button
