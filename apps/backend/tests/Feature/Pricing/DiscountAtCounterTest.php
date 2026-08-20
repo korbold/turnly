@@ -134,6 +134,72 @@ test('the trail records catalog, charged and reason', function () {
     expect($evento->detail['reason'])->toBe('promocion');
 });
 
+test('editing the quantity does not re-photograph the catalog', function () {
+    // Se vendió a catálogo hoy; el catálogo sube el mes que viene; el cajero
+    // entra sólo a corregir la cantidad. Si el borrar-y-reinsertar le saca una
+    // foto nueva, el reporte inventa un descuento de $3 a nombre de alguien.
+    $id = ($this->register)($this->cashier, 15.00)->json('data.id');
+
+    $this->service->update(['price' => 18.00]);
+
+    ($this->as)($this->cashier)
+        ->putJson("/api/v1/service-logs/{$id}/items", [
+            'items' => [[
+                'service_id' => $this->service->id, 'label' => 'Lavado',
+                'qty' => 2, 'unit_price' => 15.00,
+            ]],
+        ])
+        ->assertStatus(200);
+
+    $item = ServiceLogItemModel::withoutGlobalScopes()->where('service_log_id', $id)->first();
+    expect((float) $item->catalog_price)->toBe(15.0);
+    expect((float) $item->qty)->toBe(2.0);
+});
+
+test('a line added during an edit snapshots the catalog of today', function () {
+    // La otra mitad de la regla: arrastrar la foto vale para lo que ya estaba,
+    // no para lo que recién entra.
+    $id = ($this->register)($this->cashier, 15.00)->json('data.id');
+
+    $otro = ServiceModel::factory()->create([
+        'tenant_id' => $this->tenant->id, 'price' => 7.50,
+    ]);
+
+    ($this->as)($this->cashier)
+        ->putJson("/api/v1/service-logs/{$id}/items", [
+            'items' => [
+                ['service_id' => $this->service->id, 'label' => 'Lavado', 'qty' => 1, 'unit_price' => 15.00],
+                ['service_id' => $otro->id, 'label' => 'Pulido', 'qty' => 1, 'unit_price' => 7.50],
+            ],
+        ])
+        ->assertStatus(200);
+
+    $nuevo = ServiceLogItemModel::withoutGlobalScopes()
+        ->where('service_log_id', $id)->where('ref_id', $otro->id)->first();
+    expect((float) $nuevo->catalog_price)->toBe(7.5);
+});
+
+test('an edit that declares no reason keeps the one already on the ticket', function () {
+    // El cajero descontó y dijo por qué; el dueño entra después a corregir la
+    // cantidad y no manda motivo porque no le hace falta. Pisar el campo con
+    // null deja el descuento sin dueño y el reporte lo lee como "Sin motivo".
+    $id = ($this->register)($this->cashier, 12.00, [
+        'price_change_reason' => 'cliente_frecuente',
+    ])->json('data.id');
+
+    ($this->as)($this->owner)
+        ->putJson("/api/v1/service-logs/{$id}/items", [
+            'items' => [[
+                'service_id' => $this->service->id, 'label' => 'Lavado',
+                'qty' => 1, 'unit_price' => 11.00,
+            ]],
+        ])
+        ->assertStatus(200);
+
+    $log = ServiceLogModel::withoutGlobalScopes()->find($id);
+    expect($log->price_change_reason)->toBe('cliente_frecuente');
+});
+
 test('editing the items down later also needs a reason', function () {
     $id = ($this->register)($this->cashier, 15.00)->json('data.id');
 

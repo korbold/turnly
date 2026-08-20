@@ -106,6 +106,20 @@ class ServiceLogController extends Controller
     }
 
     /**
+     * A qué fila del catálogo apunta una línea del payload. Tres lugares la
+     * derivaban con la misma expresión y una tenía que quedarse igual que las
+     * otras: el mapa de fotos guardadas se busca por esta clave.
+     */
+    private function lineRefId(array $line): ?string
+    {
+        if ($this->isProductLine($line)) {
+            return $line['product_id'] ?? null;
+        }
+
+        return !empty($line['variant_id']) ? $line['variant_id'] : ($line['service_id'] ?? null);
+    }
+
+    /**
      * Rejects a caller without the Precio privilege who prices a line himself.
      *
      * A line that already exists on the log keeps whatever it was worth — the
@@ -119,9 +133,7 @@ class ServiceLogController extends Controller
     {
         foreach ($items as $line) {
             $submitted = (float) $line['unit_price'];
-            $refId = $this->isProductLine($line)
-                ? ($line['product_id'] ?? null)
-                : (!empty($line['variant_id']) ? $line['variant_id'] : ($line['service_id'] ?? null));
+            $refId     = $this->lineRefId($line);
 
             $allowed = $existing[$refId] ?? $this->catalogPrice($line);
             if ($allowed === null) {
@@ -236,9 +248,14 @@ class ServiceLogController extends Controller
         float $charged,
         Request $request,
         ?string $actorId,
+        array $fotoPrevia = [],
     ): void {
+        // Misma foto que guardan los items: si la bitácora consultara el
+        // catálogo de hoy, contaría una diferencia distinta a la del reporte
+        // para el mismo ticket.
         $catalogo = array_sum(array_map(
-            fn ($l) => (float) ($this->catalogPrice($l) ?? $l['unit_price']) * (float) ($l['qty'] ?? 1),
+            fn ($l) => (float) ($fotoPrevia[$this->lineRefId($l)] ?? $this->catalogPrice($l) ?? $l['unit_price'])
+                * (float) ($l['qty'] ?? 1),
             $lines,
         ));
 
@@ -530,8 +547,12 @@ class ServiceLogController extends Controller
      * counter sale has to leave the kardex, otherwise inventory keeps
      * reporting bottles that were already handed over.
      */
-    private function persistItems(string $serviceLogId, array $items, ?string $userId): void
-    {
+    private function persistItems(
+        string $serviceLogId,
+        array $items,
+        ?string $userId,
+        array $fotoPrevia = [],
+    ): void {
         $tenantId = app('current_tenant_id');
         $sort = 0;
 
@@ -540,9 +561,7 @@ class ServiceLogController extends Controller
             $qty       = (float) $line['qty'];
             $isProduct = $this->isProductLine($line);
 
-            $refId = $isProduct
-                ? $line['product_id']
-                : (!empty($line['variant_id']) ? $line['variant_id'] : $line['service_id']);
+            $refId     = $this->lineRefId($line);
 
             ServiceLogItemModel::create([
                 'tenant_id'      => $tenantId,
@@ -553,8 +572,12 @@ class ServiceLogController extends Controller
                 'qty'            => $qty,
                 'unit_price'     => $unit,
                 // Foto del catálogo, no consulta: el precio de la lista cambia
-                // y este número no puede cambiar con él.
-                'catalog_price'  => $this->catalogPrice($line),
+                // y este número no puede cambiar con él. Editar el registro
+                // borra y reinserta las líneas, así que una línea que ya
+                // existía arrastra la foto que le tomamos entonces — volver a
+                // mirar el catálogo convertiría una subida de lista en un
+                // descuento retroactivo a nombre de quien atendió.
+                'catalog_price'  => $fotoPrevia[$refId] ?? $this->catalogPrice($line),
                 'line_total'     => $unit * $qty,
                 'sort_order'     => $sort++,
             ]);
@@ -678,12 +701,20 @@ class ServiceLogController extends Controller
         // Una línea ya en el registro se compara contra su precio guardado, no
         // el de catálogo: una línea ya descontada a $12 con motivo no vuelve a
         // pedirlo cada vez que el cajero le corrige la cantidad.
-        $desviada = $this->firstTamperedPrice(
-            $items,
-            $serviceLog->items()->pluck('unit_price', 'ref_id')
-                ->map(fn ($p) => (float) $p)
-                ->all(),
-        );
+        $guardados = $serviceLog->items()->get(['ref_id', 'unit_price', 'catalog_price']);
+
+        $preciosGuardados = $guardados->pluck('unit_price', 'ref_id')
+            ->map(fn ($p) => (float) $p)
+            ->all();
+
+        // La foto del catálogo se toma una sola vez, al registrar. Acá viaja
+        // hasta persistItems para sobrevivir al borrar-y-reinsertar.
+        $fotoPrevia = $guardados->whereNotNull('catalog_price')
+            ->pluck('catalog_price', 'ref_id')
+            ->map(fn ($p) => (float) $p)
+            ->all();
+
+        $desviada = $this->firstTamperedPrice($items, $preciosGuardados);
 
         if ($desviada !== null) {
             $problema = $this->priceReasonProblem($request, $desviada);
@@ -695,7 +726,7 @@ class ServiceLogController extends Controller
         // Wrap the delete + insert + parent-update in a single transaction
         // so a mid-loop constraint failure can never leave the log in a
         // corrupt state (old items gone, new items half-written).
-        \Illuminate\Support\Facades\DB::transaction(function () use ($request, $serviceLog, $items, $userId, $totalBefore, $desviada) {
+        \Illuminate\Support\Facades\DB::transaction(function () use ($request, $serviceLog, $items, $userId, $totalBefore, $desviada, $fotoPrevia) {
             // Sold units go back on the shelf before the lines are
             // replaced; persistItems then books the new sale. Editing a
             // ticket twice would otherwise discount the stock twice.
@@ -705,7 +736,7 @@ class ServiceLogController extends Controller
             // order resets cleanly and orphaned rows can never accumulate.
             $serviceLog->items()->delete();
 
-            $this->persistItems($serviceLog->id, $items, $userId);
+            $this->persistItems($serviceLog->id, $items, $userId, $fotoPrevia);
 
             // Re-derive parent columns from the new item list so legacy
             // queries (reports grouping by service_id) remain correct.
@@ -717,7 +748,14 @@ class ServiceLogController extends Controller
                 'service_variant_id' => $firstService['variant_id'] ?? null,
             ];
             if ($desviada !== null) {
-                $patch = array_merge($patch, $this->priceChangeFields($request));
+                $motivo = $this->priceChangeFields($request);
+                // Quien tiene el privilegio `Precio` re-precia sin mandar
+                // motivo. Eso no autoriza a borrar el que declaró el cajero
+                // antes: el reporte leería el ticket como "Sin motivo" y el
+                // descuento quedaría sin dueño.
+                if ($motivo['price_change_reason'] !== null) {
+                    $patch = array_merge($patch, $motivo);
+                }
             }
             $serviceLog->update($patch);
 
@@ -725,7 +763,7 @@ class ServiceLogController extends Controller
             $this->events->itemsChanged($serviceLog, $totalBefore, $newTotal, $userId);
 
             if ($desviada !== null) {
-                $this->recordPriceChange($serviceLog, $items, $newTotal, $request, $userId);
+                $this->recordPriceChange($serviceLog, $items, $newTotal, $request, $userId, $fotoPrevia);
             }
         });
 
