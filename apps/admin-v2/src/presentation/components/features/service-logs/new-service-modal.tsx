@@ -29,13 +29,13 @@ import { useProducts } from '@/presentation/hooks/use-products';
 import { useClients, useCreateClient } from '@/presentation/hooks/use-clients';
 import { useSettings } from '@/presentation/hooks/use-settings';
 import { useMe } from '@/presentation/hooks/use-auth';
-import { usePermissions } from '@/presentation/hooks/use-permissions';
 import { useServiceStaff } from '@/presentation/hooks/use-service-staff';
 import { useTeam } from '@/presentation/hooks/use-team';
 import { useCreateServiceLog } from '@/presentation/hooks/use-service-logs';
 import { ServiceCombobox } from '@/presentation/components/features/service-logs/service-combobox';
 import { BankChip } from '@/presentation/components/features/reservations/bank-chip';
 import { ECUADOR_BANKS } from '@/shared/constants/banks';
+import { PRICE_CHANGE_REASONS, REASON_REQUIRES_NOTE } from '@/shared/constants/price-change-reasons';
 import {
   BillingProfileForm,
   EMPTY_BILLING_PROFILE,
@@ -124,6 +124,10 @@ interface LineItem {
   service: Service;
   qty: number;
   unitPrice: number;
+  /** El precio con el que la línea entró antes de que el cajero lo toque
+      (servicio o variante elegida). Referencia fija contra la que se mide
+      el desvío — cambiar `unitPrice` a mano nunca la mueve. */
+  catalogPrice: number;
   /** Picked variant — when present, the backend persists this as the
       item's `ref_id` (item_type=service_variant) instead of the parent
       service id. Required when the service has variants registered. */
@@ -145,6 +149,9 @@ interface ProductLine {
   product: Product;
   qty: number;
   unitPrice: number;
+  /** Precio del inventario al agregar la línea — la referencia contra la
+      que se mide el desvío. */
+  catalogPrice: number;
 }
 
 function formatMoney(value: number): string {
@@ -199,6 +206,10 @@ export function NewServiceModal({ open, onClose, embedded = false }: NewServiceM
   const [amountReceived, setAmountReceived] = useState('');
   const [notes, setNotes] = useState('');
   const [recentServiceIds, setRecentServiceIds] = useState<string[]>([]);
+  // Motivo del desvío de precio. Vive fuera de cualquier línea puntual:
+  // un solo desvío en el ticket entero exige un solo motivo.
+  const [priceReason, setPriceReason] = useState('');
+  const [priceNote, setPriceNote] = useState('');
 
   // Total = sum of line items. Stays the source of truth for the price
   // shown in the footer + sent to the backend.
@@ -208,6 +219,18 @@ export function NewServiceModal({ open, onClose, embedded = false }: NewServiceM
   const servicesTotal = lineItems.reduce((acc, it) => acc + it.unitPrice * it.qty, 0);
   const productsTotal = productLines.reduce((acc, it) => acc + it.unitPrice * it.qty, 0);
   const total = servicesTotal + productsTotal;
+
+  // Un desvío del catálogo, en cualquier dirección, en servicios o en
+  // productos — el backend valida ambos arreglos por igual (firstTamperedPrice
+  // cubre isProductLine), así que acá también hay que mirar los dos o un
+  // descuento en un producto queda sin forma de mandar motivo. El centavo de
+  // tolerancia es el mismo del backend: el precio va y vuelve por JSON.
+  const hayDesvio = useMemo(
+    () =>
+      lineItems.some((it) => Math.abs(it.unitPrice - it.catalogPrice) > 0.005) ||
+      productLines.some((it) => Math.abs(it.unitPrice - it.catalogPrice) > 0.005),
+    [lineItems, productLines],
+  );
 
   // Drop the bank pick whenever the cashier flips away from transfer.
   // Otherwise the form would carry a stale slug into the next submit.
@@ -256,6 +279,7 @@ export function NewServiceModal({ open, onClose, embedded = false }: NewServiceM
                 variantId: suggested.id,
                 variantLabel: suggested.label,
                 unitPrice: suggested.price,
+                catalogPrice: suggested.price,
               } as Partial<LineItem>,
             };
           }
@@ -302,10 +326,6 @@ export function NewServiceModal({ open, onClose, embedded = false }: NewServiceM
   // A cashier logs their own work: the field is theirs and locked. The backend
   // pins it too — this only spares them a pointless choice.
   const lockedToSelf = me?.user?.role === 'cashier';
-  // Setting what a service costs is granted per role in Configuración →
-  // Permisos (default: Admin only). Without it, staff register at the
-  // catalog price. Enforced server-side as well.
-  const { canSetPrice } = usePermissions();
   // En una lavadora el trabajo lo hacen dos personas del catálogo, no el
   // usuario que registra: el select de Empleado se parte en Lavador y Secador.
   const isCarWash = settings?.businessType === 'car_wash';
@@ -452,6 +472,9 @@ export function NewServiceModal({ open, onClose, embedded = false }: NewServiceM
     setShowCustomForm(false);
     setCustomFieldValues({});
     setBillingProfile(EMPTY_BILLING_PROFILE);
+    // Un motivo del cliente anterior no puede viajar con la próxima venta.
+    setPriceReason('');
+    setPriceNote('');
   }
 
   function handleClose() {
@@ -478,6 +501,7 @@ export function NewServiceModal({ open, onClose, embedded = false }: NewServiceM
         service: svc,
         qty: 1,
         unitPrice: svc.price,
+        catalogPrice: svc.price,
         variantId: null,
         variantLabel: null,
         availableVariants: null,
@@ -517,6 +541,7 @@ export function NewServiceModal({ open, onClose, embedded = false }: NewServiceM
             variantId: suggested.id,
             variantLabel: suggested.label,
             unitPrice: suggested.price,
+            catalogPrice: suggested.price,
             availableVariants: variants,
           };
         }
@@ -538,7 +563,7 @@ export function NewServiceModal({ open, onClose, embedded = false }: NewServiceM
           it.product.id === productId ? { ...it, qty: it.qty + 1 } : it,
         );
       }
-      return [...prev, { product, qty: 1, unitPrice: product.price }];
+      return [...prev, { product, qty: 1, unitPrice: product.price, catalogPrice: product.price }];
     });
   }
 
@@ -572,6 +597,11 @@ export function NewServiceModal({ open, onClose, embedded = false }: NewServiceM
               variantId: variant.id,
               variantLabel: variant.label,
               unitPrice: variant.price,
+              // La variante reemplaza el precio con el que la línea nació
+              // (el precio base del servicio) — sin esto, catalogPrice se
+              // queda en el precio viejo y cada línea con variante entra
+              // como un desvío fantasma.
+              catalogPrice: variant.price,
             }
           : it,
       ),
@@ -633,6 +663,9 @@ export function NewServiceModal({ open, onClose, embedded = false }: NewServiceM
         // amountReceived el que decide si eso alcanza o queda en partial.
         ...(payNow && amountReceived ? { amountReceived: Number(amountReceived) } : {}),
         notes: notes || undefined,
+        ...(hayDesvio && priceReason
+          ? { priceChangeReason: priceReason, priceChangeNote: priceNote.trim() || undefined }
+          : {}),
       },
       {
         onSuccess: () => {
@@ -658,7 +691,10 @@ export function NewServiceModal({ open, onClose, embedded = false }: NewServiceM
         it.availableVariants.length === 0 ||
         !!it.variantId,
     ) &&
-    (paymentTiming === 'later' || paymentMethod !== 'transfer' || !!paymentBank);
+    (paymentTiming === 'later' || paymentMethod !== 'transfer' || !!paymentBank) &&
+    // Un desvío del catálogo exige motivo; "otro" además exige nota escrita.
+    (!hayDesvio ||
+      (!!priceReason && (priceReason !== REASON_REQUIRES_NOTE || !!priceNote.trim())));
 
   const body = (
     <>
@@ -752,12 +788,6 @@ export function NewServiceModal({ open, onClose, embedded = false }: NewServiceM
                           min={0}
                           step="0.01"
                           value={it.unitPrice}
-                          disabled={!canSetPrice}
-                          title={
-                            canSetPrice
-                              ? undefined
-                              : 'Tu rol no tiene permiso para cambiar el precio'
-                          }
                           onChange={(e) =>
                             handleUpdateLineItem(it.service.id, {
                               unitPrice: Math.max(0, Number(e.target.value) || 0),
@@ -922,6 +952,45 @@ export function NewServiceModal({ open, onClose, embedded = false }: NewServiceM
                   );
                 })}
               </ul>
+            )}
+          </div>
+
+          {/* El precio se edita siempre; este selector es lo único que se
+              interpone, y sólo cuando el precio ya se apartó del catálogo. */}
+          <div className="order-2">
+            {hayDesvio && (
+              <div className="space-y-2 rounded-lg border border-[var(--warning-200)] bg-[var(--warning-50)] p-3">
+                <label className="block text-[11px] font-semibold uppercase tracking-[0.04em] text-[var(--warning-700)]">
+                  El precio no es el del catálogo · motivo
+                </label>
+                <div className="grid grid-cols-2 gap-2">
+                  {PRICE_CHANGE_REASONS.map((r) => (
+                    <button
+                      key={r.code}
+                      type="button"
+                      onClick={() => setPriceReason(r.code)}
+                      aria-pressed={priceReason === r.code}
+                      className={cn(
+                        'rounded-lg border px-2.5 py-2 text-left text-[12.5px] font-medium transition-colors',
+                        priceReason === r.code
+                          ? 'border-[var(--brand-500)] bg-[var(--brand-50)] text-[var(--brand-700)]'
+                          : 'border-[var(--border)] bg-[var(--bg-surface)] hover:bg-[var(--bg-sunken)]',
+                      )}
+                    >
+                      {r.label}
+                    </button>
+                  ))}
+                </div>
+                {priceReason === REASON_REQUIRES_NOTE && (
+                  <input
+                    value={priceNote}
+                    onChange={(e) => setPriceNote(e.target.value)}
+                    maxLength={200}
+                    placeholder="¿De qué se trata?"
+                    className="h-9 w-full rounded-lg border border-[var(--border)] bg-[var(--bg-surface)] px-3 text-[14px]"
+                  />
+                )}
+              </div>
             )}
           </div>
 

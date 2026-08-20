@@ -51,6 +51,12 @@ export class ApiServiceLogRepository implements ServiceLogRepository {
     if (data.amountReceived) {
       body.amount_received = data.amountReceived;
     }
+    if (data.priceChangeReason) {
+      body.price_change_reason = data.priceChangeReason;
+      if (data.priceChangeNote) {
+        body.price_change_note = data.priceChangeNote;
+      }
+    }
     if (data.items && data.items.length > 0) {
       body.items = data.items.map((it) => ({
         item_type: it.itemType ?? 'service_variant',

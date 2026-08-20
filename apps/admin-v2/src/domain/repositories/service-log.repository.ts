@@ -40,6 +40,9 @@ export interface CreateServiceLogData {
       grouping correctly. */
   items?: CreateServiceLogItemInput[];
   notes?: string;
+  /** Motivo del desvío de precio. Obligatorio sin el privilegio Precio. */
+  priceChangeReason?: string;
+  priceChangeNote?: string;
 }
 
 export interface RecordPaymentData {
