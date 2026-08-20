@@ -305,6 +305,7 @@ Route::prefix('v1')->group(function () {
             Route::get('reports/range', [ReportController::class, 'range']);
             Route::get('reports/weekly', [ReportController::class, 'weekly']);
             Route::get('reports/monthly', [ReportController::class, 'monthly']);
+            Route::get('reports/discounts', [ReportController::class, 'discounts']);
 
             // Uploads
             Route::post('uploads', [UploadController::class, 'store']);

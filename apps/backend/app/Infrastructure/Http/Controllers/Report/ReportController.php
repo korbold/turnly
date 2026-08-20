@@ -2,10 +2,12 @@
 
 namespace App\Infrastructure\Http\Controllers\Report;
 
+use App\Application\Services\DiscountReport;
 use App\Application\Services\PlanLimitsService;
 use App\Infrastructure\Http\Controllers\Controller;
 use App\Infrastructure\Persistence\Models\ReservationModel;
 use App\Infrastructure\Persistence\Models\ServiceLogModel;
+use App\Infrastructure\Persistence\Models\TenantUserModel;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 
@@ -23,6 +25,50 @@ class ReportController extends Controller
                 ],
             ], 403));
         }
+    }
+
+    /**
+     * Descuentos del rango.
+     *
+     * Dos puertas. `ensureFeature()` es la del plan, como el resto de
+     * Reportes. La segunda es de rol y es dura: sólo dueño o admin.
+     *
+     * No pasa por la matriz de permisos a propósito. "¿Esta persona se audita
+     * a sí misma?" no puede ser una casilla que marque quien va a ser
+     * auditado — el mismo razonamiento que esconde los totales del día
+     * durante un arqueo, y que fija en owner/admin la corrección de asignados
+     * una vez completado el servicio.
+     */
+    public function discounts(Request $request, DiscountReport $report): JsonResponse
+    {
+        $this->ensureFeature();
+
+        $rol = TenantUserModel::where('tenant_id', app('current_tenant_id'))
+            ->where('user_id', $request->user()?->id)
+            ->value('role');
+
+        // El super-admin no tiene fila en tenant_users: sin esto, soporte no
+        // podría mirar el reporte de ningún tenant.
+        if (!$request->user()?->is_super_admin && !in_array($rol, ['owner', 'tenant_admin'], true)) {
+            return response()->json([
+                'error' => [
+                    'code'    => 'FORBIDDEN',
+                    'message' => 'Sólo el dueño o un administrador ven el reporte de descuentos.',
+                ],
+            ], 403);
+        }
+
+        $request->validate([
+            'date_from' => 'sometimes|date',
+            'date_to'   => 'sometimes|date|after_or_equal:date_from',
+        ]);
+
+        $from = $request->get('date_from', now()->startOfMonth()->toDateString());
+        $to   = $request->get('date_to', now()->toDateString());
+
+        return response()->json([
+            'data' => $report->between(app('current_tenant_id'), $from, $to),
+        ]);
     }
 
     public function daily(Request $request): JsonResponse
