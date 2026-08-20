@@ -29,6 +29,7 @@ import { useProducts } from '@/presentation/hooks/use-products';
 import { useClients, useCreateClient } from '@/presentation/hooks/use-clients';
 import { useSettings } from '@/presentation/hooks/use-settings';
 import { useMe } from '@/presentation/hooks/use-auth';
+import { usePermissions } from '@/presentation/hooks/use-permissions';
 import { useServiceStaff } from '@/presentation/hooks/use-service-staff';
 import { useTeam } from '@/presentation/hooks/use-team';
 import { useCreateServiceLog } from '@/presentation/hooks/use-service-logs';
@@ -329,6 +330,12 @@ export function NewServiceModal({ open, onClose, embedded = false }: NewServiceM
   const { data: settings } = useSettings();
   const { data: teamData } = useTeam({ excludeRole: 'client' as const });
   const { data: me } = useMe();
+  // El privilegio Precio significa "puede descontar sin justificar", no "puede
+  // tocar el precio" — el input de precio ya es editable para todos (task 5).
+  // Se usa SOLO acá, en canSubmit, para decidir si el motivo es obligatorio o
+  // apenas ofrecido. No lo devuelvas al input como disabled/title: eso es lo
+  // que este fix revirtió.
+  const { canSetPrice } = usePermissions();
   // A cashier logs their own work: the field is theirs and locked. The backend
   // pins it too — this only spares them a pointless choice.
   const lockedToSelf = me?.user?.role === 'cashier';
@@ -698,9 +705,16 @@ export function NewServiceModal({ open, onClose, embedded = false }: NewServiceM
         !!it.variantId,
     ) &&
     (paymentTiming === 'later' || paymentMethod !== 'transfer' || !!paymentBank) &&
-    // Un desvío del catálogo exige motivo; "otro" además exige nota escrita.
+    // Un desvío del catálogo exige motivo — salvo para quien tiene el
+    // privilegio Precio, que puede descontar sin justificar (esa es la razón
+    // de ser del privilegio tras esta feature). El picker sigue apareciendo
+    // para todos y sigue siendo opcional-voluntario para quien puede
+    // saltárselo; "otro" siempre exige nota escrita si es lo que se elige,
+    // sin importar quién lo elija — una nota a medias es peor que ninguna.
     (!hayDesvio ||
-      (!!priceReason && (priceReason !== REASON_REQUIRES_NOTE || !!priceNote.trim())));
+      (canSetPrice
+        ? priceReason !== REASON_REQUIRES_NOTE || !!priceNote.trim()
+        : !!priceReason && (priceReason !== REASON_REQUIRES_NOTE || !!priceNote.trim())));
 
   const body = (
     <>
