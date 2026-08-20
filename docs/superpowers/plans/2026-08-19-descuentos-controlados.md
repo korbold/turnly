@@ -36,7 +36,14 @@
 
 `Cajero.Precio` está en `none` en los seis tenants locales.
 
-**El override de reservas no tiene UI ni hook en el admin**: es un endpoint sin cliente, alcanzable sólo armando la request a mano. Se cierra igual, pero no hay pantalla que ajustar por ese lado.
+> **ESTO ERA FALSO.** Lo afirmé desde un `grep -rn "overridePrice"` limitado a
+> `src/presentation/components/`, y el llamador vive en
+> `src/presentation/app/(tenant)/reservations/[id]/page.tsx:264`. Hay hook,
+> repositorio, interfaz y un diálogo con caja de texto libre. Hacer `reason_code`
+> obligatorio sin tocar ese diálogo rompió todo ajuste de precio en reservas con
+> un 422. Lo encontró el review final de la feature, no el pre-flight.
+> **La lección es del scan, no del alcance: grepear el árbol entero, y no tomar
+> un resultado vacío como prueba de ausencia.**
 
 ---
 
