@@ -35,6 +35,7 @@ import { ECUADOR_BANKS } from '@/shared/constants/banks';
 import { ServiceCombobox } from '@/presentation/components/features/service-logs/service-combobox';
 import type { PaymentMethod, ServiceLog } from '@/domain/entities/service-log';
 import type { Service } from '@/domain/entities/service';
+import { formatCounterCurrency } from '@/shared/utils/format';
 
 // ─── types ───────────────────────────────────────────────────────────────────
 
@@ -112,14 +113,7 @@ interface Props {
   onClose: () => void;
 }
 
-function formatMoney(value: number): string {
-  return new Intl.NumberFormat('es-EC', {
-    style: 'currency',
-    currency: 'USD',
-    minimumFractionDigits: 0,
-    maximumFractionDigits: 2,
-  }).format(value);
-}
+const formatMoney = formatCounterCurrency;
 
 export function EditServiceLogDialog({ log, open, onClose }: Props) {
   const [attendedBy, setAttendedBy] = useState('');
@@ -471,7 +465,7 @@ export function EditServiceLogDialog({ log, open, onClose }: Props) {
                                 className="font-mono text-[11px] tabular-nums text-[var(--fg-secondary)]"
                                 style={{ fontFamily: 'var(--font-mono)' }}
                               >
-                                {new Intl.NumberFormat('es-EC', { style: 'currency', currency: 'USD' }).format(v.price)}
+                                {formatMoney(v.price)}
                               </span>
                             </button>
                           ))}

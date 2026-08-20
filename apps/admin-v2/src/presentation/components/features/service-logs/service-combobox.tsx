@@ -20,6 +20,7 @@ import { Button } from '@/presentation/components/ui/button';
 import { Skeleton } from '@/presentation/components/ui/skeleton';
 import { cn } from '@/shared/utils/cn';
 import type { Service } from '@/domain/entities/service';
+import { formatCounterCurrency } from '@/shared/utils/format';
 
 interface ServiceComboboxProps {
   services: Service[];
@@ -30,13 +31,7 @@ interface ServiceComboboxProps {
   placeholder?: string;
 }
 
-const money = (n: number) =>
-  new Intl.NumberFormat('es-EC', {
-    style: 'currency',
-    currency: 'USD',
-    minimumFractionDigits: 0,
-    maximumFractionDigits: 2,
-  }).format(n);
+const money = formatCounterCurrency;
 
 /**
  * Service picker built on the cmdk Command primitive — type-ahead

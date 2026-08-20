@@ -48,6 +48,7 @@ import type { Product } from '@/domain/entities/product';
 import type { PaymentMethod } from '@/domain/entities/service-log';
 import type { ClientResource } from '@/domain/entities/client-resource';
 import type { BusinessType, CustomField } from '@/domain/entities/tenant';
+import { formatCounterCurrency } from '@/shared/utils/format';
 
 const RECENT_SERVICES_KEY = 'turnly:service-log:recent-services';
 
@@ -147,16 +148,7 @@ interface ProductLine {
   unitPrice: number;
 }
 
-function formatMoney(value: number): string {
-  // Cents only when they exist — matches the counter list behind the
-  // modal, where a $20 lavada must not read "$20.00".
-  return new Intl.NumberFormat('es-EC', {
-    style: 'currency',
-    currency: 'USD',
-    minimumFractionDigits: 0,
-    maximumFractionDigits: 2,
-  }).format(value);
-}
+const formatMoney = formatCounterCurrency;
 
 async function fetchVariantsForService(serviceId: string): Promise<ServiceVariantSlim[]> {
   // Direct fetch via the shared axios client — keeps the modal
@@ -777,7 +769,7 @@ export function NewServiceModal({ open, onClose, embedded = false }: NewServiceM
                                 className="font-mono text-[11px] tabular-nums text-[var(--fg-secondary)]"
                                 style={{ fontFamily: 'var(--font-mono)' }}
                               >
-                                {new Intl.NumberFormat('es-EC', { style: 'currency', currency: 'USD' }).format(v.price)}
+                                {formatMoney(v.price)}
                               </span>
                             </button>
                           ))}

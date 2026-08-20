@@ -37,19 +37,14 @@ import {
   SelectValue,
 } from '@/presentation/components/ui/select';
 import type { ServiceLog, ServiceLogStatus, PaymentFilter, PageSize } from '@/domain/entities/service-log';
+import { formatCounterCurrency } from '@/shared/utils/format';
 
 const STATUS_CONFIG: Record<ServiceLogStatus, { label: string; color: string; bg: string }> = {
   in_progress: { label: 'En progreso', color: 'text-[var(--status-progress-fg)]', bg: 'bg-[var(--status-progress-bg)]' },
   completed: { label: 'Completado', color: 'text-[var(--status-completed-fg)]', bg: 'bg-[var(--status-completed-bg)]' },
 };
 
-const fmt = (v: number) =>
-  new Intl.NumberFormat('es-EC', {
-    style: 'currency',
-    currency: 'USD',
-    minimumFractionDigits: 0,
-    maximumFractionDigits: 2,
-  }).format(v);
+const fmt = formatCounterCurrency;
 
 interface LogListProps {
   date: string;

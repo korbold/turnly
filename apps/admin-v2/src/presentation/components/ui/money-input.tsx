@@ -51,11 +51,16 @@ export function MoneyInput({
     if (!Number.isNaN(parsed)) onChange(parsed);
   }
 
+  // Once the cashier is done, the field settles on the same shape the
+  // rest of the counter prints: whole dollars bare, cents always two.
+  // While typing the draft rules, so "3.5" is not snapped mid-keystroke.
+  const settled = Number.isInteger(value) ? String(value) : value.toFixed(2);
+
   return (
     <Input
       type="text"
       inputMode="decimal"
-      value={draft ?? String(value)}
+      value={draft ?? settled}
       disabled={disabled}
       title={title}
       // Correcting a price is retyping it, not editing it digit by digit —
