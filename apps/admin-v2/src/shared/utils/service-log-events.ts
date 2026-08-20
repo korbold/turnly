@@ -1,4 +1,6 @@
 import type { ServiceLogEvent } from '@/domain/entities/service-log';
+import { REASON_LABEL } from '@/shared/constants/price-change-reasons';
+import { formatCurrency } from '@/shared/utils/format';
 
 const POSITION_LABEL: Record<string, string> = {
   washer: 'Lavador',
@@ -30,7 +32,9 @@ const FIELD_LABEL: Record<string, string> = {
 
 function money(value: unknown): string {
   const n = typeof value === 'number' ? value : Number(value ?? 0);
-  return new Intl.NumberFormat('es-EC', { style: 'currency', currency: 'USD' }).format(n);
+  // es-EC pone la coma como separador decimal y el signo donde no va; en
+  // Ecuador el dólar se escribe $1,234.56. formatCurrency ya lo resuelve.
+  return formatCurrency(n, { decimals: true });
 }
 
 /**
@@ -69,6 +73,14 @@ export function describeServiceLogEvent(event: ServiceLogEvent): string {
 
     case 'items_changed':
       return `Cambió los servicios · ${money(d.total_before)} → ${money(d.total_after)}`;
+
+    case 'price_changed': {
+      // Sin los dos números el evento no dice nada: la bitácora es donde se
+      // lee quién descontó y cuándo cuando entra un reclamo.
+      const motivo = REASON_LABEL[String(d.reason)] ?? 'Sin motivo';
+      const nota = typeof d.note === 'string' && d.note.trim() ? ` — ${d.note.trim()}` : '';
+      return `Precio: ${money(d.catalog)} → ${money(d.charged)} · ${motivo}${nota}`;
+    }
 
     case 'payment_recorded': {
       const method = METHOD_LABEL[String(d.method)] ?? String(d.method);
