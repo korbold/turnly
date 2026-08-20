@@ -19,7 +19,10 @@ export interface CreateServiceLogItemInput {
 }
 
 export interface CreateServiceLogData {
-  clientResourceId: string;
+  /** Null on a counter sale — a product handed over to a walk-in with
+      no vehicle on file. The backend requires it only once a service
+      line is present. */
+  clientResourceId: string | null;
   /** Primary service. Optional when `items` carries the full breakdown
       — the backend derives it from `items[0]`. */
   serviceId?: string;

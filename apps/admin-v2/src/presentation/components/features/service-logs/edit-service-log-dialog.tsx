@@ -238,7 +238,9 @@ export function EditServiceLogDialog({ log, open, onClose }: Props) {
     // Fetch variants + suggested variant (based on vehicle type) in parallel.
     const [variants, suggested] = await Promise.all([
       fetchVariantsForService(svc.id),
-      log ? fetchSuggestedVariant(svc.id, log.clientResourceId) : Promise.resolve(null),
+      log?.clientResourceId
+        ? fetchSuggestedVariant(svc.id, log.clientResourceId)
+        : Promise.resolve(null),
     ]);
 
     // Guard against race: user may have removed the item while loading.

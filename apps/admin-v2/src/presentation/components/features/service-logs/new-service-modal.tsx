@@ -211,6 +211,11 @@ export function NewServiceModal({ open, onClose, embedded = false }: NewServiceM
   // as a wrong service price.
   const servicesTotal = lineItems.reduce((acc, it) => acc + it.unitPrice * it.qty, 0);
   const productsTotal = productLines.reduce((acc, it) => acc + it.unitPrice * it.qty, 0);
+
+  // A products-only ticket is a counter sale: the walk-in buying an
+  // aceite has no vehicle on file and wants no invoice. A service, by
+  // contrast, is rendered *on* something, so it keeps needing a client.
+  const isCounterSale = lineItems.length === 0 && productLines.length > 0;
   const total = servicesTotal + productsTotal;
 
   // Drop the bank pick whenever the cashier flips away from transfer.
@@ -568,7 +573,7 @@ export function NewServiceModal({ open, onClose, embedded = false }: NewServiceM
   }
 
   function handleSubmit() {
-    if (!selectedClientResourceId || !effectiveAttendedBy) return;
+    if ((!selectedClientResourceId && !isCounterSale) || !effectiveAttendedBy) return;
     if (lineItems.length === 0 && productLines.length === 0) return;
     if (paymentTiming === 'now' && paymentMethod === 'transfer' && !paymentBank) {
       toast.error('Selecciona el banco emisor');
@@ -616,7 +621,7 @@ export function NewServiceModal({ open, onClose, embedded = false }: NewServiceM
       },
       {
         onSuccess: () => {
-          const noun = lineItems.length === 0 ? 'Venta registrada' : 'Servicio registrado';
+          const noun = isCounterSale ? 'Venta registrada' : 'Servicio registrado';
           toast.success(payNow ? `${noun} y cobrada` : `${noun} · pago pendiente`);
           handleClose();
         },
@@ -627,7 +632,7 @@ export function NewServiceModal({ open, onClose, embedded = false }: NewServiceM
 
   const canSubmit =
     (lineItems.length > 0 || productLines.length > 0) &&
-    !!selectedClientResourceId &&
+    (!!selectedClientResourceId || isCounterSale) &&
     !!effectiveAttendedBy &&
     total > 0 &&
     // Every line with variants registered must have one picked. Lines
@@ -903,7 +908,14 @@ export function NewServiceModal({ open, onClose, embedded = false }: NewServiceM
               cashier captures vehicle type before resolving service
               variants. */}
           <div className="order-1">
-            <label className="mb-2 block text-sm font-medium">Cliente / Recurso</label>
+            <label className="mb-2 block text-sm font-medium">
+              Cliente / Recurso
+              {isCounterSale && (
+                <span className="ml-2 font-normal text-[var(--fg-muted)]">
+                  · opcional en venta de mostrador
+                </span>
+              )}
+            </label>
             {selectedClientResource && (
               <div className="mb-2 flex items-center gap-2 rounded-lg border border-[var(--brand-200)] bg-[var(--brand-50)] px-3 py-2">
                 <Check className="h-4 w-4 shrink-0 text-[var(--brand-600)]" />

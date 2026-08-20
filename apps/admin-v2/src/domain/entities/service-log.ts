@@ -34,7 +34,8 @@ export interface ServiceLogItem {
 
 export interface ServiceLog {
   id: string;
-  clientResourceId: string;
+  /** Null on a counter sale — the ticket is not attached to a vehicle. */
+  clientResourceId: string | null;
   serviceId: string;
   reservationId: string | null;
   attendedBy: string;

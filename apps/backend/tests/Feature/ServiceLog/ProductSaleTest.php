@@ -171,3 +171,70 @@ test('re-editing the items does not double-discount stock', function () {
 
     expect($net)->toBe(-2.0);
 });
+
+// A walk-in who only wants the aceite has no vehicle on file and wants
+// no invoice. Forcing a client_resource_id made the cashier invent one,
+// which is how tickets ended up filed under the staff member's own id.
+function postAnonymousLog(array $items): \Illuminate\Testing\TestResponse
+{
+    return test()->actingAs(test()->user)
+        ->withHeader('X-Tenant', test()->tenant->slug)
+        ->postJson('/api/v1/service-logs', [
+            'attended_by'    => test()->user->id,
+            'payment_method' => 'cash',
+            'items'          => $items,
+        ]);
+}
+
+test('a counter sale is registered with no client resource', function () {
+    $response = postAnonymousLog([productLine(2)]);
+
+    $response->assertStatus(201);
+
+    $log = ServiceLogModel::find($response->json('data.id'));
+
+    expect($log->client_resource_id)->toBeNull()
+        ->and($log->service_id)->toBeNull()
+        ->and((float) $log->price_charged)->toBe(90.0)
+        ->and($log->items)->toHaveCount(1);
+});
+
+// A service is rendered *on* something, so the vehicle stays mandatory
+// there — only a products-only ticket may go unattached.
+test('a ticket with a service still needs a client resource', function () {
+    postAnonymousLog([serviceLine()])
+        ->assertStatus(422)
+        ->assertJsonValidationErrors('client_resource_id');
+});
+
+test('a mixed ticket still needs a client resource', function () {
+    postAnonymousLog([productLine(), serviceLine()])
+        ->assertStatus(422)
+        ->assertJsonValidationErrors('client_resource_id');
+});
+
+// An explicit null is what the admin sends for a counter sale, so the
+// rules have to read it the same as an absent key.
+test('an explicit null client resource is accepted on a counter sale', function () {
+    test()->actingAs(test()->user)
+        ->withHeader('X-Tenant', test()->tenant->slug)
+        ->postJson('/api/v1/service-logs', [
+            'client_resource_id' => null,
+            'attended_by'        => test()->user->id,
+            'payment_method'     => 'cash',
+            'items'              => [productLine()],
+        ])
+        ->assertStatus(201);
+});
+
+// The cents were always stored; the counter just never let anyone type
+// them. Guard the sum so a future rounding "fix" can't eat them.
+test('the ticket total keeps the cents', function () {
+    $response = postLog([productLine(3, 4.25), serviceLine(18.50)]);
+
+    $response->assertStatus(201);
+
+    $log = ServiceLogModel::find($response->json('data.id'));
+
+    expect((float) $log->price_charged)->toBe(31.25);
+});

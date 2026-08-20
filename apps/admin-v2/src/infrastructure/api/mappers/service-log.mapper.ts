@@ -7,7 +7,7 @@ export function mapServiceLog(raw: Record<string, unknown>): ServiceLog {
 
   return {
     id: raw.id as string,
-    clientResourceId: raw.client_resource_id as string,
+    clientResourceId: (raw.client_resource_id as string | null) ?? null,
     serviceId: raw.service_id as string,
     reservationId: (raw.reservation_id as string) ?? null,
     attendedBy: raw.attended_by as string,

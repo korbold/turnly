@@ -188,10 +188,14 @@ export function LogList({
             : 'border-[var(--border)] bg-white hover:bg-[var(--bg-sunken)]/40';
         // Recurso = the vehicle/resource, never the client name (the client
         // has its own column/sub-line). Prefer the composed label, then plate.
+        // A counter sale is not a ticket missing its vehicle — it is a
+        // product handed over with nothing to attach it to, so name it
+        // instead of showing "Sin recurso" like a broken row.
+        const isCounterSale = !log.clientResource && !log.service;
         const recursoLabel =
           log.clientResource?.label ||
           log.clientResource?.plate ||
-          'Sin recurso';
+          (isCounterSale ? 'Venta de mostrador' : 'Sin recurso');
         const serviceLabel = (() => {
           const summary = log.servicesSummary;
           if (summary && summary.count > 1) {
@@ -222,7 +226,13 @@ export function LogList({
 
             {/* Recurso */}
             <div className="mt-2 lg:mt-0">
-              <p className="truncate text-[13.5px] font-medium text-[var(--fg-strong)]" title={recursoLabel}>
+              <p
+                className={cn(
+                  'truncate text-[13.5px] font-medium',
+                  isCounterSale ? 'italic text-[var(--fg-muted)]' : 'text-[var(--fg-strong)]',
+                )}
+                title={recursoLabel}
+              >
                 {recursoLabel}
               </p>
               {log.clientResource?.client?.name && log.clientResource?.plate && (
