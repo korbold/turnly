@@ -14,13 +14,19 @@ import {
 } from '@/presentation/components/ui/table';
 import { useDiscountReport } from '@/presentation/hooks/use-reports';
 import { usePermissions } from '@/presentation/hooks/use-permissions';
+import { formatCurrency } from '@/shared/utils/format';
 
-const money = (v: number) =>
-  new Intl.NumberFormat('es-EC', { style: 'currency', currency: 'USD' }).format(v);
-
-/** El signo delante del símbolo: "−$5,00" y no "$-5,00". */
-const signed = (v: number) =>
-  `${v > 0 ? '+' : v < 0 ? '−' : ''}${money(Math.abs(v))}`;
+/**
+ * Discount amounts are routinely non-integer ($2.50), unlike the big revenue
+ * totals elsewhere on this page that round to whole dollars on purpose — an
+ * audited figure rounded to the dollar would misstate it. `formatCurrency`
+ * already places the sign before the symbol correctly for a negative value
+ * (en-US, not es-EC — that was the actual bug this app hit before); this
+ * only adds the "+" a surcharge needs so it can't be mistaken for a discount
+ * in the detail table.
+ */
+const money = (v: number) => formatCurrency(v, { decimals: true });
+const signedMoney = (v: number) => (v > 0 ? `+${money(v)}` : money(v));
 
 /**
  * Cuándo pasó, con hora: dos cambios de precio el mismo día son la norma y
@@ -41,14 +47,35 @@ interface Props {
  */
 export function DiscountsSection({ from, to }: Props) {
   const { isOwnerOrAdmin } = usePermissions();
-  const { data, isLoading } = useDiscountReport(from, to);
+  // The backend 403s anyone else, so the request itself is gated here by
+  // blanking the dates the hook's own `enabled` guard already checks —
+  // a cashier's browser never sends this request in the first place, not
+  // just "never renders the error from it".
+  const { data, isLoading, isError } = useDiscountReport(
+    isOwnerOrAdmin ? from : '',
+    isOwnerOrAdmin ? to : '',
+  );
 
-  // El backend ya devuelve 403 para cualquier otro rol; esto evita que la
-  // sección se dibuje y luego truene con el error de la petición.
   if (!isOwnerOrAdmin) return null;
 
   if (isLoading) {
     return <Skeleton className="h-40 w-full rounded-xl" />;
+  }
+
+  // This is an audit screen the owner leans on to catch theft. A failed
+  // request must never look like "nothing to see" — that is the one lie
+  // this component cannot afford to tell.
+  if (isError) {
+    return (
+      <section
+        aria-label="Descuentos"
+        className="rounded-xl border border-[var(--border)] bg-[var(--bg-surface)] p-5 print:p-3"
+      >
+        <p className="text-[13px] font-medium text-[var(--danger-700)]">
+          No se pudo cargar el reporte de descuentos.
+        </p>
+      </section>
+    );
   }
 
   const totalGivenAway = data?.totalGivenAway ?? 0;
@@ -90,30 +117,35 @@ export function DiscountsSection({ from, to }: Props) {
         {money(totalGivenAway)}
       </p>
 
-      {/* Por motivo */}
-      <div className="mt-5">
-        <p className="text-[11px] font-semibold uppercase tracking-[0.04em] text-[var(--fg-muted)]">
-          Por motivo
-        </p>
-        <ul className="mt-2 space-y-1.5">
-          {byReason.map((g) => (
-            <li
-              key={g.code ?? '__none__'}
-              className="flex items-baseline justify-between gap-2 text-[13px]"
-            >
-              <span className="min-w-0 flex-1 truncate text-[var(--fg-strong)]">
-                {g.label}
-              </span>
-              <span className="shrink-0 tabular-nums font-semibold text-[var(--fg-strong)]">
-                {money(g.total)}
-              </span>
-              <span className="w-[70px] shrink-0 text-right text-[12px] text-[var(--fg-muted)]">
-                {g.count} {g.count === 1 ? 'vez' : 'veces'}
-              </span>
-            </li>
-          ))}
-        </ul>
-      </div>
+      {/* Por motivo — sólo si hay algo que agrupar: cuando el rango son
+          puros recargos, el backend no acumula nada acá (su group() sólo
+          suma descuentos), y un encabezado sin filas debajo es peor que no
+          mostrarlo. */}
+      {byReason.length > 0 && (
+        <div className="mt-5">
+          <p className="text-[11px] font-semibold uppercase tracking-[0.04em] text-[var(--fg-muted)]">
+            Por motivo
+          </p>
+          <ul className="mt-2 space-y-1.5">
+            {byReason.map((g) => (
+              <li
+                key={g.code ?? '__none__'}
+                className="flex items-baseline justify-between gap-2 text-[13px]"
+              >
+                <span className="min-w-0 flex-1 truncate text-[var(--fg-strong)]">
+                  {g.label}
+                </span>
+                <span className="shrink-0 tabular-nums font-semibold text-[var(--fg-strong)]">
+                  {money(g.total)}
+                </span>
+                <span className="w-[70px] shrink-0 text-right text-[12px] text-[var(--fg-muted)]">
+                  {g.count} {g.count === 1 ? 'vez' : 'veces'}
+                </span>
+              </li>
+            ))}
+          </ul>
+        </div>
+      )}
 
       {/* Por quién — sólo cuando hay más de una persona: con una sola no
           hay comparación posible y la sección es ruido. */}
@@ -173,10 +205,16 @@ export function DiscountsSection({ from, to }: Props) {
                   <TableCell className="max-w-[140px] truncate text-[13px]">
                     {it.userName ?? '—'}
                   </TableCell>
-                  <TableCell className="max-w-[160px] truncate text-[13px] text-[var(--fg-secondary)]">
+                  <TableCell
+                    className="max-w-[160px] truncate text-[13px] text-[var(--fg-secondary)]"
+                    title={it.clientLabel ?? undefined}
+                  >
                     {it.clientLabel ?? '—'}
                   </TableCell>
-                  <TableCell className="max-w-[180px] truncate text-[13px]">
+                  <TableCell
+                    className="max-w-[180px] truncate text-[13px]"
+                    title={it.serviceLabel ?? undefined}
+                  >
                     {it.serviceLabel ?? '—'}
                   </TableCell>
                   <TableCell
@@ -193,12 +231,17 @@ export function DiscountsSection({ from, to }: Props) {
                     }`}
                     style={{ fontFamily: 'var(--font-mono)' }}
                   >
-                    {signed(it.difference)}
+                    {signedMoney(it.difference)}
                   </TableCell>
                   <TableCell className="max-w-[220px] text-[13px] text-[var(--fg-secondary)]">
-                    {it.reasonLabel ?? 'Sin motivo'}
+                    <span className="block truncate" title={it.reasonLabel ?? 'Sin motivo'}>
+                      {it.reasonLabel ?? 'Sin motivo'}
+                    </span>
                     {it.reasonCode === 'otro' && it.note && (
-                      <span className="block truncate text-[11.5px] text-[var(--fg-muted)]">
+                      <span
+                        className="block truncate text-[11.5px] text-[var(--fg-muted)]"
+                        title={it.note}
+                      >
                         {it.note}
                       </span>
                     )}

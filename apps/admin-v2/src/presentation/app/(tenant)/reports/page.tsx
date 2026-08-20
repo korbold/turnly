@@ -195,8 +195,8 @@ function ReportsContent() {
         />
       )}
 
-      {/* Owner/admin only — the backend already 403s everyone else, this
-          just keeps the section from rendering and then erroring. */}
+      {/* Owner/admin only — the section itself gates both the request
+          (a cashier's browser never sends it) and the render. */}
       <DiscountsSection from={from} to={to} />
 
       {/* The rows behind the totals, so the report can be handed over as-is
