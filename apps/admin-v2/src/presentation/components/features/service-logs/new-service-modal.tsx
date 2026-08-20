@@ -613,8 +613,9 @@ export function NewServiceModal({ open, onClose, embedded = false }: NewServiceM
       },
       {
         onSuccess: () => {
-          const noun = isCounterSale ? 'Venta registrada' : 'Servicio registrado';
-          toast.success(payNow ? `${noun} y cobrada` : `${noun} · pago pendiente`);
+          const done = isCounterSale ? 'Venta registrada' : 'Servicio registrado';
+          const charged = isCounterSale ? 'cobrada' : 'cobrado';
+          toast.success(payNow ? `${done} y ${charged}` : `${done} · pago pendiente`);
           handleClose();
         },
         onError: (e) => toast.error(apiErrorMessage(e, 'Error al registrar servicio')),
@@ -805,35 +806,33 @@ export function NewServiceModal({ open, onClose, embedded = false }: NewServiceM
               )}
             </div>
 
-            {selectedClientResourceId ? (
-              <Select value="" onValueChange={handleAddProductLine}>
-                <SelectTrigger>
-                  <SelectValue
-                    placeholder={
-                      productLines.length === 0 ? 'Agregar producto…' : 'Agregar otro producto…'
-                    }
-                  />
-                </SelectTrigger>
-                <SelectContent>
-                  {sellableProducts.length === 0 ? (
-                    <div className="px-2 py-3 text-[12.5px] text-[var(--fg-muted)]">
-                      No hay productos vendibles en el inventario.
-                    </div>
-                  ) : (
-                    sellableProducts.map((p) => (
-                      <SelectItem key={p.id} value={p.id}>
-                        {p.name} · {formatMoney(p.price)}
-                        {p.stock ? ` · ${p.stock.onHand} en stock` : ''}
-                      </SelectItem>
-                    ))
-                  )}
-                </SelectContent>
-              </Select>
-            ) : (
-              <div className="rounded-lg border border-dashed border-[var(--border-strong)] bg-[var(--bg-app)] px-3 py-3 text-[12.5px] text-[var(--fg-muted)]">
-                Selecciona o crea un cliente arriba para vender productos.
-              </div>
-            )}
+            {/* No client gate here, unlike the services picker above: a
+                product's price comes from the catalog, not from the
+                vehicle type, so a counter sale can be built before —
+                or without — anyone being selected. */}
+            <Select value="" onValueChange={handleAddProductLine}>
+              <SelectTrigger>
+                <SelectValue
+                  placeholder={
+                    productLines.length === 0 ? 'Agregar producto…' : 'Agregar otro producto…'
+                  }
+                />
+              </SelectTrigger>
+              <SelectContent>
+                {sellableProducts.length === 0 ? (
+                  <div className="px-2 py-3 text-[12.5px] text-[var(--fg-muted)]">
+                    No hay productos vendibles en el inventario.
+                  </div>
+                ) : (
+                  sellableProducts.map((p) => (
+                    <SelectItem key={p.id} value={p.id}>
+                      {p.name} · {formatMoney(p.price)}
+                      {p.stock ? ` · ${p.stock.onHand} en stock` : ''}
+                    </SelectItem>
+                  ))
+                )}
+              </SelectContent>
+            </Select>
 
             {productLines.length > 0 && (
               <ul className="mt-2 space-y-2">
