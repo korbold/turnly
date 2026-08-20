@@ -15,6 +15,7 @@ import { RevenueChart } from '@/presentation/components/features/reports/revenue
 import { PaymentDonut } from '@/presentation/components/features/reports/payment-donut';
 import { DailyTable } from '@/presentation/components/features/reports/daily-table';
 import { ServiceLogTable } from '@/presentation/components/features/reports/service-log-table';
+import { DiscountsSection } from '@/presentation/components/features/reports/discounts-section';
 import { MethodFilter } from '@/presentation/components/features/reports/method-filter';
 import { findBank } from '@/shared/constants/banks';
 
@@ -193,6 +194,10 @@ function ReportsContent() {
           }}
         />
       )}
+
+      {/* Owner/admin only — the backend already 403s everyone else, this
+          just keeps the section from rendering and then erroring. */}
+      <DiscountsSection from={from} to={to} />
 
       {/* The rows behind the totals, so the report can be handed over as-is
           instead of "trust me, it adds up". Follows the filters above. */}

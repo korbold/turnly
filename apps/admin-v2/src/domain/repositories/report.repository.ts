@@ -1,3 +1,5 @@
+import type { DiscountReport } from '@/domain/entities/discount-report';
+
 export interface ReportStats {
   totalServices: number;
   /** Everything registered in the range, collected or not. */
@@ -45,4 +47,5 @@ export interface ReportRepository {
   getRange(from: string, to: string, filters?: RangeReportFilters): Promise<RangeReport>;
   getWeekly(week: string): Promise<RangeReport>;
   getMonthly(month: string): Promise<RangeReport>;
+  getDiscounts(from: string, to: string): Promise<DiscountReport>;
 }

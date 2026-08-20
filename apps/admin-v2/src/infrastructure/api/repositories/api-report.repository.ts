@@ -5,6 +5,7 @@ import type {
   DailyBreakdown,
   RangeReportFilters,
 } from '@/domain/repositories/report.repository';
+import type { DiscountReport, DiscountGroup, DiscountItem } from '@/domain/entities/discount-report';
 import api from '../client';
 
 function mapStats(raw: Record<string, unknown>): ReportStats {
@@ -56,6 +57,42 @@ function mapRangeReport(raw: Record<string, unknown>): RangeReport {
   };
 }
 
+function mapDiscountGroup(raw: Record<string, unknown>): DiscountGroup {
+  return {
+    code: (raw.code ?? null) as string | null,
+    label: raw.label as string,
+    name: raw.name as string,
+    total: raw.total as number,
+    count: raw.count as number,
+  };
+}
+
+function mapDiscountItem(raw: Record<string, unknown>): DiscountItem {
+  return {
+    source: raw.source as DiscountItem['source'],
+    id: String(raw.id),
+    date: new Date(raw.date as string),
+    userName: (raw.user_name ?? null) as string | null,
+    clientLabel: (raw.client_label ?? null) as string | null,
+    serviceLabel: (raw.service_label ?? null) as string | null,
+    catalog: raw.catalog as number,
+    charged: raw.charged as number,
+    difference: raw.difference as number,
+    reasonCode: (raw.reason_code ?? null) as string | null,
+    reasonLabel: (raw.reason_label ?? null) as string | null,
+    note: (raw.note ?? null) as string | null,
+  };
+}
+
+function mapDiscountReport(raw: Record<string, unknown>): DiscountReport {
+  return {
+    totalGivenAway: raw.total_given_away as number,
+    byReason: ((raw.by_reason as Record<string, unknown>[]) ?? []).map(mapDiscountGroup),
+    byUser: ((raw.by_user as Record<string, unknown>[]) ?? []).map(mapDiscountGroup),
+    items: ((raw.items as Record<string, unknown>[]) ?? []).map(mapDiscountItem),
+  };
+}
+
 export class ApiReportRepository implements ReportRepository {
   async getDaily(date: string): Promise<RangeReport> {
     const { data: res } = await api.get('/reports/daily', { params: { date } });
@@ -78,5 +115,12 @@ export class ApiReportRepository implements ReportRepository {
   async getMonthly(month: string): Promise<RangeReport> {
     const { data: res } = await api.get('/reports/monthly', { params: { month } });
     return mapRangeReport(res.data);
+  }
+
+  async getDiscounts(from: string, to: string): Promise<DiscountReport> {
+    const { data: res } = await api.get('/reports/discounts', {
+      params: { date_from: from, date_to: to },
+    });
+    return mapDiscountReport(res.data);
   }
 }
