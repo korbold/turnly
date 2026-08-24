@@ -159,22 +159,32 @@ class ClientResourceController extends Controller
             ], 422);
         }
 
+        // De quién queda el vehículo.
+        //
+        // Esto valía sólo para el dueño y el admin; para el cajero el auto
+        // quedaba colgado de SU usuario. Por el mostrador entra todo el
+        // trabajo real, así que en producción 237 de 274 vehículos figuraban
+        // como de la cajera — y como la lista de Clientes esconde a propósito
+        // lo que cuelga del personal, la pantalla mostraba 37 de 274.
+        //
+        // La regla es "el empleado no se queda con el vehículo", no "nadie se
+        // queda con el vehículo": un cliente que registra su auto desde la app
+        // sí es su dueño.
         $clientId = $request->client_id;
 
         if (!$clientId) {
             $user = $request->user();
-            $tenantUser = TenantUserModel::where('user_id', $user->id)
+            $rol = TenantUserModel::where('user_id', $user->id)
                 ->where('tenant_id', $tenantId)
-                ->first();
-            $isAdmin = $tenantUser && in_array($tenantUser->role, ['owner', 'tenant_admin']);
+                ->value('role');
 
-            if ($isAdmin) {
-                // Name can come from a custom field, or (when the tenant
-                // configured none) from the fiscal profile the cashier
-                // typed. Falling back to the staff member's own id would
-                // file the walk-in under an employee, and the clients
-                // browse filter hides staff-owned resources — the record
-                // would vanish from Clientes. Leave it unowned instead.
+            $esPersonal = in_array($rol, ['owner', 'tenant_admin', 'cashier', 'washer'], true);
+
+            if ($esPersonal) {
+                // El nombre puede venir de un campo personalizado o —cuando el
+                // tenant no configuró ninguno— del perfil fiscal que tecleó el
+                // cajero. Sin nombre no hay persona, y el auto queda sin dueño:
+                // es honesto, y así aparece en Clientes.
                 $clientName = $this->extractClientName($data)
                     ?? $this->extractBillingName($request->billing_profile);
 

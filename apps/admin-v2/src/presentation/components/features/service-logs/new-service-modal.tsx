@@ -28,6 +28,7 @@ import { apiErrorCode, apiErrorMessage } from '@/shared/utils/api-error';
 import { useServices } from '@/presentation/hooks/use-services';
 import { useProducts } from '@/presentation/hooks/use-products';
 import { useClients, useCreateClient } from '@/presentation/hooks/use-clients';
+import { PersonPicker, type Person } from '@/presentation/components/features/clients/person-picker';
 import { useRepository } from '@/infrastructure/providers/repository.provider';
 import { useSettings } from '@/presentation/hooks/use-settings';
 import { useMe } from '@/presentation/hooks/use-auth';
@@ -379,6 +380,9 @@ export function NewServiceModal({ open, onClose, embedded = false }: NewServiceM
   const [customFieldValues, setCustomFieldValues] = useState<Record<string, string>>({});
   const [billingProfile, setBillingProfile] = useState<BillingProfileDraft>(EMPTY_BILLING_PROFILE);
   const [walkInClientName, setWalkInClientName] = useState('');
+  // La persona elegida del buscador. Cuando hay una, el auto se liga a ella en
+  // vez de crear otra con el mismo nombre.
+  const [persona, setPersona] = useState<Person | null>(null);
 
   // Mirrors the backend's name detection (ClientResourceController::
   // extractClientName). When the tenant configured no name field the
@@ -448,6 +452,7 @@ export function NewServiceModal({ open, onClose, embedded = false }: NewServiceM
 
     try {
       const created = await createClient.mutateAsync({
+        clientId: persona?.id,
         data: cleaned,
         billingProfile: shouldShipBilling
           ? {
@@ -466,6 +471,7 @@ export function NewServiceModal({ open, onClose, embedded = false }: NewServiceM
       setCustomFieldValues({});
       setBillingProfile(EMPTY_BILLING_PROFILE);
       setWalkInClientName('');
+      setPersona(null);
       setClientSearch('');
       toast.success('Registro creado');
     } catch (e) {
@@ -1212,13 +1218,12 @@ export function NewServiceModal({ open, onClose, embedded = false }: NewServiceM
                       Nombre del cliente
                       <span className="ml-1 font-normal text-[var(--fg-muted)]">(opcional)</span>
                     </label>
-                    <Input
-                      type="text"
+                    <PersonPicker
                       value={walkInClientName}
-                      placeholder="Ej. Vanessa Paspuel"
-                      onChange={(e) =>
-                        setWalkInClientName(applyCapitalization(e.target.value, 'capitalize'))
-                      }
+                      onChange={setWalkInClientName}
+                      selected={persona}
+                      onSelect={setPersona}
+                      autoCapitalize={(v) => applyCapitalization(v, 'capitalize')}
                     />
                   </div>
                 )}
@@ -1254,6 +1259,17 @@ export function NewServiceModal({ open, onClose, embedded = false }: NewServiceM
                             [f.key]: applyCapitalization(e.target.value, f.capitalize),
                           }))
                         }
+                      />
+                    ) : /^(nombre|name)$/i.test(f.key) ? (
+                      // El campo del nombre no es texto suelto: es la persona.
+                      // Escribirlo dos veces creaba dos clientes y partía su
+                      // deuda entre sus autos.
+                      <PersonPicker
+                        value={customFieldValues[f.key] ?? ''}
+                        onChange={(v) => setCustomFieldValues((s) => ({ ...s, [f.key]: v }))}
+                        selected={persona}
+                        onSelect={setPersona}
+                        autoCapitalize={(v) => applyCapitalization(v, f.capitalize)}
                       />
                     ) : (
                       <Input
