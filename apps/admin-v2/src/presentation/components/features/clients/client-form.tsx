@@ -1,6 +1,7 @@
 'use client';
 
-import { useEffect } from 'react';
+import { useEffect, useState } from 'react';
+import { PersonPicker, type Person } from '@/presentation/components/features/clients/person-picker';
 import { useForm } from 'react-hook-form';
 import { toast } from 'sonner';
 import {
@@ -53,6 +54,10 @@ export function ClientForm({ open, onClose, client }: ClientFormProps) {
     defaultValues: {},
   });
 
+  // La persona elegida del buscador. Con una elegida el vehículo se liga a
+  // ella; sin ninguna, el backend crea o encuentra por el nombre escrito.
+  const [persona, setPersona] = useState<Person | null>(null);
+
   useEffect(() => {
     if (client) {
       // Merge all data sources: top-level fields + data bag
@@ -89,6 +94,9 @@ export function ClientForm({ open, onClose, client }: ClientFormProps) {
     );
     const payload = {
       data: Object.keys(data).length > 0 ? data : undefined,
+      // Con una persona elegida del buscador el vehículo se liga a ESA, sin
+      // depender de que el nombre escrito coincida letra por letra.
+      ...(persona ? { clientId: persona.id } : {}),
     };
 
     if (isEditing && client) {
@@ -162,6 +170,25 @@ export function ClientForm({ open, onClose, client }: ClientFormProps) {
           </div>
         );
       default:
+        // El campo del nombre no es texto suelto: es la persona. Escrito a
+        // mano con una letra distinta crea otra, y la deuda de sus autos
+        // vuelve a quedar partida. Acá importa más que en el mostrador,
+        // porque es la pantalla con la que se le asigna dueño a los
+        // vehículos que hoy dicen "Toca para asignar nombre".
+        if (/^(nombre|name)$/i.test(fieldName)) {
+          return (
+            <div key={fieldName} className="col-span-2">
+              <Label className="mb-1.5">{field.label}</Label>
+              <PersonPicker
+                value={String(form.watch(fieldName) ?? '')}
+                onChange={(v) => form.setValue(fieldName, v)}
+                selected={persona}
+                onSelect={setPersona}
+              />
+            </div>
+          );
+        }
+
         return (
           <div key={fieldName}>
             <Label className="mb-1.5">{field.label}</Label>
@@ -193,7 +220,13 @@ export function ClientForm({ open, onClose, client }: ClientFormProps) {
                     Nombre del cliente{' '}
                     <span className="font-normal text-[var(--fg-muted)]">(opcional)</span>
                   </Label>
-                  <Input {...form.register('nombre')} placeholder="Ej. Marta Ruiz" />
+                  <PersonPicker
+                    value={String(form.watch('nombre') ?? '')}
+                    onChange={(v) => form.setValue('nombre', v)}
+                    selected={persona}
+                    onSelect={setPersona}
+                    placeholder="Ej. Marta Ruiz"
+                  />
                 </div>
               )}
               {customFields.map(renderField)}

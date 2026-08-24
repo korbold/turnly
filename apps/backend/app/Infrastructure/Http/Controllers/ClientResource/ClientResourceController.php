@@ -388,7 +388,8 @@ class ClientResourceController extends Controller
         }
 
         $request->validate([
-            'data' => 'nullable|array',
+            'data'      => 'nullable|array',
+            'client_id' => 'nullable|uuid',
         ]);
 
         $data = $request->data ?? [];
@@ -400,11 +401,20 @@ class ClientResourceController extends Controller
         // up. An already-owned resource is left alone — reassigning an
         // owner is what the transfer endpoint is for.
         if (!$clientResource->client_id) {
-            $name = $this->extractClientName($data);
-            if ($name) {
-                $clientResource->update([
-                    'client_id' => $this->findOrCreateClient($name, app('current_tenant_id'))->id,
-                ]);
+            // La persona elegida del buscador manda sobre el nombre escrito:
+            // es la que el usuario vio y tocó, y no depende de que el texto
+            // coincida. Sin ella se busca o se crea por nombre.
+            $clientId = $request->input('client_id');
+
+            if (!$clientId) {
+                $name = $this->extractClientName($data);
+                $clientId = $name
+                    ? $this->findOrCreateClient($name, app('current_tenant_id'))->id
+                    : null;
+            }
+
+            if ($clientId) {
+                $clientResource->update(['client_id' => $clientId]);
             }
         }
 
@@ -552,11 +562,28 @@ class ClientResourceController extends Controller
         return $legalName;
     }
 
+    /**
+     * La persona con ese nombre dentro del local, o una nueva.
+     *
+     * Empareja sin distinguir mayúsculas ni espacios de más: el emparejado
+     * exacto convertía "Gaby Arellano", "gaby arellano" y "Gaby  Arellano" en
+     * tres personas, y la deuda de sus autos quedaba partida entre las tres.
+     * El nombre guardado sigue siendo el primero que se escribió — normalizar
+     * para comparar no es reescribir lo que el mostrador ve.
+     */
     private function findOrCreateClient(string $name, string $tenantId): UserModel
     {
+        $name = trim(preg_replace('/\s+/u', ' ', $name) ?? $name);
+        $buscado = mb_strtolower($name);
+
         $existing = UserModel::whereHas('tenants', function ($q) use ($tenantId) {
             $q->where('tenants.id', $tenantId)->where('tenant_users.role', 'client');
-        })->where('name', $name)->first();
+        })
+            // En PHP y no en SQL: la comparación depende del collation de la
+            // base —MySQL suele ignorar mayúsculas, SQLite no— y esa
+            // diferencia no puede decidir si dos autos son de la misma persona.
+            ->get()
+            ->first(fn ($u) => mb_strtolower(trim(preg_replace('/\s+/u', ' ', $u->name) ?? $u->name)) === $buscado);
 
         if ($existing) {
             return $existing;
