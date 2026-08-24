@@ -22,7 +22,7 @@ import { Button } from '@/presentation/components/ui/button';
 import { Badge } from '@/presentation/components/ui/badge';
 import { Skeleton } from '@/presentation/components/ui/skeleton';
 import { cn } from '@/shared/utils/cn';
-import { apiErrorMessage } from '@/shared/utils/api-error';
+import { apiErrorCode, apiErrorMessage } from '@/shared/utils/api-error';
 import {
   useServiceLog,
   useCompleteServiceLog,
@@ -175,16 +175,28 @@ function ServiceLogDetail({ id }: { id: string }) {
             <Button
               variant="outline"
               onClick={() => {
-                // Mismo trato que en la lista: si falta alguien, se pide acá
-                // en vez de dejar que el backend conteste con un 422 crudo.
-                if (isCarWash && (!log.washedBy || !log.driedBy)) {
+                // Mismo trato que en la lista: se adelanta a pedir el
+                // lavador, que va siempre. El secador depende del servicio y
+                // lo decide el backend; su 422 abre el mismo diálogo.
+                const soloProductos = (log.items?.length ?? 0) > 0
+                  && log.items!.every((it) => it.itemType === 'product');
+
+                if (isCarWash && !log.washedBy && !soloProductos) {
                   setAssignToComplete(true);
                   setAssignOpen(true);
                   return;
                 }
                 completeMutation.mutate(log.id, {
                   onSuccess: () => toast.success('Servicio completado'),
-                  onError: (e) => toast.error(apiErrorMessage(e, 'Error al completar')),
+                  onError: (e) => {
+                    if (apiErrorCode(e) === 'ASSIGNEES_REQUIRED') {
+                      setAssignToComplete(true);
+                      setAssignOpen(true);
+                      toast.error(apiErrorMessage(e, 'Faltan asignados.'));
+                      return;
+                    }
+                    toast.error(apiErrorMessage(e, 'Error al completar'));
+                  },
                 });
               }}
               disabled={completeMutation.isPending}
@@ -386,8 +398,8 @@ function ServiceLogDetail({ id }: { id: string }) {
         <AssignStaffDialog
           log={log}
           open
-          requireBoth={assignToComplete}
-          reason={assignToComplete ? 'Asigná lavador y secador para poder completar el servicio.' : undefined}
+          thenComplete={assignToComplete}
+          reason={assignToComplete ? 'Asigná quién hizo el trabajo para poder completar el servicio.' : undefined}
           onClose={() => { setAssignOpen(false); setAssignToComplete(false); }}
         />
       )}

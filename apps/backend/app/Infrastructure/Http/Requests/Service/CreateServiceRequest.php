@@ -18,6 +18,7 @@ class CreateServiceRequest extends FormRequest
             'description'      => ['nullable', 'string'],
             'price'            => ['required', 'numeric', 'min:0'],
             'is_active'        => ['nullable', 'boolean'],
+            'requires_dryer'   => ['nullable', 'boolean'],
             'sort_order'       => ['nullable', 'integer', 'min:0'],
             'image_url'        => ['nullable', 'string', 'max:500'],
         ];

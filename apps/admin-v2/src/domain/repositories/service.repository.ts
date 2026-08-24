@@ -7,6 +7,8 @@ export interface CreateServiceData {
   description?: string;
   imageUrl?: string;
   isActive?: boolean;
+  /** Sólo lavadoras: si el trabajo lleva secado. */
+  requiresDryer?: boolean;
   sortOrder?: number;
 }
 

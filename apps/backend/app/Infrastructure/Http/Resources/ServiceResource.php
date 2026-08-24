@@ -15,6 +15,9 @@ class ServiceResource extends JsonResource
             'description'      => $this->description,
             'price'            => $this->price,
             'is_active'        => $this->is_active,
+            // Si este servicio lleva secado. Decide si `complete()` exige el
+            // secador; el resto del catálogo no lo necesita.
+            'requires_dryer'   => (bool) $this->requires_dryer,
             'sort_order'       => $this->sort_order,
             'image_url'        => $this->image_url,
             'created_at'       => $this->created_at?->toIso8601String(),

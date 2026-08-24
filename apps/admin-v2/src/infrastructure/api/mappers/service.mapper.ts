@@ -7,6 +7,7 @@ export function mapService(raw: Record<string, unknown>): Service {
     description: (raw.description as string) ?? null,
     price: typeof raw.price === 'string' ? parseFloat(raw.price) : (raw.price as number),
     isActive: (raw.is_active as boolean) ?? true,
+    requiresDryer: (raw.requires_dryer as boolean) ?? false,
     imageUrl: (raw.image_url as string) ?? null,
     sortOrder: (raw.sort_order as number) ?? 0,
     createdAt: new Date(raw.created_at as string),

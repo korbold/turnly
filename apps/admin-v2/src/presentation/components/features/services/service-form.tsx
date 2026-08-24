@@ -21,6 +21,7 @@ import { Label } from '@/presentation/components/ui/label';
 import { Textarea } from '@/presentation/components/ui/textarea';
 import { cn } from '@/shared/utils/cn';
 import { useCreateService, useUpdateService } from '@/presentation/hooks/use-services';
+import { useSettings } from '@/presentation/hooks/use-settings';
 import type { Service } from '@/domain/entities/service';
 
 interface FormValues {
@@ -29,6 +30,7 @@ interface FormValues {
   description?: string;
   imageUrl?: string;
   isActive: boolean;
+  requiresDryer: boolean;
   sortOrder?: number;
 }
 
@@ -44,6 +46,8 @@ export function ServiceForm({ open, onClose, service }: ServiceFormProps) {
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [uploading, setUploading] = useState(false);
   const isEditing = !!service;
+  const { data: settings } = useSettings();
+  const isCarWash = settings?.businessType === 'car_wash';
 
   const form = useForm<FormValues>({
     defaultValues: {
@@ -52,6 +56,7 @@ export function ServiceForm({ open, onClose, service }: ServiceFormProps) {
       description: '',
       imageUrl: '',
       isActive: true,
+      requiresDryer: false,
       sortOrder: 0,
     },
   });
@@ -64,6 +69,7 @@ export function ServiceForm({ open, onClose, service }: ServiceFormProps) {
         description: service.description ?? '',
         imageUrl: service.imageUrl ?? '',
         isActive: service.isActive,
+        requiresDryer: service.requiresDryer,
         sortOrder: service.sortOrder,
       });
     } else {
@@ -73,6 +79,7 @@ export function ServiceForm({ open, onClose, service }: ServiceFormProps) {
         description: '',
         imageUrl: '',
         isActive: true,
+        requiresDryer: false,
         sortOrder: 0,
       });
     }
@@ -91,6 +98,7 @@ export function ServiceForm({ open, onClose, service }: ServiceFormProps) {
       // Send '' explicitly (not undefined) so clearing the image reaches the API — repo maps '' → null
       imageUrl: values.imageUrl ?? '',
       isActive: values.isActive,
+      requiresDryer: values.requiresDryer,
       sortOrder: values.sortOrder,
     };
 
@@ -247,6 +255,41 @@ export function ServiceForm({ open, onClose, service }: ServiceFormProps) {
               />
             </button>
           </div>
+
+          {/* Sólo en lavadoras: en los demás rubros la columna existe pero
+              nadie la lee, y una pregunta que no aplica es ruido. */}
+          {isCarWash && (
+            <div className="flex items-start gap-3 rounded-lg border border-[var(--border)] bg-[var(--bg-sunken)] p-3">
+              <button
+                type="button"
+                role="switch"
+                aria-checked={form.watch('requiresDryer')}
+                aria-label="Necesita secador"
+                className={cn(
+                  'relative mt-0.5 inline-flex h-5 w-9 shrink-0 cursor-pointer rounded-full transition-colors',
+                  form.watch('requiresDryer') ? 'bg-[var(--color-primary)]' : 'bg-zinc-300'
+                )}
+                onClick={() =>
+                  form.setValue('requiresDryer', !form.getValues('requiresDryer'))
+                }
+              >
+                <span
+                  className={cn(
+                    'pointer-events-none inline-block h-4 w-4 translate-y-0.5 rounded-full bg-white shadow transition-transform',
+                    form.watch('requiresDryer') ? 'translate-x-4' : 'translate-x-0.5'
+                  )}
+                />
+              </button>
+              <div className="min-w-0">
+                <Label className="cursor-default">Necesita secador</Label>
+                <p className="mt-0.5 text-[12px] text-[var(--fg-muted)]">
+                  Tildalo en las lavadas que se secan. Sólo esos servicios piden
+                  el secador antes de completar el registro; un lavado de chasis
+                  o un cambio de aceite no.
+                </p>
+              </div>
+            </div>
+          )}
 
           <DialogFooter>
             <Button type="button" variant="outline" onClick={handleClose}>

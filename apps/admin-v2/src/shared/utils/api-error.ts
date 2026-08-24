@@ -34,3 +34,20 @@ export function apiErrorMessage(error: unknown, fallback: string): string {
 function isTransportNoise(message: string): boolean {
   return /^request failed with status code/i.test(message) || /^network error$/i.test(message);
 }
+
+/**
+ * El `error.code` del backend, cuando la UI necesita ramificar y no sólo
+ * mostrar el texto: `ASSIGNEES_REQUIRED` abre el diálogo de asignados,
+ * cualquier otro cae en un toast.
+ */
+export function apiErrorCode(error: unknown): string | null {
+  const flat = (error as { code?: unknown })?.code;
+  if (typeof flat === 'string' && flat) return flat;
+
+  const data = (error as { response?: { data?: unknown } })?.response?.data as
+    | { error?: { code?: unknown } }
+    | undefined;
+
+  const code = data?.error?.code;
+  return typeof code === 'string' && code ? code : null;
+}

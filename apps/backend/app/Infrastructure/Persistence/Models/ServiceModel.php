@@ -16,7 +16,7 @@ class ServiceModel extends Model
 
     protected $fillable = [
         'tenant_id', 'name', 'description', 'price',
-        'is_active', 'sort_order', 'image_url',
+        'is_active', 'sort_order', 'image_url', 'requires_dryer',
     ];
 
     protected function casts(): array
@@ -24,6 +24,7 @@ class ServiceModel extends Model
         return [
             'price' => 'decimal:2',
             'is_active' => 'boolean',
+            'requires_dryer' => 'boolean',
             'sort_order' => 'integer',
         ];
     }

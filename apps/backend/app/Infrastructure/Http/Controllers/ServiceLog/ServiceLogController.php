@@ -149,6 +149,76 @@ class ServiceLogController extends Controller
         return null;
     }
 
+    /**
+     * Qué asignados le faltan a este registro para poder cerrarse, o null si
+     * está completo. Sólo se llama en tenants car_wash.
+     *
+     * Un registro sin líneas de servicio —una venta de mostrador— no exige a
+     * nadie: nadie lava un ambientador. Con servicios se exige el lavador
+     * siempre, y el secador sólo si alguno de esos servicios lo pide.
+     */
+    private function assigneesProblem(ServiceLogModel $log): ?JsonResponse
+    {
+        $serviceIds = $this->logServiceIds($log);
+        if ($serviceIds === []) {
+            return null;
+        }
+
+        if (!$log->washed_by) {
+            return $this->assigneesRequired('Asigná quién hizo el trabajo antes de completar el servicio.');
+        }
+
+        $necesitaSecador = ServiceModel::whereIn('id', $serviceIds)
+            ->where('requires_dryer', true)
+            ->exists();
+
+        if ($necesitaSecador && !$log->dried_by) {
+            return $this->assigneesRequired('Este servicio lleva secado: asigná el secador antes de completarlo.');
+        }
+
+        return null;
+    }
+
+    private function assigneesRequired(string $message): JsonResponse
+    {
+        return response()->json([
+            'error' => ['code' => 'ASSIGNEES_REQUIRED', 'message' => $message],
+        ], 422);
+    }
+
+    /**
+     * Los servicios del catálogo que este registro tocó. Las líneas apuntan a
+     * una variante o al servicio directo según cómo se registró, y las filas
+     * viejas no tienen líneas: llevan el `service_id` encima. Dos consultas
+     * como techo, no una por línea.
+     *
+     * @return array<int, string>
+     */
+    private function logServiceIds(ServiceLogModel $log): array
+    {
+        $refs = $log->items()
+            ->where('item_type', '!=', 'product')
+            ->pluck('ref_id')
+            ->filter()
+            ->unique()
+            ->all();
+
+        if ($refs === []) {
+            // Fila vieja, de antes de las líneas: su servicio está en la fila.
+            return $log->service_id ? [$log->service_id] : [];
+        }
+
+        $directos = ServiceModel::whereIn('id', $refs)->pluck('id')->all();
+
+        // Lo que no era un servicio es una variante, y su servicio es el padre.
+        $porVariante = ServiceVariantModel::whereIn('id', array_diff($refs, $directos))
+            ->pluck('service_id')
+            ->filter()
+            ->all();
+
+        return array_values(array_unique([...$directos, ...$porVariante]));
+    }
+
     private function priceLockedResponse(string $label): JsonResponse
     {
         return response()->json([
@@ -1202,17 +1272,17 @@ class ServiceLogController extends Controller
         $log = ServiceLogModel::findOrFail($id);
 
         // Completar es el momento en que el dato se congela, así que es el
-        // momento de exigirlo: un servicio cerrado sin lavador ni secador es
+        // momento de exigirlo: un servicio cerrado sin saber quién lo hizo es
         // exactamente el agujero que esta feature existe para tapar.
+        //
+        // Pero se exige lo que el trabajo tuvo. La regla vieja era del rubro
+        // —lavadora ⇒ lavador Y secador— y en un catálogo real es falsa para
+        // la mayoría: un lavado de chasis no se seca, un cambio de aceite ni
+        // se lava, y una venta de mostrador no la hace nadie.
         $isCarWash = TenantModel::find(app('current_tenant_id'))?->business_type === 'car_wash';
 
-        if ($isCarWash && (!$log->washed_by || !$log->dried_by)) {
-            return response()->json([
-                'error' => [
-                    'code'    => 'ASSIGNEES_REQUIRED',
-                    'message' => 'Asigná lavador y secador antes de completar el servicio.',
-                ],
-            ], 422);
+        if ($isCarWash && ($problema = $this->assigneesProblem($log))) {
+            return $problema;
         }
 
         // "¿Cobrás ahora, o se va debiendo?" El cajero responde en el único

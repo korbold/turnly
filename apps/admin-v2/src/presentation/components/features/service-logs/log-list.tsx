@@ -18,7 +18,7 @@ import {
 } from '@/presentation/components/ui/dropdown-menu';
 import { cn } from '@/shared/utils/cn';
 import { formatCurrency } from '@/shared/utils/format';
-import { apiErrorMessage } from '@/shared/utils/api-error';
+import { apiErrorCode, apiErrorMessage } from '@/shared/utils/api-error';
 import {
   useServiceLogs,
   useCompleteServiceLog,
@@ -105,7 +105,7 @@ export function LogList({
   const { canDeleteLog } = usePermissions();
   const { data: settings } = useSettings();
   const isCarWash = settings?.businessType === 'car_wash';
-  const [assignTarget, setAssignTarget] = useState<{ log: ServiceLog; reason?: string; requireBoth?: boolean } | null>(null);
+  const [assignTarget, setAssignTarget] = useState<{ log: ServiceLog; reason?: string; thenComplete?: boolean } | null>(null);
   const [payTarget, setPayTarget] = useState<ServiceLog | null>(null);
   const [billingTarget, setBillingTarget] = useState<ServiceLog | null>(null);
 
@@ -119,13 +119,18 @@ export function LogList({
   const [completeTarget, setCompleteTarget] = useState<ServiceLog | null>(null);
 
   function handleComplete(log: ServiceLog) {
-    // El 422 del backend es la red de seguridad, no la experiencia: si falta
-    // alguien, se pide acá mismo en vez de tirar el error.
-    if (isCarWash && (!log.washedBy || !log.driedBy)) {
+    // Sólo se adelanta a pedir el lavador, que se exige siempre. Si además
+    // hace falta secador lo decide el backend según el servicio —no toda
+    // lavada se seca— y esa regla no se duplica acá: se obedece su 422.
+    // Un registro sólo de productos no necesita a nadie.
+    const soloProductos = (log.items?.length ?? 0) > 0
+      && log.items!.every((it) => it.itemType === 'product');
+
+    if (isCarWash && !log.washedBy && !soloProductos) {
       setAssignTarget({
         log,
-        reason: 'Asigná lavador y secador para poder completar el servicio.',
-        requireBoth: true,
+        reason: 'Asigná quién hizo el trabajo para poder completar el servicio.',
+        thenComplete: true,
       });
       return;
     }
@@ -139,7 +144,16 @@ export function LogList({
 
     completeMutation.mutate(log.id, {
       onSuccess: () => toast.success('Servicio completado'),
-      onError: () => toast.error('Error al completar'),
+      onError: (e) => {
+        // Si lo que falta es el secador, el backend es quien lo sabe. Abrir el
+        // diálogo con su mensaje es la diferencia entre "arreglalo acá" y un
+        // toast de "Error al completar" que no dice qué hacer.
+        if (apiErrorCode(e) === 'ASSIGNEES_REQUIRED') {
+          setAssignTarget({ log, reason: apiErrorMessage(e, 'Faltan asignados.'), thenComplete: true });
+          return;
+        }
+        toast.error(apiErrorMessage(e, 'Error al completar'));
+      },
     });
   }
 
@@ -694,7 +708,7 @@ export function LogList({
         <AssignStaffDialog
           log={assignTarget.log}
           reason={assignTarget.reason}
-          requireBoth={assignTarget.requireBoth}
+          thenComplete={assignTarget.thenComplete}
           open
           onClose={() => setAssignTarget(null)}
         />

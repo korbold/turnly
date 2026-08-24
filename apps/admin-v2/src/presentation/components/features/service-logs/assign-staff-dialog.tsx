@@ -36,7 +36,10 @@ interface Props {
    * completa el servicio. Sin esto el usuario queda en un callejón — apretó
    * Completar, guardó, y el servicio sigue en progreso.
    */
-  requireBoth?: boolean;
+  /** Se abrió desde Completar: al guardar, termina el trabajo que se pidió.
+      No implica exigir los dos —eso depende del servicio y lo decide el
+      backend— sino continuar hasta completar. */
+  thenComplete?: boolean;
 }
 
 /**
@@ -44,7 +47,7 @@ interface Props {
  * la acción del día: se asigna al lavador cuando arranca y al secador cuando
  * seca, dos veces por auto.
  */
-export function AssignStaffDialog({ log, open, onClose, reason, requireBoth = false }: Props) {
+export function AssignStaffDialog({ log, open, onClose, reason, thenComplete = false }: Props) {
   const { data: washers } = useServiceStaff('washer');
   const { data: dryers } = useServiceStaff('dryer');
   const assign = useAssignServiceLogStaff();
@@ -64,9 +67,10 @@ export function AssignStaffDialog({ log, open, onClose, reason, requireBoth = fa
     // Venir de Completar y guardar sin nadie asignado cerraba el dialog con un
     // toast de éxito, dejando el servicio igual que antes. Nombrar al que
     // falta es más útil que un "completá los campos".
-    if (requireBoth && (!washedBy || !driedBy)) {
-      const faltan = [!washedBy && 'lavador', !driedBy && 'secador'].filter(Boolean);
-      toast.error(`Falta asignar ${faltan.join(' y ')} para completar el servicio`);
+    // El lavador se exige siempre; el secador sólo en los servicios que se
+    // secan, y eso lo sabe el backend — su 422 llega abajo con el motivo.
+    if (thenComplete && !washedBy) {
+      toast.error('Falta asignar quién hizo el trabajo para completar el servicio');
       return;
     }
 
@@ -80,7 +84,7 @@ export function AssignStaffDialog({ log, open, onClose, reason, requireBoth = fa
       },
       {
         onSuccess: () => {
-          if (!requireBoth) {
+          if (!thenComplete) {
             toast.success('Asignados actualizados');
             onClose();
             return;
@@ -92,6 +96,8 @@ export function AssignStaffDialog({ log, open, onClose, reason, requireBoth = fa
               toast.success('Servicio completado');
               onClose();
             },
+            // El diálogo queda abierto a propósito cuando falta el secador:
+            // el select está acá mismo y cerrarlo obligaría a volver a entrar.
             onError: (e) => toast.error(apiErrorMessage(e, 'Error al completar')),
           });
         },
@@ -156,7 +162,7 @@ export function AssignStaffDialog({ log, open, onClose, reason, requireBoth = fa
             Cancelar
           </Button>
           <Button onClick={handleSave} disabled={locked || assign.isPending || complete.isPending}>
-            {requireBoth ? 'Guardar y completar' : 'Guardar'}
+            {thenComplete ? 'Guardar y completar' : 'Guardar'}
           </Button>
         </DialogFooter>
       </DialogContent>

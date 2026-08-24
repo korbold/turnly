@@ -23,6 +23,7 @@ export class ApiServiceRepository implements ServiceRepository {
       description: data.description,
       image_url: data.imageUrl || null,
       is_active: data.isActive,
+      requires_dryer: data.requiresDryer ?? false,
       sort_order: data.sortOrder,
     });
     return mapService(res.data);
@@ -35,6 +36,7 @@ export class ApiServiceRepository implements ServiceRepository {
     if (data.description !== undefined) body.description = data.description;
     if (data.imageUrl !== undefined) body.image_url = data.imageUrl || null;
     if (data.isActive !== undefined) body.is_active = data.isActive;
+    if (data.requiresDryer !== undefined) body.requires_dryer = data.requiresDryer;
     if (data.sortOrder !== undefined) body.sort_order = data.sortOrder;
 
     const { data: res } = await api.put(`/services/${id}`, body);
