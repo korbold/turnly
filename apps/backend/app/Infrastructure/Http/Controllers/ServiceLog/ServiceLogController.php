@@ -20,6 +20,8 @@ use App\Infrastructure\Http\Controllers\Controller;
 use App\Infrastructure\Http\Requests\ServiceLog\CreateServiceLogRequest;
 use App\Infrastructure\Http\Resources\ServiceLogResource;
 use App\Infrastructure\Jobs\EmitServiceLogInvoiceJob;
+use App\Infrastructure\Persistence\Models\PaymentAllocationModel;
+use App\Infrastructure\Persistence\Models\PaymentModel;
 use App\Infrastructure\Persistence\Models\ProductModel;
 use App\Infrastructure\Persistence\Models\ServiceLogItemModel;
 use App\Infrastructure\Persistence\Models\ServiceLogModel;
@@ -148,6 +150,22 @@ class ServiceLogController extends Controller
         }
 
         return null;
+    }
+
+    /**
+     * Los pagos imputados a este registro, con su caja. La relación va por la
+     * tabla de asignaciones porque un pago puede repartirse entre varios
+     * tickets — acá siempre son los de este.
+     *
+     * @return \Illuminate\Support\Collection<int, PaymentModel>
+     */
+    private function paymentsOf(ServiceLogModel $log): \Illuminate\Support\Collection
+    {
+        $ids = PaymentAllocationModel::where('payable_type', 'service_log')
+            ->where('payable_id', $log->id)
+            ->pluck('payment_id');
+
+        return PaymentModel::with('cashSession')->whereIn('id', $ids)->get();
     }
 
     /**
@@ -1003,8 +1021,29 @@ class ServiceLogController extends Controller
             ], 422);
         }
 
+        // Un abono cuya caja ya se cerró es un arqueo firmado: el dueño comparó
+        // ese número contra billetes. Borrar el pago ahora lo cambiaría a
+        // posteriori, y el conteo dejaría de cuadrar sin que nadie lo toque.
+        $pagos = $this->paymentsOf($serviceLog);
+
+        if ($pagos->contains(fn ($p) => $p->cashSession?->status === 'closed')) {
+            return response()->json([
+                'error' => [
+                    'code'    => 'LOG_LOCKED',
+                    'message' => 'Este registro tiene un cobro en una caja ya cerrada: no se puede eliminar.',
+                ],
+            ], 422);
+        }
+
         // Deleting an unpaid ticket un-sells whatever went with it.
         $this->returnProductStock($serviceLog, $request->user()?->id);
+
+        // El pago se va con el registro. La eliminación es física, así que un
+        // pago que sobrevive queda apuntando a nada y sigue sumando en la caja
+        // del día: el arqueo pide plata que nunca entró. Pasó en producción con
+        // un ticket de ejemplo cobrado a medias.
+        PaymentAllocationModel::whereIn('payment_id', $pagos->pluck('id'))->delete();
+        PaymentModel::whereIn('id', $pagos->pluck('id'))->delete();
 
         $serviceLog->delete();
 
