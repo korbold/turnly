@@ -96,8 +96,16 @@ export class ApiServiceLogRepository implements ServiceLogRepository {
     return mapServiceLog(res.data);
   }
 
-  async voidPayment(id: string): Promise<ServiceLog> {
+  async revertPayment(id: string): Promise<ServiceLog> {
     const { data: res } = await api.delete(`/service-logs/${id}/payment`);
+    return mapServiceLog(res.data);
+  }
+
+  async cancel(id: string, reasonCode: string, reasonNote?: string): Promise<ServiceLog> {
+    const { data: res } = await api.post(`/service-logs/${id}/cancel`, {
+      reason_code: reasonCode,
+      ...(reasonNote ? { reason_note: reasonNote } : {}),
+    });
     return mapServiceLog(res.data);
   }
 

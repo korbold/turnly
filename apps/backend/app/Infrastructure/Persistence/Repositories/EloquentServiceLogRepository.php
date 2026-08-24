@@ -66,7 +66,9 @@ class EloquentServiceLogRepository implements ServiceLogRepositoryInterface
 
     public function getDailySummary(string $tenantId, string $date): array
     {
-        $rows = ServiceLogModel::whereDate('log_date', $date)->get();
+        // Un registro anulado sigue en la lista del día —esa es la diferencia
+        // con borrarlo— pero no es trabajo del día: no suma ni cuenta.
+        $rows = ServiceLogModel::notCancelled()->whereDate('log_date', $date)->get();
 
         $reservations = \App\Infrastructure\Persistence\Models\ReservationModel::query()
             ->forTenant($tenantId)

@@ -72,6 +72,10 @@ export function mapServiceLog(raw: Record<string, unknown>): ServiceLog {
       ? mapPriceChange(raw.price_change as Record<string, unknown> | null)
       : undefined,
     status: raw.status as ServiceLog['status'],
+    cancelledAt: raw.cancelled_at ? new Date(raw.cancelled_at as string) : null,
+    cancelReasonCode: (raw.cancel_reason_code as string | null) ?? null,
+    cancelReasonLabel: (raw.cancel_reason_label as string | null) ?? null,
+    cancelReasonNote: (raw.cancel_reason_note as string | null) ?? null,
     notes: (raw.notes as string) ?? null,
     logDate: raw.log_date as string,
     createdAt: new Date(raw.created_at as string),

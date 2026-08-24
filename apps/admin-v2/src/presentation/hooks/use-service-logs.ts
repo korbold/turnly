@@ -8,7 +8,8 @@ import { UpdateServiceLogUseCase } from '@/application/use-cases/service-logs/up
 import { DeleteServiceLogUseCase } from '@/application/use-cases/service-logs/delete-service-log.use-case';
 import { CompleteServiceLogUseCase } from '@/application/use-cases/service-logs/complete-service-log.use-case';
 import { RecordServiceLogPaymentUseCase } from '@/application/use-cases/service-logs/record-service-log-payment.use-case';
-import { VoidServiceLogPaymentUseCase } from '@/application/use-cases/service-logs/void-service-log-payment.use-case';
+import { RevertServiceLogPaymentUseCase } from '@/application/use-cases/service-logs/revert-service-log-payment.use-case';
+import { CancelServiceLogUseCase } from '@/application/use-cases/service-logs/cancel-service-log.use-case';
 import { GetDailySummaryUseCase } from '@/application/use-cases/service-logs/get-daily-summary.use-case';
 import { UpdateServiceLogItemsUseCase } from '@/application/use-cases/service-logs/update-service-log-items.use-case';
 import type { ServiceLogFilters } from '@/domain/entities/service-log';
@@ -132,16 +133,32 @@ export function useRecordServiceLogPayment() {
   });
 }
 
-export function useVoidServiceLogPayment() {
+export function useRevertServiceLogPayment() {
   const repo = useRepository('serviceLog');
   const queryClient = useQueryClient();
   return useMutation({
-    mutationFn: (id: string) => new VoidServiceLogPaymentUseCase(repo).execute(id),
+    mutationFn: (id: string) => new RevertServiceLogPaymentUseCase(repo).execute(id),
     onSuccess: () => {
       // La caja del día cambia con esto: sin invalidarla, el cajón sigue
       // mostrando plata que acaba de dejar de estar cobrada.
       queryClient.invalidateQueries({ queryKey: ['service-logs'] });
       queryClient.invalidateQueries({ queryKey: ['cash-session'] });
+    },
+  });
+}
+
+export function useCancelServiceLog() {
+  const repo = useRepository('serviceLog');
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: ({ id, reasonCode, reasonNote }: { id: string; reasonCode: string; reasonNote?: string }) =>
+      new CancelServiceLogUseCase(repo).execute(id, reasonCode, reasonNote),
+    onSuccess: () => {
+      // Anular mueve totales, caja e inventario: se invalida todo lo que
+      // muestra alguno de los tres.
+      queryClient.invalidateQueries({ queryKey: ['service-logs'] });
+      queryClient.invalidateQueries({ queryKey: ['cash-session'] });
+      queryClient.invalidateQueries({ queryKey: ['products'] });
     },
   });
 }

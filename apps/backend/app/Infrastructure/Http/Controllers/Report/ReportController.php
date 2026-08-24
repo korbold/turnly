@@ -77,7 +77,7 @@ class ReportController extends Controller
         $date = $request->get('date', now()->toDateString());
         $tenantId = app('current_tenant_id');
 
-        $washLogs = ServiceLogModel::where('log_date', $date)->get();
+        $washLogs = ServiceLogModel::notCancelled()->where('log_date', $date)->get();
         $reservations = ReservationModel::whereDate('scheduled_at', $date)->with('service')->get();
 
         $completedReservations = $reservations->whereNotIn('status', ['cancelled', 'no_show']);
@@ -141,7 +141,7 @@ class ReportController extends Controller
 
         // Legacy wash logs (kept around for tenants migrated from the
         // standalone "registro diario" surface).
-        $washLogsQuery = ServiceLogModel::whereBetween('log_date', [$from, $to]);
+        $washLogsQuery = ServiceLogModel::notCancelled()->whereBetween('log_date', [$from, $to]);
         if ($methodFilter) {
             $washLogsQuery->where('payment_method', $methodFilter);
         }
@@ -274,7 +274,7 @@ class ReportController extends Controller
         // narrows anything: these are the chips the user switches between, and
         // deriving them from the filtered result left only the bank already
         // selected, with no way across to another.
-        $availableBanks = ServiceLogModel::whereBetween('log_date', [$from, $to])
+        $availableBanks = ServiceLogModel::notCancelled()->whereBetween('log_date', [$from, $to])
             ->where('payment_method', 'transfer')
             ->whereNotNull('payment_bank')
             ->distinct()
@@ -383,7 +383,7 @@ class ReportController extends Controller
         $endOfWeek = clone $startOfWeek;
         $endOfWeek->modify('+6 days');
 
-        $washLogs = ServiceLogModel::whereBetween('log_date', [
+        $washLogs = ServiceLogModel::notCancelled()->whereBetween('log_date', [
             $startOfWeek->format('Y-m-d'),
             $endOfWeek->format('Y-m-d'),
         ])->get();
@@ -438,7 +438,7 @@ class ReportController extends Controller
         $startDate = "{$month}-01";
         $endDate = date('Y-m-t', mktime(0, 0, 0, $mon, 1, $year));
 
-        $washLogs = ServiceLogModel::whereBetween('log_date', [$startDate, $endDate])->get();
+        $washLogs = ServiceLogModel::notCancelled()->whereBetween('log_date', [$startDate, $endDate])->get();
 
         $reservations = ReservationModel::whereBetween('scheduled_at', [
             $startDate . ' 00:00:00',

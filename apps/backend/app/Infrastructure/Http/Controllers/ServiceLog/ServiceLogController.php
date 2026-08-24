@@ -12,6 +12,7 @@ use App\Domain\Identity\EcuadorIdValidator;
 use App\Domain\Inventory\ConsumptionEngine;
 use App\Domain\Inventory\StockLedger;
 use App\Domain\Pricing\PriceChangeReason;
+use App\Domain\ServiceLog\CancelReason;
 use App\Domain\ServiceLog\Contracts\ServiceLogRepositoryInterface;
 use App\Domain\ServiceLog\ServiceStaffing;
 use App\Domain\Tenant\StaffPrivileges;
@@ -730,6 +731,10 @@ class ServiceLogController extends Controller
     {
         $serviceLog = ServiceLogModel::findOrFail($id);
 
+        if ($problema = $this->cancelledProblem($serviceLog)) {
+            return $problema;
+        }
+
         // price_charged is the ticket total. Staff may edit everything else on
         // the row (employee, método de pago, notas) but not the money.
         if ($request->has('price_charged') && !$this->may($request, StaffPrivileges::PRICE)) {
@@ -784,6 +789,10 @@ class ServiceLogController extends Controller
     public function updateItems(Request $request, string $id): ServiceLogResource|JsonResponse
     {
         $serviceLog = ServiceLogModel::findOrFail($id);
+
+        if ($problema = $this->cancelledProblem($serviceLog)) {
+            return $problema;
+        }
 
         $request->validate([
             'items'                  => 'required|array|min:1',
@@ -897,6 +906,10 @@ class ServiceLogController extends Controller
     public function updateAssignees(Request $request, string $id): ServiceLogResource|JsonResponse
     {
         $log = ServiceLogModel::findOrFail($id);
+
+        if ($problema = $this->cancelledProblem($log)) {
+            return $problema;
+        }
 
         if ($log->status === 'completed') {
             $isManager = $request->user()?->is_super_admin
@@ -1051,6 +1064,126 @@ class ServiceLogController extends Controller
     }
 
     /**
+     * Anula el registro entero: queda como historia, congelado y fuera de los
+     * totales del día y de los reportes.
+     *
+     * Reemplaza al borrado, que era físico —la fila desaparecía con sus líneas
+     * y su bitácora, sin dejar quién ni cuándo— en la única pantalla del
+     * sistema que lleva caja. Acá la evidencia de que el ticket existió es
+     * justamente el punto.
+     *
+     * Es un superconjunto de revertir el pago: si estaba cobrado, primero
+     * devuelve la plata (y la saca de la caja) y después congela. Y a
+     * diferencia de revertir, **sí devuelve el stock**: acá la venta no
+     * existió, así que el producto vuelve al estante.
+     */
+    public function cancel(Request $request, string $id): JsonResponse|ServiceLogResource
+    {
+        $log = ServiceLogModel::findOrFail($id);
+
+        $rol = $this->tenantRole($request);
+        if (!$request->user()?->is_super_admin && !in_array($rol, ['owner', 'tenant_admin'], true)) {
+            return response()->json([
+                'error' => [
+                    'code'    => 'FORBIDDEN',
+                    'message' => 'Sólo el dueño o un administrador pueden anular un registro.',
+                ],
+            ], 403);
+        }
+
+        if ($log->status === ServiceLogModel::STATUS_CANCELLED) {
+            return response()->json([
+                'error' => ['code' => 'LOG_CANCELLED', 'message' => 'Este registro ya está anulado.'],
+            ], 422);
+        }
+
+        if ($log->invoice_status !== null) {
+            return response()->json([
+                'error' => [
+                    'code'    => 'LOG_LOCKED',
+                    'message' => 'Este registro ya se facturó: se corrige con una nota de crédito.',
+                ],
+            ], 422);
+        }
+
+        $data = $request->validate([
+            'reason_code' => ['required', 'string', 'in:' . implode(',', CancelReason::CODES)],
+            'reason_note' => ['nullable', 'string', 'max:200'],
+        ]);
+
+        $nota = trim((string) ($data['reason_note'] ?? '')) ?: null;
+
+        if ($data['reason_code'] === CancelReason::REQUIRES_NOTE && $nota === null) {
+            return response()->json([
+                'error' => [
+                    'code'    => 'REASON_NOTE_REQUIRED',
+                    'message' => 'Elegiste "Otro": escribí de qué se trata.',
+                ],
+            ], 422);
+        }
+
+        $pagos = $this->paymentsOf($log);
+
+        if ($pagos->contains(fn ($p) => $p->cashSession?->status === 'closed')) {
+            return response()->json([
+                'error' => [
+                    'code'    => 'PAYMENT_LOCKED',
+                    'message' => 'Este registro tiene un cobro en una caja ya cerrada: no se puede anular.',
+                ],
+            ], 422);
+        }
+
+        $userId = $request->user()?->id;
+
+        \Illuminate\Support\Facades\DB::transaction(function () use ($log, $pagos, $data, $nota, $userId) {
+            if ($pagos->isNotEmpty()) {
+                $total  = round((float) $pagos->sum('amount'), 2);
+                $metodo = $pagos->last()?->method;
+
+                PaymentAllocationModel::whereIn('payment_id', $pagos->pluck('id'))->delete();
+                PaymentModel::whereIn('id', $pagos->pluck('id'))->delete();
+                $this->ledger->syncLogPaymentState($log);
+                $this->events->paymentReverted($log, $metodo, $total, $userId);
+            }
+
+            // La venta no existió: lo vendido vuelve al estante.
+            $this->returnProductStock($log, $userId);
+
+            $log->forceFill([
+                'status'             => ServiceLogModel::STATUS_CANCELLED,
+                'cancelled_at'       => now(),
+                'cancelled_by'       => $userId,
+                'cancel_reason_code' => $data['reason_code'],
+                'cancel_reason_note' => $nota,
+            ])->save();
+
+            $this->events->logCancelled($log, $data['reason_code'], $nota, $userId);
+        });
+
+        return new ServiceLogResource(
+            $log->fresh(['clientResource.client', 'service', 'attendant', 'items.variant', 'washer', 'dryer'])
+        );
+    }
+
+    /**
+     * Un registro anulado no se toca más: es historia. Devuelve la respuesta
+     * de error, o null si el registro sigue vivo.
+     */
+    private function cancelledProblem(ServiceLogModel $log): ?JsonResponse
+    {
+        if ($log->status !== ServiceLogModel::STATUS_CANCELLED) {
+            return null;
+        }
+
+        return response()->json([
+            'error' => [
+                'code'    => 'LOG_CANCELLED',
+                'message' => 'Este registro está anulado: no se puede modificar.',
+            ],
+        ], 422);
+    }
+
+    /**
      * Deshace el cobro de un registro: el servicio queda, la plata vuelve a
      * estar por cobrar.
      *
@@ -1066,7 +1199,7 @@ class ServiceLogController extends Controller
      * producto está en el auto del cliente, no en la estantería. Devolverlo lo
      * contaría dos veces. Eso es `destroy()`, donde el ticket desaparece.
      */
-    public function voidPayment(Request $request, string $id): JsonResponse|ServiceLogResource
+    public function revertPayment(Request $request, string $id): JsonResponse|ServiceLogResource
     {
         $log = ServiceLogModel::findOrFail($id);
 
@@ -1126,7 +1259,7 @@ class ServiceLogController extends Controller
             // el ledger devuelve 'unpaid' y limpia método, banco y fecha.
             $this->ledger->syncLogPaymentState($log);
 
-            $this->events->paymentVoided($log, $metodo, $total, $request->user()?->id);
+            $this->events->paymentReverted($log, $metodo, $total, $request->user()?->id);
         });
 
         return new ServiceLogResource(
@@ -1151,6 +1284,11 @@ class ServiceLogController extends Controller
         ]);
 
         $log = ServiceLogModel::findOrFail($id);
+
+        if ($problema = $this->cancelledProblem($log)) {
+            return $problema;
+        }
+
         if ($log->payment_status === 'paid') {
             return response()->json([
                 'error' => [
@@ -1408,6 +1546,10 @@ class ServiceLogController extends Controller
     public function complete(Request $request, string $id): JsonResponse
     {
         $log = ServiceLogModel::findOrFail($id);
+
+        if ($problema = $this->cancelledProblem($log)) {
+            return $problema;
+        }
 
         // Completar es el momento en que el dato se congela, así que es el
         // momento de exigirlo: un servicio cerrado sin saber quién lo hizo es

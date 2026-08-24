@@ -18,6 +18,7 @@ import {
   User as UserIcon,
   Clock,
   Undo2,
+  Ban,
 } from 'lucide-react';
 import { Button } from '@/presentation/components/ui/button';
 import { Badge } from '@/presentation/components/ui/badge';
@@ -27,7 +28,7 @@ import { apiErrorCode, apiErrorMessage } from '@/shared/utils/api-error';
 import {
   useServiceLog,
   useCompleteServiceLog,
-  useVoidServiceLogPayment,
+  useRevertServiceLogPayment,
 } from '@/presentation/hooks/use-service-logs';
 import { useEmitInvoice } from '@/presentation/hooks/use-invoices';
 import { usePermissions } from '@/presentation/hooks/use-permissions';
@@ -38,6 +39,7 @@ import { InvoiceStatusBadge } from '@/presentation/components/features/service-l
 import { RegisterPaymentDialog } from '@/presentation/components/features/service-logs/register-payment-dialog';
 import { FiscalProfileDialog } from '@/presentation/components/features/service-logs/fiscal-profile-dialog';
 import { EditServiceLogDialog } from '@/presentation/components/features/service-logs/edit-service-log-dialog';
+import { CancelLogDialog } from '@/presentation/components/features/service-logs/cancel-log-dialog';
 import type { PaymentMethod } from '@/domain/entities/service-log';
 import { formatInvoiceError } from '@/shared/utils/format-invoice-error';
 
@@ -76,7 +78,8 @@ function ServiceLogDetail({ id }: { id: string }) {
   const completeMutation = useCompleteServiceLog();
   const emitMutation = useEmitInvoice();
 
-  const voidMutation = useVoidServiceLogPayment();
+  const revertMutation = useRevertServiceLogPayment();
+  const [cancelOpen, setCancelOpen] = useState(false);
   const [payOpen, setPayOpen] = useState(false);
   const [editOpen, setEditOpen] = useState(false);
   const [billingOpen, setBillingOpen] = useState(false);
@@ -98,6 +101,7 @@ function ServiceLogDetail({ id }: { id: string }) {
   }
 
   const isUnpaid = log.paymentStatus === 'unpaid';
+  const anulado = log.status === 'cancelled';
   const recurso =
     log.clientResource?.label ||
     log.clientResource?.plate ||
@@ -147,7 +151,21 @@ function ServiceLogDetail({ id }: { id: string }) {
           </div>
         </div>
 
-        {/* Actions */}
+        {/* Actions — un registro anulado es historia: no se cobra, no se
+            completa, no se edita, no se factura. */}
+        {anulado ? (
+          <div className="rounded-lg border border-[var(--border)] bg-[var(--bg-sunken)] px-3 py-2.5">
+            <p className="text-[13px] font-medium text-[var(--fg-strong)]">
+              Registro anulado{log.cancelReasonLabel ? ` · ${log.cancelReasonLabel}` : ''}
+            </p>
+            {log.cancelReasonNote && (
+              <p className="mt-0.5 text-[12.5px] text-[var(--fg-muted)]">{log.cancelReasonNote}</p>
+            )}
+            <p className="mt-0.5 text-[12px] text-[var(--fg-muted)]">
+              Queda a la vista como historia, fuera de los totales del día.
+            </p>
+          </div>
+        ) : (
         <div className="flex flex-wrap items-center gap-2">
           {isUnpaid ? (
             <Button
@@ -174,7 +192,7 @@ function ServiceLogDetail({ id }: { id: string }) {
               </Button>
             )
           )}
-          {log.status === 'in_progress' && (
+          {log.status === 'in_progress' && !anulado && (
             <Button
               variant="outline"
               onClick={() => {
@@ -211,6 +229,7 @@ function ServiceLogDetail({ id }: { id: string }) {
             </Button>
           )}
         </div>
+        )}
       </div>
 
       {/* Body grid */}
@@ -334,17 +353,17 @@ function ServiceLogDetail({ id }: { id: string }) {
               <button
                 type="button"
                 onClick={() => {
-                  if (!confirm('¿Anular el cobro de este registro? El servicio queda, pero vuelve a estar por cobrar.')) return;
-                  voidMutation.mutate(log.id, {
-                    onSuccess: () => toast.success('Cobro anulado. El registro quedó por cobrar.'),
-                    onError: (e) => toast.error(apiErrorMessage(e, 'No se pudo anular el cobro')),
+                  if (!confirm('¿Revertir el pago de este registro? El servicio queda, pero vuelve a estar por cobrar.')) return;
+                  revertMutation.mutate(log.id, {
+                    onSuccess: () => toast.success('Pago revertido. El registro quedó por cobrar.'),
+                    onError: (e) => toast.error(apiErrorMessage(e, 'No se pudo revertir el pago')),
                   });
                 }}
-                disabled={voidMutation.isPending}
+                disabled={revertMutation.isPending}
                 className="mt-2 inline-flex items-center gap-1.5 text-[12.5px] font-medium text-[var(--danger-700)] hover:underline disabled:opacity-60"
               >
                 <Undo2 className="h-3.5 w-3.5" aria-hidden="true" />
-                {voidMutation.isPending ? 'Anulando…' : 'Anular cobro'}
+                {revertMutation.isPending ? 'Revirtiendo…' : 'Revertir pago'}
               </button>
             )}
           </Card>
@@ -391,7 +410,7 @@ function ServiceLogDetail({ id }: { id: string }) {
               {/* Quién atendió el mostrador y cobró. No es un asignado, pero es
                   lo primero que se pregunta cuando la caja no cuadra. */}
               <Row label="Registrado por" value={log.attendant?.name ?? '—'} />
-              {canAssign(log.status === 'completed') && (
+              {!anulado && canAssign(log.status === 'completed') && (
                 <Button
                   variant="outline"
                   size="sm"
@@ -406,6 +425,29 @@ function ServiceLogDetail({ id }: { id: string }) {
 
         </div>
       </div>
+
+      {/* Anular vive al pie y separado del resto: es lo único acá que mata el
+          registro, y no puede compartir jerarquía con Cobrar o Editar. Sólo
+          dueño o admin —el backend lo exige igual— y nunca sobre algo
+          facturado, que se corrige con nota de crédito. */}
+      {!anulado && isOwnerOrAdmin && log.invoiceStatus === null && (
+        <div className="mt-6 border-t border-[var(--border)] pt-4">
+          <button
+            type="button"
+            onClick={() => setCancelOpen(true)}
+            className="inline-flex items-center gap-1.5 text-[12.5px] font-medium text-[var(--danger-700)] hover:underline"
+          >
+            <Ban className="h-3.5 w-3.5" aria-hidden="true" />
+            Anular registro
+          </button>
+          <p className="mt-1 text-[12px] text-[var(--fg-muted)]">
+            El registro deja de contar en el día pero queda a la vista, con el
+            motivo y quién lo anuló.
+          </p>
+        </div>
+      )}
+
+      <CancelLogDialog log={log} open={cancelOpen} onClose={() => setCancelOpen(false)} />
 
       {/* Dialogs (reused from the list) */}
       <RegisterPaymentDialog serviceLogId={log.id} total={total} open={payOpen} onClose={() => setPayOpen(false)} />

@@ -1,5 +1,5 @@
 export type PaymentMethod = 'cash' | 'card' | 'transfer' | 'other';
-export type ServiceLogStatus = 'in_progress' | 'completed';
+export type ServiceLogStatus = 'in_progress' | 'completed' | 'cancelled';
 
 export interface ServiceLogClientResource {
   label?: string | null;
@@ -62,7 +62,8 @@ export interface ServiceLogEvent {
     | 'price_changed'
     | 'log_updated'
     | 'payment_recorded'
-    | 'payment_voided'
+    | 'payment_reverted'
+    | 'log_cancelled'
     | 'status_changed'
     | 'invoice_requested'
     | 'invoice_status_changed';
@@ -107,6 +108,12 @@ export interface ServiceLog {
   invoiceNumeroAutorizacion: string | null;
   invoiceError: string | null;
   status: ServiceLogStatus;
+  /** Anulado: la fila sigue visible pero está congelada y fuera de los
+      totales. `null` en todo lo que sigue vivo. */
+  cancelledAt: Date | null;
+  cancelReasonCode: string | null;
+  cancelReasonLabel: string | null;
+  cancelReasonNote: string | null;
   notes: string | null;
   logDate: string;
   createdAt: Date;

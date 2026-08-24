@@ -3,7 +3,7 @@
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { format } from 'date-fns';
-import { MoreHorizontal, CheckCircle2, Pencil, Trash2, Plus, ClipboardList, Wallet, Play, Trophy, FileText, Receipt, Eye, Loader2, ChevronLeft, ChevronRight, UserCog } from 'lucide-react';
+import { MoreHorizontal, CheckCircle2, Pencil, Plus, ClipboardList, Wallet, Play, Trophy, FileText, Receipt, Eye, Loader2, ChevronLeft, ChevronRight, UserCog } from 'lucide-react';
 import { toast } from 'sonner';
 import { motion } from 'framer-motion';
 import { Badge } from '@/presentation/components/ui/badge';
@@ -22,7 +22,6 @@ import { apiErrorCode, apiErrorMessage } from '@/shared/utils/api-error';
 import {
   useServiceLogs,
   useCompleteServiceLog,
-  useDeleteServiceLog,
 } from '@/presentation/hooks/use-service-logs';
 import { PAYMENT_METHOD_CONFIG } from '@/shared/constants/status';
 import { RegisterPaymentDialog } from '@/presentation/components/features/service-logs/register-payment-dialog';
@@ -46,6 +45,9 @@ import { formatCounterCurrency } from '@/shared/utils/format';
 const STATUS_CONFIG: Record<ServiceLogStatus, { label: string; color: string; bg: string }> = {
   in_progress: { label: 'En progreso', color: 'text-[var(--status-progress-fg)]', bg: 'bg-[var(--status-progress-bg)]' },
   completed: { label: 'Completado', color: 'text-[var(--status-completed-fg)]', bg: 'bg-[var(--status-completed-bg)]' },
+  // Anulado no es un estado del trabajo sino su epitafio: la fila queda para
+  // que se vea que existió, en gris y sin acciones.
+  cancelled: { label: 'Anulado', color: 'text-[var(--fg-muted)]', bg: 'bg-[var(--bg-sunken)]' },
 };
 
 const fmt = formatCounterCurrency;
@@ -97,12 +99,10 @@ export function LogList({
   const router = useRouter();
   const { data, isLoading } = useServiceLogs({ date, payment, status, q, page, perPage });
   const completeMutation = useCompleteServiceLog();
-  const deleteMutation = useDeleteServiceLog();
   const emitInvoiceMutation = useEmitInvoice();
   // Erasing a service is granted per role in Configuración → Permisos
   // (default: Admin only). A cashier without it asks instead. The backend
   // reads the same matrix.
-  const { canDeleteLog } = usePermissions();
   const { data: settings } = useSettings();
   const isCarWash = settings?.businessType === 'car_wash';
   const [assignTarget, setAssignTarget] = useState<{ log: ServiceLog; reason?: string; thenComplete?: boolean } | null>(null);
@@ -143,14 +143,6 @@ export function LogList({
         }
         toast.error(apiErrorMessage(e, 'Error al completar'));
       },
-    });
-  }
-
-  function handleDelete(id: string) {
-    if (!confirm('Eliminar este registro?')) return;
-    deleteMutation.mutate(id, {
-      onSuccess: () => toast.success('Registro eliminado'),
-      onError: (e) => toast.error(apiErrorMessage(e, 'Error al eliminar')),
     });
   }
 
@@ -216,15 +208,21 @@ export function LogList({
         // "Falta cobrar", no "no se cobró nada": un servicio con $10 de $30
         // sigue necesitando el botón de Cobrar. Comparar contra 'unpaid'
         // dejaba los abonos sin forma de cobrarse desde la lista.
-        const isOwing = log.paymentStatus !== 'paid';
-        const isPartial = log.paymentStatus === 'partial';
-        const inProgress = log.status === 'in_progress';
+        // Un registro anulado no debe nada ni tiene trabajo abierto: es
+        // historia. Sin esto la fila seguiría pidiendo cobrar plata que ya se
+        // revirtió.
+        const anulado = log.status === 'cancelled';
+        const isOwing = !anulado && log.paymentStatus !== 'paid';
+        const isPartial = !anulado && log.paymentStatus === 'partial';
+        const inProgress = !anulado && log.status === 'in_progress';
         // The row carries both axes at once: blue for work still open (the
         // "En progreso" badge's own colour), amber for money still owed (the
         // "Sin cobrar" tile's). A row that is both fades one into the other
         // rather than picking a winner. Done and paid stays plain — nothing
         // left to do on it.
-        const rowTint = inProgress
+        const rowTint = anulado
+          ? 'border-[var(--border)] bg-[var(--bg-sunken)]/60 opacity-70 hover:opacity-100'
+          : inProgress
           ? isOwing
             ? 'border-[var(--warning-200)] bg-gradient-to-r from-[var(--status-progress-bg)] to-[var(--warning-50)] hover:from-[var(--info-200)] hover:to-[var(--warning-100)]'
             : 'border-[var(--info-200)] bg-[var(--status-progress-bg)] hover:bg-[var(--info-200)]'
@@ -451,8 +449,11 @@ export function LogList({
                   Una fila que debe también muestra Completar mientras está en
                   progreso: el auto puede estar listo y el cliente deber, y sin
                   ese botón la pregunta "¿cobrás o se va debiendo?" no tendría
-                  por dónde entrar. */}
-              {isOwing ? (
+                  por dónde entrar.
+
+                  Una fila anulada no ofrece ninguna: es historia, y el único
+                  camino que le queda es abrir el detalle. */}
+              {anulado ? null : isOwing ? (
                 <>
                   {log.status === 'in_progress' && (
                     <Button
@@ -548,8 +549,11 @@ export function LogList({
                     <Eye className="mr-2 h-3.5 w-3.5" />
                     Ver detalle
                   </DropdownMenuItem>
-                  <DropdownMenuSeparator />
-                  {log.status === 'in_progress' && (
+                  {/* Todo lo que sigue toca el registro: en uno anulado no
+                      tiene sentido ofrecerlo. Queda sólo Ver detalle, que es
+                      donde se lee por qué se anuló. */}
+                  {!anulado && <DropdownMenuSeparator />}
+                  {!anulado && log.status === 'in_progress' && (
                     <>
                       <DropdownMenuItem onClick={() => handleComplete(log)} disabled={completeMutation.isPending}>
                         <CheckCircle2 className="mr-2 h-3.5 w-3.5" />
@@ -558,40 +562,30 @@ export function LogList({
                       <DropdownMenuSeparator />
                     </>
                   )}
-                  {isCarWash && (
+                  {!anulado && isCarWash && (
                     <DropdownMenuItem onClick={() => setAssignTarget({ log })}>
                       <UserCog className="mr-2 h-3.5 w-3.5" />
                       Asignar
                     </DropdownMenuItem>
                   )}
-                  <DropdownMenuItem onClick={() => onEdit?.(log)}>
-                    <Pencil className="mr-2 h-3.5 w-3.5" />
-                    Editar
-                  </DropdownMenuItem>
+                  {!anulado && (
+                    <DropdownMenuItem onClick={() => onEdit?.(log)}>
+                      <Pencil className="mr-2 h-3.5 w-3.5" />
+                      Editar
+                    </DropdownMenuItem>
+                  )}
                   {/* Facturar itself is a visible row button (see the
                       primary-actions block above). This is the occasional
                       correction path for the client's fiscal data. */}
-                  {log.clientResource?.client && (
+                  {!anulado && log.clientResource?.client && (
                     <DropdownMenuItem onClick={() => setBillingTarget(log)}>
                       <Receipt className="mr-2 h-3.5 w-3.5" />
                       Datos de facturación
                     </DropdownMenuItem>
                   )}
-                  {/* A paid or invoiced log is a financial/fiscal record —
-                      deletion is blocked (backend enforces too), and even an
-                      unpaid one needs the Eliminar privilege. */}
-                  {canDeleteLog && log.paymentStatus !== 'paid' && log.invoiceStatus === null && (
-                    <>
-                      <DropdownMenuSeparator />
-                      <DropdownMenuItem
-                        className="text-[var(--status-cancelled-fg)] focus:bg-[var(--status-cancelled-bg)] focus:text-[var(--status-cancelled-fg)]"
-                        onClick={() => handleDelete(log.id)}
-                      >
-                        <Trash2 className="mr-2 h-3.5 w-3.5" />
-                        Eliminar
-                      </DropdownMenuItem>
-                    </>
-                  )}
+                  {/* Anular vive en el detalle y no acá: mata el registro, y
+                      no puede estar a un clic en una lista donde el dedo va
+                      rápido. Eliminar ya no existe — borraba sin dejar rastro. */}
                 </DropdownMenuContent>
               </DropdownMenu>
             </div>

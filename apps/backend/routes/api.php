@@ -222,10 +222,13 @@ Route::prefix('v1')->group(function () {
             // Late payment registration — cashier marks a "cobrar al
             // retirar" service as paid + captures method + bank.
             Route::post('service-logs/{id}/payment', [ServiceLogController::class, 'recordPayment']);
-            // Deshacer un cobro entero. Sólo dueño o admin: quien cobra no se
+            // Revertir un cobro entero. Sólo dueño o admin: quien cobra no se
             // absuelve solo. El servicio queda, la plata vuelve a estar por
-            // cobrar. Ver ServiceLogController::voidPayment.
-            Route::delete('service-logs/{id}/payment', [ServiceLogController::class, 'voidPayment']);
+            // cobrar. Anular el registro es otra cosa: ver `cancel`.
+            Route::delete('service-logs/{id}/payment', [ServiceLogController::class, 'revertPayment']);
+            // Anular el registro entero: queda como historia, congelado y
+            // fuera de los totales. Reemplaza al borrado, que no dejaba nada.
+            Route::post('service-logs/{id}/cancel', [ServiceLogController::class, 'cancel']);
             // Billing: manually trigger invoice emission or re-emit a rejected one.
             Route::post('service-logs/{id}/invoice', [ServiceLogController::class, 'invoice']);
             // Billing: view / correct the client's fiscal profile used for

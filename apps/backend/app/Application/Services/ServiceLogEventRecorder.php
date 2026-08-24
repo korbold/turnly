@@ -94,19 +94,35 @@ class ServiceLogEventRecorder
     }
 
     /**
-     * Se deshizo el cobro entero. A diferencia de eliminar el registro —que
-     * es físico y no deja nada— anular deja quién, cuánto y cuándo: es plata
-     * que figuraba cobrada y dejó de estarlo.
+     * Se revirtió el cobro entero: el ticket volvió a estar por cobrar. No es
+     * lo mismo que anular el registro —eso mata el ticket—; acá sólo se
+     * deshace la plata, y queda quién, cuánto y cuándo.
      */
-    public function paymentVoided(
+    public function paymentReverted(
         ServiceLogModel $log,
         ?string $method,
         float $amount,
         ?string $actorId,
     ): void {
-        $this->write($log, ServiceLogEventModel::EVENT_PAYMENT_VOIDED, [
+        $this->write($log, ServiceLogEventModel::EVENT_PAYMENT_REVERTED, [
             'method' => $method,
             'amount' => $amount,
+        ], $actorId);
+    }
+
+    /**
+     * Se anuló el registro. Es el reemplazo de eliminar, que era físico y no
+     * dejaba nada: acá queda quién, cuándo y por qué.
+     */
+    public function logCancelled(
+        ServiceLogModel $log,
+        string $reason,
+        ?string $note,
+        ?string $actorId,
+    ): void {
+        $this->write($log, ServiceLogEventModel::EVENT_LOG_CANCELLED, [
+            'reason' => $reason,
+            'note'   => $note,
         ], $actorId);
     }
 

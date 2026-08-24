@@ -2,6 +2,7 @@
 
 namespace App\Infrastructure\Http\Resources;
 
+use App\Domain\ServiceLog\CancelReason;
 use Illuminate\Http\Request;
 use Illuminate\Http\Resources\Json\JsonResource;
 
@@ -42,6 +43,13 @@ class ServiceLogResource extends JsonResource
             'invoice_numero_autorizacion' => $this->invoice_numero_autorizacion,
             'invoice_error'               => $this->invoice_error,
             'status'         => $this->status,
+            // Anulado: la fila se sigue viendo en el día, marcada y fuera de
+            // los totales. El motivo va resuelto para que la lista no tenga
+            // que conocer la lista cerrada.
+            'cancelled_at'   => $this->cancelled_at?->toIso8601String(),
+            'cancel_reason_code'  => $this->cancel_reason_code,
+            'cancel_reason_label' => CancelReason::label($this->cancel_reason_code),
+            'cancel_reason_note'  => $this->cancel_reason_note,
             'notes'          => $this->notes,
             'log_date'       => $this->log_date,
             'created_at'     => $this->created_at?->toIso8601String(),

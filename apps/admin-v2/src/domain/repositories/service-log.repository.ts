@@ -123,8 +123,10 @@ export interface ServiceLogRepository {
       pendiente del día, que es el comportamiento histórico. */
   complete(id: string, leftOwing?: boolean): Promise<ServiceLog>;
   recordPayment(id: string, data: RecordPaymentData): Promise<ServiceLog>;
-  /** Deshace TODO lo cobrado del registro. Sólo dueño o admin. */
-  voidPayment(id: string): Promise<ServiceLog>;
+  /** Revierte TODO lo cobrado del registro. Sólo dueño o admin. */
+  revertPayment(id: string): Promise<ServiceLog>;
+  /** Anula el registro entero: queda como historia, fuera de los totales. */
+  cancel(id: string, reasonCode: string, reasonNote?: string): Promise<ServiceLog>;
   getSummary(date: string): Promise<DailySummary>;
   getBilling(id: string): Promise<ServiceLogBillingProfile>;
   updateBilling(id: string, data: ServiceLogBillingProfile): Promise<ServiceLogBillingProfile>;

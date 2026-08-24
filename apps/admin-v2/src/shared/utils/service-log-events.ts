@@ -1,3 +1,9 @@
+import { CANCEL_REASONS } from '@/shared/constants/cancel-reasons';
+
+const CANCEL_REASON_LABEL: Record<string, string> = Object.fromEntries(
+  CANCEL_REASONS.map((r) => [r.code, r.label]),
+);
+
 import type { ServiceLogEvent } from '@/domain/entities/service-log';
 import { REASON_LABEL } from '@/shared/constants/price-change-reasons';
 import { formatCurrency } from '@/shared/utils/format';
@@ -88,9 +94,15 @@ export function describeServiceLogEvent(event: ServiceLogEvent): string {
       return `Cobró ${money(d.amount)} · ${method}${bank}`;
     }
 
-    case 'payment_voided': {
+    case 'payment_reverted': {
       const method = METHOD_LABEL[String(d.method)] ?? String(d.method);
-      return `Anuló el cobro de ${money(d.amount)}${d.method ? ` · ${method}` : ''}`;
+      return `Revirtió el pago de ${money(d.amount)}${d.method ? ` · ${method}` : ''}`;
+    }
+
+    case 'log_cancelled': {
+      const motivo = CANCEL_REASON_LABEL[String(d.reason)] ?? 'Sin motivo';
+      const nota = typeof d.note === 'string' && d.note.trim() ? ` — ${d.note.trim()}` : '';
+      return `Anuló el registro · ${motivo}${nota}`;
     }
 
     case 'status_changed':

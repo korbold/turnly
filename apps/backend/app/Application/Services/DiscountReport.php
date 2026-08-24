@@ -51,6 +51,8 @@ class DiscountReport
     {
         $logs = ServiceLogModel::query()
             ->forTenant($tenantId)
+            // Un descuento sobre un ticket anulado no se regaló: no existió.
+            ->notCancelled()
             ->with(['items', 'attendant', 'clientResource'])
             ->whereBetween('log_date', [$from, $to])
             ->get();

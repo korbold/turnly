@@ -13,6 +13,8 @@ class ServiceLogModel extends Model
 
     protected $table = 'service_logs';
 
+    public const STATUS_CANCELLED = 'cancelled';
+
     protected $fillable = [
         'tenant_id', 'client_resource_id', 'service_id', 'service_variant_id', 'reservation_id',
         'attended_by', 'created_by', 'washed_by', 'dried_by', 'started_at', 'finished_at',
@@ -22,6 +24,7 @@ class ServiceLogModel extends Model
         'invoice_external_id', 'invoice_status', 'invoice_clave_acceso',
         'invoice_numero_autorizacion', 'invoice_error',
         'status', 'notes', 'log_date',
+        'cancelled_at', 'cancelled_by', 'cancel_reason_code', 'cancel_reason_note',
         'consumption_applied_at',
     ];
 
@@ -37,12 +40,23 @@ class ServiceLogModel extends Model
             'left_owing' => 'boolean',
             'invoiced' => 'boolean',
             'invoiced_at' => 'datetime',
+            'cancelled_at' => 'datetime',
         ];
     }
 
     public function variant()
     {
         return $this->belongsTo(ServiceVariantModel::class, 'service_variant_id');
+    }
+
+    /**
+     * Todo lo que cuenta como trabajo del día. Un registro anulado sigue
+     * existiendo —esa es la diferencia con borrarlo— pero no suma en ingresos,
+     * ni en el conteo, ni en los reportes.
+     */
+    public function scopeNotCancelled($query)
+    {
+        return $query->where('status', '!=', self::STATUS_CANCELLED);
     }
 
     public function items()

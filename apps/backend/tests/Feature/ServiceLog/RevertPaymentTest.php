@@ -1,13 +1,16 @@
 <?php
-// apps/backend/tests/Feature/ServiceLog/VoidPaymentTest.php
+// apps/backend/tests/Feature/ServiceLog/RevertPaymentTest.php
 //
-// Anular el cobro de un registro. El caso que lo pidió: el cajero apretó
+// Revertir el cobro de un registro. El caso que lo pidió: el cajero apretó
 // "Cobrar ahora" por error y el ticket tenía que quedar por cobrar. Borrar el
 // registro entero y volver a cargarlo pierde la hora, la bitácora y el
 // vehículo; lo único que está mal es que la plata figure cobrada.
 //
-// Anula TODO lo cobrado del ticket, nunca una parte: si hubo dos abonos de $5,
-// se van los dos y el registro vuelve a deber el total.
+// Revierte TODO lo cobrado del ticket, nunca una parte: si hubo dos abonos de
+// $5, se van los dos y el registro vuelve a deber el total.
+//
+// No confundir con anular el registro (CancelServiceLogTest): eso mata el
+// ticket entero. Acá el servicio sigue vivo, sólo vuelve a estar por cobrar.
 
 use App\Infrastructure\Persistence\Models\CashSessionModel;
 use App\Infrastructure\Persistence\Models\ClientResourceModel;
@@ -79,7 +82,7 @@ beforeEach(function () {
     $this->as = fn (UserModel $u) => $this->actingAs($u)->withHeader('X-Tenant', $this->tenant->slug);
 });
 
-test('the owner voids the charge and the ticket goes back to pending', function () {
+test('the owner reverts the charge and the ticket goes back to pending', function () {
     $log = ($this->log)();
     ($this->cobro)($log, 15, ($this->session)('open'));
 
@@ -96,8 +99,8 @@ test('the owner voids the charge and the ticket goes back to pending', function 
     expect($log->status)->toBe('completed');
 });
 
-test('voiding clears every payment of the ticket, not just one', function () {
-    // Lo que pidió el usuario con todas las letras: hoy se anuló $5 y los
+test('reverting clears every payment of the ticket, not just one', function () {
+    // Lo que pidió el usuario con todas las letras: se revirtió $5 y los
     // otros $5 seguían sumando.
     $log = ($this->log)(['price_charged' => 10, 'payment_status' => 'paid']);
     $session = ($this->session)('open');
@@ -112,7 +115,7 @@ test('voiding clears every payment of the ticket, not just one', function () {
     expect(PaymentModel::withoutGlobalScopes()->count())->toBe(0);
 });
 
-test('the trail records who voided it and how much', function () {
+test('the trail records who reverted it and how much', function () {
     $log = ($this->log)();
     ($this->cobro)($log, 15, ($this->session)('open'));
 
@@ -122,7 +125,7 @@ test('the trail records who voided it and how much', function () {
 
     $evento = ServiceLogEventModel::withoutGlobalScopes()
         ->where('service_log_id', $log->id)
-        ->where('event', 'payment_voided')
+        ->where('event', 'payment_reverted')
         ->first();
 
     expect($evento)->not->toBeNull();
@@ -130,7 +133,7 @@ test('the trail records who voided it and how much', function () {
     expect($evento->changed_by_user_id)->toBe($this->owner->id);
 });
 
-test('a cashier cannot void a charge', function () {
+test('a cashier cannot revert a charge', function () {
     // Quien cobra no se absuelve solo: es la misma regla del reporte de
     // descuentos y de corregir asignados después de completar.
     $log = ($this->log)();
@@ -144,7 +147,7 @@ test('a cashier cannot void a charge', function () {
     expect(PaymentModel::withoutGlobalScopes()->count())->toBe(1);
 });
 
-test('an invoiced ticket cannot be voided', function () {
+test('an invoiced ticket cannot be reverted', function () {
     // Una factura autorizada se corrige con nota de crédito, nunca borrando
     // el cobro por atrás.
     $log = ($this->log)(['invoice_status' => 'AUTORIZADO']);
@@ -158,7 +161,7 @@ test('an invoiced ticket cannot be voided', function () {
     expect(PaymentModel::withoutGlobalScopes()->count())->toBe(1);
 });
 
-test('a charge that landed in a closed caja cannot be voided', function () {
+test('a charge that landed in a closed caja cannot be reverted', function () {
     $log = ($this->log)();
     ($this->cobro)($log, 15, ($this->session)('closed'));
 
@@ -170,7 +173,7 @@ test('a charge that landed in a closed caja cannot be voided', function () {
     expect(PaymentModel::withoutGlobalScopes()->count())->toBe(1);
 });
 
-test('there is nothing to void on an unpaid ticket', function () {
+test('there is nothing to revert on an unpaid ticket', function () {
     $log = ($this->log)(['payment_status' => 'unpaid']);
 
     ($this->as)($this->owner)
@@ -179,8 +182,8 @@ test('there is nothing to void on an unpaid ticket', function () {
         ->assertJsonPath('error.code', 'NOTHING_TO_VOID');
 });
 
-test('voiding does not put the sold products back on the shelf', function () {
-    // Anular el cobro no cancela la venta: el ambientador está en el auto del
+test('reverting does not put the sold products back on the shelf', function () {
+    // Revertir el cobro no cancela la venta: el ambientador está en el auto del
     // cliente, no en la estantería. Devolverlo al stock lo contaría dos veces.
     $log = ($this->log)();
     $product = ProductModel::create([
