@@ -1,6 +1,12 @@
 'use client';
 
 import { useState, Suspense } from 'react';
+import {
+  clientNameOf,
+  contactEmailOf,
+  plateOf,
+  vehicleInfoOf,
+} from '@/shared/utils/client-resource';
 import { useParams, useRouter } from 'next/navigation';
 import { format, formatDistanceToNow } from 'date-fns';
 import { es } from 'date-fns/locale';
@@ -40,10 +46,6 @@ function getInitials(text: string | null | undefined): string {
     .slice(0, 2)
     .join('')
     .toUpperCase();
-}
-
-function isSyntheticEmail(email: string | undefined | null): boolean {
-  return !!email && /@client\.local$/i.test(email);
 }
 
 function ClientDetailContent() {
@@ -109,11 +111,14 @@ function ClientDetailContent() {
     );
   }
 
-  const hasPlate = !!client.plate;
-  const clientName = client.client?.name ?? null;
-  const primary = hasPlate ? client.plate! : clientName ?? client.label ?? 'Sin identificar';
-  const realEmail = !isSyntheticEmail(client.client?.email) ? client.client?.email : null;
-  const vehicleChips = [client.brand, client.model, client.color, client.type].filter(Boolean);
+  // Mismas dos trampas que en la lista: las columnas están vacías en prod y
+  // el usuario ligado puede ser la cajera. Ver `shared/utils/client-resource`.
+  const plate = plateOf(client);
+  const hasPlate = !!plate;
+  const clientName = clientNameOf(client);
+  const primary = hasPlate ? plate : clientName ?? client.label ?? 'Sin identificar';
+  const realEmail = contactEmailOf(client);
+  const vehicleChips = [...vehicleInfoOf(client), client.type].filter(Boolean);
 
   return (
     <div className="space-y-4">
@@ -153,7 +158,7 @@ function ClientDetailContent() {
                 className="mt-1 text-[14px] font-semibold tabular-nums text-[var(--fg-secondary)]"
                 style={{ fontFamily: 'var(--font-mono)' }}
               >
-                {client.plate}
+                {plate}
               </p>
             )}
             {realEmail && (

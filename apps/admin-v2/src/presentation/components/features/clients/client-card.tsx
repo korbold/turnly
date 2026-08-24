@@ -6,6 +6,13 @@ import { es } from 'date-fns/locale';
 import { ChevronRight, Star, Wallet } from 'lucide-react';
 import { Avatar, AvatarFallback } from '@/presentation/components/ui/avatar';
 import { formatCounterCurrency } from '@/shared/utils/format';
+import {
+  clientNameOf,
+  contactEmailOf,
+  phoneOf,
+  plateOf,
+  vehicleInfoOf,
+} from '@/shared/utils/client-resource';
 import type { ClientResource } from '@/domain/entities/client-resource';
 
 interface ClientCardProps {
@@ -29,57 +36,14 @@ function getInitials(text: string | null | undefined): string {
     .toUpperCase();
 }
 
-function pickPhone(data: Record<string, unknown> | null): string | null {
-  return pickField(data, /(tel|phone|cel|whats)/i);
-}
-
-/**
- * Un campo de `data` por patrón de clave. Las claves son los campos
- * personalizados del tenant, así que se buscan por patrón y no por nombre
- * exacto: un tenant guarda "plate" y otro podría guardar "placa".
- */
-function pickField(data: Record<string, unknown> | null, key: RegExp): string | null {
-  if (!data) return null;
-  for (const k of Object.keys(data)) {
-    if (key.test(k)) {
-      const v = data[k];
-      if (typeof v === 'string' && v.trim()) return v.trim();
-    }
-  }
-  return null;
-}
-
-/**
- * La columna primero, `data` después. Las columnas denormalizadas
- * (plate/brand/model/color) sólo las llena el formulario del admin; el
- * mostrador crea el recurso con los campos dentro de `data` y las deja en
- * null — en producción están vacías en las 268 filas. Leer sólo la columna
- * dejaba la fila sin placa y sin vehículo, que es justo lo que identifica al
- * cliente en una lavadora.
- */
-function column(value: string | null | undefined, data: Record<string, unknown> | null, key: RegExp): string | null {
-  if (value && value.trim()) return value.trim();
-  return pickField(data, key);
-}
-
-function isSyntheticEmail(email: string | undefined | null): boolean {
-  return !!email && /@client\.local$/i.test(email);
-}
-
 export function ClientCard({ client, index = 0 }: ClientCardProps) {
-  const plate = column(client.plate, client.data, /^(plate|placa)$/i);
+  const plate = plateOf(client);
   const hasPlate = !!plate;
-  const clientName = client.client?.name ?? pickField(client.data, /^(nombre|name)$/i);
-  const primary = hasPlate ? plate! : clientName ?? client.label ?? 'Sin identificar';
-  const vehicleInfo = [
-    column(client.brand, client.data, /^(brand|marca)$/i),
-    column(client.model, client.data, /^(model|modelo)$/i),
-    column(client.color, client.data, /^color$/i),
-  ]
-    .filter(Boolean)
-    .join(' · ');
-  const phone = pickPhone(client.data);
-  const realEmail = !isSyntheticEmail(client.client?.email) ? client.client?.email : null;
+  const clientName = clientNameOf(client);
+  const primary = hasPlate ? plate : clientName ?? client.label ?? 'Sin identificar';
+  const vehicleInfo = vehicleInfoOf(client).join(' · ');
+  const phone = phoneOf(client);
+  const realEmail = contactEmailOf(client);
 
   const secondary = hasPlate
     ? clientName ?? (vehicleInfo || phone || realEmail || null)
