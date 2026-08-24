@@ -133,8 +133,11 @@ class MergeDuplicatePlates extends Command
                 || Plate::isPlaceholder($placa)
                 || $filas->count() < 2
                 // Dueños distintos no es un duplicado: es una transferencia, y
-                // la decide una persona mirando el caso.
-                || $filas->pluck('client_id')->unique()->count() > 1);
+                // la decide una persona mirando el caso. Un `client_id` nulo
+                // no cuenta como dueño en conflicto: es información que falta
+                // —el alta no pudo deducir el nombre y dejó el vehículo sin
+                // dueño— y al fusionar se adopta el que sí se conoce.
+                || $filas->pluck('client_id')->filter()->unique()->count() > 1);
     }
 
     /** @param array<int, string> $ids */
@@ -173,6 +176,15 @@ class MergeDuplicatePlates extends Command
                 ->whereIn('client_resource_id', $ids)
                 ->update(['client_resource_id' => $sobreviviente->id]);
 
+            // Si la sobreviviente quedó sin dueño y alguna copia sí lo tiene,
+            // lo adopta: el vehículo no puede terminar la fusión huérfano.
+            if ($sobreviviente->client_id === null) {
+                $dueno = $absorbidas->pluck('client_id')->filter()->first();
+                if ($dueno) {
+                    $sobreviviente->client_id = $dueno;
+                }
+            }
+
             // Lo que la sobreviviente no tenga y las otras sí. La marca o el
             // color pueden haber quedado en la copia que se borra.
             $data = $sobreviviente->data ?? [];
@@ -184,7 +196,10 @@ class MergeDuplicatePlates extends Command
                     }
                 }
             }
-            $sobreviviente->forceFill(['data' => $data])->save();
+            $sobreviviente->forceFill([
+                'data'      => $data,
+                'client_id' => $sobreviviente->client_id,
+            ])->save();
 
             ClientResourceModel::withoutGlobalScopes()->whereIn('id', $ids)->delete();
         });

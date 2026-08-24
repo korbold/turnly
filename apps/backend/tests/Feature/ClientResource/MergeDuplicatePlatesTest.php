@@ -139,6 +139,22 @@ test('two different owners are not a duplicate', function () {
     expect(ClientResourceModel::count())->toBe(2);
 });
 
+test('an unowned copy is still a duplicate, and the owner is adopted', function () {
+    // Pasa en producción: el alta no pudo deducir el nombre y dejó el
+    // vehículo sin dueño, y la segunda copia quedó colgada de la cajera. Un
+    // `client_id` nulo es información que falta, no un dueño en conflicto.
+    $vieja = ($this->recurso)('POB581', [], null, now()->subDays(6));
+    $vieja->forceFill(['client_id' => null])->saveQuietly();
+    ($this->recurso)('POB581', [], $this->dueno->id, now());
+
+    $this->artisan('clients:merge-duplicate-plates', ['--tenant' => $this->tenant->slug]);
+
+    expect(ClientResourceModel::count())->toBe(1);
+    $queda = ClientResourceModel::first();
+    expect($queda->id)->toBe($vieja->id);
+    expect($queda->client_id)->toBe($this->dueno->id);
+});
+
 test('the dry run changes nothing', function () {
     $vieja = ($this->recurso)('IBA8563', [], null, now()->subDay());
     $nueva = ($this->recurso)('IBA8563', [], null, now());
