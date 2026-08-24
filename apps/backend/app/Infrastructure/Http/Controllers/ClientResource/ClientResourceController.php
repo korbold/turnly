@@ -6,6 +6,7 @@ use App\Application\DTOs\ClientResource\CreateClientResourceDTO;
 use App\Application\UseCases\ClientResource\CreateClientResourceUseCase;
 use App\Application\UseCases\ClientResource\GetClientResourceHistoryUseCase;
 use App\Domain\Identity\EcuadorIdValidator;
+use App\Domain\ClientResource\Plate;
 use App\Infrastructure\Http\Controllers\Controller;
 use App\Infrastructure\Http\Requests\ClientResource\CreateClientResourceRequest;
 use App\Infrastructure\Http\Resources\ClientResourceResource;
@@ -25,6 +26,37 @@ class ClientResourceController extends Controller
         private CreateClientResourceUseCase $createClientResource,
         private GetClientResourceHistoryUseCase $getClientResourceHistory,
     ) {}
+
+    /**
+     * El recurso del tenant que ya tiene esta placa, o null.
+     *
+     * Se compara normalizado (sin guiones ni espacios, en mayúsculas) porque
+     * el cajero escribe con el auto adelante. Y se recorre en PHP en vez de
+     * en SQL porque la placa vive dentro de `data`, cuyas claves son campos
+     * personalizados por tenant —uno guarda "plate" y otro "placa"—: son unos
+     * cientos de filas por tenant y una consulta por alta.
+     */
+    private function plateOwner(string $tenantId, ?string $plate): ?ClientResourceModel
+    {
+        if ($plate === null || Plate::isPlaceholder($plate)) {
+            return null;
+        }
+
+        $buscada = Plate::normalize($plate);
+
+        return ClientResourceModel::query()
+            ->forTenant($tenantId)
+            ->get(['id', 'client_id', 'data'])
+            ->first(fn ($r) => Plate::normalize(Plate::fromData($r->data)) === $buscada);
+    }
+
+    /** El nombre tecleado gana sobre el del usuario ligado: en un walk-in ese
+     *  usuario puede ser la cajera. */
+    private function resourceClientName(ClientResourceModel $resource): ?string
+    {
+        return $this->extractClientName($resource->data ?? [])
+            ?? $resource->client?->name;
+    }
 
     public function index(Request $request)
     {
@@ -105,6 +137,27 @@ class ClientResourceController extends Controller
     {
         $data = $request->data ?? [];
         $tenantId = app('current_tenant_id');
+
+        // La misma placa no puede entrar dos veces. El formulario ya
+        // consultaba `lookup`, pero buscaba en la columna `plate` —que nadie
+        // llena— y siempre contestaba que no existía: en producción la misma
+        // placa quedó cargada hasta cuatro veces, con su historial y su deuda
+        // partidos. Acá se cierra del lado que no se puede saltear.
+        if ($ya = $this->plateOwner($tenantId, Plate::fromData($data))) {
+            return response()->json([
+                'error' => [
+                    'code'     => 'DUPLICATE_PLATE',
+                    'message'  => 'Esa placa ya está registrada. Usá el vehículo que ya existe.',
+                    // Para que el mostrador pueda elegirlo en vez de quedarse
+                    // con un "no se puede" que no dice qué hacer.
+                    'existing' => [
+                        'id'          => $ya->id,
+                        'label'       => ClientResourceResource::labelFrom($ya->data),
+                        'client_name' => $this->resourceClientName($ya),
+                    ],
+                ],
+            ], 422);
+        }
 
         $clientId = $request->client_id;
 

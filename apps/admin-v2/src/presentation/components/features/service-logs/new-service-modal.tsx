@@ -24,10 +24,11 @@ import {
 } from '@/presentation/components/ui/select';
 import { Skeleton } from '@/presentation/components/ui/skeleton';
 import { cn } from '@/shared/utils/cn';
-import { apiErrorMessage } from '@/shared/utils/api-error';
+import { apiErrorCode, apiErrorMessage } from '@/shared/utils/api-error';
 import { useServices } from '@/presentation/hooks/use-services';
 import { useProducts } from '@/presentation/hooks/use-products';
 import { useClients, useCreateClient } from '@/presentation/hooks/use-clients';
+import { useRepository } from '@/infrastructure/providers/repository.provider';
 import { useSettings } from '@/presentation/hooks/use-settings';
 import { useMe } from '@/presentation/hooks/use-auth';
 import { usePermissions } from '@/presentation/hooks/use-permissions';
@@ -361,6 +362,7 @@ export function NewServiceModal({ open, onClose, embedded = false }: NewServiceM
   const [driedBy, setDriedBy] = useState('');
   const createMutation = useCreateServiceLog();
   const createClient = useCreateClient();
+  const clientResourceRepo = useRepository('clientResource');
 
   const tenantCustomFields = settings?.customFields ?? [];
   const businessType = settings?.businessType ?? null;
@@ -466,8 +468,34 @@ export function NewServiceModal({ open, onClose, embedded = false }: NewServiceM
       setWalkInClientName('');
       setClientSearch('');
       toast.success('Registro creado');
-    } catch {
-      toast.error('No se pudo crear');
+    } catch (e) {
+      // La placa ya existe. El cajero quería ESE vehículo, así que se lo
+      // damos: el backend devuelve cuál es, y se selecciona solo. Tragarse el
+      // mensaje con un "No se pudo crear" lo dejaba trabado sin saber por qué.
+      if (apiErrorCode(e) === 'DUPLICATE_PLATE') {
+        const existente = (e as {
+          details?: { existing?: { id: string; label?: string; client_name?: string } };
+        })?.details?.existing;
+
+        if (existente?.id) {
+          try {
+            const ya = await clientResourceRepo.getById(existente.id);
+            setSelectedClientResourceId(ya.id);
+            setSelectedClientResource(ya);
+            setShowCustomForm(false);
+            setCustomFieldValues({});
+            setWalkInClientName('');
+            setClientSearch('');
+            toast.success(
+              `Esa placa ya estaba registrada${existente.client_name ? ` a nombre de ${existente.client_name}` : ''}. La seleccioné.`,
+            );
+            return;
+          } catch {
+            // Si no se puede traer, al menos que lea el motivo real.
+          }
+        }
+      }
+      toast.error(apiErrorMessage(e, 'No se pudo crear'));
     }
   }
 

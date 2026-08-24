@@ -121,6 +121,10 @@ Route::prefix('v1')->group(function () {
 
             Route::get('client-resources', [ClientResourceController::class, 'index']);
             Route::post('client-resources', [ClientResourceController::class, 'store']);
+            // Antes de `{id}`, o Laravel matchea "lookup" como si fuera un id
+            // y devuelve 404. Así estuvo: el aviso de placa duplicada del
+            // formulario nunca llegó a ejecutarse.
+            Route::get('client-resources/lookup', [ClientResourceLookupController::class, 'lookup']);
             Route::get('client-resources/{id}', [ClientResourceController::class, 'show']);
             Route::patch('client-resources/{id}', [ClientResourceController::class, 'update']);
             Route::delete('client-resources/{id}', [ClientResourceController::class, 'destroy']);
@@ -303,8 +307,6 @@ Route::prefix('v1')->group(function () {
             Route::post('clients/{id}/link-to-tenant', [ClientSearchController::class, 'linkToTenant']);
             Route::post('clients/{id}/invite-app', [ClaimController::class, 'inviteToApp']);
 
-            // Dedup placa lookup + transfer.
-            Route::get('client-resources/lookup', [ClientResourceLookupController::class, 'lookup']);
             Route::post('client-resources/{id}/transfer', [ClientResourceLookupController::class, 'transfer']);
 
             // Reports

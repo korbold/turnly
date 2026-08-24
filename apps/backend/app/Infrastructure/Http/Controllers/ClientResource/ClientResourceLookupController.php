@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Infrastructure\Http\Controllers\ClientResource;
 
+use App\Domain\ClientResource\Plate;
 use App\Infrastructure\Http\Controllers\Controller;
 use App\Infrastructure\Persistence\Models\ClientResourceModel;
 use App\Infrastructure\Persistence\Models\UserModel;
@@ -22,16 +23,23 @@ class ClientResourceLookupController extends Controller
 {
     public function lookup(Request $request): JsonResponse
     {
-        $plate = strtoupper(trim((string) $request->input('plate', '')));
+        $plate = trim((string) $request->input('plate', ''));
         if ($plate === '') {
             return response()->json(['data' => null]);
         }
 
+        // La placa vive dentro de `data`, no en la columna: `save()` nunca
+        // llenó `plate` y en producción está NULL en todas las filas, así que
+        // este lookup —el que el formulario usa para avisar "esa placa ya
+        // existe"— siempre contestaba que no. Se compara normalizado porque
+        // el cajero escribe "IBD-9115" o "ibd 9115" según el día.
+        $buscada = Plate::normalize($plate);
+
         $resource = ClientResourceModel::query()
             ->forTenant(app('current_tenant_id'))
-            ->where('plate', $plate)
             ->with('client:id,name,phone,email')
-            ->first();
+            ->get()
+            ->first(fn ($r) => Plate::normalize(Plate::fromData($r->data)) === $buscada);
 
         if (!$resource) {
             return response()->json(['data' => null]);
@@ -40,7 +48,7 @@ class ClientResourceLookupController extends Controller
         return response()->json([
             'data' => [
                 'id'         => $resource->id,
-                'plate'      => $resource->plate,
+                'plate'      => Plate::fromData($resource->data) ?? $resource->plate,
                 'brand'      => $resource->brand,
                 'model'      => $resource->model,
                 'color'      => $resource->color,

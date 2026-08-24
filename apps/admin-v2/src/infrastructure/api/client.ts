@@ -49,7 +49,12 @@ api.interceptors.response.use(
       data?.error?.message ?? data?.message ?? error.message ?? 'Error inesperado';
     const code = data?.error?.code ?? null;
     const fieldErrors = data?.errors ?? null;
-    return Promise.reject({ message, code, fieldErrors, status: error.response?.status });
+    // El cuerpo entero del error, no sólo su mensaje: hay respuestas que
+    // traen con qué actuar. `DUPLICATE_PLATE` devuelve cuál es el vehículo
+    // que ya existe para poder seleccionarlo, y aplanar a {message, code} lo
+    // tiraba a la basura.
+    const details = data?.error ?? null;
+    return Promise.reject({ message, code, fieldErrors, details, status: error.response?.status });
   },
 );
 

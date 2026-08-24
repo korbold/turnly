@@ -105,19 +105,24 @@ test('can show client resource detail', function () {
 });
 
 test('cannot create duplicate plate in same tenant', function () {
+    // La placa viaja dentro de `data` —son campos personalizados por tenant—
+    // y no en la columna `plate`, que el repositorio nunca persiste. Este test
+    // apuntaba a la columna y por eso pasó años en rojo mientras la misma
+    // placa se cargaba cuatro veces en producción.
     ClientResourceModel::factory()->create([
         'tenant_id' => $this->tenant->id,
         'client_id' => $this->user->id,
-        'plate' => 'PBA-1234',
+        'data' => ['plate' => 'PBA-1234'],
     ]);
 
     $response = $this->actingAs($this->user)
         ->withHeader('X-Tenant', $this->tenant->slug)
         ->postJson('/api/v1/client-resources', [
-            'plate' => 'PBA-1234',
+            'data' => ['plate' => 'PBA-1234'],
         ]);
 
-    $response->assertStatus(422);
+    $response->assertStatus(422)
+        ->assertJsonPath('error.code', 'DUPLICATE_PLATE');
 });
 
 test('can get client resource service history', function () {
