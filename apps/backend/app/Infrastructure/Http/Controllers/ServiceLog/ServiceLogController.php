@@ -1051,6 +1051,90 @@ class ServiceLogController extends Controller
     }
 
     /**
+     * Deshace el cobro de un registro: el servicio queda, la plata vuelve a
+     * estar por cobrar.
+     *
+     * Existe porque la alternativa era borrar el ticket y volver a cargarlo,
+     * que pierde la hora real, el vehículo y la bitácora cuando lo único que
+     * estaba mal era que el cobro figurara hecho — el caso del cajero que
+     * apretó "Cobrar ahora" de más.
+     *
+     * Anula TODO lo cobrado del ticket, nunca una parte: media anulación deja
+     * la otra mitad sumando en la caja y nadie la ve.
+     *
+     * No devuelve stock a propósito. Anular el cobro no cancela la venta: el
+     * producto está en el auto del cliente, no en la estantería. Devolverlo lo
+     * contaría dos veces. Eso es `destroy()`, donde el ticket desaparece.
+     */
+    public function voidPayment(Request $request, string $id): JsonResponse|ServiceLogResource
+    {
+        $log = ServiceLogModel::findOrFail($id);
+
+        // No es un privilegio de la matriz: es la pregunta "¿quién puede
+        // perdonarse a sí mismo un cobro?", y la respuesta no puede quedar
+        // configurable por quien cobra. Mismo criterio que el reporte de
+        // descuentos y que corregir asignados después de completar.
+        $rol = $this->tenantRole($request);
+        if (!$request->user()?->is_super_admin && !in_array($rol, ['owner', 'tenant_admin'], true)) {
+            return response()->json([
+                'error' => [
+                    'code'    => 'FORBIDDEN',
+                    'message' => 'Sólo el dueño o un administrador pueden anular un cobro.',
+                ],
+            ], 403);
+        }
+
+        if ($log->invoice_status !== null) {
+            return response()->json([
+                'error' => [
+                    'code'    => 'PAYMENT_LOCKED',
+                    'message' => 'Este registro ya se facturó: el cobro se corrige con una nota de crédito.',
+                ],
+            ], 422);
+        }
+
+        $pagos = $this->paymentsOf($log);
+
+        if ($pagos->isEmpty()) {
+            return response()->json([
+                'error' => [
+                    'code'    => 'NOTHING_TO_VOID',
+                    'message' => 'Este registro no tiene ningún cobro que anular.',
+                ],
+            ], 422);
+        }
+
+        // Un arqueo firmado no se reescribe: el dueño ya comparó ese número
+        // contra billetes de verdad.
+        if ($pagos->contains(fn ($p) => $p->cashSession?->status === 'closed')) {
+            return response()->json([
+                'error' => [
+                    'code'    => 'PAYMENT_LOCKED',
+                    'message' => 'Este cobro entró en una caja ya cerrada: no se puede anular.',
+                ],
+            ], 422);
+        }
+
+        $total  = round((float) $pagos->sum('amount'), 2);
+        $metodo = $pagos->last()?->method;
+
+        \Illuminate\Support\Facades\DB::transaction(function () use ($pagos, $log, $total, $metodo, $request) {
+            PaymentAllocationModel::whereIn('payment_id', $pagos->pluck('id'))->delete();
+            PaymentModel::whereIn('id', $pagos->pluck('id'))->delete();
+
+            // El estado sale del libro, no de una asignación a mano: sin pagos
+            // el ledger devuelve 'unpaid' y limpia método, banco y fecha.
+            $this->ledger->syncLogPaymentState($log);
+
+            $this->events->paymentVoided($log, $metodo, $total, $request->user()?->id);
+        });
+
+        return new ServiceLogResource(
+            $log->fresh(['clientResource.client', 'service', 'attendant', 'items.variant', 'washer', 'dryer'])
+        );
+    }
+
+    /**
      * Records the moment + method a customer paid for a service log
      * that was registered as "cobrar al retirar". Mirrors the reserva
      * payment endpoint shape so the admin uses the same modal.

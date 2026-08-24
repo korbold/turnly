@@ -96,6 +96,11 @@ export class ApiServiceLogRepository implements ServiceLogRepository {
     return mapServiceLog(res.data);
   }
 
+  async voidPayment(id: string): Promise<ServiceLog> {
+    const { data: res } = await api.delete(`/service-logs/${id}/payment`);
+    return mapServiceLog(res.data);
+  }
+
   async update(id: string, data: UpdateServiceLogData): Promise<ServiceLog> {
     const body: Record<string, unknown> = {};
     if (data.serviceId !== undefined) body.service_id = data.serviceId;

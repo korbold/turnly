@@ -88,6 +88,11 @@ export function describeServiceLogEvent(event: ServiceLogEvent): string {
       return `Cobró ${money(d.amount)} · ${method}${bank}`;
     }
 
+    case 'payment_voided': {
+      const method = METHOD_LABEL[String(d.method)] ?? String(d.method);
+      return `Anuló el cobro de ${money(d.amount)}${d.method ? ` · ${method}` : ''}`;
+    }
+
     case 'status_changed':
       return d.to === 'completed' ? 'Completó el servicio' : `Estado: ${String(d.to)}`;
 

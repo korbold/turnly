@@ -94,6 +94,23 @@ class ServiceLogEventRecorder
     }
 
     /**
+     * Se deshizo el cobro entero. A diferencia de eliminar el registro —que
+     * es físico y no deja nada— anular deja quién, cuánto y cuándo: es plata
+     * que figuraba cobrada y dejó de estarlo.
+     */
+    public function paymentVoided(
+        ServiceLogModel $log,
+        ?string $method,
+        float $amount,
+        ?string $actorId,
+    ): void {
+        $this->write($log, ServiceLogEventModel::EVENT_PAYMENT_VOIDED, [
+            'method' => $method,
+            'amount' => $amount,
+        ], $actorId);
+    }
+
+    /**
      * El cliente se fue con el saldo pendiente. Sin este evento, la fila y la
      * lista de deudores dicen que debe pero nadie puede reconstruir quién lo
      * dejó salir ni cuándo.

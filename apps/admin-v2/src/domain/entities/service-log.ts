@@ -62,6 +62,7 @@ export interface ServiceLogEvent {
     | 'price_changed'
     | 'log_updated'
     | 'payment_recorded'
+    | 'payment_voided'
     | 'status_changed'
     | 'invoice_requested'
     | 'invoice_status_changed';

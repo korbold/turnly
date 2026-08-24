@@ -17,6 +17,7 @@ import {
   Car,
   User as UserIcon,
   Clock,
+  Undo2,
 } from 'lucide-react';
 import { Button } from '@/presentation/components/ui/button';
 import { Badge } from '@/presentation/components/ui/badge';
@@ -26,6 +27,7 @@ import { apiErrorCode, apiErrorMessage } from '@/shared/utils/api-error';
 import {
   useServiceLog,
   useCompleteServiceLog,
+  useVoidServiceLogPayment,
 } from '@/presentation/hooks/use-service-logs';
 import { useEmitInvoice } from '@/presentation/hooks/use-invoices';
 import { usePermissions } from '@/presentation/hooks/use-permissions';
@@ -74,13 +76,14 @@ function ServiceLogDetail({ id }: { id: string }) {
   const completeMutation = useCompleteServiceLog();
   const emitMutation = useEmitInvoice();
 
+  const voidMutation = useVoidServiceLogPayment();
   const [payOpen, setPayOpen] = useState(false);
   const [editOpen, setEditOpen] = useState(false);
   const [billingOpen, setBillingOpen] = useState(false);
   const [assignOpen, setAssignOpen] = useState(false);
   // Abierto desde Completar: exige ambos y completa al guardar.
   const [assignToComplete, setAssignToComplete] = useState(false);
-  const { canAssign } = usePermissions();
+  const { canAssign, isOwnerOrAdmin } = usePermissions();
   const { data: settings } = useSettings();
   const isCarWash = settings?.businessType === 'car_wash';
 
@@ -321,6 +324,28 @@ function ServiceLogDetail({ id }: { id: string }) {
             {log.paymentBank && <Row label="Banco" value={log.paymentBank} />}
             {log.paidAt && (
               <Row label="Fecha de pago" value={format(new Date(log.paidAt), "d MMM yyyy, HH:mm", { locale: es })} />
+            )}
+
+            {/* Anular vive acá y no en el menú de la fila: deshacer plata no
+                puede estar a un clic en una lista donde el dedo va rápido.
+                Sólo dueño o admin —el backend lo exige igual— y nunca sobre
+                algo facturado, que se corrige con nota de crédito. */}
+            {!isUnpaid && isOwnerOrAdmin && log.invoiceStatus === null && (
+              <button
+                type="button"
+                onClick={() => {
+                  if (!confirm('¿Anular el cobro de este registro? El servicio queda, pero vuelve a estar por cobrar.')) return;
+                  voidMutation.mutate(log.id, {
+                    onSuccess: () => toast.success('Cobro anulado. El registro quedó por cobrar.'),
+                    onError: (e) => toast.error(apiErrorMessage(e, 'No se pudo anular el cobro')),
+                  });
+                }}
+                disabled={voidMutation.isPending}
+                className="mt-2 inline-flex items-center gap-1.5 text-[12.5px] font-medium text-[var(--danger-700)] hover:underline disabled:opacity-60"
+              >
+                <Undo2 className="h-3.5 w-3.5" aria-hidden="true" />
+                {voidMutation.isPending ? 'Anulando…' : 'Anular cobro'}
+              </button>
             )}
           </Card>
 

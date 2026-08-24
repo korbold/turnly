@@ -27,6 +27,8 @@ class ServiceLogEventModel extends Model
     public const EVENT_ITEMS_CHANGED          = 'items_changed';
     public const EVENT_LOG_UPDATED            = 'log_updated';
     public const EVENT_PAYMENT_RECORDED       = 'payment_recorded';
+    /** El cobro se deshizo entero: el ticket volvió a estar por cobrar. */
+    public const EVENT_PAYMENT_VOIDED         = 'payment_voided';
     public const EVENT_STATUS_CHANGED         = 'status_changed';
     /** Se llevó el vehículo debiendo. Es lo que separa deuda de olvido. */
     public const EVENT_LEFT_OWING             = 'left_owing';

@@ -8,6 +8,7 @@ import { UpdateServiceLogUseCase } from '@/application/use-cases/service-logs/up
 import { DeleteServiceLogUseCase } from '@/application/use-cases/service-logs/delete-service-log.use-case';
 import { CompleteServiceLogUseCase } from '@/application/use-cases/service-logs/complete-service-log.use-case';
 import { RecordServiceLogPaymentUseCase } from '@/application/use-cases/service-logs/record-service-log-payment.use-case';
+import { VoidServiceLogPaymentUseCase } from '@/application/use-cases/service-logs/void-service-log-payment.use-case';
 import { GetDailySummaryUseCase } from '@/application/use-cases/service-logs/get-daily-summary.use-case';
 import { UpdateServiceLogItemsUseCase } from '@/application/use-cases/service-logs/update-service-log-items.use-case';
 import type { ServiceLogFilters } from '@/domain/entities/service-log';
@@ -127,6 +128,20 @@ export function useRecordServiceLogPayment() {
       new RecordServiceLogPaymentUseCase(repo).execute(id, data),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['service-logs'] });
+    },
+  });
+}
+
+export function useVoidServiceLogPayment() {
+  const repo = useRepository('serviceLog');
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (id: string) => new VoidServiceLogPaymentUseCase(repo).execute(id),
+    onSuccess: () => {
+      // La caja del día cambia con esto: sin invalidarla, el cajón sigue
+      // mostrando plata que acaba de dejar de estar cobrada.
+      queryClient.invalidateQueries({ queryKey: ['service-logs'] });
+      queryClient.invalidateQueries({ queryKey: ['cash-session'] });
     },
   });
 }

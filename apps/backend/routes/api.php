@@ -222,6 +222,10 @@ Route::prefix('v1')->group(function () {
             // Late payment registration — cashier marks a "cobrar al
             // retirar" service as paid + captures method + bank.
             Route::post('service-logs/{id}/payment', [ServiceLogController::class, 'recordPayment']);
+            // Deshacer un cobro entero. Sólo dueño o admin: quien cobra no se
+            // absuelve solo. El servicio queda, la plata vuelve a estar por
+            // cobrar. Ver ServiceLogController::voidPayment.
+            Route::delete('service-logs/{id}/payment', [ServiceLogController::class, 'voidPayment']);
             // Billing: manually trigger invoice emission or re-emit a rejected one.
             Route::post('service-logs/{id}/invoice', [ServiceLogController::class, 'invoice']);
             // Billing: view / correct the client's fiscal profile used for
