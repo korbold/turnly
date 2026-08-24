@@ -133,7 +133,7 @@ test('create service log requires required fields', function () {
         ->postJson('/api/v1/service-logs', []);
 
     $response->assertStatus(422)
-        ->assertJsonValidationErrors(['client_resource_id', 'service_id', 'attended_by', 'price_charged', 'payment_method']);
+        ->assertJsonValidationErrors(['client_resource_id', 'service_id', 'attended_by', 'price_charged']);
 });
 
 test('can update service log items — replaces existing items', function () {

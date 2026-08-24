@@ -19,7 +19,10 @@ export interface CreateServiceLogItemInput {
 }
 
 export interface CreateServiceLogData {
-  clientResourceId: string;
+  /** Null on a counter sale — a product handed over to a walk-in with
+      no vehicle on file. The backend requires it only once a service
+      line is present. */
+  clientResourceId: string | null;
   /** Primary service. Optional when `items` carries the full breakdown
       — the backend derives it from `items[0]`. */
   serviceId?: string;
@@ -63,8 +66,14 @@ export interface UpdateServiceLogData {
 }
 
 export interface ServiceLogItemDraft {
-  serviceId: string;
-  variantId: string | null;
+  /** Defaults to `service_variant`. A `product` line must carry
+      productId instead of serviceId — sending a product as a service
+      line puts its uuid in service_logs.service_id and breaks the
+      foreign key. */
+  itemType?: 'service_variant' | 'product';
+  serviceId?: string;
+  productId?: string;
+  variantId?: string | null;
   label: string;
   qty: number;
   unitPrice: number;

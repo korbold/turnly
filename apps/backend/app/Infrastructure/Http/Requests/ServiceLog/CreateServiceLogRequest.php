@@ -14,7 +14,11 @@ class CreateServiceLogRequest extends FormRequest
     public function rules(): array
     {
         return [
-            'client_resource_id' => ['required', 'uuid'],
+            // Nullable so a counter sale — a product handed over without
+            // washing anything, to someone with no vehicle on file — can
+            // be registered unattached. withValidator brings the vehicle
+            // back as mandatory the moment a service line is present.
+            'client_resource_id' => ['nullable', 'uuid'],
             // service_id stays required as the "primary" service so
             // legacy reads (reports filtering by service, summary
             // grouping) keep working without joining items. With items[]
@@ -35,8 +39,11 @@ class CreateServiceLogRequest extends FormRequest
             // or a counter-sale product (product_id). withValidator
             // enforces exactly one of the two per line.
             'items.*.item_type'    => ['nullable', 'in:service_variant,product'],
-            'items.*.service_id'   => ['nullable', 'uuid'],
-            'items.*.product_id'   => ['nullable', 'uuid'],
+            // exists: an unmarked product line would otherwise put a
+            // product uuid in service_logs.service_id and break the
+            // foreign key mid-write. A 422 says what went wrong.
+            'items.*.service_id'   => ['nullable', 'uuid', 'exists:services,id'],
+            'items.*.product_id'   => ['nullable', 'uuid', 'exists:products,id'],
             // Variant picked for the line. Persisted as the item's
             // ref_id so reports + history point at the exact variant
             // the cashier saw on screen.
@@ -77,7 +84,23 @@ class CreateServiceLogRequest extends FormRequest
     public function withValidator($validator): void
     {
         $validator->after(function ($validator) {
-            foreach ((array) $this->input('items', []) as $i => $line) {
+            // A service is rendered *on* something, so it keeps needing a
+            // vehicle/resource. Only a products-only ticket may go
+            // unattached. No items[] at all is the legacy single-service
+            // payload, which is a service by definition.
+            $items = (array) $this->input('items', []);
+            $hasServiceLine = $items === [] || collect($items)->contains(
+                fn ($line) => ($line['item_type'] ?? 'service_variant') !== 'product',
+            );
+
+            if ($hasServiceLine && blank($this->input('client_resource_id'))) {
+                $validator->errors()->add(
+                    'client_resource_id',
+                    'Un servicio se registra sobre un vehículo o cliente.',
+                );
+            }
+
+            foreach ($items as $i => $line) {
                 $isProduct = ($line['item_type'] ?? 'service_variant') === 'product';
                 $ref = $isProduct ? ($line['product_id'] ?? null) : ($line['service_id'] ?? null);
 

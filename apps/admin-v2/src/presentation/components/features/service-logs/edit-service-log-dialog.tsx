@@ -13,6 +13,7 @@ import {
 } from '@/presentation/components/ui/dialog';
 import { Button } from '@/presentation/components/ui/button';
 import { Input } from '@/presentation/components/ui/input';
+import { MoneyInput } from '@/presentation/components/ui/money-input';
 import { Label } from '@/presentation/components/ui/label';
 import { Textarea } from '@/presentation/components/ui/textarea';
 import {
@@ -38,6 +39,7 @@ import { ECUADOR_BANKS } from '@/shared/constants/banks';
 import { ServiceCombobox } from '@/presentation/components/features/service-logs/service-combobox';
 import type { PaymentMethod, ServiceLog } from '@/domain/entities/service-log';
 import type { Service } from '@/domain/entities/service';
+import { formatCounterCurrency } from '@/shared/utils/format';
 
 // ─── types ───────────────────────────────────────────────────────────────────
 
@@ -57,6 +59,17 @@ interface LineItem {
       cantidad); una línea nueva se compara con el catálogo. */
   basePrice: number;
   availableVariants: ServiceVariantSlim[] | null;
+}
+
+/** A counter-sale line. Kept apart from LineItem because a product has
+    no variants and no catalog lookup — and because sending it back as a
+    service line put its uuid in service_logs.service_id and broke the
+    foreign key. */
+interface ProductLine {
+  productId: string;
+  productName: string;
+  qty: number;
+  unitPrice: number;
 }
 
 interface ServiceVariantSlim {
@@ -120,6 +133,8 @@ interface Props {
   onClose: () => void;
 }
 
+const formatMoney = formatCounterCurrency;
+
 export function EditServiceLogDialog({ log, open, onClose }: Props) {
   const [attendedBy, setAttendedBy] = useState('');
   const [paymentMethod, setPaymentMethod] = useState<PaymentMethod>('cash');
@@ -128,6 +143,7 @@ export function EditServiceLogDialog({ log, open, onClose }: Props) {
   const [lineItems, setLineItems] = useState<LineItem[]>([]);
   const [priceReason, setPriceReason] = useState('');
   const [priceNote, setPriceNote] = useState('');
+  const [productLines, setProductLines] = useState<ProductLine[]>([]);
 
   // Items are locked once the log is invoiced — changing prices would
   // require a nota de crédito + new invoice, which the billing service handles.
@@ -153,7 +169,9 @@ export function EditServiceLogDialog({ log, open, onClose }: Props) {
   const team = teamData?.data ?? [];
   const services = servicesData?.data ?? [];
 
-  const total = lineItems.reduce((acc, it) => acc + it.unitPrice * it.qty, 0);
+  const servicesTotal = lineItems.reduce((acc, it) => acc + it.unitPrice * it.qty, 0);
+  const productsTotal = productLines.reduce((acc, it) => acc + it.unitPrice * it.qty, 0);
+  const total = servicesTotal + productsTotal;
   const isPaid = log?.paymentStatus === 'paid';
 
   // Centavos, no igualdad exacta: el precio va y vuelve por JSON.
@@ -175,8 +193,20 @@ export function EditServiceLogDialog({ log, open, onClose }: Props) {
     // Build line items from log.items (multi-service) or fall back to
     // the single service on the parent row (legacy logs with no items).
     if (log.items && log.items.length > 0) {
+      // item_type is what separates a counter-sale product from a service.
+      // Ignoring it is how a product came back as a service line.
+      setProductLines(
+        log.items
+          .filter((it) => it.itemType === 'product')
+          .map((it) => ({
+            productId:   it.refId,
+            productName: it.label,
+            qty:         it.qty,
+            unitPrice:   it.unitPrice,
+          })),
+      );
       setLineItems(
-        log.items.map((it) => {
+        log.items.filter((it) => it.itemType !== 'product').map((it) => {
           // it.serviceId is the real service UUID (the backend now exposes
           // it per-item via the items.variant eager-load). it.refId is the
           // variant UUID for variant items, service UUID for plain items.
@@ -198,6 +228,7 @@ export function EditServiceLogDialog({ log, open, onClose }: Props) {
         })
       );
     } else if (log.serviceId) {
+      setProductLines([]);
       setLineItems([{
         key:               rowKey(log.serviceId, null),
         serviceId:         log.serviceId,
@@ -210,6 +241,7 @@ export function EditServiceLogDialog({ log, open, onClose }: Props) {
         availableVariants: [],
       }]);
     } else {
+      setProductLines([]);
       setLineItems([]);
     }
   }, [open, log]);
@@ -253,7 +285,9 @@ export function EditServiceLogDialog({ log, open, onClose }: Props) {
     // Fetch variants + suggested variant (based on vehicle type) in parallel.
     const [variants, suggested] = await Promise.all([
       fetchVariantsForService(svc.id),
-      log ? fetchSuggestedVariant(svc.id, log.clientResourceId) : Promise.resolve(null),
+      log?.clientResourceId
+        ? fetchSuggestedVariant(svc.id, log.clientResourceId)
+        : Promise.resolve(null),
     ]);
 
     // Guard against race: user may have removed the item while loading.
@@ -308,10 +342,20 @@ export function EditServiceLogDialog({ log, open, onClose }: Props) {
 
   // ── submit ───────────────────────────────────────────────────────────────
 
+  function handleUpdateProductLine(productId: string, patch: Partial<ProductLine>) {
+    setProductLines((prev) =>
+      prev.map((it) => (it.productId === productId ? { ...it, ...patch } : it)),
+    );
+  }
+
+  function handleRemoveProductLine(productId: string) {
+    setProductLines((prev) => prev.filter((it) => it.productId !== productId));
+  }
+
   function handleSubmit() {
     if (!log) return;
-    if (lineItems.length === 0) {
-      toast.error('Agrega al menos un servicio');
+    if (lineItems.length === 0 && productLines.length === 0) {
+      toast.error('Agrega al menos un servicio o producto');
       return;
     }
     const missingVariant = lineItems.find(
@@ -341,13 +385,23 @@ export function EditServiceLogDialog({ log, open, onClose }: Props) {
 
     const patchItems = updateItems.mutateAsync({
       id: log.id,
-      items: lineItems.map((it) => ({
-        serviceId:  it.serviceId,
-        variantId:  it.variantId,
-        label:      it.variantLabel ? `${it.serviceName} · ${it.variantLabel}` : it.serviceName,
-        qty:        it.qty,
-        unitPrice:  it.unitPrice,
-      })),
+      items: [
+        ...lineItems.map((it) => ({
+          itemType:   'service_variant' as const,
+          serviceId:  it.serviceId,
+          variantId:  it.variantId,
+          label:      it.variantLabel ? `${it.serviceName} · ${it.variantLabel}` : it.serviceName,
+          qty:        it.qty,
+          unitPrice:  it.unitPrice,
+        })),
+        ...productLines.map((it) => ({
+          itemType:   'product' as const,
+          productId:  it.productId,
+          label:      it.productName,
+          qty:        it.qty,
+          unitPrice:  it.unitPrice,
+        })),
+      ],
       meta: hayDesvio && priceReason
         ? { priceChangeReason: priceReason, priceChangeNote: priceNote.trim() || undefined }
         : undefined,
@@ -362,7 +416,7 @@ export function EditServiceLogDialog({ log, open, onClose }: Props) {
   }
 
   const isPending = updateLog.isPending || updateItems.isPending;
-  const canSubmit = !!attendedBy && lineItems.length > 0 &&
+  const canSubmit = !!attendedBy && (lineItems.length > 0 || productLines.length > 0) &&
     lineItems.every(
       (it) => !Array.isArray(it.availableVariants) || it.availableVariants.length === 0 || !!it.variantId
     ) &&
@@ -405,7 +459,7 @@ export function EditServiceLogDialog({ log, open, onClose }: Props) {
                   className="font-mono text-[13.5px] font-semibold tabular-nums text-[var(--fg-strong)]"
                   style={{ fontFamily: 'var(--font-mono)' }}
                 >
-                  {new Intl.NumberFormat('es-EC', { style: 'currency', currency: 'USD' }).format(total)}
+                  {formatMoney(servicesTotal)}
                 </span>
               )}
             </div>
@@ -456,19 +510,13 @@ export function EditServiceLogDialog({ log, open, onClose }: Props) {
                           className="h-8 w-16 text-center"
                           aria-label="Cantidad"
                         />
-                        <Input
-                          type="number"
-                          min={0}
-                          step="0.01"
+                        <MoneyInput
                           value={it.unitPrice}
                           disabled={priceLocked}
-                          onChange={(e) =>
-                            handleUpdateLineItem(it.key, {
-                              unitPrice: Math.max(0, Number(e.target.value) || 0),
-                            })
+                          onChange={(unitPrice) =>
+                            handleUpdateLineItem(it.key, { unitPrice })
                           }
-                          className="h-8 w-24 text-right font-mono tabular-nums"
-                          style={{ fontFamily: 'var(--font-mono)' }}
+                          className="h-8 w-24"
                           aria-label="Precio unitario"
                         />
                         {!itemsLocked && (
@@ -500,7 +548,7 @@ export function EditServiceLogDialog({ log, open, onClose }: Props) {
                                 className="font-mono text-[11px] tabular-nums text-[var(--fg-secondary)]"
                                 style={{ fontFamily: 'var(--font-mono)' }}
                               >
-                                {new Intl.NumberFormat('es-EC', { style: 'currency', currency: 'USD' }).format(v.price)}
+                                {formatMoney(v.price)}
                               </span>
                             </button>
                           ))}
@@ -512,6 +560,74 @@ export function EditServiceLogDialog({ log, open, onClose }: Props) {
               </ul>
             )}
           </div>
+
+          {/* ── Products ───────────────────────────────────────────────
+              Counter-sale lines. No picker to add new ones here: the
+              catalog lives in the create modal. What matters is that an
+              existing product stays a product on the way back out. */}
+          {productLines.length > 0 && (
+            <div>
+              <div className="mb-2 flex items-baseline justify-between gap-2">
+                <Label>
+                  Productos{' '}
+                  <span className="text-[12px] font-normal text-[var(--fg-muted)]">
+                    ({productLines.length})
+                  </span>
+                </Label>
+                <span
+                  className="font-mono text-[13.5px] font-semibold tabular-nums text-[var(--fg-strong)]"
+                  style={{ fontFamily: 'var(--font-mono)' }}
+                >
+                  {formatMoney(productsTotal)}
+                </span>
+              </div>
+
+              <ul className="space-y-1.5 rounded-lg border border-[var(--border)] bg-[var(--bg-surface)] p-2">
+                {productLines.map((it) => (
+                  <li key={it.productId} className="rounded-md px-2 py-1.5">
+                    <div className="grid grid-cols-[1fr_auto_auto_auto] items-center gap-2">
+                      <p className="truncate text-[13px] font-medium text-[var(--fg-strong)]">
+                        {it.productName}
+                      </p>
+                      <Input
+                        type="number"
+                        min={1}
+                        step="1"
+                        value={it.qty}
+                        disabled={itemsLocked}
+                        onChange={(e) =>
+                          handleUpdateProductLine(it.productId, {
+                            qty: Math.max(1, Number(e.target.value) || 1),
+                          })
+                        }
+                        className="h-8 w-16 text-center"
+                        aria-label={`Cantidad de ${it.productName}`}
+                      />
+                      <MoneyInput
+                        value={it.unitPrice}
+                        disabled={priceLocked}
+                        onChange={(unitPrice) =>
+                          handleUpdateProductLine(it.productId, { unitPrice })
+                        }
+                        className="h-8 w-24"
+                        aria-label={`Precio de ${it.productName}`}
+                      />
+                      {!itemsLocked && (
+                        <button
+                          type="button"
+                          onClick={() => handleRemoveProductLine(it.productId)}
+                          className="rounded-md p-1.5 text-[var(--fg-muted)] transition-colors hover:bg-[var(--bg-hover)] hover:text-[var(--danger-700)]"
+                          aria-label={`Quitar ${it.productName}`}
+                        >
+                          <X className="h-4 w-4" aria-hidden="true" />
+                        </button>
+                      )}
+                    </div>
+                  </li>
+                ))}
+              </ul>
+            </div>
+          )}
 
           {/* El precio se edita siempre; este selector es lo único que se
               interpone, y sólo cuando alguna línea ya no vale lo que valía. */}
@@ -649,6 +765,22 @@ export function EditServiceLogDialog({ log, open, onClose }: Props) {
             />
           </div>
         </div>
+
+        {/* Grand total. Each section carries its own subtotal, which on a
+            mixed ticket adds up to a number nobody had on screen. */}
+        {lineItems.length > 0 && productLines.length > 0 && (
+          <div className="flex items-baseline justify-between border-t border-[var(--border)] pt-3">
+            <span className="text-[11.5px] font-semibold uppercase tracking-[0.06em] text-[var(--fg-muted)]">
+              Total
+            </span>
+            <span
+              className="font-mono text-[15px] font-bold tabular-nums text-[var(--fg-strong)]"
+              style={{ fontFamily: 'var(--font-mono)' }}
+            >
+              {formatMoney(total)}
+            </span>
+          </div>
+        )}
 
         <DialogFooter>
           <Button variant="outline" onClick={onClose} disabled={isPending}>

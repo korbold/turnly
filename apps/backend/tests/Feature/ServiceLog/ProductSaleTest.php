@@ -171,3 +171,131 @@ test('re-editing the items does not double-discount stock', function () {
 
     expect($net)->toBe(-2.0);
 });
+
+// A walk-in who only wants the aceite has no vehicle on file and wants
+// no invoice. Forcing a client_resource_id made the cashier invent one,
+// which is how tickets ended up filed under the staff member's own id.
+function postAnonymousLog(array $items): \Illuminate\Testing\TestResponse
+{
+    return test()->actingAs(test()->user)
+        ->withHeader('X-Tenant', test()->tenant->slug)
+        ->postJson('/api/v1/service-logs', [
+            'attended_by'    => test()->user->id,
+            'payment_method' => 'cash',
+            'items'          => $items,
+        ]);
+}
+
+test('a counter sale is registered with no client resource', function () {
+    $response = postAnonymousLog([productLine(2)]);
+
+    $response->assertStatus(201);
+
+    $log = ServiceLogModel::find($response->json('data.id'));
+
+    expect($log->client_resource_id)->toBeNull()
+        ->and($log->service_id)->toBeNull()
+        ->and((float) $log->price_charged)->toBe(90.0)
+        ->and($log->items)->toHaveCount(1);
+});
+
+// A service is rendered *on* something, so the vehicle stays mandatory
+// there — only a products-only ticket may go unattached.
+test('a ticket with a service still needs a client resource', function () {
+    postAnonymousLog([serviceLine()])
+        ->assertStatus(422)
+        ->assertJsonValidationErrors('client_resource_id');
+});
+
+test('a mixed ticket still needs a client resource', function () {
+    postAnonymousLog([productLine(), serviceLine()])
+        ->assertStatus(422)
+        ->assertJsonValidationErrors('client_resource_id');
+});
+
+// An explicit null is what the admin sends for a counter sale, so the
+// rules have to read it the same as an absent key.
+test('an explicit null client resource is accepted on a counter sale', function () {
+    test()->actingAs(test()->user)
+        ->withHeader('X-Tenant', test()->tenant->slug)
+        ->postJson('/api/v1/service-logs', [
+            'client_resource_id' => null,
+            'attended_by'        => test()->user->id,
+            'payment_method'     => 'cash',
+            'items'              => [productLine()],
+        ])
+        ->assertStatus(201);
+});
+
+// The cents were always stored; the counter just never let anyone type
+// them. Guard the sum so a future rounding "fix" can't eat them.
+test('the ticket total keeps the cents', function () {
+    $response = postLog([productLine(3, 4.25), serviceLine(18.50)]);
+
+    $response->assertStatus(201);
+
+    $log = ServiceLogModel::find($response->json('data.id'));
+
+    expect((float) $log->price_charged)->toBe(31.25);
+});
+
+// The 500 this guards against needs MySQL to show itself: SQLite does not
+// enforce the service_id foreign key, so assert the stored value instead
+// of the status. A product id in service_logs.service_id is the corruption.
+test('editing a product-only ticket leaves its service null', function () {
+    $id = postLog([productLine(2)])->json('data.id');
+
+    $this->actingAs($this->user)
+        ->withHeader('X-Tenant', $this->tenant->slug)
+        ->putJson("/api/v1/service-logs/{$id}/items", ['items' => [productLine(1, 7.05)]])
+        ->assertOk();
+
+    $log = ServiceLogModel::find($id);
+
+    expect($log->service_id)->toBeNull()
+        ->and((float) $log->price_charged)->toBe(7.05);
+});
+
+test('editing a mixed ticket keeps the service as the primary one', function () {
+    $id = postLog([productLine(), serviceLine()])->json('data.id');
+
+    $this->actingAs($this->user)
+        ->withHeader('X-Tenant', $this->tenant->slug)
+        ->putJson("/api/v1/service-logs/{$id}/items", [
+            'items' => [productLine(1, 4.25), serviceLine(9.99)],
+        ])
+        ->assertOk();
+
+    $log = ServiceLogModel::find($id);
+
+    expect($log->service_id)->toBe($this->service->id)
+        ->and((float) $log->price_charged)->toBe(14.24);
+});
+
+// The corruption the admin caused: a product sent as a service line, so
+// its uuid landed in service_logs.service_id and broke the foreign key
+// with a 500. An unknown service id has to be a validation error, not a
+// write the database refuses halfway.
+test('a service line pointing at a product is rejected', function () {
+    postLog([[
+        'service_id' => test()->product->id,
+        'label'      => 'Ambientador pino',
+        'qty'        => 1,
+        'unit_price' => 4.25,
+    ]])->assertStatus(422)->assertJsonValidationErrors('items.0.service_id');
+});
+
+test('editing with a service line pointing at a product is rejected', function () {
+    $id = postLog([productLine()])->json('data.id');
+
+    $this->actingAs($this->user)
+        ->withHeader('X-Tenant', $this->tenant->slug)
+        ->putJson("/api/v1/service-logs/{$id}/items", ['items' => [[
+            'service_id' => $this->product->id,
+            'label'      => 'Ambientador pino',
+            'qty'        => 1,
+            'unit_price' => 4.25,
+        ]]])
+        ->assertStatus(422)
+        ->assertJsonValidationErrors('items.0.service_id');
+});

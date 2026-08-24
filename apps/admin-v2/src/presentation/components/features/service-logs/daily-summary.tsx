@@ -6,16 +6,9 @@ import { Skeleton } from '@/presentation/components/ui/skeleton';
 import { useDailySummary } from '@/presentation/hooks/use-service-logs';
 import { useCashSession } from '@/presentation/hooks/use-cash-session';
 import { usePermissions } from '@/presentation/hooks/use-permissions';
+import { formatCounterCurrency } from '@/shared/utils/format';
 
-const fmt = (v: number) =>
-  new Intl.NumberFormat('es-EC', {
-    style: 'currency',
-    currency: 'USD',
-    minimumFractionDigits: 0,
-    maximumFractionDigits: 0,
-  })
-    .format(v)
-    .replace(/ /g, ' ');
+const fmt = (v: number) => formatCounterCurrency(v).replace(/ /g, ' ');
 
 const MASK = '••••';
 

@@ -13,6 +13,7 @@ import {
 } from '@/presentation/components/ui/dialog';
 import { Button } from '@/presentation/components/ui/button';
 import { Input } from '@/presentation/components/ui/input';
+import { MoneyInput } from '@/presentation/components/ui/money-input';
 import { Textarea } from '@/presentation/components/ui/textarea';
 import {
   Select,
@@ -49,6 +50,7 @@ import type { Product } from '@/domain/entities/product';
 import type { PaymentMethod } from '@/domain/entities/service-log';
 import type { ClientResource } from '@/domain/entities/client-resource';
 import type { BusinessType, CustomField } from '@/domain/entities/tenant';
+import { formatCounterCurrency } from '@/shared/utils/format';
 
 const RECENT_SERVICES_KEY = 'turnly:service-log:recent-services';
 
@@ -155,9 +157,7 @@ interface ProductLine {
   catalogPrice: number;
 }
 
-function formatMoney(value: number): string {
-  return new Intl.NumberFormat('es-EC', { style: 'currency', currency: 'USD' }).format(value);
-}
+const formatMoney = formatCounterCurrency;
 
 async function fetchVariantsForService(serviceId: string): Promise<ServiceVariantSlim[]> {
   // Direct fetch via the shared axios client — keeps the modal
@@ -219,6 +219,11 @@ export function NewServiceModal({ open, onClose, embedded = false }: NewServiceM
   // as a wrong service price.
   const servicesTotal = lineItems.reduce((acc, it) => acc + it.unitPrice * it.qty, 0);
   const productsTotal = productLines.reduce((acc, it) => acc + it.unitPrice * it.qty, 0);
+
+  // A products-only ticket is a counter sale: the walk-in buying an
+  // aceite has no vehicle on file and wants no invoice. A service, by
+  // contrast, is rendered *on* something, so it keeps needing a client.
+  const isCounterSale = lineItems.length === 0 && productLines.length > 0;
   const total = servicesTotal + productsTotal;
 
   // Un desvío del catálogo, en cualquier dirección, en servicios o en
@@ -622,8 +627,7 @@ export function NewServiceModal({ open, onClose, embedded = false }: NewServiceM
   }
 
   function handleSubmit() {
-    if (!selectedClientResourceId) return;
-    if (!effectiveAttendedBy) return;
+    if ((!selectedClientResourceId && !isCounterSale) || !effectiveAttendedBy) return;
     if (lineItems.length === 0 && productLines.length === 0) return;
     if (paymentTiming === 'now' && paymentMethod === 'transfer' && !paymentBank) {
       toast.error('Selecciona el banco emisor');
@@ -682,8 +686,9 @@ export function NewServiceModal({ open, onClose, embedded = false }: NewServiceM
       },
       {
         onSuccess: () => {
-          const noun = lineItems.length === 0 ? 'Venta registrada' : 'Servicio registrado';
-          toast.success(payNow ? `${noun} y cobrada` : `${noun} · pago pendiente`);
+          const done = isCounterSale ? 'Venta registrada' : 'Servicio registrado';
+          const charged = isCounterSale ? 'cobrada' : 'cobrado';
+          toast.success(payNow ? `${done} y ${charged}` : `${done} · pago pendiente`);
           handleClose();
         },
         onError: (e) => toast.error(apiErrorMessage(e, 'Error al registrar servicio')),
@@ -693,7 +698,7 @@ export function NewServiceModal({ open, onClose, embedded = false }: NewServiceM
 
   const canSubmit =
     (lineItems.length > 0 || productLines.length > 0) &&
-    !!selectedClientResourceId &&
+    (!!selectedClientResourceId || isCounterSale) &&
     !!effectiveAttendedBy &&
     total > 0 &&
     // Every line with variants registered must have one picked. Lines
@@ -803,18 +808,12 @@ export function NewServiceModal({ open, onClose, embedded = false }: NewServiceM
                           className="h-8 w-16 text-center"
                           aria-label="Cantidad"
                         />
-                        <Input
-                          type="number"
-                          min={0}
-                          step="0.01"
+                        <MoneyInput
                           value={it.unitPrice}
-                          onChange={(e) =>
-                            handleUpdateLineItem(it.service.id, {
-                              unitPrice: Math.max(0, Number(e.target.value) || 0),
-                            })
+                          onChange={(unitPrice) =>
+                            handleUpdateLineItem(it.service.id, { unitPrice })
                           }
-                          className="h-8 w-24 text-right font-mono tabular-nums"
-                          style={{ fontFamily: 'var(--font-mono)' }}
+                          className="h-8 w-24"
                           aria-label="Precio unitario"
                         />
                         <button
@@ -848,7 +847,7 @@ export function NewServiceModal({ open, onClose, embedded = false }: NewServiceM
                                 className="font-mono text-[11px] tabular-nums text-[var(--fg-secondary)]"
                                 style={{ fontFamily: 'var(--font-mono)' }}
                               >
-                                {new Intl.NumberFormat('es-EC', { style: 'currency', currency: 'USD' }).format(v.price)}
+                                {formatMoney(v.price)}
                               </span>
                             </button>
                           ))}
@@ -884,35 +883,33 @@ export function NewServiceModal({ open, onClose, embedded = false }: NewServiceM
               )}
             </div>
 
-            {selectedClientResourceId ? (
-              <Select value="" onValueChange={handleAddProductLine}>
-                <SelectTrigger>
-                  <SelectValue
-                    placeholder={
-                      productLines.length === 0 ? 'Agregar producto…' : 'Agregar otro producto…'
-                    }
-                  />
-                </SelectTrigger>
-                <SelectContent>
-                  {sellableProducts.length === 0 ? (
-                    <div className="px-2 py-3 text-[12.5px] text-[var(--fg-muted)]">
-                      No hay productos vendibles en el inventario.
-                    </div>
-                  ) : (
-                    sellableProducts.map((p) => (
-                      <SelectItem key={p.id} value={p.id}>
-                        {p.name} · {formatMoney(p.price)}
-                        {p.stock ? ` · ${p.stock.onHand} en stock` : ''}
-                      </SelectItem>
-                    ))
-                  )}
-                </SelectContent>
-              </Select>
-            ) : (
-              <div className="rounded-lg border border-dashed border-[var(--border-strong)] bg-[var(--bg-app)] px-3 py-3 text-[12.5px] text-[var(--fg-muted)]">
-                Selecciona o crea un cliente arriba para vender productos.
-              </div>
-            )}
+            {/* No client gate here, unlike the services picker above: a
+                product's price comes from the catalog, not from the
+                vehicle type, so a counter sale can be built before —
+                or without — anyone being selected. */}
+            <Select value="" onValueChange={handleAddProductLine}>
+              <SelectTrigger>
+                <SelectValue
+                  placeholder={
+                    productLines.length === 0 ? 'Agregar producto…' : 'Agregar otro producto…'
+                  }
+                />
+              </SelectTrigger>
+              <SelectContent>
+                {sellableProducts.length === 0 ? (
+                  <div className="px-2 py-3 text-[12.5px] text-[var(--fg-muted)]">
+                    No hay productos vendibles en el inventario.
+                  </div>
+                ) : (
+                  sellableProducts.map((p) => (
+                    <SelectItem key={p.id} value={p.id}>
+                      {p.name} · {formatMoney(p.price)}
+                      {p.stock ? ` · ${p.stock.onHand} en stock` : ''}
+                    </SelectItem>
+                  ))
+                )}
+              </SelectContent>
+            </Select>
 
             {productLines.length > 0 && (
               <ul className="mt-2 space-y-2">
@@ -1024,7 +1021,14 @@ export function NewServiceModal({ open, onClose, embedded = false }: NewServiceM
               cashier captures vehicle type before resolving service
               variants. */}
           <div className="order-1">
-            <label className="mb-2 block text-sm font-medium">Cliente / Recurso</label>
+            <label className="mb-2 block text-sm font-medium">
+              Cliente / Recurso
+              {isCounterSale && (
+                <span className="ml-2 font-normal text-[var(--fg-muted)]">
+                  · opcional en venta de mostrador
+                </span>
+              )}
+            </label>
             {selectedClientResource && (
               <div className="mb-2 flex items-center gap-2 rounded-lg border border-[var(--brand-200)] bg-[var(--brand-50)] px-3 py-2">
                 <Check className="h-4 w-4 shrink-0 text-[var(--brand-600)]" />

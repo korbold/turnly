@@ -685,8 +685,11 @@ class ServiceLogController extends Controller
         $request->validate([
             'items'                  => 'required|array|min:1',
             'items.*.item_type'      => 'nullable|in:service_variant,product',
-            'items.*.service_id'     => 'nullable|uuid',
-            'items.*.product_id'     => 'nullable|uuid',
+            // Same guard as CreateServiceLogRequest: a product uuid
+            // arriving as a service line used to reach the parent update
+            // and break the service_id foreign key with a 500.
+            'items.*.service_id'     => 'nullable|uuid|exists:services,id',
+            'items.*.product_id'     => 'nullable|uuid|exists:products,id',
             'items.*.variant_id'     => 'nullable|uuid',
             'items.*.label'          => 'required|string|max:200',
             'items.*.qty'            => 'required|numeric|min:0.01',

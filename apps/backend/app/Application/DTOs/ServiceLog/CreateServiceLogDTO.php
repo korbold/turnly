@@ -6,7 +6,9 @@ final readonly class CreateServiceLogDTO
 {
     public function __construct(
         public string $tenantId,
-        public string $clientResourceId,
+        // Nullable: a counter sale is registered unattached when the
+        // walk-in has no vehicle on file and only wants the product.
+        public ?string $clientResourceId,
         // Nullable: a counter sale can be products only.
         public ?string $serviceId,
         public string $attendedBy,

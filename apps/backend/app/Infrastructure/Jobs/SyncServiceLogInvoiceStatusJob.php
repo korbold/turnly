@@ -9,6 +9,7 @@ use App\Infrastructure\Billing\BillingServiceClient;
 use App\Infrastructure\Mail\InvoiceMail;
 use App\Infrastructure\Notifications\Notifications\InvoiceAuthorized;
 use App\Infrastructure\Notifications\Notifications\InvoiceRejected;
+use App\Domain\Billing\SriRejection;
 use App\Infrastructure\Persistence\Models\ServiceLogModel;
 use App\Infrastructure\Persistence\Models\TenantModel;
 use Illuminate\Bus\Queueable;
@@ -101,7 +102,7 @@ class SyncServiceLogInvoiceStatusJob implements ShouldQueue
 
             $log->update([
                 'invoice_status' => 'rechazada',
-                'invoice_error'  => $this->firstMessage($inv),
+                'invoice_error'  => SriRejection::describe($inv),
             ]);
 
             app(\App\Application\Services\ServiceLogEventRecorder::class)
@@ -114,7 +115,7 @@ class SyncServiceLogInvoiceStatusJob implements ShouldQueue
                 $this->tenantName($log->tenant_id),
                 'invoice',
                 (string) $log->id,
-                $this->firstMessage($inv),
+                SriRejection::describe($inv),
             ));
 
             return;
@@ -148,16 +149,6 @@ class SyncServiceLogInvoiceStatusJob implements ShouldQueue
         } catch (Throwable $e) {
             Log::warning('InvoiceStatusUpdated broadcast failed', ['error' => $e->getMessage()]);
         }
-    }
-
-    private function firstMessage(array $inv): ?string
-    {
-        $messages = $inv['sri_response']['mensajes'] ?? $inv['mensajes'] ?? null;
-        if (is_array($messages) && isset($messages[0]['mensaje'])) {
-            return (string) $messages[0]['mensaje'];
-        }
-
-        return null;
     }
 
     private function notifyAdmins(string $tenantId, \Illuminate\Notifications\Notification $notification): void

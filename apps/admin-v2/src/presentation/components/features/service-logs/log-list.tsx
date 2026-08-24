@@ -41,21 +41,15 @@ import {
   SelectValue,
 } from '@/presentation/components/ui/select';
 import type { ServiceLog, ServiceLogStatus, PaymentFilter, PageSize } from '@/domain/entities/service-log';
+import { formatCounterCurrency } from '@/shared/utils/format';
 
 const STATUS_CONFIG: Record<ServiceLogStatus, { label: string; color: string; bg: string }> = {
   in_progress: { label: 'En progreso', color: 'text-[var(--status-progress-fg)]', bg: 'bg-[var(--status-progress-bg)]' },
   completed: { label: 'Completado', color: 'text-[var(--status-completed-fg)]', bg: 'bg-[var(--status-completed-bg)]' },
 };
 
-// El formateador de la app, no uno local: `es-EC` vía Intl imprime la coma
-// como decimal, que para el dólar en Ecuador está mal (ver
-// `shared/utils/format.ts`). La fila mostraba "$12,5" mientras el mostrador y
-// el reporte de descuentos ya imprimían "$12.50".
-// Entero sin centavos, con centavos cuando los hay: el formateador compartido
-// sin decimales redondea, y "$587.68" de deuda impreso "$588" es plata inventada.
-const fmt = (v: number) =>
-  Number.isInteger(v) ? formatCurrency(v) : formatCurrency(v, { decimals: true });
-/** Con centavos: un desvío de $0.25 no puede leerse como "$15 → $15". */
+const fmt = formatCounterCurrency;
+/** Con centavos siempre: un desvío de $0.25 no puede leerse como "$15 → $15". */
 const fmtCents = (v: number) => formatCurrency(v, { decimals: true });
 
 /** Lo que el ícono de precio modificado no dice en pantalla. Es la única
@@ -70,7 +64,7 @@ const priceChangeLabel = (pc: NonNullable<ServiceLog['priceChange']>) =>
     'Abrir el detalle',
   ]
     .filter(Boolean)
-    .join(' · ');
+    .join(' · ')
 
 interface LogListProps {
   date: string;
@@ -236,10 +230,14 @@ export function LogList({
             : 'border-[var(--border)] bg-white hover:bg-[var(--bg-sunken)]/40';
         // Recurso = the vehicle/resource, never the client name (the client
         // has its own column/sub-line). Prefer the composed label, then plate.
+        // A counter sale is not a ticket missing its vehicle — it is a
+        // product handed over with nothing to attach it to, so name it
+        // instead of showing "Sin recurso" like a broken row.
+        const isCounterSale = !log.clientResource && !log.service;
         const recursoLabel =
           log.clientResource?.label ||
           log.clientResource?.plate ||
-          'Sin recurso';
+          (isCounterSale ? 'Venta de mostrador' : 'Sin recurso');
         const serviceLabel = (() => {
           const summary = log.servicesSummary;
           if (summary && summary.count > 1) {
@@ -294,7 +292,13 @@ export function LogList({
 
             {/* Recurso */}
             <div className="col-span-3 row-start-2 min-w-0 lg:col-span-1 lg:row-auto">
-              <p className="truncate text-[13.5px] font-medium text-[var(--fg-strong)]" title={recursoLabel}>
+              <p
+                className={cn(
+                  'truncate text-[13.5px] font-medium',
+                  isCounterSale ? 'italic text-[var(--fg-muted)]' : 'text-[var(--fg-strong)]',
+                )}
+                title={recursoLabel}
+              >
                 {recursoLabel}
               </p>
               {log.clientResource?.client?.name && log.clientResource?.plate && (
@@ -651,7 +655,9 @@ export function LogList({
       {payTarget && (
         <RegisterPaymentDialog
           serviceLogId={payTarget.id}
-          clientResourceId={payTarget.clientResourceId}
+          // Una venta de mostrador no tiene placa: sin recurso no hay deuda
+          // vieja que consultar, y el diálogo ya trata la ausencia.
+          clientResourceId={payTarget.clientResourceId ?? undefined}
           total={payTarget.amountDue}
           open
           onClose={() => setPayTarget(null)}
