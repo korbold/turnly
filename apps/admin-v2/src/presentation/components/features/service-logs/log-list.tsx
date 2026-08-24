@@ -55,8 +55,22 @@ const STATUS_CONFIG: Record<ServiceLogStatus, { label: string; color: string; bg
 // sin decimales redondea, y "$587.68" de deuda impreso "$588" es plata inventada.
 const fmt = (v: number) =>
   Number.isInteger(v) ? formatCurrency(v) : formatCurrency(v, { decimals: true });
-/** Con centavos: un desvío de $0,25 no puede leerse como "$15 → $15". */
+/** Con centavos: un desvío de $0.25 no puede leerse como "$15 → $15". */
 const fmtCents = (v: number) => formatCurrency(v, { decimals: true });
+
+/** Lo que el ícono de precio modificado no dice en pantalla. Es la única
+    versión escrita de la marca, así que lleva el hecho entero: cuánto era,
+    cuánto se cobró, por qué y quién lo decidió. */
+const priceChangeLabel = (pc: NonNullable<ServiceLog['priceChange']>) =>
+  [
+    `Precio modificado: ${fmtCents(pc.catalog)} → ${fmtCents(pc.charged)}`,
+    pc.reasonLabel,
+    pc.by,
+    pc.changes > 1 ? `${pc.changes} cambios` : null,
+    'Abrir el detalle',
+  ]
+    .filter(Boolean)
+    .join(' · ');
 
 interface LogListProps {
   date: string;
@@ -314,26 +328,6 @@ export function LogList({
                     + (log.attendant?.name ? ` · Caja: ${log.attendant.name}` : '')
                   : (log.attendant?.name ?? '-')}
               </p>
-              {/* La historia del precio, impresa y no en un tooltip: el admin
-                  entra por el celular como PWA y ahí no hay hover. Va acá y no
-                  en la columna PRECIO porque esa mide 84px y no le entra.
-                  El nombre es el del último que lo tocó, de la bitácora — si un
-                  admin corrige el ticket del cajero, dice el admin (el reporte
-                  de descuentos, que agrupa por `attendedBy`, dirá el cajero). */}
-              {log.priceChange && (
-                <p className="mt-1 flex flex-wrap items-center gap-x-1.5 text-[11px] font-medium text-[var(--warning-700)]">
-                  <span className="tabular-nums" style={{ fontFamily: 'var(--font-mono)' }}>
-                    {fmtCents(log.priceChange.catalog)} → {fmtCents(log.priceChange.charged)}
-                  </span>
-                  <span className="truncate">· {log.priceChange.reasonLabel}</span>
-                  {log.priceChange.by && (
-                    <span className="truncate">· {log.priceChange.by}</span>
-                  )}
-                  {log.priceChange.changes > 1 && (
-                    <span>· {log.priceChange.changes} cambios</span>
-                  )}
-                </p>
-              )}
             </div>
 
             {/* Empleado (desktop only — moved into the servicio sub-line
@@ -364,25 +358,36 @@ export function LogList({
             )}
 
             {/* Precio */}
-            <div className="col-start-3 row-start-1 justify-self-end lg:col-auto lg:row-auto lg:justify-self-auto lg:text-right">
+            <div className="col-start-3 row-start-1 flex items-center gap-1.5 justify-self-end lg:col-auto lg:row-auto lg:justify-end lg:justify-self-auto">
+              {/* Que el precio no es el del catálogo, y nada más: la fila ya
+                  carga recurso, servicio, dos asignados, pago y tres botones,
+                  y escribir acá la historia entera truncaba la placa.
+                  Es un botón, no un adorno con tooltip: en el celular como PWA
+                  no hay hover, así que el detalle se abre tocándolo — la
+                  bitácora de allá tiene el catálogo, el motivo y el autor.
+                  El `aria-label` lo dice completo para quien no ve el ícono. */}
+              {log.priceChange && (
+                <button
+                  type="button"
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    router.push(`/service-logs/${log.id}`);
+                  }}
+                  aria-label={priceChangeLabel(log.priceChange)}
+                  // El círculo mide 20px porque más grande compite con el
+                  // precio, pero 20px es un blanco imposible con el pulgar:
+                  // el `before` invisible lo lleva a 36px sin mover nada.
+                  className="relative inline-flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-[var(--warning-50)] text-[var(--warning-700)] ring-1 ring-[var(--warning-200)] transition-colors before:absolute before:-inset-2 before:content-[''] hover:bg-[var(--warning-100)]"
+                >
+                  <Pencil className="h-3 w-3" aria-hidden="true" />
+                </button>
+              )}
               <span
-                className="block font-mono text-[15px] font-semibold tabular-nums text-[var(--fg-strong)] lg:text-[14px]"
+                className="font-mono text-[15px] font-semibold tabular-nums text-[var(--fg-strong)] lg:text-[14px]"
                 style={{ fontFamily: 'var(--font-mono)' }}
               >
                 {fmt(log.priceCharged)}
               </span>
-              {/* Cuánto se apartó del catálogo. Es lo único que cabe en 84px, y
-                  es lo que el dueño escanea: la explicación está debajo del
-                  servicio, en la misma fila. */}
-              {log.priceChange && (
-                <span
-                  className="mt-1 inline-flex items-center gap-0.5 whitespace-nowrap rounded-full bg-[var(--warning-50)] px-1.5 py-0.5 text-[11px] font-semibold tabular-nums text-[var(--warning-700)] ring-1 ring-[var(--warning-200)]"
-                  style={{ fontFamily: 'var(--font-mono)' }}
-                >
-                  {log.priceChange.difference < 0 ? '↓' : '↑'}
-                  {fmtCents(Math.abs(log.priceChange.difference))}
-                </span>
-              )}
             </div>
 
             {/* Pago */}
