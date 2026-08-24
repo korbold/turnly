@@ -57,6 +57,54 @@ class ServiceLogModel extends Model
             ->orderBy('changed_at');
     }
 
+    /**
+     * Sólo los cambios de precio, del más nuevo al más viejo. Existe aparte de
+     * `events` porque la lista del día necesita el último para decir quién
+     * tocó el precio, y cargar la bitácora entera son N filas por registro.
+     *
+     * El desempate por `id` importa: dos cambios del mismo segundo comparten
+     * `changed_at`, y el id es UUIDv7 — ordena por tiempo de creación.
+     */
+    public function priceChanges()
+    {
+        return $this->hasMany(ServiceLogEventModel::class, 'service_log_id')
+            ->where('event', 'price_changed')
+            ->orderByDesc('changed_at')
+            ->orderByDesc('id');
+    }
+
+    /**
+     * El desvío del catálogo de esta fila, o null si no hay ninguno. Necesita
+     * `items` cargado.
+     *
+     * Una línea sin `catalog_price` es histórica, no un descuento: sin la foto
+     * no hay contra qué comparar, y consultar el catálogo de hoy convertiría
+     * cada subida de precio en descuentos fantasma sobre ventas viejas.
+     */
+    public function catalogDeviation(): ?array
+    {
+        $conFoto = $this->items->filter(fn ($i) => $i->catalog_price !== null);
+        if ($conFoto->isEmpty()) {
+            return null;
+        }
+
+        $catalog = round((float) $conFoto->sum(fn ($i) => (float) $i->catalog_price * (float) $i->qty), 2);
+        $charged = round((float) $conFoto->sum(fn ($i) => (float) $i->unit_price * (float) $i->qty), 2);
+        $dif     = round($charged - $catalog, 2);
+
+        // Centavos, no igualdad exacta: el precio va y vuelve por JSON.
+        if (abs($dif) <= 0.005) {
+            return null;
+        }
+
+        return [
+            'catalog'    => $catalog,
+            'charged'    => $charged,
+            'difference' => $dif,
+            'label'      => $conFoto->first()->label,
+        ];
+    }
+
     public function tenant()
     {
         return $this->belongsTo(TenantModel::class, 'tenant_id');

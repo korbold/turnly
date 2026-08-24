@@ -1,4 +1,10 @@
-import type { ServiceLog, ServiceLogItem, ServiceLogEvent, DailySummary } from '@/domain/entities/service-log';
+import type {
+  ServiceLog,
+  ServiceLogItem,
+  ServiceLogEvent,
+  DailySummary,
+  PriceChange,
+} from '@/domain/entities/service-log';
 
 export function mapServiceLog(raw: Record<string, unknown>): ServiceLog {
   const clientResource = raw.client_resource as Record<string, unknown> | undefined;
@@ -59,6 +65,12 @@ export function mapServiceLog(raw: Record<string, unknown>): ServiceLog {
           labels: ((raw.services_summary as Record<string, unknown>).labels as string[]) ?? [],
         }
       : undefined,
+    // `null` explícito y `undefined` no son lo mismo acá: null es "el backend
+    // miró y esta fila cobró lo del catálogo"; undefined es "no lo mandó",
+    // como en el detalle. Sólo el primero apaga la marca con certeza.
+    priceChange: 'price_change' in raw
+      ? mapPriceChange(raw.price_change as Record<string, unknown> | null)
+      : undefined,
     status: raw.status as ServiceLog['status'],
     notes: (raw.notes as string) ?? null,
     logDate: raw.log_date as string,
@@ -95,8 +107,25 @@ function mapServiceLogItem(raw: Record<string, unknown>): ServiceLogItem {
     label: raw.label as string,
     qty: Number(raw.qty ?? 1),
     unitPrice: Number(raw.unit_price ?? 0),
+    catalogPrice: raw.catalog_price == null ? null : Number(raw.catalog_price),
     lineTotal: Number(raw.line_total ?? 0),
     sortOrder: Number(raw.sort_order ?? 0),
+  };
+}
+
+function mapPriceChange(raw: Record<string, unknown> | null): PriceChange | null {
+  if (!raw) return null;
+
+  return {
+    catalog: Number(raw.catalog ?? 0),
+    charged: Number(raw.charged ?? 0),
+    difference: Number(raw.difference ?? 0),
+    reasonCode: (raw.reason_code as string | null) ?? null,
+    reasonLabel: (raw.reason_label as string) ?? 'Sin motivo',
+    note: (raw.note as string | null) ?? null,
+    changes: Number(raw.changes ?? 1),
+    by: (raw.by as string | null) ?? null,
+    at: raw.at ? new Date(raw.at as string) : null,
   };
 }
 

@@ -94,9 +94,21 @@ class ServiceLogResource extends JsonResource
                 'label'      => $it->label,
                 'qty'        => (float) $it->qty,
                 'unit_price' => (float) $it->unit_price,
+                // La foto del catálogo al registrar. `null` en filas viejas:
+                // eso no es un descuento de $0, es una fila sin foto.
+                'catalog_price' => $it->catalog_price === null ? null : (float) $it->catalog_price,
                 'line_total' => (float) $it->line_total,
                 'sort_order' => (int) $it->sort_order,
             ])),
+
+            // La marca que la fila de la lista pinta sin abrir nada: cuánto se
+            // apartó del catálogo, por qué, y quién lo hizo. El nombre sale de
+            // la bitácora, no de `attended_by`: si un admin corrige el ticket
+            // del cajero, el autor es el admin.
+            'price_change' => $this->when(
+                $this->relationLoaded('items') && $this->relationLoaded('priceChanges'),
+                fn () => $this->priceChangeBlock(),
+            ),
 
             'services_summary' => $this->whenLoaded('items', fn () => [
                 'count'  => $this->items->count(),
@@ -127,6 +139,34 @@ class ServiceLogResource extends JsonResource
                 'tenant'    => app()->has('current_tenant') ? app('current_tenant')->slug : null,
                 'timestamp' => now()->toIso8601String(),
             ],
+        ];
+    }
+
+    /**
+     * El desvío del catálogo listo para pintar, o null cuando la fila cobró lo
+     * que decía el catálogo (y cuando no tiene foto contra la cual comparar).
+     */
+    private function priceChangeBlock(): ?array
+    {
+        $dev = $this->catalogDeviation();
+        if ($dev === null) {
+            return null;
+        }
+
+        $last = $this->priceChanges->first();
+
+        return [
+            'catalog'      => $dev['catalog'],
+            'charged'      => $dev['charged'],
+            'difference'   => $dev['difference'],
+            'reason_code'  => $this->price_change_reason,
+            // Mismo default que el reporte: quien puede descontar sin
+            // justificar deja "Sin motivo", no un hueco.
+            'reason_label' => \App\Domain\Pricing\PriceChangeReason::label($this->price_change_reason) ?? 'Sin motivo',
+            'note'         => $this->price_change_note,
+            'changes'      => $this->priceChanges->count(),
+            'by'           => $last?->changedBy?->name,
+            'at'           => $last?->changed_at?->toIso8601String(),
         ];
     }
 

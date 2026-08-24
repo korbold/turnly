@@ -17,6 +17,7 @@ import {
   DropdownMenuTrigger,
 } from '@/presentation/components/ui/dropdown-menu';
 import { cn } from '@/shared/utils/cn';
+import { formatCurrency } from '@/shared/utils/format';
 import { apiErrorMessage } from '@/shared/utils/api-error';
 import {
   useServiceLogs,
@@ -46,12 +47,16 @@ const STATUS_CONFIG: Record<ServiceLogStatus, { label: string; color: string; bg
   completed: { label: 'Completado', color: 'text-[var(--status-completed-fg)]', bg: 'bg-[var(--status-completed-bg)]' },
 };
 
+// El formateador de la app, no uno local: `es-EC` vía Intl imprime la coma
+// como decimal, que para el dólar en Ecuador está mal (ver
+// `shared/utils/format.ts`). La fila mostraba "$12,5" mientras el mostrador y
+// el reporte de descuentos ya imprimían "$12.50".
+// Entero sin centavos, con centavos cuando los hay: el formateador compartido
+// sin decimales redondea, y "$587.68" de deuda impreso "$588" es plata inventada.
 const fmt = (v: number) =>
-  new Intl.NumberFormat('es-EC', {
-    style: 'currency',
-    currency: 'USD',
-    minimumFractionDigits: 0,
-  }).format(v);
+  Number.isInteger(v) ? formatCurrency(v) : formatCurrency(v, { decimals: true });
+/** Con centavos: un desvío de $0,25 no puede leerse como "$15 → $15". */
+const fmtCents = (v: number) => formatCurrency(v, { decimals: true });
 
 interface LogListProps {
   date: string;
@@ -309,6 +314,26 @@ export function LogList({
                     + (log.attendant?.name ? ` · Caja: ${log.attendant.name}` : '')
                   : (log.attendant?.name ?? '-')}
               </p>
+              {/* La historia del precio, impresa y no en un tooltip: el admin
+                  entra por el celular como PWA y ahí no hay hover. Va acá y no
+                  en la columna PRECIO porque esa mide 84px y no le entra.
+                  El nombre es el del último que lo tocó, de la bitácora — si un
+                  admin corrige el ticket del cajero, dice el admin (el reporte
+                  de descuentos, que agrupa por `attendedBy`, dirá el cajero). */}
+              {log.priceChange && (
+                <p className="mt-1 flex flex-wrap items-center gap-x-1.5 text-[11px] font-medium text-[var(--warning-700)]">
+                  <span className="tabular-nums" style={{ fontFamily: 'var(--font-mono)' }}>
+                    {fmtCents(log.priceChange.catalog)} → {fmtCents(log.priceChange.charged)}
+                  </span>
+                  <span className="truncate">· {log.priceChange.reasonLabel}</span>
+                  {log.priceChange.by && (
+                    <span className="truncate">· {log.priceChange.by}</span>
+                  )}
+                  {log.priceChange.changes > 1 && (
+                    <span>· {log.priceChange.changes} cambios</span>
+                  )}
+                </p>
+              )}
             </div>
 
             {/* Empleado (desktop only — moved into the servicio sub-line
@@ -339,12 +364,26 @@ export function LogList({
             )}
 
             {/* Precio */}
-            <span
-              className="col-start-3 row-start-1 block justify-self-end font-mono text-[15px] font-semibold tabular-nums text-[var(--fg-strong)] lg:col-auto lg:row-auto lg:justify-self-auto lg:text-right lg:text-[14px]"
-              style={{ fontFamily: 'var(--font-mono)' }}
-            >
-              {fmt(log.priceCharged)}
-            </span>
+            <div className="col-start-3 row-start-1 justify-self-end lg:col-auto lg:row-auto lg:justify-self-auto lg:text-right">
+              <span
+                className="block font-mono text-[15px] font-semibold tabular-nums text-[var(--fg-strong)] lg:text-[14px]"
+                style={{ fontFamily: 'var(--font-mono)' }}
+              >
+                {fmt(log.priceCharged)}
+              </span>
+              {/* Cuánto se apartó del catálogo. Es lo único que cabe en 84px, y
+                  es lo que el dueño escanea: la explicación está debajo del
+                  servicio, en la misma fila. */}
+              {log.priceChange && (
+                <span
+                  className="mt-1 inline-flex items-center gap-0.5 whitespace-nowrap rounded-full bg-[var(--warning-50)] px-1.5 py-0.5 text-[11px] font-semibold tabular-nums text-[var(--warning-700)] ring-1 ring-[var(--warning-200)]"
+                  style={{ fontFamily: 'var(--font-mono)' }}
+                >
+                  {log.priceChange.difference < 0 ? '↓' : '↑'}
+                  {fmtCents(Math.abs(log.priceChange.difference))}
+                </span>
+              )}
+            </div>
 
             {/* Pago */}
             <div className="col-start-2 row-start-1 justify-self-end lg:col-auto lg:row-auto lg:justify-self-auto">

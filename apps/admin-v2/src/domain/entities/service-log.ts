@@ -28,8 +28,29 @@ export interface ServiceLogItem {
   label: string;
   qty: number;
   unitPrice: number;
+  /** La foto del catálogo al registrar la línea. `null` en filas anteriores a
+      la feature de descuentos: sin foto no hay desvío que medir. */
+  catalogPrice: number | null;
   lineTotal: number;
   sortOrder: number;
+}
+
+/** El desvío del catálogo de una fila, listo para pintar en la lista del día.
+    `null` cuando se cobró el precio del catálogo. */
+export interface PriceChange {
+  catalog: number;
+  charged: number;
+  /** Negativa cuando se cobró de menos. Es el signo que importa. */
+  difference: number;
+  reasonCode: string | null;
+  reasonLabel: string;
+  note: string | null;
+  /** Cuántas veces se tocó el precio de este registro. */
+  changes: number;
+  /** Quién lo tocó la última vez — el autor real, de la bitácora, no el
+      `attendedBy` de la fila. */
+  by: string | null;
+  at: Date | null;
 }
 
 export interface ServiceLogEvent {
@@ -97,6 +118,9 @@ export interface ServiceLog {
       `items`. Empty for legacy single-service rows. */
   items?: ServiceLogItem[];
   servicesSummary?: { count: number; labels: string[] };
+  /** Sólo lo trae la lista del día (el backend lo calcula cuando cargó items y
+      los cambios de precio). `null` = esta fila cobró lo del catálogo. */
+  priceChange?: PriceChange | null;
 }
 
 export interface DailySummary {

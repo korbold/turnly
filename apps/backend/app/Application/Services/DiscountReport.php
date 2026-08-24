@@ -58,19 +58,18 @@ class DiscountReport
         $out = [];
 
         foreach ($logs as $log) {
-            // Una línea sin foto del catálogo es histórica, no un descuento.
-            $conFoto = $log->items->filter(fn ($i) => $i->catalog_price !== null);
-            if ($conFoto->isEmpty()) {
+            // La regla —qué cuenta como desvío y por qué una fila sin foto del
+            // catálogo no es un descuento— vive en el modelo: la marca de la
+            // lista del día tiene que leer exactamente lo mismo que este
+            // reporte, o el dueño ve dos cifras distintas del mismo hecho.
+            $dev = $log->catalogDeviation();
+            if ($dev === null) {
                 continue;
             }
 
-            $catalogo = (float) $conFoto->sum(fn ($i) => (float) $i->catalog_price * (float) $i->qty);
-            $cobrado  = (float) $conFoto->sum(fn ($i) => (float) $i->unit_price * (float) $i->qty);
-            $dif      = round($cobrado - $catalogo, 2);
-
-            if (abs($dif) <= self::CENT) {
-                continue;
-            }
+            $catalogo = $dev['catalog'];
+            $cobrado  = $dev['charged'];
+            $dif      = $dev['difference'];
 
             $out[] = [
                 'source'        => 'service_log',
@@ -84,7 +83,7 @@ class DiscountReport
                 'client_label'  => $log->clientResource
                     ? \App\Infrastructure\Http\Resources\ClientResourceResource::labelFrom($log->clientResource->data)
                     : null,
-                'service_label' => $conFoto->first()->label,
+                'service_label' => $dev['label'],
                 'catalog'       => round($catalogo, 2),
                 'charged'       => round($cobrado, 2),
                 'difference'    => $dif,

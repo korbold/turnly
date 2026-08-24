@@ -274,9 +274,12 @@ class ServiceLogController extends Controller
         // `items` is eager-loaded so the LogList row can render the
         // multi-service rollup ("Lavada + Pulido +1 más") off the
         // services_summary block in the resource without per-row queries.
+        // `priceChanges` es la bitácora recortada a los cambios de precio, con
+        // su autor: la fila marca el desvío y dice quién lo hizo sin arrastrar
+        // la bitácora entera, que son N eventos por registro.
         $query = ServiceLogModel::with([
             'clientResource.client', 'service', 'attendant', 'items.variant',
-            'washer', 'dryer',
+            'washer', 'dryer', 'priceChanges.changedBy',
         ]);
 
         // A single day for the Registro Diario, a range for the reports, which
