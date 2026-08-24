@@ -5,6 +5,7 @@ import { formatDistanceToNow } from 'date-fns';
 import { es } from 'date-fns/locale';
 import { ChevronRight, Star, Wallet } from 'lucide-react';
 import { Avatar, AvatarFallback } from '@/presentation/components/ui/avatar';
+import { formatCounterCurrency } from '@/shared/utils/format';
 import type { ClientResource } from '@/domain/entities/client-resource';
 
 interface ClientCardProps {
@@ -12,8 +13,10 @@ interface ClientCardProps {
   index?: number;
 }
 
-const money = (v: number) =>
-  new Intl.NumberFormat('es-EC', { style: 'currency', currency: 'USD' }).format(v);
+// El formateador de la app: `es-EC` imprime la coma como decimal, que para el
+// dólar en Ecuador está mal (ver `shared/utils/format.ts`). El chip de deuda
+// decía "$587,68" al lado de un registro que dice "$587.68".
+const money = (v: number) => formatCounterCurrency(v);
 
 function getInitials(text: string | null | undefined): string {
   if (!text) return '?';
@@ -27,14 +30,36 @@ function getInitials(text: string | null | undefined): string {
 }
 
 function pickPhone(data: Record<string, unknown> | null): string | null {
+  return pickField(data, /(tel|phone|cel|whats)/i);
+}
+
+/**
+ * Un campo de `data` por patrón de clave. Las claves son los campos
+ * personalizados del tenant, así que se buscan por patrón y no por nombre
+ * exacto: un tenant guarda "plate" y otro podría guardar "placa".
+ */
+function pickField(data: Record<string, unknown> | null, key: RegExp): string | null {
   if (!data) return null;
-  for (const key of Object.keys(data)) {
-    if (/(tel|phone|cel|whats)/i.test(key)) {
-      const v = data[key];
+  for (const k of Object.keys(data)) {
+    if (key.test(k)) {
+      const v = data[k];
       if (typeof v === 'string' && v.trim()) return v.trim();
     }
   }
   return null;
+}
+
+/**
+ * La columna primero, `data` después. Las columnas denormalizadas
+ * (plate/brand/model/color) sólo las llena el formulario del admin; el
+ * mostrador crea el recurso con los campos dentro de `data` y las deja en
+ * null — en producción están vacías en las 268 filas. Leer sólo la columna
+ * dejaba la fila sin placa y sin vehículo, que es justo lo que identifica al
+ * cliente en una lavadora.
+ */
+function column(value: string | null | undefined, data: Record<string, unknown> | null, key: RegExp): string | null {
+  if (value && value.trim()) return value.trim();
+  return pickField(data, key);
 }
 
 function isSyntheticEmail(email: string | undefined | null): boolean {
@@ -42,10 +67,17 @@ function isSyntheticEmail(email: string | undefined | null): boolean {
 }
 
 export function ClientCard({ client, index = 0 }: ClientCardProps) {
-  const hasPlate = !!client.plate;
-  const clientName = client.client?.name ?? null;
-  const primary = hasPlate ? client.plate! : clientName ?? client.label ?? 'Sin identificar';
-  const vehicleInfo = [client.brand, client.model, client.color].filter(Boolean).join(' · ');
+  const plate = column(client.plate, client.data, /^(plate|placa)$/i);
+  const hasPlate = !!plate;
+  const clientName = client.client?.name ?? pickField(client.data, /^(nombre|name)$/i);
+  const primary = hasPlate ? plate! : clientName ?? client.label ?? 'Sin identificar';
+  const vehicleInfo = [
+    column(client.brand, client.data, /^(brand|marca)$/i),
+    column(client.model, client.data, /^(model|modelo)$/i),
+    column(client.color, client.data, /^color$/i),
+  ]
+    .filter(Boolean)
+    .join(' · ');
   const phone = pickPhone(client.data);
   const realEmail = !isSyntheticEmail(client.client?.email) ? client.client?.email : null;
 
