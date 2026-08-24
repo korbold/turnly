@@ -84,6 +84,13 @@ class ClientResourceController extends Controller
             }
         }
 
+        // Los vehículos de una persona. La ficha de la persona los pide así
+        // en vez de filtrar la página en el navegador: con la lista paginada,
+        // el segundo auto puede estar en otra página.
+        if ($request->filled('client_id')) {
+            $query->where('client_id', $request->get('client_id'));
+        }
+
         // Free-form search across the most-likely customer identifiers
         // staff types at the counter: plate, cédula/RUC, name, email.
         // The custom-field data JSON is searched with a single LIKE %q%

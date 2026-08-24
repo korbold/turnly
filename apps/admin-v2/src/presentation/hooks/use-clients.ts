@@ -17,6 +17,16 @@ export function useClients(page?: number, search?: string, withDebt?: boolean) {
   });
 }
 
+/** Los vehículos de una persona. */
+export function useClientVehicles(clientId: string | null) {
+  const repo = useRepository('clientResource');
+  return useQuery({
+    queryKey: ['clients', 'byClient', clientId],
+    queryFn: () => repo.getByClient(clientId as string),
+    enabled: !!clientId,
+  });
+}
+
 export function useClient(id: string) {
   const repo = useRepository('clientResource');
   return useQuery({

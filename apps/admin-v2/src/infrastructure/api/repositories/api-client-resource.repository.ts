@@ -26,6 +26,13 @@ export class ApiClientResourceRepository implements ClientResourceRepository {
     return mapPaginatedResponse(res, mapClientResource);
   }
 
+  async getByClient(clientId: string): Promise<ClientResource[]> {
+    const { data: res } = await api.get('/client-resources', {
+      params: { all: 1, client_id: clientId, per_page: 100 },
+    });
+    return mapPaginatedResponse(res, mapClientResource).data;
+  }
+
   async getById(id: string): Promise<ClientResource> {
     const { data: res } = await api.get(`/client-resources/${id}`);
     // Response is the resource directly (no data wrapper for single resource)

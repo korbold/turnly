@@ -5,7 +5,7 @@ import { useRepository } from '@/infrastructure/providers/repository.provider';
 import { GetDebtUseCase } from '@/application/use-cases/debt/get-debt.use-case';
 import { AddManualDebtUseCase } from '@/application/use-cases/debt/add-manual-debt.use-case';
 import { PayDebtUseCase } from '@/application/use-cases/debt/pay-debt.use-case';
-import type { AddManualDebtInput, PayDebtInput } from '@/domain/entities/debt';
+import type { AddManualDebtInput, PayDebtInput, PayClientDebtInput } from '@/domain/entities/debt';
 
 export function useDebt(clientResourceId: string, enabled = true) {
   const repo = useRepository('debt');
@@ -47,4 +47,31 @@ export function usePayDebt() {
   return useDebtMutation((input: PayDebtInput) =>
     new PayDebtUseCase(repo).execute(input),
   );
+}
+
+
+/** La deuda de una persona: la de todos sus vehículos, sumada. */
+export function useClientDebt(clientId: string | null) {
+  const repo = useRepository('debt');
+  return useQuery({
+    queryKey: ['debt', 'client', clientId],
+    queryFn: () => repo.getForClient(clientId as string),
+    enabled: !!clientId,
+  });
+}
+
+export function usePayClientDebt() {
+  const repo = useRepository('debt');
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (input: PayClientDebtInput) => repo.payForClient(input),
+    onSuccess: () => {
+      // Un pago reparte entre varios autos: se invalida la deuda de la
+      // persona, la de cada placa, el registro del día y la caja.
+      qc.invalidateQueries({ queryKey: ['debt'] });
+      qc.invalidateQueries({ queryKey: ['service-logs'] });
+      qc.invalidateQueries({ queryKey: ['cash-session'] });
+      qc.invalidateQueries({ queryKey: ['clients'] });
+    },
+  });
 }

@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, Suspense } from 'react';
+import Link from 'next/link';
 import {
   clientNameOf,
   contactEmailOf,
@@ -17,6 +18,7 @@ import {
   Activity,
   ClipboardList,
   Calendar,
+  Users,
 } from 'lucide-react';
 import { Button } from '@/presentation/components/ui/button';
 import { Avatar, AvatarFallback } from '@/presentation/components/ui/avatar';
@@ -163,6 +165,18 @@ function ClientDetailContent() {
             )}
             {realEmail && (
               <p className="mt-1 text-[13px] text-[var(--fg-secondary)]">{realEmail}</p>
+            )}
+
+            {/* La persona detrás del auto. Si tiene más de uno, su deuda vive
+                allá sumada — acá sólo se ve la de esta placa. */}
+            {clientName && client.clientId && (
+              <Link
+                href={`/clients/persona/${client.clientId}`}
+                className="mt-1.5 inline-flex items-center gap-1.5 text-[12.5px] font-medium text-[var(--brand-700)] hover:underline"
+              >
+                <Users className="h-3.5 w-3.5" aria-hidden="true" />
+                Ver todo lo de {clientName}
+              </Link>
             )}
 
             {!clientName && (

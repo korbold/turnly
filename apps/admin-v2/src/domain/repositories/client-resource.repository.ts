@@ -35,6 +35,9 @@ export interface ClientBillingProfile {
 
 export interface ClientResourceRepository {
   getAll(page?: number, search?: string, withDebt?: boolean): Promise<PaginatedResult<ClientResource>>;
+  /** Los vehículos de una persona. En una consulta: con la lista paginada, el
+      segundo auto puede estar en otra página. */
+  getByClient(clientId: string): Promise<ClientResource[]>;
   getById(id: string): Promise<ClientResource>;
   create(data: CreateClientResourceData): Promise<ClientResource>;
   update(id: string, data: Partial<CreateClientResourceData>): Promise<ClientResource>;

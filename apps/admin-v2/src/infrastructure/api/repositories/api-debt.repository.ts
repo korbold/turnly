@@ -1,6 +1,7 @@
 import api from '@/infrastructure/api/client';
 import type {
   Debt, DebtItem, DebtItemType, AddManualDebtInput, PayDebtInput,
+  ClientDebt, PayClientDebtInput,
 } from '@/domain/entities/debt';
 import type { DebtRepository } from '@/domain/repositories/debt.repository';
 
@@ -42,6 +43,27 @@ export class ApiDebtRepository implements DebtRepository {
         })),
       })),
     };
+  }
+
+  async getForClient(clientId: string): Promise<ClientDebt> {
+    const { data: res } = await api.get<{ data: Raw }>(`/clients/${clientId}/debt`);
+    const d = res.data;
+    return {
+      clientId,
+      total: Number(d.total ?? 0),
+      items: ((d.items as Raw[]) ?? []).map((raw) => ({
+        ...mapItem(raw),
+        resourceLabel: (raw.resource_label as string | null) ?? null,
+      })),
+    };
+  }
+
+  async payForClient(input: PayClientDebtInput): Promise<void> {
+    await api.post(`/clients/${input.clientId}/debt/payment`, {
+      amount: input.amount,
+      method: input.method,
+      bank: input.bank ?? null,
+    });
   }
 
   async addManual(input: AddManualDebtInput): Promise<void> {

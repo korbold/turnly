@@ -40,6 +40,17 @@ export interface Debt {
   payments: DebtPaymentRecord[];
 }
 
+/**
+ * La deuda de una PERSONA: la de todos sus vehículos, sumada. Cada renglón
+ * dice de qué auto es, porque el cajero tiene al cliente enfrente y necesita
+ * saber qué le está cobrando.
+ */
+export interface ClientDebt {
+  clientId: string;
+  total: number;
+  items: (DebtItem & { resourceLabel: string | null })[];
+}
+
 export interface DebtAllocationInput {
   type: DebtItemType;
   id: string;
@@ -60,6 +71,13 @@ export interface PayDebtInput {
   bank?: string | null;
   /** Ausente = reparto del más viejo al más nuevo. */
   allocations?: DebtAllocationInput[];
+}
+
+export interface PayClientDebtInput {
+  clientId: string;
+  amount: number;
+  method: 'cash' | 'card' | 'transfer' | 'other';
+  bank?: string | null;
 }
 
 export const DEBT_ITEM_LABEL: Record<DebtItemType, string> = {
