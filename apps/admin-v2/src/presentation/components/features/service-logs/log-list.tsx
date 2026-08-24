@@ -119,22 +119,11 @@ export function LogList({
   const [completeTarget, setCompleteTarget] = useState<ServiceLog | null>(null);
 
   function handleComplete(log: ServiceLog) {
-    // Sólo se adelanta a pedir el lavador, que se exige siempre. Si además
-    // hace falta secador lo decide el backend según el servicio —no toda
-    // lavada se seca— y esa regla no se duplica acá: se obedece su 422.
-    // Un registro sólo de productos no necesita a nadie.
-    const soloProductos = (log.items?.length ?? 0) > 0
-      && log.items!.every((it) => it.itemType === 'product');
-
-    if (isCarWash && !log.washedBy && !soloProductos) {
-      setAssignTarget({
-        log,
-        reason: 'Asigná quién hizo el trabajo para poder completar el servicio.',
-        thenComplete: true,
-      });
-      return;
-    }
-
+    // Quién hace falta lo decide el servicio, no la fila: un cambio de aceite
+    // no lleva a nadie y una lavada completa lleva dos. La fila no conoce el
+    // `staffing` de sus líneas, así que no se adivina acá — se intenta
+    // completar y, si el backend contesta que faltan asignados, su 422 abre el
+    // diálogo con el motivo. Una sola fuente de la regla.
     // Con saldo pendiente hay una pregunta que hacer antes de cerrar: esto
     // es deuda o es un olvido. Nadie más va a saber la respuesta después.
     if (log.amountDue > 0.005) {

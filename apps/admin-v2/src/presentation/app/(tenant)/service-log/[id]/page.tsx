@@ -175,17 +175,8 @@ function ServiceLogDetail({ id }: { id: string }) {
             <Button
               variant="outline"
               onClick={() => {
-                // Mismo trato que en la lista: se adelanta a pedir el
-                // lavador, que va siempre. El secador depende del servicio y
-                // lo decide el backend; su 422 abre el mismo diálogo.
-                const soloProductos = (log.items?.length ?? 0) > 0
-                  && log.items!.every((it) => it.itemType === 'product');
-
-                if (isCarWash && !log.washedBy && !soloProductos) {
-                  setAssignToComplete(true);
-                  setAssignOpen(true);
-                  return;
-                }
+                // Mismo trato que en la lista: quién hace falta lo dice el
+                // servicio y lo resuelve el backend. Su 422 abre el diálogo.
                 completeMutation.mutate(log.id, {
                   onSuccess: () => toast.success('Servicio completado'),
                   onError: (e) => {

@@ -1,4 +1,4 @@
-import type { Service } from '../entities/service';
+import type { Service, ServiceStaffing } from '../entities/service';
 import type { PaginatedResult } from '../../shared/types/api';
 
 export interface CreateServiceData {
@@ -7,8 +7,8 @@ export interface CreateServiceData {
   description?: string;
   imageUrl?: string;
   isActive?: boolean;
-  /** Sólo lavadoras: si el trabajo lleva secado. */
-  requiresDryer?: boolean;
+  /** Sólo lavadoras: qué personal lleva el trabajo. */
+  staffing?: ServiceStaffing;
   sortOrder?: number;
 }
 

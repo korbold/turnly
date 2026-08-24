@@ -13,6 +13,7 @@ use App\Domain\Inventory\ConsumptionEngine;
 use App\Domain\Inventory\StockLedger;
 use App\Domain\Pricing\PriceChangeReason;
 use App\Domain\ServiceLog\Contracts\ServiceLogRepositoryInterface;
+use App\Domain\ServiceLog\ServiceStaffing;
 use App\Domain\Tenant\StaffPrivileges;
 use App\Infrastructure\Billing\BillingServiceClient;
 use App\Infrastructure\Http\Controllers\Controller;
@@ -154,8 +155,10 @@ class ServiceLogController extends Controller
      * está completo. Sólo se llama en tenants car_wash.
      *
      * Un registro sin líneas de servicio —una venta de mostrador— no exige a
-     * nadie: nadie lava un ambientador. Con servicios se exige el lavador
-     * siempre, y el secador sólo si alguno de esos servicios lo pide.
+     * nadie: nadie lava un ambientador. Con servicios, cada uno declara en su
+     * `staffing` qué personal lleva, y el registro pide el máximo de sus
+     * líneas: un cambio de aceite no exige a nadie, un chasis exige lavador,
+     * una lavada completa los dos.
      */
     private function assigneesProblem(ServiceLogModel $log): ?JsonResponse
     {
@@ -164,13 +167,25 @@ class ServiceLogController extends Controller
             return null;
         }
 
-        if (!$log->washed_by) {
+        // El registro pide lo que pida su línea más exigente: un ticket con un
+        // cambio de aceite y una lavada completa sigue necesitando los dos.
+        $staffings = ServiceModel::whereIn('id', $serviceIds)->pluck('staffing')->all();
+
+        $necesitaLavador = array_reduce(
+            $staffings,
+            fn ($carry, $s) => $carry || ServiceStaffing::needsWasher($s),
+            false,
+        );
+
+        if ($necesitaLavador && !$log->washed_by) {
             return $this->assigneesRequired('Asigná quién hizo el trabajo antes de completar el servicio.');
         }
 
-        $necesitaSecador = ServiceModel::whereIn('id', $serviceIds)
-            ->where('requires_dryer', true)
-            ->exists();
+        $necesitaSecador = array_reduce(
+            $staffings,
+            fn ($carry, $s) => $carry || ServiceStaffing::needsDryer($s),
+            false,
+        );
 
         if ($necesitaSecador && !$log->dried_by) {
             return $this->assigneesRequired('Este servicio lleva secado: asigná el secador antes de completarlo.');
@@ -1275,10 +1290,11 @@ class ServiceLogController extends Controller
         // momento de exigirlo: un servicio cerrado sin saber quién lo hizo es
         // exactamente el agujero que esta feature existe para tapar.
         //
-        // Pero se exige lo que el trabajo tuvo. La regla vieja era del rubro
-        // —lavadora ⇒ lavador Y secador— y en un catálogo real es falsa para
-        // la mayoría: un lavado de chasis no se seca, un cambio de aceite ni
-        // se lava, y una venta de mostrador no la hace nadie.
+        // Pero se exige lo que el trabajo tuvo, y eso lo dice cada servicio
+        // en su `staffing`. La regla vieja era del rubro —lavadora ⇒ lavador Y
+        // secador— y en un catálogo real es falsa para la mayoría: un lavado de
+        // chasis no se seca, un cambio de aceite no lo lava nadie, y una venta
+        // de mostrador no la hace nadie.
         $isCarWash = TenantModel::find(app('current_tenant_id'))?->business_type === 'car_wash';
 
         if ($isCarWash && ($problema = $this->assigneesProblem($log))) {

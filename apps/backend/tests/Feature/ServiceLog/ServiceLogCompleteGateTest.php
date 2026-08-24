@@ -1,5 +1,6 @@
 <?php
 
+use App\Domain\ServiceLog\ServiceStaffing;
 use App\Infrastructure\Persistence\Models\ClientResourceModel;
 use App\Infrastructure\Persistence\Models\ProductModel;
 use App\Infrastructure\Persistence\Models\ServiceLogItemModel;
@@ -57,6 +58,7 @@ beforeEach(function () {
 });
 
 test('completing without a washer is rejected', function () {
+    $this->service->update(['staffing' => ServiceStaffing::WASHER_DRYER]);
     $log = ($this->log)(['dried_by' => $this->dryer->id]);
 
     ($this->as)($this->owner)
@@ -68,7 +70,7 @@ test('completing without a washer is rejected', function () {
 });
 
 test('completing a service that needs drying without a dryer is rejected', function () {
-    $this->service->update(['requires_dryer' => true]);
+    $this->service->update(['staffing' => ServiceStaffing::WASHER_DRYER]);
     $log = ($this->log)(['washed_by' => $this->washer->id]);
 
     ($this->as)($this->owner)
@@ -90,13 +92,32 @@ test('a wash-only service completes with just a washer', function () {
     expect($log->fresh()->dried_by)->toBeNull();
 });
 
-test('the dryer is required when any single line asks for it', function () {
+test('a service that takes nobody completes with nobody assigned', function () {
+    // Un cambio de aceite no lo lava ni lo seca nadie. Exigir un lavador ahí
+    // era la última obligación falsa que quedaba.
+    $this->service->update(['staffing' => ServiceStaffing::NONE]);
+    $log = ($this->log)();
+
+    ($this->as)($this->owner)
+        ->patchJson("/api/v1/service-logs/{$log->id}/complete")
+        ->assertOk();
+
+    expect($log->fresh()->status)->toBe('completed');
+    expect($log->fresh()->washed_by)->toBeNull();
+});
+
+test('the log asks for the most demanding of its lines', function () {
+    // Un ticket con un cambio de aceite y una lavada completa sigue
+    // necesitando los dos: manda la línea más exigente, no la primera.
+    $sinNadie = ServiceModel::factory()->create([
+        'tenant_id' => $this->tenant->id, 'staffing' => ServiceStaffing::NONE,
+    ]);
     $secado = ServiceModel::factory()->create([
-        'tenant_id' => $this->tenant->id, 'requires_dryer' => true,
+        'tenant_id' => $this->tenant->id, 'staffing' => ServiceStaffing::WASHER_DRYER,
     ]);
     $log = ($this->log)(['washed_by' => $this->washer->id, 'service_id' => null]);
 
-    foreach ([[$this->service, 0], [$secado, 1]] as [$svc, $i]) {
+    foreach ([[$sinNadie, 0], [$secado, 1]] as [$svc, $i]) {
         ServiceLogItemModel::create([
             'id' => (string) Str::uuid(), 'tenant_id' => $this->tenant->id,
             'service_log_id' => $log->id, 'item_type' => 'service_variant',
@@ -135,7 +156,7 @@ test('a counter sale of products alone completes with nobody assigned', function
 });
 
 test('completing with both assignees works', function () {
-    $this->service->update(['requires_dryer' => true]);
+    $this->service->update(['staffing' => ServiceStaffing::WASHER_DRYER]);
     $log = ($this->log)([
         'washed_by' => $this->washer->id,
         'dried_by'  => $this->dryer->id,
