@@ -4,6 +4,8 @@ declare(strict_types=1);
 
 namespace App\Application\Services;
 
+use App\Infrastructure\Http\Resources\ClientResourceResource;
+use App\Infrastructure\Persistence\Models\ClientResourceModel;
 use App\Infrastructure\Persistence\Models\ManualDebtModel;
 use App\Infrastructure\Persistence\Models\PaymentAllocationModel;
 use App\Infrastructure\Persistence\Models\ServiceLogModel;
@@ -34,6 +36,65 @@ class DebtLedger
      */
     public function outstandingFor(string $tenantId, string $clientResourceId): array
     {
+        return $this->outstandingForResources($tenantId, [$clientResourceId]);
+    }
+
+    /**
+     * Las deudas de una persona: las de todos sus vehículos, mezcladas y de la
+     * más vieja a la más nueva.
+     *
+     * Cobrar auto por auto es donde el cajero se equivoca con alguien que tiene
+     * dos, y deja mitades abiertas que nadie ve. Cada deuda viaja con la
+     * etiqueta de SU vehículo, porque el cajero tiene al cliente enfrente y
+     * necesita saber qué le está cobrando.
+     *
+     * @return array<int, array<string, mixed>>
+     */
+    public function outstandingForClient(string $tenantId, string $clientId): array
+    {
+        $vehiculos = ClientResourceModel::query()
+            ->forTenant($tenantId)
+            ->where('client_id', $clientId)
+            ->get(['id', 'data']);
+
+        if ($vehiculos->isEmpty()) {
+            return [];
+        }
+
+        $etiquetas = $vehiculos->mapWithKeys(fn ($r) => [
+            $r->id => ClientResourceResource::labelFrom($r->data),
+        ]);
+
+        $items = $this->outstandingForResources($tenantId, $vehiculos->pluck('id')->all());
+
+        return array_map(fn ($i) => $i + [
+            'resource_label' => $etiquetas[$i['resource_id']] ?? null,
+        ], $items);
+    }
+
+    public function totalForClient(string $tenantId, string $clientId): float
+    {
+        return round(
+            array_sum(array_column($this->outstandingForClient($tenantId, $clientId), 'due')),
+            2,
+        );
+    }
+
+    /**
+     * El reparto de un monto entre las deudas de una persona, de la más vieja
+     * a la más nueva. Es el mismo criterio que dentro de un vehículo.
+     */
+    public function planForClient(string $tenantId, string $clientId, float $amount): array
+    {
+        return $this->planFrom($this->outstandingForClient($tenantId, $clientId), $amount);
+    }
+
+    /**
+     * @param  array<int, string>  $clientResourceIds
+     * @return array<int, array<string, mixed>>
+     */
+    private function outstandingForResources(string $tenantId, array $clientResourceIds): array
+    {
         $pagado = $this->paidByPayable($tenantId);
 
         $items = [];
@@ -41,7 +102,7 @@ class DebtLedger
         $logs = ServiceLogModel::query()
             ->forTenant($tenantId)
             ->with(['service', 'items'])
-            ->where('client_resource_id', $clientResourceId)
+            ->whereIn('client_resource_id', $clientResourceIds)
             ->where('left_owing', true)
             ->where('payment_status', '!=', 'paid')
             ->get();
@@ -56,6 +117,7 @@ class DebtLedger
             $items[] = [
                 'type'   => PaymentAllocationModel::PAYABLE_SERVICE_LOG,
                 'id'     => $log->id,
+                'resource_id' => $log->client_resource_id,
                 'label'  => $this->labelFor($log),
                 'date'   => ($log->log_date ?? $log->created_at)?->toDateString() ?? '',
                 'amount' => (float) $log->price_charged,
@@ -66,7 +128,7 @@ class DebtLedger
 
         $manuales = ManualDebtModel::query()
             ->forTenant($tenantId)
-            ->where('client_resource_id', $clientResourceId)
+            ->whereIn('client_resource_id', $clientResourceIds)
             ->get();
 
         foreach ($manuales as $d) {
@@ -79,6 +141,7 @@ class DebtLedger
             $items[] = [
                 'type'   => PaymentAllocationModel::PAYABLE_MANUAL_DEBT,
                 'id'     => $d->id,
+                'resource_id' => $d->client_resource_id,
                 'label'  => $d->reason,
                 'date'   => $d->incurred_on?->toDateString() ?? '',
                 'amount' => (float) $d->amount,
@@ -158,10 +221,22 @@ class DebtLedger
      */
     public function planFor(string $tenantId, string $clientResourceId, float $amount): array
     {
+        return $this->planFrom($this->outstandingFor($tenantId, $clientResourceId), $amount);
+    }
+
+    /**
+     * Reparte un monto entre deudas ya ordenadas. Una sola implementación para
+     * la placa y para la persona: dos repartos distintos serían dos formas de
+     * imputar la misma plata.
+     *
+     * @param  array<int, array<string, mixed>>  $items
+     */
+    private function planFrom(array $items, float $amount): array
+    {
         $restante = round($amount, 2);
         $plan = [];
 
-        foreach ($this->outstandingFor($tenantId, $clientResourceId) as $item) {
+        foreach ($items as $item) {
             if ($restante <= self::CENT) {
                 break;
             }
@@ -171,6 +246,8 @@ class DebtLedger
                 'type'   => $item['type'],
                 'id'     => $item['id'],
                 'amount' => round($aplica, 2),
+                'label'  => $item['label'] ?? null,
+                'resource_label' => $item['resource_label'] ?? null,
             ];
             $restante = round($restante - $aplica, 2);
         }

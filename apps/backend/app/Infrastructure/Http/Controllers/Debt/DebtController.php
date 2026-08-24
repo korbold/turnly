@@ -83,6 +83,79 @@ class DebtController extends Controller
         ]);
     }
 
+    /**
+     * La deuda de una persona: la de todos sus vehículos, sumada y con el
+     * detalle de a qué auto pertenece cada renglón.
+     *
+     * Con `?amount=` devuelve además el reparto que ese monto haría, para que
+     * el cajero lo vea ANTES de confirmar. Un automatismo que toca varios
+     * autos con un solo pago tiene que poder auditarse de un vistazo.
+     */
+    public function showClient(Request $request, string $clientId): JsonResponse
+    {
+        $tenantId = app('current_tenant_id');
+
+        $items = $this->debts->outstandingForClient($tenantId, $clientId);
+        $total = round(array_sum(array_column($items, 'due')), 2);
+
+        $monto = $request->filled('amount') ? (float) $request->input('amount') : null;
+
+        return response()->json([
+            'data' => [
+                'total' => $total,
+                'items' => $items,
+                'plan'  => $monto !== null
+                    ? $this->debts->planForClient($tenantId, $clientId, min($monto, $total))
+                    : [],
+            ],
+        ]);
+    }
+
+    /**
+     * Cobra o abona contra la persona: un solo pago repartido entre las deudas
+     * de sus vehículos, de la más vieja a la más nueva.
+     */
+    public function storeClientPayment(Request $request, string $clientId): JsonResponse
+    {
+        $data = $request->validate([
+            'amount' => ['required', 'numeric', 'min:0.01'],
+            'method' => ['required', 'in:cash,card,transfer,other'],
+            'bank'   => ['nullable', 'string', 'max:40'],
+            'notes'  => ['nullable', 'string', 'max:200'],
+        ]);
+
+        $tenantId = app('current_tenant_id');
+        $total = $this->debts->totalForClient($tenantId, $clientId);
+
+        // Cobrar de más no es un abono: es plata sin deuda a la que imputarse,
+        // y quedaría suelta en la caja sin nada que la explique.
+        if ((float) $data['amount'] > $total + 0.005) {
+            return response()->json([
+                'error' => [
+                    'code'    => 'AMOUNT_TOO_HIGH',
+                    'message' => 'El monto supera lo que esta persona debe.',
+                ],
+            ], 422);
+        }
+
+        $pago = $this->ledger->recordAgainstClient(
+            tenantId: $tenantId,
+            clientId: $clientId,
+            amount: (float) $data['amount'],
+            method: $data['method'],
+            bank: $data['bank'] ?? null,
+            receivedBy: $request->user()?->id,
+            notes: $data['notes'] ?? null,
+        );
+
+        return response()->json([
+            'data' => [
+                'payment_id' => $pago->id,
+                'total'      => $this->debts->totalForClient($tenantId, $clientId),
+            ],
+        ]);
+    }
+
     public function storeManual(Request $request): JsonResponse
     {
         $data = $request->validate([

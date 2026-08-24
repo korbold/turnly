@@ -254,6 +254,10 @@ Route::prefix('v1')->group(function () {
             // Deuda: la libreta del dueño y el cobro repartido.
             Route::post('debts/manual', [DebtController::class, 'storeManual']);
             Route::post('debts/payments', [DebtController::class, 'storePayment']);
+            // La deuda de una PERSONA: la de todos sus vehículos, sumada, y un
+            // pago que se reparte entre ellos.
+            Route::get('clients/{id}/debt', [DebtController::class, 'showClient']);
+            Route::post('clients/{id}/debt/payment', [DebtController::class, 'storeClientPayment']);
             // Billing: proxy direct access to billing service invoice list + RIDE PDF.
             Route::get('billing/invoices', [InvoiceProxyController::class, 'index']);
             Route::get('billing/invoices/{id}/ride', [InvoiceProxyController::class, 'ride']);

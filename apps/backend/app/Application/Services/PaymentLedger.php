@@ -118,6 +118,53 @@ class PaymentLedger
      *
      * @param array<int, array{type:string,id:string,amount:float}> $allocations
      */
+    /**
+     * Un pago contra una PERSONA, repartido entre las deudas de todos sus
+     * vehículos.
+     *
+     * Es el mismo mecanismo que contra una placa —un pago con varias
+     * asignaciones— subido un nivel. Cobrar auto por auto a alguien que tiene
+     * dos es donde el cajero se equivoca y deja mitades abiertas.
+     *
+     * @param array<int, array{type:string,id:string,amount:float}> $allocations
+     */
+    public function recordAgainstClient(
+        string $tenantId,
+        string $clientId,
+        float $amount,
+        string $method,
+        ?string $bank,
+        ?string $receivedBy,
+        array $allocations = [],
+        ?string $notes = null,
+    ): PaymentModel {
+        $plan = $allocations !== []
+            ? $allocations
+            : $this->debts->planForClient($tenantId, $clientId, $amount);
+
+        return DB::transaction(function () use (
+            $tenantId, $clientId, $amount, $method, $bank, $receivedBy, $plan, $notes
+        ) {
+            $sesion = $this->cash->currentSession($tenantId);
+
+            $payment = PaymentModel::create([
+                'tenant_id'       => $tenantId,
+                'client_id'       => $clientId,
+                'amount'          => $amount,
+                'method'          => $method,
+                'bank'            => $method === 'transfer' ? $bank : null,
+                'paid_at'         => now(),
+                'received_by'     => $receivedBy,
+                'cash_session_id' => $sesion?->id,
+                'notes'           => $notes,
+            ]);
+
+            $this->applyPlan($payment, $tenantId, $plan, $receivedBy);
+
+            return $payment;
+        });
+    }
+
     public function recordAgainstResource(
         string $tenantId,
         string $clientResourceId,
@@ -154,29 +201,7 @@ class PaymentLedger
                 'notes'           => $notes,
             ]);
 
-            foreach ($plan as $linea) {
-                if ((float) $linea['amount'] <= 0) {
-                    continue;
-                }
-
-                PaymentAllocationModel::create([
-                    'tenant_id'    => $tenantId,
-                    'payment_id'   => $payment->id,
-                    'payable_type' => $linea['type'],
-                    'payable_id'   => $linea['id'],
-                    'amount'       => $linea['amount'],
-                ]);
-
-                // Las columnas de la fila del servicio son un reflejo del
-                // libro: sin esto, la lista del día seguiría diciendo
-                // "Pendiente" sobre algo que acaba de cobrarse.
-                if ($linea['type'] === PaymentAllocationModel::PAYABLE_SERVICE_LOG) {
-                    $log = ServiceLogModel::query()->forTenant($tenantId)->find($linea['id']);
-                    if ($log) {
-                        $this->syncLogPaymentState($log);
-                    }
-                }
-            }
+            $this->applyPlan($payment, $tenantId, $plan, $receivedBy);
 
             return $payment->fresh('allocations');
         });
@@ -187,6 +212,41 @@ class PaymentLedger
      * porque los filtros de la lista, los tiles y la facturación las leen —
      * pero ya no son la verdad, son un reflejo del libro.
      */
+    /**
+     * Escribe las asignaciones de un pago y refresca las filas que tocó.
+     *
+     * Lo comparten el cobro contra una placa y el cobro contra una persona:
+     * dos copias serían dos formas de imputar la misma plata.
+     *
+     * @param array<int, array{type:string,id:string,amount:float}> $plan
+     */
+    private function applyPlan(PaymentModel $payment, string $tenantId, array $plan, ?string $actorId = null): void
+    {
+        foreach ($plan as $linea) {
+            if ((float) $linea['amount'] <= 0) {
+                continue;
+            }
+
+            PaymentAllocationModel::create([
+                'tenant_id'    => $tenantId,
+                'payment_id'   => $payment->id,
+                'payable_type' => $linea['type'],
+                'payable_id'   => $linea['id'],
+                'amount'       => $linea['amount'],
+            ]);
+
+            // Las columnas de la fila del servicio son un reflejo del libro:
+            // sin esto, la lista del día seguiría diciendo "Pendiente" sobre
+            // algo que acaba de cobrarse.
+            if ($linea['type'] === PaymentAllocationModel::PAYABLE_SERVICE_LOG) {
+                $log = ServiceLogModel::query()->forTenant($tenantId)->find($linea['id']);
+                if ($log) {
+                    $this->syncLogPaymentState($log);
+                }
+            }
+        }
+    }
+
     public function syncLogPaymentState(ServiceLogModel $log): void
     {
         $status = $this->statusFor($log);
