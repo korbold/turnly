@@ -180,3 +180,103 @@ test('the detail of another tenant is a 404', function () {
         ->getJson("/api/v1/cash-sessions/{$id}")
         ->assertStatus(404);
 });
+
+test('the detail shows the cash collected once the till was already closed', function () {
+    // El 24 de agosto la caja cerró a las 18:35 y veintiún minutos después
+    // alguien cobró $45 en efectivo. Ese pago no cayó en ninguna caja: no
+    // está en el esperado ni en `cash_by_person`, y el detalle no tenía dónde
+    // mostrarlo — el faltante del arqueo quedaba sin explicación a la vista.
+    $id = ($this->as)($this->vanessa)
+        ->postJson('/api/v1/cash-sessions', ['opening_amount' => 40.00])
+        ->json('data.id');
+
+    ($this->cobra)($this->vanessa, 464.00);
+    ($this->as)($this->vanessa)
+        ->postJson("/api/v1/cash-sessions/{$id}/close", ['counted_amount' => 464.00]);
+
+    ($this->cobra)($this->owner, 45.00);
+
+    $d = ($this->as)($this->owner)->getJson("/api/v1/cash-sessions/{$id}")->json('data');
+
+    expect($d['cash_outside_session'])->toHaveCount(1);
+    expect((float) $d['cash_outside_session'][0]['amount'])->toBe(45.0);
+    expect($d['cash_outside_session'][0]['received_by']['name'])->toBe('Federman');
+});
+
+test('the cash collected outside the till stays out of the count that was signed', function () {
+    // Mostrarlo no es contarlo. El arqueo se firmó contra billetes que
+    // estaban en el cajón a esa hora; sumarle plata que llegó después
+    // reescribiría un número que alguien ya declaró.
+    $id = ($this->as)($this->vanessa)
+        ->postJson('/api/v1/cash-sessions', ['opening_amount' => 40.00])
+        ->json('data.id');
+
+    ($this->cobra)($this->vanessa, 464.00);
+    ($this->as)($this->vanessa)
+        ->postJson("/api/v1/cash-sessions/{$id}/close", ['counted_amount' => 464.00]);
+
+    ($this->cobra)($this->owner, 45.00);
+
+    $d = ($this->as)($this->owner)->getJson("/api/v1/cash-sessions/{$id}")->json('data');
+
+    expect((float) $d['expected_amount'])->toBe(504.0);
+    expect((float) collect($d['cash_by_person'])->sum('amount'))->toBe(464.0);
+    expect((float) $d['difference'])->toBe(-40.0);
+});
+
+test('a till with nothing collected behind its back shows an empty list', function () {
+    $id = ($this->cajaDe)('2026-08-21', 40.00, 464.00);
+
+    $d = ($this->as)($this->owner)->getJson("/api/v1/cash-sessions/{$id}")->json('data');
+
+    expect($d['cash_outside_session'])->toBe([]);
+});
+
+test('a till closed before the closures table existed gets its count back', function () {
+    // La caja del 24 de agosto se cerró un día antes de que la tabla de
+    // arqueos existiera: contó $464 contra $514 y el faltante de $50 sólo se
+    // podía leer con SQL, porque la pantalla dibuja la sección desde
+    // `closures` y ahí no había fila.
+    $id = ($this->cajaDe)('2026-08-21', 40.00, 464.00);
+
+    // El estado previo al deploy: la sesión con su arqueo, sin fila propia.
+    \Illuminate\Support\Facades\DB::table('cash_session_closures')
+        ->where('cash_session_id', $id)->delete();
+
+    $backfill = require base_path('database/migrations/2026_08_25_100003_backfill_cash_session_closures.php');
+    $backfill->up();
+
+    $cierres = ($this->as)($this->owner)->getJson("/api/v1/cash-sessions/{$id}")->json('data.closures');
+
+    expect($cierres)->toHaveCount(1);
+    expect((float) $cierres[0]['counted_amount'])->toBe(464.0);
+    expect((float) $cierres[0]['expected_amount'])->toBe(40.0);
+    expect((float) $cierres[0]['difference'])->toBe(424.0);
+    expect($cierres[0]['closed_by']['name'])->toBe('Vanessa');
+});
+
+test('the backfill run twice does not invent a second count', function () {
+    $id = ($this->cajaDe)('2026-08-21', 40.00, 464.00);
+    \Illuminate\Support\Facades\DB::table('cash_session_closures')
+        ->where('cash_session_id', $id)->delete();
+
+    $backfill = require base_path('database/migrations/2026_08_25_100003_backfill_cash_session_closures.php');
+    $backfill->up();
+    $backfill->up();
+
+    expect(($this->as)($this->owner)->getJson("/api/v1/cash-sessions/{$id}")->json('data.closures'))
+        ->toHaveCount(1);
+});
+
+test('the backfill leaves the counts a cashier actually signed alone', function () {
+    // El `down()` borra por `created_at` NULL, que es su propia marca. Un
+    // arqueo de verdad tiene fecha de creación y no se toca.
+    $id = ($this->cajaDe)('2026-08-21', 40.00, 464.00);
+
+    $backfill = require base_path('database/migrations/2026_08_25_100003_backfill_cash_session_closures.php');
+    $backfill->up();
+    $backfill->down();
+
+    expect(($this->as)($this->owner)->getJson("/api/v1/cash-sessions/{$id}")->json('data.closures'))
+        ->toHaveCount(1);
+});

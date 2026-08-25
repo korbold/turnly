@@ -13,6 +13,7 @@ import type {
   CashByPerson,
   CashSessionDetail,
   CashClosure,
+  CashOutsideSession,
 } from '@/domain/entities/cash-session';
 import type { CashSessionRepository } from '@/domain/repositories/cash-session.repository';
 
@@ -80,6 +81,15 @@ function mapClosure(raw: Raw): CashClosure {
   };
 }
 
+function mapOutside(raw: Raw): CashOutsideSession {
+  return {
+    id: raw.id as string,
+    amount: Number(raw.amount ?? 0),
+    paidAt: new Date(raw.paid_at as string),
+    receivedBy: mapActor(raw.received_by),
+  };
+}
+
 export class ApiCashSessionRepository implements CashSessionRepository {
   async list(): Promise<CashSession[]> {
     const { data: res } = await api.get<{ data: Raw[] }>('/cash-sessions');
@@ -91,6 +101,7 @@ export class ApiCashSessionRepository implements CashSessionRepository {
     return {
       ...mapSession(res.data),
       closures: ((res.data.closures as Raw[]) ?? []).map(mapClosure),
+      cashOutsideSession: ((res.data.cash_outside_session as Raw[]) ?? []).map(mapOutside),
     };
   }
 

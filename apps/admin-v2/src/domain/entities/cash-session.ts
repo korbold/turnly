@@ -78,9 +78,27 @@ export interface CashClosure {
   reopenReason: string | null;
 }
 
+/**
+ * Un cobro en efectivo que ese día no cayó en ninguna caja: se cobró antes de
+ * abrir el cajón o con el cajón ya cerrado.
+ *
+ * No participa del arqueo y no debe participar — el conteo se firmó contra
+ * los billetes que estaban ahí a esa hora. Se muestra porque es la mitad que
+ * faltaba para leer un faltante: el 24 de agosto la caja cerró $50 corta y a
+ * las 18:56 alguien había cobrado $45 con el cajón cerrado.
+ */
+export interface CashOutsideSession {
+  id: string;
+  amount: number;
+  paidAt: Date;
+  receivedBy: CashActor | null;
+}
+
 /** Una caja con todo lo que se le hizo. */
 export interface CashSessionDetail extends CashSession {
   closures: CashClosure[];
+  /** Lo que se cobró en efectivo ese día por fuera de esta caja. */
+  cashOutsideSession: CashOutsideSession[];
 }
 
 export interface CashSessionSnapshot {

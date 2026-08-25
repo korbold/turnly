@@ -201,6 +201,38 @@ export default function CashDetailPage({ params }: { params: Promise<{ id: strin
         </section>
       )}
 
+      {caja.cashOutsideSession.length > 0 && (
+        <section className="rounded-xl border border-[var(--border)] bg-[var(--bg-surface)] p-5">
+          <h2 className="text-[11px] font-semibold uppercase tracking-[0.04em] text-[var(--fg-muted)]">
+            Fuera de caja
+          </h2>
+          <p className="mt-1 text-[12px] text-[var(--fg-muted)]">
+            Efectivo cobrado ese día que no cayó en esta caja. No entró en el arqueo.
+          </p>
+          <ul className="mt-3 divide-y divide-[var(--border)]">
+            {caja.cashOutsideSession.map((p) => (
+              <li key={p.id} className="flex items-baseline gap-3 py-2">
+                <span className="shrink-0 text-[13.5px] font-semibold tabular-nums text-[var(--fg-strong)]">
+                  {money(p.amount)}
+                </span>
+                <span className="min-w-0 flex-1 truncate text-[12.5px] text-[var(--fg-muted)]">
+                  {p.receivedBy?.name ?? 'Sin identificar'}
+                </span>
+                <span className="shrink-0 text-[12px] text-[var(--fg-muted)]">
+                  {hora(p.paidAt)}
+                  {caja.closedAt && p.paidAt > caja.closedAt
+                    ? ' · con el cajón ya cerrado'
+                    : ' · antes de abrir'}
+                </span>
+              </li>
+            ))}
+          </ul>
+          <p className="mt-3 border-t border-[var(--border)] pt-2 text-right text-[12.5px] tabular-nums text-[var(--fg-secondary)]">
+            {money(caja.cashOutsideSession.reduce((t, p) => t + p.amount, 0))} en total
+          </p>
+        </section>
+      )}
+
       {caja.closures.length > 0 && (
         <section className="rounded-xl border border-[var(--border)] bg-[var(--bg-surface)] p-5">
           <h2 className="text-[11px] font-semibold uppercase tracking-[0.04em] text-[var(--fg-muted)]">

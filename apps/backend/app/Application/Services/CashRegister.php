@@ -206,6 +206,40 @@ class CashRegister
     }
 
     /**
+     * Los mismos billetes que `cashCollectedWithoutSession()` cuenta, pero uno
+     * por uno: cuánto, de quién y a qué hora.
+     *
+     * La suma alcanza para la tarjeta de la caja del día —"cobraron antes de
+     * abrir"— y no alcanza para el detalle de una caja cerrada, donde la
+     * pregunta es otra: el arqueo del 24 de agosto faltó $50 y a las 18:56
+     * alguien había cobrado $45 con el cajón cerrado. Ver los dos números
+     * juntos es lo que convierte un faltante en una explicación.
+     *
+     * Sólo efectivo: una transferencia recibida a esa misma hora no estaba
+     * en el cajón ni podía estarlo, así que no explica nada.
+     */
+    public function cashOutsideSession(string $tenantId, string $businessDate): array
+    {
+        return PaymentModel::query()
+            ->forTenant($tenantId)
+            ->whereNull('cash_session_id')
+            ->where('method', 'cash')
+            ->whereDate('paid_at', $businessDate)
+            ->with('receiver:id,name')
+            ->orderBy('paid_at')
+            ->get()
+            ->map(fn (PaymentModel $p) => [
+                'id'          => $p->id,
+                'amount'      => round((float) $p->amount, 2),
+                'paid_at'     => $p->paid_at?->toIso8601String(),
+                'received_by' => $p->receiver
+                    ? ['id' => $p->receiver->id, 'name' => $p->receiver->name]
+                    : null,
+            ])
+            ->all();
+    }
+
+    /**
      * Lo que el día registró y todavía nadie cobró: cuántos servicios y
      * cuánto.
      *

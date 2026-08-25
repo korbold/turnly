@@ -206,7 +206,18 @@ class CashSessionController extends Controller
         return response()->json([
             'data' => array_merge(
                 (new CashSessionResource($session))->toArray($request),
-                ['closures' => $cierres],
+                [
+                    'closures' => $cierres,
+                    // El efectivo del día que no cayó en esta caja. En
+                    // `current()` el equivalente va en `meta`, porque ahí
+                    // `data` puede ser null y el número existe igual; acá la
+                    // caja siempre existe y el dato es de ella: es lo que le
+                    // pasó por al lado.
+                    'cash_outside_session' => $this->cash->cashOutsideSession(
+                        app('current_tenant_id'),
+                        $session->business_date->toDateString(),
+                    ),
+                ],
             ),
         ]);
     }
