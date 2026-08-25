@@ -6,10 +6,12 @@ import { GetCashSessionUseCase } from '@/application/use-cases/cash/get-cash-ses
 import { OpenCashSessionUseCase } from '@/application/use-cases/cash/open-cash-session.use-case';
 import { AddCashMovementUseCase } from '@/application/use-cases/cash/add-cash-movement.use-case';
 import { CloseCashSessionUseCase } from '@/application/use-cases/cash/close-cash-session.use-case';
+import { ReopenCashSessionUseCase } from '@/application/use-cases/cash/reopen-cash-session.use-case';
 import type {
   OpenCashSessionInput,
   AddCashMovementInput,
   CloseCashSessionInput,
+  ReopenCashSessionInput,
 } from '@/domain/entities/cash-session';
 
 export function useCashSession(date: string) {
@@ -54,5 +56,12 @@ export function useCloseCashSession() {
   const repo = useRepository('cashSession');
   return useCashMutation((input: CloseCashSessionInput) =>
     new CloseCashSessionUseCase(repo).execute(input),
+  );
+}
+
+export function useReopenCashSession() {
+  const repo = useRepository('cashSession');
+  return useCashMutation((input: ReopenCashSessionInput) =>
+    new ReopenCashSessionUseCase(repo).execute(input),
   );
 }

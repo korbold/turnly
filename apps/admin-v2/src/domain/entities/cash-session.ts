@@ -27,6 +27,14 @@ export interface CashMovement {
  * Si la UI los muestra antes, el cajero copia el número y el arqueo no
  * controla nada.
  */
+/** Cuánto efectivo cobró cada persona. Ver `cashByPerson` en la sesión. */
+export interface CashByPerson {
+  userId: string | null;
+  name: string;
+  count: number;
+  amount: number;
+}
+
 export interface CashSession {
   id: string;
   businessDate: string;
@@ -41,12 +49,34 @@ export interface CashSession {
   difference: number | null;
   notes: string | null;
   movements: CashMovement[];
+  /**
+   * Quién cobró cuánto efectivo. `null` mientras la caja está abierta, por la
+   * misma razón que `expectedAmount`: sumar estas filas da el esperado.
+   *
+   * Existe porque el cajón es de varios. Vanessa abre y cierra; Fernanda cobra
+   * el 85%. Sin esto, una diferencia se le adjudica entera a quien firmó.
+   */
+  cashByPerson: CashByPerson[] | null;
 }
 
 export interface CashSessionSnapshot {
   session: CashSession | null;
   /** Efectivo cobrado ese día sin caja abierta. Es un aviso, no un bloqueo. */
   cashWithoutSession: number;
+  /**
+   * Lo que el día registró y nadie cobró todavía.
+   *
+   * Se puede mostrar con la caja abierta sin romper el conteo ciego: es plata
+   * que NO está en el cajón. Sirve para avisar antes de cerrar temprano — el
+   * cierre del 24 dejó afuera 8 servicios por $305.
+   */
+  pendingCollection: { count: number; amount: number };
+}
+
+export interface ReopenCashSessionInput {
+  sessionId: string;
+  /** Sin motivo, reabrir es indistinguible de borrar un arqueo que no gustó. */
+  reason: string;
 }
 
 export interface OpenCashSessionInput {

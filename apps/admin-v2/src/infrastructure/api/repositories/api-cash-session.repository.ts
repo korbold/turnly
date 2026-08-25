@@ -9,6 +9,8 @@ import type {
   OpenCashSessionInput,
   AddCashMovementInput,
   CloseCashSessionInput,
+  ReopenCashSessionInput,
+  CashByPerson,
 } from '@/domain/entities/cash-session';
 import type { CashSessionRepository } from '@/domain/repositories/cash-session.repository';
 
@@ -47,6 +49,16 @@ function mapSession(raw: Raw): CashSession {
     difference: num(raw.difference),
     notes: (raw.notes as string) ?? null,
     movements: ((raw.movements as Raw[]) ?? []).map(mapMovement),
+    cashByPerson: raw.cash_by_person
+      ? (raw.cash_by_person as Raw[]).map(
+          (p): CashByPerson => ({
+            userId: (p.user_id as string) ?? null,
+            name: p.name as string,
+            count: Number(p.count ?? 0),
+            amount: Number(p.amount ?? 0),
+          }),
+        )
+      : null,
   };
 }
 
@@ -58,6 +70,10 @@ export class ApiCashSessionRepository implements CashSessionRepository {
     return {
       session: res.data ? mapSession(res.data) : null,
       cashWithoutSession: Number(res.meta?.cash_without_session ?? 0),
+      pendingCollection: {
+        count: Number((res.meta?.pending_collection as Raw)?.count ?? 0),
+        amount: Number((res.meta?.pending_collection as Raw)?.amount ?? 0),
+      },
     };
   }
 
@@ -81,6 +97,14 @@ export class ApiCashSessionRepository implements CashSessionRepository {
     const { data: res } = await api.post<{ data: Raw }>(
       `/cash-sessions/${input.sessionId}/close`,
       { counted_amount: input.countedAmount, ...(input.notes ? { notes: input.notes } : {}) },
+    );
+    return mapSession(res.data);
+  }
+
+  async reopen(input: ReopenCashSessionInput): Promise<CashSession> {
+    const { data: res } = await api.post<{ data: Raw }>(
+      `/cash-sessions/${input.sessionId}/reopen`,
+      { reason: input.reason },
     );
     return mapSession(res.data);
   }

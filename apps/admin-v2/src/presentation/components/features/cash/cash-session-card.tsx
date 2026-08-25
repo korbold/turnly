@@ -3,7 +3,7 @@
 import { useState } from 'react';
 import { format, parseISO } from 'date-fns';
 import { es } from 'date-fns/locale';
-import { AlertTriangle, Lock, Wallet } from 'lucide-react';
+import { AlertTriangle, Lock, RotateCcw, Wallet } from 'lucide-react';
 import { Button } from '@/presentation/components/ui/button';
 import { Skeleton } from '@/presentation/components/ui/skeleton';
 import { useCashSession } from '@/presentation/hooks/use-cash-session';
@@ -11,6 +11,7 @@ import { usePermissions } from '@/presentation/hooks/use-permissions';
 import { OpenCashDialog } from '@/presentation/components/features/cash/open-cash-dialog';
 import { CashMovementDialog } from '@/presentation/components/features/cash/cash-movement-dialog';
 import { CloseCashDialog } from '@/presentation/components/features/cash/close-cash-dialog';
+import { ReopenCashDialog } from '@/presentation/components/features/cash/reopen-cash-dialog';
 import { MOVEMENT_TYPE_LABEL } from '@/domain/entities/cash-session';
 
 const money = (v: number) =>
@@ -34,9 +35,11 @@ interface Props {
  * cajero copiaría ese número en el conteo.
  */
 export function CashSessionCard({ date }: Props) {
-  const { canManageCash } = usePermissions();
+  const { canManageCash, isOwnerOrAdmin } = usePermissions();
   const { data, isLoading } = useCashSession(date);
-  const [openDialog, setOpenDialog] = useState<'open' | 'movement' | 'close' | null>(null);
+  const [openDialog, setOpenDialog] = useState<
+    'open' | 'movement' | 'close' | 'reopen' | null
+  >(null);
 
   // Sin el privilegio la tarjeta no existe: un lavador no tiene por qué saber
   // cuánto hay en el cajón.
@@ -136,7 +139,7 @@ export function CashSessionCard({ date }: Props) {
           </span>
         )}
 
-        {abierta && (
+        {abierta ? (
           <div className="ml-auto flex gap-2">
             <Button size="sm" variant="outline" onClick={() => setOpenDialog('movement')}>
               Movimiento
@@ -145,6 +148,20 @@ export function CashSessionCard({ date }: Props) {
               Cerrar caja
             </Button>
           </div>
+        ) : (
+          // Reabrir es del dueño. Para el cajero el botón no existe: si pudiera
+          // deshacer su propio arqueo, el conteo ciego sería reversible.
+          isOwnerOrAdmin && (
+            <Button
+              size="sm"
+              variant="outline"
+              className="ml-auto"
+              onClick={() => setOpenDialog('reopen')}
+            >
+              <RotateCcw className="mr-1.5 h-3.5 w-3.5" aria-hidden="true" />
+              Reabrir
+            </Button>
+          )
         )}
       </section>
 
@@ -173,6 +190,12 @@ export function CashSessionCard({ date }: Props) {
       />
       <CloseCashDialog
         open={openDialog === 'close'}
+        sessionId={session.id}
+        businessDate={date}
+        onClose={() => setOpenDialog(null)}
+      />
+      <ReopenCashDialog
+        open={openDialog === 'reopen'}
         sessionId={session.id}
         onClose={() => setOpenDialog(null)}
       />

@@ -9,12 +9,15 @@ import { Button } from '@/presentation/components/ui/button';
 import { Input } from '@/presentation/components/ui/input';
 import { Label } from '@/presentation/components/ui/label';
 import { Textarea } from '@/presentation/components/ui/textarea';
-import { useCloseCashSession } from '@/presentation/hooks/use-cash-session';
+import { AlertTriangle } from 'lucide-react';
+import { useCashSession, useCloseCashSession } from '@/presentation/hooks/use-cash-session';
 import type { CashSession } from '@/domain/entities/cash-session';
 
 interface Props {
   open: boolean;
   sessionId: string;
+  /** El día que se está cerrando: de ahí sale lo que quedó sin cobrar. */
+  businessDate: string;
   onClose: () => void;
 }
 
@@ -38,7 +41,9 @@ const signed = (v: number) =>
  * tiene más a mano. Nombrar la base no revela el esperado, así que el cierre
  * sigue siendo ciego.
  */
-export function CloseCashDialog({ open, sessionId, onClose }: Props) {
+export function CloseCashDialog({ open, sessionId, businessDate, onClose }: Props) {
+  const { data: caja } = useCashSession(businessDate);
+  const pendiente = caja?.pendingCollection ?? { count: 0, amount: 0 };
   const [counted, setCounted] = useState('');
   const [notes, setNotes] = useState('');
   const [result, setResult] = useState<CashSession | null>(null);
@@ -93,6 +98,26 @@ export function CloseCashDialog({ open, sessionId, onClose }: Props) {
                 que abriste</strong>. El sistema te dice después cuánto esperaba.
               </DialogDescription>
             </DialogHeader>
+
+            {pendiente.count > 0 && (
+              // Cerrar con cobros pendientes es lo que dejó $45 fuera de toda
+              // caja el 24. No se bloquea: a veces el cliente no vuelve. Pero
+              // deja de ser un descuido invisible.
+              <div className="flex gap-2.5 rounded-lg border border-[var(--warning-200)] bg-[var(--warning-50)] p-3">
+                <AlertTriangle
+                  className="mt-0.5 h-4 w-4 shrink-0 text-[var(--warning-700)]"
+                  aria-hidden="true"
+                />
+                <p className="text-[12.5px] leading-relaxed text-[var(--warning-700)]">
+                  {pendiente.count === 1 ? 'Queda' : 'Quedan'}{' '}
+                  <strong>
+                    {pendiente.count} {pendiente.count === 1 ? 'servicio' : 'servicios'} sin cobrar
+                  </strong>{' '}
+                  por {money(pendiente.amount)}. Si alguien todavía va a pagar hoy, cierra después:
+                  lo que se cobre con la caja cerrada no entra en este arqueo.
+                </p>
+              </div>
+            )}
 
             <div className="space-y-2">
               <Label htmlFor="counted-amount">Efectivo contado (todo el cajón)</Label>
@@ -151,6 +176,36 @@ export function CloseCashDialog({ open, sessionId, onClose }: Props) {
                 </dd>
               </div>
             </dl>
+
+            {(result.cashByPerson?.length ?? 0) > 0 && (
+              // Con dos personas en un cajón, "faltan $50" no dice nada si no
+              // se ve que una tocó $434 y la otra $75. No acusa a nadie: da la
+              // conversación.
+              <div className="rounded-lg border border-[var(--border)] bg-[var(--bg-sunken)] p-3">
+                <p className="text-[11px] font-semibold uppercase tracking-[0.04em] text-[var(--fg-muted)]">
+                  Efectivo cobrado por
+                </p>
+                <ul className="mt-1.5 space-y-1">
+                  {result.cashByPerson!.map((p) => (
+                    <li
+                      key={p.userId ?? p.name}
+                      className="flex items-baseline justify-between gap-2 text-[12.5px]"
+                    >
+                      <span className="min-w-0 truncate text-[var(--fg-secondary)]">
+                        {p.name}
+                        <span className="text-[var(--fg-muted)]">
+                          {' · '}
+                          {p.count} {p.count === 1 ? 'cobro' : 'cobros'}
+                        </span>
+                      </span>
+                      <span className="shrink-0 font-semibold tabular-nums text-[var(--fg-strong)]">
+                        {money(p.amount)}
+                      </span>
+                    </li>
+                  ))}
+                </ul>
+              </div>
+            )}
 
             <DialogFooter>
               <Button onClick={onClose}>Listo</Button>
