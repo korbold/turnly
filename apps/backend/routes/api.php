@@ -224,6 +224,9 @@ Route::prefix('v1')->group(function () {
             // Asignar lavador y secador. Gate doble: privilegio en progreso,
             // solo admin una vez completado.
             Route::patch('service-logs/{id}/assignees', [ServiceLogController::class, 'updateAssignees']);
+            // Devolverle el vehículo a un registro que lo perdió. Sólo llena
+            // lo vacío; el vehículo de un registro no se reescribe.
+            Route::patch('service-logs/{id}/resource', [ServiceLogController::class, 'assignResource']);
             Route::delete('service-logs/{id}', [ServiceLogController::class, 'destroy']);
             Route::patch('service-logs/{id}/complete', [ServiceLogController::class, 'complete']);
             // Late payment registration — cashier marks a "cobrar al

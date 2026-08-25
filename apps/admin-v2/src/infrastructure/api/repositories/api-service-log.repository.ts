@@ -122,6 +122,18 @@ export class ApiServiceLogRepository implements ServiceLogRepository {
     return mapServiceLog(res.data);
   }
 
+  /**
+   * Le devuelve el vehículo a un registro que lo perdió. El backend sólo
+   * acepta cuando está vacío: el vehículo de un registro no se reescribe.
+   */
+  async assignResource(id: string, clientResourceId: string): Promise<ServiceLog> {
+    const { data: res } = await api.patch<{ data: Record<string, unknown> }>(
+      `/service-logs/${id}/resource`,
+      { client_resource_id: clientResourceId },
+    );
+    return mapServiceLog(res.data);
+  }
+
   async assignStaff(id: string, data: AssignStaffData): Promise<ServiceLog> {
     // Sólo se mandan las claves presentes: omitir es distinto de null.
     const payload: Record<string, unknown> = {};

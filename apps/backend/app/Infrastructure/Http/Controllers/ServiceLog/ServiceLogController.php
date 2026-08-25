@@ -32,6 +32,7 @@ use App\Infrastructure\Persistence\Models\ServiceVariantModel;
 use App\Infrastructure\Persistence\Models\TenantModel;
 use App\Infrastructure\Persistence\Models\TenantUserModel;
 use App\Infrastructure\Persistence\Models\UserBillingProfileModel;
+use App\Infrastructure\Persistence\Models\ClientResourceModel;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Collection;
@@ -993,6 +994,69 @@ class ServiceLogController extends Controller
      *   vehículo llega al mostrador, y quien lo atiende no puede ser quien
      *   reescribe el historial.
      */
+    /**
+     * Le devuelve el vehículo a un servicio que lo había perdido.
+     *
+     * `service_logs.client_resource_id` es ON DELETE SET NULL, así que un
+     * vehículo borrado a nivel de base dejaba el servicio suelto: con su
+     * precio, su cobro y su bitácora, y sin el auto sobre el que se trabajó.
+     * En producción quedaron 11 así, y la pantalla no ofrecía nada — el dueño
+     * sabía de quién era ese lavado y no tenía dónde decirlo.
+     *
+     * SÓLO llena lo que está vacío. Cambiar el vehículo de un servicio que ya
+     * lo tiene es otra cosa y está prohibido a propósito: si el auto está mal,
+     * se corrige por el editor de ítems. Acá no hay nada que sobrescribir.
+     *
+     * Owner o admin, mismo criterio que corregir los asignados de un servicio
+     * completado: es dato histórico, y lo arregla quien responde por el local.
+     */
+    public function assignResource(Request $request, string $id): ServiceLogResource|JsonResponse
+    {
+        $log = ServiceLogModel::findOrFail($id);
+
+        $isManager = $request->user()?->is_super_admin
+            || in_array($this->tenantRole($request), ['owner', 'tenant_admin'], true);
+
+        if (!$isManager) {
+            return response()->json([
+                'error' => [
+                    'code'    => 'RESOURCE_ASSIGN_FORBIDDEN',
+                    'message' => 'Solo el administrador puede asignarle el vehículo a un registro.',
+                ],
+            ], 403);
+        }
+
+        if ($log->client_resource_id !== null) {
+            return response()->json([
+                'error' => [
+                    'code'    => 'RESOURCE_ALREADY_SET',
+                    'message' => 'Este registro ya tiene un vehículo. Para corregirlo, editá los servicios.',
+                ],
+            ], 422);
+        }
+
+        $data = $request->validate([
+            'client_resource_id' => ['required', 'uuid'],
+        ]);
+
+        // findOrFail bajo el TenantScope: el vehículo de otro local es un 404,
+        // no un 403 — no se confirma que ese id exista.
+        $recurso = ClientResourceModel::findOrFail($data['client_resource_id']);
+
+        $log->forceFill(['client_resource_id' => $recurso->id])->save();
+
+        $this->events->resourceAssigned(
+            $log,
+            $recurso->id,
+            \App\Domain\ClientResource\Plate::fromData($recurso->data),
+            $request->user()?->id,
+        );
+
+        return new ServiceLogResource(
+            $log->fresh()->load(['clientResource.client', 'service', 'attendant', 'items.variant', 'events.changedBy'])
+        );
+    }
+
     public function updateAssignees(Request $request, string $id): ServiceLogResource|JsonResponse
     {
         $log = ServiceLogModel::findOrFail($id);

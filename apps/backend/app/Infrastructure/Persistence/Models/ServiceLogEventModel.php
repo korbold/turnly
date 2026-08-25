@@ -24,6 +24,8 @@ class ServiceLogEventModel extends Model
 
     public const EVENT_CREATED                = 'created';
     public const EVENT_ASSIGNEE_CHANGED       = 'assignee_changed';
+    /** Se le devolvió el vehículo a un servicio que lo había perdido. */
+    public const EVENT_RESOURCE_ASSIGNED      = 'resource_assigned';
     public const EVENT_ITEMS_CHANGED          = 'items_changed';
     public const EVENT_LOG_UPDATED            = 'log_updated';
     public const EVENT_PAYMENT_RECORDED       = 'payment_recorded';

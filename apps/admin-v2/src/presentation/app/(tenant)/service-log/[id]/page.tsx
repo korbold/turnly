@@ -31,6 +31,7 @@ import {
   useRevertServiceLogPayment,
 } from '@/presentation/hooks/use-service-logs';
 import { useEmitInvoice } from '@/presentation/hooks/use-invoices';
+import { AssignResourceDialog } from '@/presentation/components/features/service-logs/assign-resource-dialog';
 import { usePermissions } from '@/presentation/hooks/use-permissions';
 import { useSettings } from '@/presentation/hooks/use-settings';
 import { describeServiceLogEvent } from '@/shared/utils/service-log-events';
@@ -84,6 +85,7 @@ function ServiceLogDetail({ id }: { id: string }) {
   const [editOpen, setEditOpen] = useState(false);
   const [billingOpen, setBillingOpen] = useState(false);
   const [assignOpen, setAssignOpen] = useState(false);
+  const [asignandoRecurso, setAsignandoRecurso] = useState(false);
   // Abierto desde Completar: exige ambos y completa al guardar.
   const [assignToComplete, setAssignToComplete] = useState(false);
   const { canAssign, isOwnerOrAdmin } = usePermissions();
@@ -389,6 +391,23 @@ function ServiceLogDetail({ id }: { id: string }) {
               <Car className="mt-0.5 h-4 w-4 shrink-0 text-[var(--fg-muted)]" aria-hidden="true" />
               <div className="min-w-0 text-[13.5px] text-[var(--fg-strong)]">{recurso}</div>
             </div>
+
+            {/* Un registro sin vehículo perdió el suyo: la FK lo vacía cuando
+                alguien borra el auto, y el servicio queda con su precio y su
+                cobro sin saber sobre qué se trabajó. Quien atendió lo sabe, y
+                hasta ahora no tenía dónde decirlo. Sólo cuando está vacío:
+                reescribir el vehículo de un registro es otra cosa. */}
+            {!log.clientResource && isOwnerOrAdmin && (
+              <Button
+                variant="outline"
+                size="sm"
+                className="mt-3 w-full"
+                onClick={() => setAsignandoRecurso(true)}
+              >
+                <Car className="mr-1.5 h-3.5 w-3.5" aria-hidden="true" />
+                Asignar vehículo
+              </Button>
+            )}
           </Card>
 
           <Card title="Tiempos">
@@ -430,6 +449,16 @@ function ServiceLogDetail({ id }: { id: string }) {
           registro, y no puede compartir jerarquía con Cobrar o Editar. Sólo
           dueño o admin —el backend lo exige igual— y nunca sobre algo
           facturado, que se corrige con nota de crédito. */}
+      {/* Sólo se monta cuando hace falta: el diálogo consulta la lista de
+          vehículos y no tiene sentido pagar esa consulta en cada detalle. */}
+      {asignandoRecurso && (
+        <AssignResourceDialog
+          log={log}
+          open={asignandoRecurso}
+          onOpenChange={setAsignandoRecurso}
+        />
+      )}
+
       {!anulado && isOwnerOrAdmin && log.invoiceStatus === null && (
         <div className="mt-6 border-t border-[var(--border)] pt-4">
           <button

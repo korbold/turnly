@@ -44,6 +44,24 @@ class ServiceLogEventRecorder
         ], $actorId);
     }
 
+    /**
+     * Se le devolvió el vehículo a un servicio que lo había perdido.
+     *
+     * Guarda la placa además del id: la bitácora se lee, y un uuid no dice de
+     * qué auto se está hablando.
+     */
+    public function resourceAssigned(
+        ServiceLogModel $log,
+        string $resourceId,
+        ?string $plate,
+        ?string $actorId,
+    ): void {
+        $this->write($log, ServiceLogEventModel::EVENT_RESOURCE_ASSIGNED, [
+            'resource_id' => $resourceId,
+            'plate'       => $plate,
+        ], $actorId);
+    }
+
     public function itemsChanged(
         ServiceLogModel $log,
         float $totalBefore,

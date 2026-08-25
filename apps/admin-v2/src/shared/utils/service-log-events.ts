@@ -77,6 +77,13 @@ export function describeServiceLogEvent(event: ServiceLogEvent): string {
       return parts.length ? `Editó el registro · ${parts.join(' · ')}` : 'Editó el registro';
     }
 
+    case 'resource_assigned': {
+      // Se le devolvió el vehículo a un registro que lo había perdido. La
+      // placa y no el id: la bitácora se lee.
+      const placa = typeof d.plate === 'string' && d.plate.trim() ? d.plate.trim() : 'sin placa';
+      return `Asignó el vehículo · ${placa}`;
+    }
+
     case 'items_changed':
       return `Cambió los servicios · ${money(d.total_before)} → ${money(d.total_after)}`;
 

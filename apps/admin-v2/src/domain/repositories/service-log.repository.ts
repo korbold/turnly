@@ -113,6 +113,9 @@ export interface ServiceLogRepository {
   create(data: CreateServiceLogData): Promise<ServiceLog>;
   update(id: string, data: UpdateServiceLogData): Promise<ServiceLog>;
   assignStaff(id: string, data: AssignStaffData): Promise<ServiceLog>;
+
+  /** Le devuelve el vehículo a un registro que lo perdió. Sólo si está vacío. */
+  assignResource(id: string, clientResourceId: string): Promise<ServiceLog>;
   updateItems(
     id: string,
     items: UpdateServiceLogItemsData,

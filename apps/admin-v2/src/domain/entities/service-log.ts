@@ -58,6 +58,7 @@ export interface ServiceLogEvent {
   event:
     | 'created'
     | 'assignee_changed'
+    | 'resource_assigned'
     | 'items_changed'
     | 'price_changed'
     | 'log_updated'

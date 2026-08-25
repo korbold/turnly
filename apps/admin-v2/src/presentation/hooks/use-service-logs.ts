@@ -76,6 +76,21 @@ export function useAssignServiceLogStaff() {
   });
 }
 
+export function useAssignServiceLogResource() {
+  const repo = useRepository('serviceLog');
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: ({ id, clientResourceId }: { id: string; clientResourceId: string }) =>
+      repo.assignResource(id, clientResourceId),
+    onSuccess: () => {
+      // También `clients`: el vehículo recupera ese servicio en su historial
+      // y en su total gastado.
+      queryClient.invalidateQueries({ queryKey: ['service-logs'] });
+      queryClient.invalidateQueries({ queryKey: ['clients'] });
+    },
+  });
+}
+
 export function useUpdateServiceLogItems() {
   const repo = useRepository('serviceLog');
   const queryClient = useQueryClient();
