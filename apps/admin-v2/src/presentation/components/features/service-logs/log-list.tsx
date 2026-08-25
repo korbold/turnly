@@ -224,6 +224,12 @@ export function LogList({
         const isOwing = !anulado && log.paymentStatus !== 'paid';
         const isPartial = !anulado && log.paymentStatus === 'partial';
         const inProgress = !anulado && log.status === 'in_progress';
+        // Los tramos se imprimen cuando aportan algo que el chip no dice: un
+        // cobro partido (el chip mostraría un solo método) o una fila que
+        // todavía debe y ya recibió plata (el chip habla de lo que falta, no
+        // de por dónde entró lo que hay). Un cobro completo con un método
+        // único sigue siendo un chip, como siempre.
+        const mostrarTramos = log.paymentBreakdown.length > 0 && (partido || isOwing);
         // The row carries both axes at once: blue for work still open (the
         // "En progreso" badge's own colour), amber for money still owed (the
         // "Sin cobrar" tile's). A row that is both fades one into the other
@@ -405,7 +411,7 @@ export function LogList({
             </div>
 
             {/* Pago */}
-            <div className="col-start-2 row-start-1 justify-self-end lg:col-auto lg:row-auto lg:justify-self-auto">
+            <div className="col-start-2 row-start-1 flex flex-col items-end gap-1 justify-self-end lg:col-auto lg:row-auto lg:items-start lg:justify-self-auto">
               {isOwing ? (
                 <span className="inline-flex items-center gap-1.5 whitespace-nowrap rounded-full bg-[var(--warning-50)] lg:whitespace-normal px-2.5 py-1 text-[11.5px] font-semibold text-[var(--warning-700)] ring-1 ring-[var(--warning-200)]">
                   <Wallet className="h-3 w-3" aria-hidden="true" />
@@ -415,29 +421,7 @@ export function LogList({
                       ? `Abonado ${fmt(log.amountPaid)} · falta ${fmt(log.amountDue)}`
                       : 'Pendiente'}
                 </span>
-              ) : partido ? (
-                // Cobrado en dos partes: cada tramo con su monto, uno por
-                // línea. Un solo chip con el último método usado hacía leer
-                // "Transferencia" un ticket del que la mitad entró en
-                // efectivo — y es lo que descuadró la caja del 24 de agosto.
-                // Los montos van impresos, no en un tooltip: en la PWA no
-                // hay hover que los revele.
-                <div className="flex flex-col items-end gap-1 lg:items-start">
-                  {log.paymentBreakdown.map((tramo, i) => {
-                    const cfg = PAYMENT_METHOD_CONFIG[tramo.method];
-                    return (
-                      <span
-                        key={`${tramo.method}-${i}`}
-                        className="inline-flex items-center gap-1 rounded-full bg-[var(--bg-sunken)] px-2 py-0.5 text-[11px] font-medium text-[var(--fg-strong)]"
-                      >
-                        <span aria-hidden="true">{cfg.icon}</span>
-                        <span className="tabular-nums font-semibold">{fmt(tramo.amount)}</span>
-                        <span className="text-[var(--fg-muted)]">{cfg.label}</span>
-                      </span>
-                    );
-                  })}
-                </div>
-              ) : pmCfg ? (
+              ) : mostrarTramos ? null : pmCfg ? (
                 <span className="inline-flex items-center gap-1.5 whitespace-nowrap rounded-full bg-[var(--bg-sunken)] lg:whitespace-normal px-2.5 py-1 text-[11.5px] font-medium text-[var(--fg-strong)]">
                   <span aria-hidden="true">{pmCfg.icon}</span>
                   {pmCfg.label}
@@ -445,6 +429,27 @@ export function LogList({
               ) : (
                 <span className="text-[12px] text-[var(--fg-muted)]">—</span>
               )}
+
+              {/* Por dónde entró la plata que ya entró. Va DEBAJO del chip de
+                  deuda en vez de competir con él: un abono de $25 por
+                  transferencia con $13 pendientes deja dos preguntas abiertas
+                  —cuánto falta y por qué vía llegó lo pagado— y la fila
+                  respondía sólo la primera. Impreso, no en un tooltip: en la
+                  PWA no hay hover. */}
+              {mostrarTramos &&
+                log.paymentBreakdown.map((tramo, i) => {
+                  const cfg = PAYMENT_METHOD_CONFIG[tramo.method];
+                  return (
+                    <span
+                      key={`${tramo.method}-${i}`}
+                      className="inline-flex items-center gap-1 rounded-full bg-[var(--bg-sunken)] px-2 py-0.5 text-[11px] font-medium text-[var(--fg-strong)]"
+                    >
+                      <span aria-hidden="true">{cfg.icon}</span>
+                      <span className="tabular-nums font-semibold">{fmt(tramo.amount)}</span>
+                      <span className="text-[var(--fg-muted)]">{cfg.label}</span>
+                    </span>
+                  );
+                })}
             </div>
 
             {/* Estado + acciones — primary action gets a labeled
