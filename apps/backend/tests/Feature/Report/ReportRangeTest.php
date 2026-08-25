@@ -246,3 +246,89 @@ test('the bank list survives filtering by one bank', function () {
         ->and($filtrado->json('data.available_banks'))
         ->toEqualCanonicalizing(['pichincha', 'guayaquil']);
 });
+
+/*
+ * El servicio cobrado en dos partes. El 24 de agosto en FEDER: $74 cobrados
+ * $60 en efectivo y $14 en transferencia. El log guarda UN método —se lo lleva
+ * el último cobro— así que Reportes ponía los $74 enteros en transferencia y
+ * mostraba $459 donde el Registro Diario mostraba $399. Los $60 de efectivo
+ * desaparecían de su columna.
+ */
+function cobraMixto(callable $log, string $date, array $tramos): ServiceLogModel
+{
+    $total = array_sum(array_column($tramos, 1));
+    $fila  = $log($date, $total, null, 'unpaid');
+
+    foreach ($tramos as [$metodo, $monto, $banco]) {
+        app(\App\Application\Services\PaymentLedger::class)->recordForServiceLog(
+            $fila,
+            $monto,
+            $metodo,
+            $banco,
+            test()->owner->id,
+            \Carbon\Carbon::parse($date . ' 12:00:00'),
+        );
+    }
+
+    return $fila->fresh();
+}
+
+test('the daily breakdown splits a ticket paid with two methods', function () {
+    cobraMixto($this->log, '2026-08-17', [['cash', 60.00, null], ['transfer', 14.00, 'pichincha']]);
+
+    $res = fetchRange('2026-08-17', '2026-08-17')->assertOk();
+
+    // Lo cobrado con cada método, no el precio del servicio por su casillero.
+    $res->assertJsonPath('data.daily_breakdown.0.by_cash', 60)
+        ->assertJsonPath('data.daily_breakdown.0.by_transfer', 14)
+        // El servicio sigue siendo uno y su precio sigue siendo $74.
+        ->assertJsonPath('data.daily_breakdown.0.services', 1)
+        ->assertJsonPath('data.daily_breakdown.0.revenue', 74);
+});
+
+test('filtering by method reports what came in through it, not the ticket price', function () {
+    cobraMixto($this->log, '2026-08-17', [['cash', 60.00, null], ['transfer', 14.00, 'pichincha']]);
+    ($this->log)('2026-08-17', 45.00, 'transfer', 'paid', 'pichincha');
+
+    $res = test()
+        ->actingAs(test()->owner)
+        ->withHeader('X-Tenant', test()->tenant->slug)
+        ->getJson('/api/v1/reports/range?date_from=2026-08-17&date_to=2026-08-17&payment_method=transfer')
+        ->assertOk();
+
+    // $14 del mixto + $45 del cobro puro. NO $74 + $45.
+    $res->assertJsonPath('data.stats.total_revenue', 59)
+        ->assertJsonPath('data.stats.collected_revenue', 59)
+        ->assertJsonPath('data.stats.total_services', 2);
+});
+
+test('a ticket paid with two methods shows up under both filters', function () {
+    cobraMixto($this->log, '2026-08-17', [['cash', 60.00, null], ['transfer', 14.00, 'pichincha']]);
+
+    $porEfectivo = test()
+        ->actingAs(test()->owner)
+        ->withHeader('X-Tenant', test()->tenant->slug)
+        ->getJson('/api/v1/reports/range?date_from=2026-08-17&date_to=2026-08-17&payment_method=cash')
+        ->assertOk();
+
+    // El mismo servicio aparece en los dos filtros, cada uno con su tramo:
+    // filtrar por método pregunta por plata, no por servicios.
+    $porEfectivo->assertJsonPath('data.stats.total_revenue', 60)
+        ->assertJsonPath('data.stats.total_services', 1);
+});
+
+test('the headline and the per-method buckets agree under a filter', function () {
+    // La contradicción que se veía en pantalla: 12 servicios listados cuyos
+    // precios sumaban $459 bajo un titular que decía otra cosa.
+    cobraMixto($this->log, '2026-08-17', [['cash', 60.00, null], ['transfer', 14.00, 'pichincha']]);
+    ($this->log)('2026-08-17', 45.00, 'transfer', 'paid', 'pichincha');
+
+    $res = test()
+        ->actingAs(test()->owner)
+        ->withHeader('X-Tenant', test()->tenant->slug)
+        ->getJson('/api/v1/reports/range?date_from=2026-08-17&date_to=2026-08-17&payment_method=transfer')
+        ->assertOk();
+
+    expect($res->json('data.stats.total_revenue'))
+        ->toBe($res->json('data.by_payment_method.transfer.total'));
+});

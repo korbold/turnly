@@ -120,6 +120,34 @@ class ReportController extends Controller
         ]);
     }
 
+    /**
+     * Lo que estos servicios cobraron con un método, del libro de pagos.
+     *
+     * Se acota por `paid_at` además de por los logs porque un servicio de ayer
+     * cobrado hoy es plata de hoy: es el mismo criterio que usa la caja, y sin
+     * el rango un desglose diario le sumaría al martes el cobro que ese
+     * servicio recibió el jueves.
+     */
+    private function collectedByMethod(\Illuminate\Support\Collection $logs, string $method, string $from, string $to): float
+    {
+        if ($logs->isEmpty()) {
+            return 0.0;
+        }
+
+        return (float) \App\Infrastructure\Persistence\Models\PaymentAllocationModel::query()
+            ->forTenant(app('current_tenant_id'))
+            ->where('payable_type', \App\Infrastructure\Persistence\Models\PaymentAllocationModel::PAYABLE_SERVICE_LOG)
+            ->whereIn('payable_id', $logs->pluck('id'))
+            ->whereExists(
+                fn ($q) => $q->selectRaw('1')
+                    ->from('payments')
+                    ->whereColumn('payments.id', 'payment_allocations.payment_id')
+                    ->where('payments.method', $method)
+                    ->whereBetween('payments.paid_at', [$from . ' 00:00:00', $to . ' 23:59:59'])
+            )
+            ->sum('amount');
+    }
+
     public function range(Request $request): JsonResponse
     {
         $this->ensureFeature();
@@ -143,7 +171,20 @@ class ReportController extends Controller
         // standalone "registro diario" surface).
         $washLogsQuery = ServiceLogModel::notCancelled()->whereBetween('log_date', [$from, $to]);
         if ($methodFilter) {
-            $washLogsQuery->where('payment_method', $methodFilter);
+            // Por el libro, no por el casillero del log: un servicio cobrado
+            // $60 en efectivo y $14 en transferencia lleva UN método —se lo
+            // lleva el último cobro— y quedaba entero en una columna, con los
+            // $60 desaparecidos de la otra. Filtrar por método pregunta por
+            // plata que entró, así que un ticket partido pertenece a los dos
+            // filtros, cada uno por su tramo.
+            $washLogsQuery->whereExists(
+                fn ($q) => $q->selectRaw('1')
+                    ->from('payment_allocations')
+                    ->join('payments', 'payments.id', '=', 'payment_allocations.payment_id')
+                    ->whereColumn('payment_allocations.payable_id', 'service_logs.id')
+                    ->where('payment_allocations.payable_type', 'service_log')
+                    ->where('payments.method', $methodFilter)
+            );
         }
         // Service logs have carried payment_bank since the 400001 migration, and
         // in practice that is where the bank data lives — discarding them here
@@ -186,7 +227,16 @@ class ReportController extends Controller
             return (float) ($reservation->service?->price ?? 0);
         };
 
-        $serviceRevenue     = (float) $washLogs->sum('price_charged');
+        // Sin filtro, los ingresos son todo lo registrado, cobrado o no. Con un
+        // filtro de método la pregunta cambia: no es "cuánto valen los
+        // servicios que tocaron la transferencia" sino "cuánto entró por
+        // transferencia". Sumar precios ahí devolvía $459 donde el Registro
+        // Diario mostraba $399, y la pantalla se contradecía con su propio
+        // desglose por método.
+        $serviceRevenue = $methodFilter
+            ? $this->collectedByMethod($washLogs, $methodFilter, $from, $to)
+            : (float) $washLogs->sum('price_charged');
+
         $reservationRevenue = (float) $reservations->sum($totalForReservation);
         $totalRevenue       = $serviceRevenue + $reservationRevenue;
         $totalServices      = $washLogs->count() + $reservations->count();
@@ -204,9 +254,12 @@ class ReportController extends Controller
         $unpaidLogs = $washLogs->filter(fn ($l) => $l->payment_status !== 'paid');
         $unpaidRes  = $reservations->where('payment_status', 'unpaid');
 
-        $unpaidRevenue = (float) $unpaidLogs->sum(
+        // Bajo un filtro de método no hay deuda que reportar: lo que nadie
+        // cobró no entró por ningún método, y restarlo dejaría el titular por
+        // debajo de la plata que sí entró.
+        $unpaidRevenue = $methodFilter ? 0.0 : ((float) $unpaidLogs->sum(
             fn ($l) => max(0.0, (float) $l->price_charged - $ledger->paidFor($l))
-        ) + (float) $unpaidRes->sum($totalForReservation);
+        ) + (float) $unpaidRes->sum($totalForReservation));
 
         $collectedRevenue = $totalRevenue - $unpaidRevenue;
 
@@ -328,11 +381,16 @@ class ReportController extends Controller
                 'revenue'      => $dayRevenue,
                 'collected'    => $dayRevenue - $dayUnpaid,
                 'unpaid'       => $dayUnpaid,
-                'by_cash'      => (float) $dayLogs->where('payment_method', 'cash')->sum('price_charged')
+                // Lo cobrado con cada método, del libro. Sumar `price_charged`
+                // por el casillero del log metía un ticket partido entero en
+                // una sola columna y contaba el precio de un abono como si
+                // hubiera entrado completo. Las reservas siguen aportando
+                // desde su propia columna: todavía no escriben en el libro.
+                'by_cash'      => $this->collectedByMethod($dayLogs, 'cash', $dayStr, $dayStr)
                     + (float) $dayResPaid->where('payment_method', 'cash')->sum($totalForReservation),
-                'by_card'      => (float) $dayLogs->where('payment_method', 'card')->sum('price_charged')
+                'by_card'      => $this->collectedByMethod($dayLogs, 'card', $dayStr, $dayStr)
                     + (float) $dayResPaid->where('payment_method', 'card')->sum($totalForReservation),
-                'by_transfer'  => (float) $dayLogs->where('payment_method', 'transfer')->sum('price_charged')
+                'by_transfer'  => $this->collectedByMethod($dayLogs, 'transfer', $dayStr, $dayStr)
                     + (float) $dayResPaid->where('payment_method', 'transfer')->sum($totalForReservation),
             ];
             $current->modify('+1 day');
