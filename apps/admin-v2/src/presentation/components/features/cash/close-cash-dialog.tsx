@@ -11,7 +11,13 @@ import { Label } from '@/presentation/components/ui/label';
 import { Textarea } from '@/presentation/components/ui/textarea';
 import { AlertTriangle } from 'lucide-react';
 import { useCashSession, useCloseCashSession } from '@/presentation/hooks/use-cash-session';
-import type { CashSession } from '@/domain/entities/cash-session';
+import {
+  CASH_BILLS,
+  CASH_COINS,
+  breakdownTotal,
+  type CashBreakdown,
+  type CashSession,
+} from '@/domain/entities/cash-session';
 
 interface Props {
   open: boolean;
@@ -29,6 +35,45 @@ const signed = (v: number) =>
   `${v > 0 ? '+' : v < 0 ? '−' : ''}${money(Math.abs(v))}`;
 
 /**
+ * Una denominación: cuántos hay de este billete o de esta moneda.
+ *
+ * Vacío en vez de 0 mientras nadie escribe: un formulario que arranca lleno de
+ * ceros se puede firmar sin tocarlo, que es justamente lo que este conteo
+ * viene a impedir.
+ */
+function DenominationRow({
+  label,
+  value,
+  onChange,
+  autoFocus,
+}: {
+  label: string;
+  value: number;
+  onChange: (n: number) => void;
+  autoFocus?: boolean;
+}) {
+  return (
+    <label className="flex items-center gap-2">
+      <span className="w-10 shrink-0 text-right text-[12.5px] font-medium tabular-nums text-[var(--fg-secondary)]">
+        {label}
+      </span>
+      <Input
+        type="number"
+        inputMode="numeric"
+        min={0}
+        step={1}
+        className="h-8 text-[13px]"
+        placeholder="0"
+        value={value === 0 ? '' : String(value)}
+        onChange={(e) => onChange(Math.max(0, Math.floor(Number(e.target.value) || 0)))}
+        autoFocus={autoFocus}
+        aria-label={`Cuántos de ${label}`}
+      />
+    </label>
+  );
+}
+
+/**
  * Cierre ciego. El cajero cuenta y declara; recién después el diálogo revela
  * esperado y diferencia. No hay camino a la segunda pantalla que no pase por
  * la primera, y por eso el resultado vive en el estado de este componente y
@@ -44,30 +89,48 @@ const signed = (v: number) =>
 export function CloseCashDialog({ open, sessionId, businessDate, onClose }: Props) {
   const { data: caja } = useCashSession(businessDate);
   const pendiente = caja?.pendingCollection ?? { count: 0, amount: 0 };
-  const [counted, setCounted] = useState('');
+  const [bills, setBills] = useState<Record<string, number>>({});
+  const [coins, setCoins] = useState<Record<string, number>>({});
+  const [otherAmount, setOtherAmount] = useState('');
+  const [otherNote, setOtherNote] = useState('');
   const [notes, setNotes] = useState('');
   const [result, setResult] = useState<CashSession | null>(null);
   const mutation = useCloseCashSession();
 
   useEffect(() => {
     if (open) {
-      setCounted('');
+      setBills({});
+      setCoins({});
+      setOtherAmount('');
+      setOtherNote('');
       setNotes('');
       setResult(null);
     }
   }, [open]);
 
+  const otros = Number(otherAmount) || 0;
+  const desglose: CashBreakdown = {
+    bills,
+    coins,
+    ...(otros > 0 ? { otherAmount: otros, otherNote } : {}),
+  };
+  // El total se calcula mientras se cuenta, pero no viaja: el backend lo saca
+  // del desglose. Acá es una ayuda de lectura, no el dato.
+  const total = breakdownTotal(desglose);
+  const contoAlgo = Object.values(bills).some((n) => n > 0)
+    || Object.values(coins).some((n) => n > 0)
+    || otros > 0;
+
   async function submit() {
-    const contado = Number(counted);
-    if (!Number.isFinite(contado) || contado < 0) {
-      toast.error('Escribe cuánto efectivo contaste');
+    if (otros > 0 && !otherNote.trim()) {
+      toast.error('Escribe qué son esos otros valores');
       return;
     }
 
     try {
       const cerrada = await mutation.mutateAsync({
         sessionId,
-        countedAmount: contado,
+        breakdown: { ...desglose, otherNote: otherNote.trim() || undefined },
         notes: notes.trim() || undefined,
       });
       setResult(cerrada);
@@ -119,19 +182,83 @@ export function CloseCashDialog({ open, sessionId, businessDate, onClose }: Prop
               </div>
             )}
 
-            <div className="space-y-2">
-              <Label htmlFor="counted-amount">Efectivo contado (todo el cajón)</Label>
-              <Input
-                id="counted-amount"
-                type="number"
-                inputMode="decimal"
-                min={0}
-                step="0.01"
-                placeholder="0,00"
-                value={counted}
-                onChange={(e) => setCounted(e.target.value)}
-                autoFocus
-              />
+            {/* Contar por denominación y no escribir un total: es lo que
+                hace imposible declarar un número sacado de otro lado. Con un
+                campo vacío que pide "cuánto hay", el 24 de agosto entró
+                exactamente el efectivo cobrado — que no era lo que había en el
+                cajón. Acá hay que mirar adentro para llenarlo, y la suma la
+                hace el sistema. */}
+            <div className="space-y-3">
+              <div className="grid grid-cols-2 gap-x-4 gap-y-2">
+                <div>
+                  <p className="mb-1.5 text-[11px] font-semibold uppercase tracking-[0.04em] text-[var(--fg-muted)]">
+                    Billetes
+                  </p>
+                  <div className="space-y-1.5">
+                    {CASH_BILLS.map((v) => (
+                      <DenominationRow
+                        key={`b${v}`}
+                        label={`$${v}`}
+                        value={bills[v] ?? 0}
+                        onChange={(n) => setBills((prev) => ({ ...prev, [v]: n }))}
+                        autoFocus={v === CASH_BILLS[0]}
+                      />
+                    ))}
+                  </div>
+                </div>
+
+                <div>
+                  <p className="mb-1.5 text-[11px] font-semibold uppercase tracking-[0.04em] text-[var(--fg-muted)]">
+                    Monedas
+                  </p>
+                  <div className="space-y-1.5">
+                    {CASH_COINS.map((v) => (
+                      <DenominationRow
+                        key={`c${v}`}
+                        label={v === '100' ? '$1' : `${v}¢`}
+                        value={coins[v] ?? 0}
+                        onChange={(n) => setCoins((prev) => ({ ...prev, [v]: n }))}
+                      />
+                    ))}
+                  </div>
+                </div>
+              </div>
+
+              {/* Vales, cheques, vouchers. Están en el cajón y cuentan, pero
+                  no son una denominación — y sin decir qué son, un "otros $5"
+                  es un faltante con otro nombre. */}
+              <div className="grid grid-cols-[7rem_1fr] gap-2">
+                <Input
+                  type="number"
+                  inputMode="decimal"
+                  min={0}
+                  step="0.01"
+                  placeholder="Otros $"
+                  value={otherAmount}
+                  onChange={(e) => setOtherAmount(e.target.value)}
+                  aria-label="Otros valores en el cajón"
+                />
+                <Input
+                  placeholder="Vales, cheques…"
+                  value={otherNote}
+                  maxLength={120}
+                  onChange={(e) => setOtherNote(e.target.value)}
+                  aria-label="Qué son esos otros valores"
+                  disabled={otros <= 0}
+                />
+              </div>
+
+              <div className="flex items-baseline justify-between rounded-lg bg-[var(--bg-sunken)] px-3 py-2">
+                <span className="text-[12.5px] font-semibold text-[var(--fg-secondary)]">
+                  Total contado
+                </span>
+                <span
+                  className="text-[18px] font-semibold tabular-nums text-[var(--fg-strong)]"
+                  style={{ fontFamily: 'var(--font-mono)' }}
+                >
+                  {money(total)}
+                </span>
+              </div>
             </div>
 
             <div className="space-y-2">
@@ -148,7 +275,7 @@ export function CloseCashDialog({ open, sessionId, businessDate, onClose }: Prop
 
             <DialogFooter>
               <Button variant="ghost" onClick={onClose}>Cancelar</Button>
-              <Button onClick={submit} disabled={mutation.isPending}>
+              <Button onClick={submit} disabled={mutation.isPending || !contoAlgo}>
                 {mutation.isPending ? 'Cerrando…' : 'Cerrar caja'}
               </Button>
             </DialogFooter>

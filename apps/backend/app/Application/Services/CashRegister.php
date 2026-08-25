@@ -147,18 +147,22 @@ class CashRegister
         float $countedAmount,
         ?string $userId,
         ?string $notes = null,
+        ?array $countedBreakdown = null,
     ): CashSessionModel {
         if (!$session->isOpen()) {
             throw CashRegisterException::sessionClosed();
         }
 
-        return DB::transaction(function () use ($session, $countedAmount, $userId, $notes) {
+        return DB::transaction(function () use ($session, $countedAmount, $userId, $notes, $countedBreakdown) {
             $esperado = $this->expectedFor($session);
 
             $cerradoEn = now();
 
             $session->forceFill([
                 'counted_amount'  => $countedAmount,
+                // El detalle y no sólo la suma: "conté $54.20" no dice si
+                // faltó un billete de $20 o veinte monedas de a peso.
+                'counted_breakdown' => $countedBreakdown,
                 'expected_amount' => $esperado,
                 'difference'      => round($countedAmount - $esperado, 2),
                 'closed_by'       => $userId,
@@ -173,12 +177,13 @@ class CashRegister
             CashSessionClosureModel::create([
                 'tenant_id'       => $session->tenant_id,
                 'cash_session_id' => $session->id,
-                'counted_amount'  => $countedAmount,
-                'expected_amount' => $esperado,
-                'difference'      => round($countedAmount - $esperado, 2),
-                'closed_by'       => $userId,
-                'closed_at'       => $cerradoEn,
-                'notes'           => $notes,
+                'counted_amount'    => $countedAmount,
+                'counted_breakdown' => $countedBreakdown,
+                'expected_amount'   => $esperado,
+                'difference'        => round($countedAmount - $esperado, 2),
+                'closed_by'         => $userId,
+                'closed_at'         => $cerradoEn,
+                'notes'             => $notes,
             ]);
 
             return $session->fresh();

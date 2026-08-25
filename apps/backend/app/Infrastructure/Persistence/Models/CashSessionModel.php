@@ -28,7 +28,7 @@ class CashSessionModel extends Model
     protected $fillable = [
         'tenant_id', 'business_date',
         'opened_by', 'opened_at', 'opening_amount',
-        'closed_by', 'closed_at', 'counted_amount', 'expected_amount', 'difference',
+        'closed_by', 'closed_at', 'counted_amount', 'counted_breakdown', 'expected_amount', 'difference',
         'status', 'notes',
     ];
 
@@ -40,6 +40,7 @@ class CashSessionModel extends Model
             'closed_at'       => 'datetime',
             'opening_amount'  => 'decimal:2',
             'counted_amount'  => 'decimal:2',
+            'counted_breakdown' => 'array',
             'expected_amount' => 'decimal:2',
             'difference'      => 'decimal:2',
         ];

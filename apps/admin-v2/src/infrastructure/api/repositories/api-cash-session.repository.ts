@@ -96,7 +96,21 @@ export class ApiCashSessionRepository implements CashSessionRepository {
   async close(input: CloseCashSessionInput): Promise<CashSession> {
     const { data: res } = await api.post<{ data: Raw }>(
       `/cash-sessions/${input.sessionId}/close`,
-      { counted_amount: input.countedAmount, ...(input.notes ? { notes: input.notes } : {}) },
+      {
+        // El total no viaja: lo calcula el backend desde el conteo. Mandarlo
+        // sería volver a tener un número que nadie contó.
+        breakdown: {
+          bills: input.breakdown.bills,
+          coins: input.breakdown.coins,
+          ...(input.breakdown.otherAmount
+            ? {
+                other_amount: input.breakdown.otherAmount,
+                other_note: input.breakdown.otherNote ?? '',
+              }
+            : {}),
+        },
+        ...(input.notes ? { notes: input.notes } : {}),
+      },
     );
     return mapSession(res.data);
   }

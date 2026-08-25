@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Infrastructure\Http\Controllers\Cash;
 
 use App\Application\Services\CashRegister;
+use App\Domain\Cash\CashCount;
 use App\Domain\Cash\CashRegisterException;
 use App\Domain\Tenant\StaffPrivileges;
 use App\Infrastructure\Http\Controllers\Controller;
@@ -208,19 +209,51 @@ class CashSessionController extends Controller
             return $this->forbidden();
         }
 
-        $data = $request->validate([
-            'counted_amount' => 'required|numeric|min:0',
+        $data = $request->validate(array_merge([
+            // El total sólo se acepta solo cuando NO hay desglose: los
+            // cierres viejos y el móvil siguen mandando un número suelto.
+            'counted_amount' => 'required_without:breakdown|numeric|min:0',
             'notes'          => 'sometimes|nullable|string|max:500',
-        ]);
+        ], CashCount::rules()));
+
+        // Lo que llegó, no lo que `validate()` devolvió. El validador
+        // descarta en silencio las claves que nadie declaró —un billete de $3
+        // desaparecería antes de que alguien lo rechace— y además omite del
+        // todo un `breakdown` cuyas casillas están todas vacías, que es
+        // exactamente lo que manda un cajón vacío.
+        $crudo = $request->input('breakdown');
+        $hayDesglose = is_array($crudo);
+
+        // Cero es un resultado, no un formulario sin llenar.
+        $desglose = $hayDesglose
+            ? ($data['breakdown'] ?? []) + ['bills' => [], 'coins' => []]
+            : null;
+
+        if ($hayDesglose && CashCount::hasUnknownDenomination($crudo)) {
+            return response()->json([
+                'error' => [
+                    'code'    => 'UNKNOWN_DENOMINATION',
+                    'message' => 'Esa denominación no existe.',
+                ],
+            ], 422);
+        }
+
+        // Con desglose, el total es una consecuencia del conteo y no un dato
+        // que se pueda declarar: si el número del cuerpo ganara, volvería a
+        // existir el campo donde se escribe algo que nadie contó.
+        $contado = $desglose !== null
+            ? CashCount::total($desglose)
+            : (float) ($data['counted_amount'] ?? 0);
 
         $session = CashSessionModel::findOrFail($id);
 
         try {
             $cerrada = $this->cash->closeSession(
                 $session,
-                (float) $data['counted_amount'],
+                $contado,
                 $request->user()?->id,
                 $data['notes'] ?? null,
+                $desglose,
             );
         } catch (CashRegisterException $e) {
             return $this->fromException($e);
