@@ -8,7 +8,7 @@ use RuntimeException;
 
 /**
  * Las reglas de la caja son del dominio, no del controlador: el mismo "no
- * podés abrir dos veces" tiene que valer si mañana la caja se abre desde un
+ * se puede abrir dos veces" tiene que valer si mañana la caja se abre desde un
  * comando o desde la app móvil. El controlador traduce `errorCode` a JSON.
  */
 class CashRegisterException extends RuntimeException
@@ -27,13 +27,19 @@ class CashRegisterException extends RuntimeException
     {
         return new self(
             'PREVIOUS_SESSION_OPEN',
-            "La caja del {$date} sigue abierta. Cerrala antes de abrir la de hoy."
+            "La caja del {$date} sigue abierta. Ciérrala antes de abrir la de hoy."
         );
     }
 
     public static function sessionClosed(): self
     {
         return new self('SESSION_CLOSED', 'Esta caja ya está cerrada y no se puede modificar.');
+    }
+
+    /** Reabrir sólo tiene sentido sobre una caja cerrada. */
+    public static function sessionAlreadyOpen(): self
+    {
+        return new self('SESSION_ALREADY_OPEN', 'Esta caja ya está abierta.');
     }
 
     public static function invalidType(string $type): self

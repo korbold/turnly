@@ -3,6 +3,7 @@
 
 namespace App\Infrastructure\Http\Resources;
 
+use App\Application\Services\CashRegister;
 use Illuminate\Http\Request;
 use Illuminate\Http\Resources\Json\JsonResource;
 
@@ -33,6 +34,13 @@ class CashSessionResource extends JsonResource
             'expected_amount' => $this->expected_amount === null ? null : (float) $this->expected_amount,
             'difference'      => $this->difference === null ? null : (float) $this->difference,
             'notes'           => $this->notes,
+            // Quién cobró cuánto efectivo, sólo con la caja ya cerrada:
+            // sumar estas filas da el esperado, que es lo que el conteo
+            // ciego oculta. Con la caja abierta va `null` por la misma
+            // razón que `expected_amount`.
+            'cash_by_person'  => $this->status === 'closed'
+                ? app(CashRegister::class)->cashByPerson($this->resource)
+                : null,
             'movements'       => CashMovementResource::collection(
                 $this->relationLoaded('movements') ? $this->movements : collect()
             ),

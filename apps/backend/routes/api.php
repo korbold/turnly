@@ -250,6 +250,8 @@ Route::prefix('v1')->group(function () {
             Route::post('cash-sessions', [CashSessionController::class, 'open']);
             Route::post('cash-sessions/{id}/movements', [CashSessionController::class, 'addMovement']);
             Route::post('cash-sessions/{id}/close', [CashSessionController::class, 'close']);
+            // Deshacer un cierre prematuro. Dueño o admin: ver mayReopen().
+            Route::post('cash-sessions/{id}/reopen', [CashSessionController::class, 'reopen']);
 
             // Deuda: la libreta del dueño y el cobro repartido.
             Route::post('debts/manual', [DebtController::class, 'storeManual']);

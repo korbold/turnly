@@ -43,6 +43,60 @@ class CashSessionController extends Controller
         );
     }
 
+    /**
+     * Reabrir es del dueño, no del cajero.
+     *
+     * Un cajero que puede reabrir su propio arqueo tiene un conteo ciego
+     * reversible: cuenta, ve la diferencia, reabre y vuelve a contar hasta
+     * que dé. El privilegio Caja alcanza para abrir, mover y cerrar; deshacer
+     * un cierre firmado es otra cosa.
+     */
+    private function mayReopen(Request $request): bool
+    {
+        if ($request->user()?->is_super_admin) {
+            return true;
+        }
+
+        $role = TenantUserModel::where('tenant_id', app('current_tenant_id'))
+            ->where('user_id', $request->user()?->id)
+            ->value('role');
+
+        return in_array($role, ['owner', 'tenant_admin'], true);
+    }
+
+    /**
+     * Reabrir una caja que se cerró antes de terminar el día.
+     */
+    public function reopen(Request $request, string $id): JsonResponse
+    {
+        if (!$this->mayReopen($request)) {
+            return response()->json([
+                'error' => [
+                    'code'    => 'FORBIDDEN',
+                    'message' => 'Sólo el dueño o un administrador puede reabrir una caja cerrada.',
+                ],
+            ], 403);
+        }
+
+        $data = $request->validate([
+            // Sin motivo, reabrir es indistinguible de borrar un arqueo que no
+            // gustó.
+            'reason' => 'required|string|max:200',
+        ]);
+
+        $session = CashSessionModel::findOrFail($id);
+
+        try {
+            $session = $this->cash->reopenSession($session, $data['reason'], $request->user()?->id);
+        } catch (CashRegisterException $e) {
+            return $this->fromException($e);
+        }
+
+        $session->load(['movements.author', 'opener', 'closer']);
+
+        return response()->json(['data' => new CashSessionResource($session)]);
+    }
+
     private function forbidden(): JsonResponse
     {
         return response()->json([
@@ -80,6 +134,10 @@ class CashSessionController extends Controller
             'data' => $session ? new CashSessionResource($session) : null,
             'meta' => [
                 'cash_without_session' => $this->cash->cashCollectedWithoutSession($tenantId, $date),
+                // Lo que el día registró y nadie cobró todavía. Va en `meta` y
+                // no en el recurso porque no es un hecho de la caja sino del
+                // día: existe aunque nadie haya abierto el cajón.
+                'pending_collection'   => $this->cash->pendingCollection($tenantId, $date),
             ],
         ]);
     }
