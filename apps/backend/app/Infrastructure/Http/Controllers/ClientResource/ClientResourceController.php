@@ -403,26 +403,24 @@ class ClientResourceController extends Controller
 
         $clientResource->update(['data' => $data]);
 
-        // Naming an unowned walk-in promotes it to a real client: the
-        // counter can complete the record next time the customer shows
-        // up. An already-owned resource is left alone — reassigning an
-        // owner is what the transfer endpoint is for.
-        if (!$clientResource->client_id) {
-            // La persona elegida del buscador manda sobre el nombre escrito:
-            // es la que el usuario vio y tocó, y no depende de que el texto
-            // coincida. Sin ella se busca o se crea por nombre.
-            $clientId = $request->input('client_id');
+        // Un `client_id` explícito es una decisión deliberada: alguien buscó a
+        // la persona y la eligió. Vale también sobre un auto que ya tenía
+        // dueño, porque equivocarse de persona buscando por nombre es fácil y
+        // sin esto el auto quedaría trabado con el dueño equivocado.
+        //
+        // El nombre escrito, en cambio, sólo promueve un walk-in que estaba
+        // suelto: corregir el color de un auto no puede cambiarle el dueño.
+        $clientId = $request->input('client_id');
 
-            if (!$clientId) {
-                $name = $this->extractClientName($data);
-                $clientId = $name
-                    ? $this->findOrCreateClient($name, app('current_tenant_id'))->id
-                    : null;
-            }
+        if (!$clientId && !$clientResource->client_id) {
+            $name = $this->extractClientName($data);
+            $clientId = $name
+                ? $this->findOrCreateClient($name, app('current_tenant_id'))->id
+                : null;
+        }
 
-            if ($clientId) {
-                $clientResource->update(['client_id' => $clientId]);
-            }
+        if ($clientId && $clientId !== $clientResource->client_id) {
+            $clientResource->update(['client_id' => $clientId]);
         }
 
         return new ClientResourceResource($clientResource->load('client'));

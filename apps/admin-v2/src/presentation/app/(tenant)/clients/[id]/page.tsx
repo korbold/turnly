@@ -19,6 +19,7 @@ import {
   ClipboardList,
   Calendar,
   Users,
+  UserPlus,
 } from 'lucide-react';
 import { Button } from '@/presentation/components/ui/button';
 import { Avatar, AvatarFallback } from '@/presentation/components/ui/avatar';
@@ -26,6 +27,7 @@ import { Skeleton } from '@/presentation/components/ui/skeleton';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/presentation/components/ui/tabs';
 import { useClient, useClientHistory } from '@/presentation/hooks/use-clients';
 import { useSettings } from '@/presentation/hooks/use-settings';
+import { AssignOwnerDialog } from '@/presentation/components/features/clients/assign-owner-dialog';
 import { ClientForm } from '@/presentation/components/features/clients/client-form';
 import { ClientBillingSection } from '@/presentation/components/features/clients/client-billing-section';
 import { DebtSection } from '@/presentation/components/features/debt/debt-section';
@@ -55,6 +57,7 @@ function ClientDetailContent() {
   const router = useRouter();
   const id = params.id as string;
   const [editOpen, setEditOpen] = useState(false);
+  const [assignOpen, setAssignOpen] = useState(false);
 
   const { data: client, isLoading } = useClient(id);
   const { data: history } = useClientHistory(id);
@@ -179,14 +182,31 @@ function ClientDetailContent() {
               </Link>
             )}
 
-            {!clientName && (
+            {client.clientId && (
+              // Equivocarse de persona buscando por nombre es fácil; sin esto
+              // el auto queda con el dueño equivocado para siempre.
               <button
                 type="button"
-                onClick={() => setEditOpen(true)}
+                onClick={() => setAssignOpen(true)}
+                className="ml-2 mt-1.5 inline-flex items-center gap-1 text-[12px] text-[var(--fg-muted)] hover:underline"
+              >
+                cambiar dueño
+              </button>
+            )}
+
+            {/* Sin persona detrás no hay dónde sumar la deuda de alguien con
+                dos autos. El caso que lo destapó: un vehículo con el nombre
+                escrito en sus datos pero sin dueño — la pantalla no ofrecía
+                ni el enlace ni forma de asignarlo, así que no había manera de
+                juntar los dos autos de la misma persona. */}
+            {!client.clientId && (
+              <button
+                type="button"
+                onClick={() => setAssignOpen(true)}
                 className="mt-2 inline-flex items-center gap-1.5 rounded-full border border-dashed border-[var(--border-strong)] px-2.5 py-1 text-[12px] font-medium text-[var(--fg-secondary)] transition-colors hover:bg-[var(--bg-hover)]"
               >
-                <Pencil className="h-3 w-3" aria-hidden="true" />
-                Sin cliente · asignar nombre
+                <UserPlus className="h-3 w-3" aria-hidden="true" />
+                {clientName ? `Asignar a ${clientName} como dueño` : 'Sin dueño · asignar'}
               </button>
             )}
 
@@ -412,6 +432,13 @@ function ClientDetailContent() {
       </Tabs>
 
       <ClientForm open={editOpen} onClose={() => setEditOpen(false)} client={client} />
+
+      <AssignOwnerDialog
+        open={assignOpen}
+        resource={client}
+        nombreActual={clientName}
+        onClose={() => setAssignOpen(false)}
+      />
     </div>
   );
 }
