@@ -49,3 +49,19 @@ export function capitalizeFirst(s: string): string {
   if (!s) return s;
   return s.charAt(0).toUpperCase() + s.slice(1);
 }
+
+/**
+ * Una fecha sin hora ("2026-08-24") interpretada en la zona del local.
+ *
+ * `new Date('2026-08-24')` es medianoche UTC, que en Ecuador son las 19:00 del
+ * día anterior: la deuda de hoy se leía "23 ago". Un renglón de cobro con la
+ * fecha corrida es justo el que el cliente discute en el mostrador.
+ *
+ * Las cadenas que ya traen hora se dejan pasar tal cual — ahí no hay ambigüedad.
+ */
+export function parseDayLocal(value: string): Date {
+  const soloFecha = /^(\d{4})-(\d{2})-(\d{2})$/.exec(value);
+  if (!soloFecha) return new Date(value);
+  const [, y, m, d] = soloFecha;
+  return new Date(Number(y), Number(m) - 1, Number(d));
+}

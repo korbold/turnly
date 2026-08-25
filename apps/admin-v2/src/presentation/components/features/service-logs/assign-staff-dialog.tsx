@@ -40,6 +40,13 @@ interface Props {
       No implica exigir los dos —eso depende del servicio y lo decide el
       backend— sino continuar hasta completar. */
   thenComplete?: boolean;
+  /**
+   * El usuario ya contestó "se va debiendo" antes de que el backend pidiera
+   * los asignados. Esa respuesta viaja hasta acá o se pierde: completar sin
+   * ella cierra el servicio como si no se debiera nada, y la deuda del
+   * cliente nunca nace.
+   */
+  leftOwing?: boolean;
 }
 
 /**
@@ -47,7 +54,14 @@ interface Props {
  * la acción del día: se asigna al lavador cuando arranca y al secador cuando
  * seca, dos veces por auto.
  */
-export function AssignStaffDialog({ log, open, onClose, reason, thenComplete = false }: Props) {
+export function AssignStaffDialog({
+  log,
+  open,
+  onClose,
+  reason,
+  thenComplete = false,
+  leftOwing,
+}: Props) {
   const { data: washers } = useServiceStaff('washer');
   const { data: dryers } = useServiceStaff('dryer');
   const assign = useAssignServiceLogStaff();
@@ -90,10 +104,11 @@ export function AssignStaffDialog({ log, open, onClose, reason, thenComplete = f
             return;
           }
 
-          // El usuario apretó Completar: terminar el trabajo que pidió.
-          complete.mutate(log.id, {
+          // El usuario apretó Completar: terminar el trabajo que pidió, con
+          // la respuesta que ya dio sobre el saldo.
+          complete.mutate({ id: log.id, leftOwing }, {
             onSuccess: () => {
-              toast.success('Servicio completado');
+              toast.success(leftOwing ? 'Se lleva el vehículo debiendo' : 'Servicio completado');
               onClose();
             },
             // El diálogo queda abierto a propósito cuando falta el secador:

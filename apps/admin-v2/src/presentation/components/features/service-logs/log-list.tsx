@@ -105,7 +105,12 @@ export function LogList({
   // reads the same matrix.
   const { data: settings } = useSettings();
   const isCarWash = settings?.businessType === 'car_wash';
-  const [assignTarget, setAssignTarget] = useState<{ log: ServiceLog; reason?: string; thenComplete?: boolean } | null>(null);
+  const [assignTarget, setAssignTarget] = useState<{
+    log: ServiceLog;
+    reason?: string;
+    thenComplete?: boolean;
+    leftOwing?: boolean;
+  } | null>(null);
   const [payTarget, setPayTarget] = useState<ServiceLog | null>(null);
   const [billingTarget, setBillingTarget] = useState<ServiceLog | null>(null);
 
@@ -678,7 +683,24 @@ export function LogList({
                   toast.success('Se lleva el vehículo debiendo');
                   setCompleteTarget(null);
                 },
-                onError: () => toast.error('Error al completar'),
+                // Mismo trato que completar sin saldo: si lo que falta son los
+                // asignados, se abre el diálogo que lo arregla en vez de un
+                // toast que no dice qué hacer. La respuesta "se va debiendo"
+                // viaja con él — es el camino más común del lavadero y era
+                // justo el que la perdía.
+                onError: (e) => {
+                  if (apiErrorCode(e) === 'ASSIGNEES_REQUIRED') {
+                    setAssignTarget({
+                      log: completeTarget,
+                      reason: apiErrorMessage(e, 'Faltan asignados.'),
+                      thenComplete: true,
+                      leftOwing: true,
+                    });
+                    setCompleteTarget(null);
+                    return;
+                  }
+                  toast.error(apiErrorMessage(e, 'Error al completar'));
+                },
               },
             )
           }
@@ -692,6 +714,7 @@ export function LogList({
           log={assignTarget.log}
           reason={assignTarget.reason}
           thenComplete={assignTarget.thenComplete}
+          leftOwing={assignTarget.leftOwing}
           open
           onClose={() => setAssignTarget(null)}
         />

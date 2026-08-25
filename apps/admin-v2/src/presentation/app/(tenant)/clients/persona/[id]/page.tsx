@@ -11,7 +11,7 @@ import { Skeleton } from '@/presentation/components/ui/skeleton';
 import { useClientVehicles } from '@/presentation/hooks/use-clients';
 import { useClientDebt } from '@/presentation/hooks/use-debt';
 import { PayClientDebtDialog } from '@/presentation/components/features/debt/pay-client-debt-dialog';
-import { formatCounterCurrency } from '@/shared/utils/format';
+import { formatCounterCurrency, parseDayLocal } from '@/shared/utils/format';
 import { clientNameOf, plateOf, vehicleInfoOf } from '@/shared/utils/client-resource';
 import { DEBT_ITEM_LABEL } from '@/domain/entities/debt';
 
@@ -142,7 +142,7 @@ export default function PersonaPage({ params }: { params: Promise<{ id: string }
                         cobrando al cliente que tiene enfrente. */}
                     {item.resourceLabel ? `${item.resourceLabel} · ` : ''}
                     {DEBT_ITEM_LABEL[item.type]}
-                    {item.date ? ` · ${format(new Date(item.date), "d MMM yyyy", { locale: es })}` : ''}
+                    {item.date ? ` · ${format(parseDayLocal(item.date), "d MMM yyyy", { locale: es })}` : ''}
                   </span>
                 </span>
                 <span
