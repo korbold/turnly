@@ -76,22 +76,34 @@ export function usePermissions() {
   }
 
   function canAccess(href: string): boolean {
-    // Owner and admin always have full access.
-    if (!role || role === 'owner' || role === 'tenant_admin') return true;
+    // /me still in flight: keep the nav as it is instead of hiding items and
+    // flashing them back in a tick later.
+    if (!role) return true;
 
     // Clients should never access the admin panel.
     if (role === 'client') return false;
+
+    // La caja no es una sección de la matriz: la gobierna el privilegio
+    // 'Caja', que ya significa abrir, mover y cerrar el cajón. Ver el
+    // historial de lo que uno mismo hizo es parte de eso — y el esperado de
+    // la caja abierta lo sigue ocultando el backend.
+    //
+    // Se pregunta antes del atajo de owner/admin y para TODOS los roles, no
+    // sólo los restringidos, porque así es del otro lado: el backend manda
+    // cada endpoint de caja por StaffPrivileges::granted, que para el admin
+    // lee la fila 'Admin' de la matriz (CashSessionController::mayManage).
+    // Cuando el dueño le quitaba Caja al Admin, el menú seguía apareciendo y
+    // la pantalla contestaba 403. Al dueño no lo gatea nadie, y hasPrivilege
+    // ya lo deja pasar sin mirar la matriz.
+    if (href === '/cash') return hasPrivilege('Caja');
+
+    // Owner and admin have full access to every section.
+    if (role === 'owner' || role === 'tenant_admin') return true;
 
     // For restricted roles, check the matrix.
     if (RESTRICTED_ROLES.includes(role)) {
       const matrixKey = ROLE_TO_MATRIX[role];
       if (!matrixKey) return false;
-
-      // La caja no es una sección de la matriz: la gobierna el privilegio
-      // 'Caja', que ya significa abrir, mover y cerrar el cajón. Ver el
-      // historial de lo que uno mismo hizo es parte de eso — y el esperado de
-      // la caja abierta lo sigue ocultando el backend.
-      if (href === '/cash') return hasPrivilege('Caja');
 
       const section = HREF_TO_SECTION[href];
       // Section not in matrix (inventory, plan) → hide for restricted roles.

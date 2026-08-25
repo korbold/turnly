@@ -18,6 +18,7 @@ import {
   Package,
   Receipt,
   CreditCard,
+  Wallet,
 } from 'lucide-react';
 import { cn } from '@/shared/utils/cn';
 import { usePermissions } from '@/presentation/hooks/use-permissions';
@@ -53,6 +54,7 @@ const moreItems = [
   { label: 'Servicios', icon: Scissors, href: '/services' },
   { label: 'Inventario', icon: Package, href: '/inventory' },
   { label: 'Equipo', icon: UserPlus, href: '/team' },
+  { label: 'Caja', icon: Wallet, href: '/cash' },
   { label: 'Reportes', icon: BarChart3, href: '/reports' },
   { label: 'Facturas', icon: Receipt, href: '/facturas' },
   { label: 'Mi Plan', icon: CreditCard, href: '/plan' },
