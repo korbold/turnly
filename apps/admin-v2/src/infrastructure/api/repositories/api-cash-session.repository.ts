@@ -11,6 +11,8 @@ import type {
   CloseCashSessionInput,
   ReopenCashSessionInput,
   CashByPerson,
+  CashSessionDetail,
+  CashClosure,
 } from '@/domain/entities/cash-session';
 import type { CashSessionRepository } from '@/domain/repositories/cash-session.repository';
 
@@ -62,7 +64,36 @@ function mapSession(raw: Raw): CashSession {
   };
 }
 
+function mapClosure(raw: Raw): CashClosure {
+  return {
+    id: raw.id as string,
+    countedAmount: Number(raw.counted_amount ?? 0),
+    countedBreakdown: (raw.counted_breakdown as CashClosure['countedBreakdown']) ?? null,
+    expectedAmount: Number(raw.expected_amount ?? 0),
+    difference: Number(raw.difference ?? 0),
+    closedAt: new Date(raw.closed_at as string),
+    closedBy: mapActor(raw.closed_by),
+    notes: (raw.notes as string) ?? null,
+    reopenedAt: raw.reopened_at ? new Date(raw.reopened_at as string) : null,
+    reopenedBy: mapActor(raw.reopened_by),
+    reopenReason: (raw.reopen_reason as string) ?? null,
+  };
+}
+
 export class ApiCashSessionRepository implements CashSessionRepository {
+  async list(): Promise<CashSession[]> {
+    const { data: res } = await api.get<{ data: Raw[] }>('/cash-sessions');
+    return (res.data ?? []).map(mapSession);
+  }
+
+  async detail(id: string): Promise<CashSessionDetail> {
+    const { data: res } = await api.get<{ data: Raw }>(`/cash-sessions/${id}`);
+    return {
+      ...mapSession(res.data),
+      closures: ((res.data.closures as Raw[]) ?? []).map(mapClosure),
+    };
+  }
+
   async get(date: string): Promise<CashSessionSnapshot> {
     const { data: res } = await api.get<{ data: Raw | null; meta?: Raw }>('/cash-session', {
       params: { date },

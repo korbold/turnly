@@ -247,6 +247,10 @@ Route::prefix('v1')->group(function () {
             // Caja del día. Ver el spec: el esperado no se expone hasta el
             // cierre, así que no hay endpoint que lo devuelva.
             Route::get('cash-session', [CashSessionController::class, 'current']);
+            // El historial. Va antes de {id} para que 'cash-sessions' no se
+            // lea como un id.
+            Route::get('cash-sessions', [CashSessionController::class, 'index']);
+            Route::get('cash-sessions/{id}', [CashSessionController::class, 'show']);
             Route::post('cash-sessions', [CashSessionController::class, 'open']);
             Route::post('cash-sessions/{id}/movements', [CashSessionController::class, 'addMovement']);
             Route::post('cash-sessions/{id}/close', [CashSessionController::class, 'close']);

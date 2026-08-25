@@ -87,6 +87,12 @@ export function usePermissions() {
       const matrixKey = ROLE_TO_MATRIX[role];
       if (!matrixKey) return false;
 
+      // La caja no es una sección de la matriz: la gobierna el privilegio
+      // 'Caja', que ya significa abrir, mover y cerrar el cajón. Ver el
+      // historial de lo que uno mismo hizo es parte de eso — y el esperado de
+      // la caja abierta lo sigue ocultando el backend.
+      if (href === '/cash') return hasPrivilege('Caja');
+
       const section = HREF_TO_SECTION[href];
       // Section not in matrix (inventory, plan) → hide for restricted roles.
       if (!section) return false;

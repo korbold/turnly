@@ -14,6 +14,24 @@ import type {
   ReopenCashSessionInput,
 } from '@/domain/entities/cash-session';
 
+/** El historial de cajas. */
+export function useCashSessions() {
+  const repo = useRepository('cashSession');
+  return useQuery({
+    queryKey: ['cash-sessions'],
+    queryFn: () => repo.list(),
+  });
+}
+
+export function useCashSessionDetail(id: string) {
+  const repo = useRepository('cashSession');
+  return useQuery({
+    queryKey: ['cash-sessions', id],
+    queryFn: () => repo.detail(id),
+    enabled: !!id,
+  });
+}
+
 export function useCashSession(date: string) {
   const repo = useRepository('cashSession');
   return useQuery({

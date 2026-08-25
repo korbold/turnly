@@ -22,6 +22,7 @@ const PAGE_TITLES: Record<string, string> = {
   '/services': 'Servicios',
   '/inventory': 'Inventario',
   '/team': 'Equipo',
+  '/cash': 'Caja',
   '/reports': 'Reportes',
   '/plan': 'Mi Plan',
   '/settings': 'Configuración',

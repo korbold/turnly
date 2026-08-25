@@ -11,6 +11,7 @@ use App\Domain\Tenant\StaffPrivileges;
 use App\Infrastructure\Http\Controllers\Controller;
 use App\Infrastructure\Http\Resources\CashMovementResource;
 use App\Infrastructure\Http\Resources\CashSessionResource;
+use App\Infrastructure\Persistence\Models\CashSessionClosureModel;
 use App\Infrastructure\Persistence\Models\CashSessionModel;
 use App\Infrastructure\Persistence\Models\TenantModel;
 use App\Infrastructure\Persistence\Models\TenantUserModel;
@@ -140,6 +141,73 @@ class CashSessionController extends Controller
                 // día: existe aunque nadie haya abierto el cajón.
                 'pending_collection'   => $this->cash->pendingCollection($tenantId, $date),
             ],
+        ]);
+    }
+
+    /**
+     * El historial: una fila por caja, de la más nueva a la más vieja.
+     *
+     * Todo lo que la caja registra —quién abrió, quién movió plata, quién
+     * contó, quién reabrió y por qué— vivía en la base sin pantalla que lo
+     * mostrara. La caja abierta aparece en la lista pero sin esperado ni
+     * diferencia: el conteo ciego no depende de desde qué pantalla se mire.
+     */
+    public function index(Request $request): JsonResponse
+    {
+        if (!$this->mayManage($request)) {
+            return $this->forbidden();
+        }
+
+        $sessions = CashSessionModel::query()
+            ->forTenant(app('current_tenant_id'))
+            ->when($request->filled('from'), fn ($q) => $q->whereDate('business_date', '>=', $request->get('from')))
+            ->when($request->filled('to'), fn ($q) => $q->whereDate('business_date', '<=', $request->get('to')))
+            ->with(['opener', 'closer'])
+            ->orderByDesc('business_date')
+            ->paginate((int) $request->get('per_page', 30));
+
+        return CashSessionResource::collection($sessions)->response();
+    }
+
+    /**
+     * El detalle de una caja: sus movimientos, quién cobró cuánto, y todos
+     * los arqueos que se le hicieron — incluidos los que una reapertura dejó
+     * atrás.
+     */
+    public function show(Request $request, string $id): JsonResponse
+    {
+        if (!$this->mayManage($request)) {
+            return $this->forbidden();
+        }
+
+        $session = CashSessionModel::with(['movements.author', 'opener', 'closer'])->findOrFail($id);
+
+        $cierres = CashSessionClosureModel::query()
+            ->forTenant(app('current_tenant_id'))
+            ->where('cash_session_id', $session->id)
+            ->with(['closer', 'reopener'])
+            ->orderBy('closed_at')
+            ->get()
+            ->map(fn (CashSessionClosureModel $c) => [
+                'id'                => $c->id,
+                'counted_amount'    => (float) $c->counted_amount,
+                'counted_breakdown' => $c->counted_breakdown,
+                'expected_amount'   => (float) $c->expected_amount,
+                'difference'        => (float) $c->difference,
+                'closed_at'         => $c->closed_at?->toIso8601String(),
+                'closed_by'         => $c->closer ? ['id' => $c->closer->id, 'name' => $c->closer->name] : null,
+                'notes'             => $c->notes,
+                // Un cierre con motivo de reapertura es uno que quedó atrás.
+                'reopened_at'       => $c->reopened_at?->toIso8601String(),
+                'reopened_by'       => $c->reopener ? ['id' => $c->reopener->id, 'name' => $c->reopener->name] : null,
+                'reopen_reason'     => $c->reopen_reason,
+            ]);
+
+        return response()->json([
+            'data' => array_merge(
+                (new CashSessionResource($session))->toArray($request),
+                ['closures' => $cierres],
+            ),
         ]);
     }
 

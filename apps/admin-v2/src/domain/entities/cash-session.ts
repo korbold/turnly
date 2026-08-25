@@ -59,6 +59,30 @@ export interface CashSession {
   cashByPerson: CashByPerson[] | null;
 }
 
+/**
+ * Un arqueo firmado. Si la caja se reabrió, este cierre quedó atrás y lleva
+ * quién lo reabrió y por qué: la historia de la caja es la lista completa, no
+ * la última versión.
+ */
+export interface CashClosure {
+  id: string;
+  countedAmount: number;
+  countedBreakdown: CashBreakdown | null;
+  expectedAmount: number;
+  difference: number;
+  closedAt: Date;
+  closedBy: CashActor | null;
+  notes: string | null;
+  reopenedAt: Date | null;
+  reopenedBy: CashActor | null;
+  reopenReason: string | null;
+}
+
+/** Una caja con todo lo que se le hizo. */
+export interface CashSessionDetail extends CashSession {
+  closures: CashClosure[];
+}
+
 export interface CashSessionSnapshot {
   session: CashSession | null;
   /** Efectivo cobrado ese día sin caja abierta. Es un aviso, no un bloqueo. */

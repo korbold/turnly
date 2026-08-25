@@ -1,5 +1,6 @@
 import type {
   CashMovement,
+  CashSessionDetail,
   ReopenCashSessionInput,
   CashSession,
   CashSessionSnapshot,
@@ -10,6 +11,9 @@ import type {
 
 export interface CashSessionRepository {
   get(date: string): Promise<CashSessionSnapshot>;
+  /** El historial, de la caja más nueva a la más vieja. */
+  list(): Promise<CashSession[]>;
+  detail(id: string): Promise<CashSessionDetail>;
   open(input: OpenCashSessionInput): Promise<CashSession>;
   addMovement(input: AddCashMovementInput): Promise<CashMovement>;
   close(input: CloseCashSessionInput): Promise<CashSession>;
