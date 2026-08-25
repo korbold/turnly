@@ -96,8 +96,30 @@ class ResourceRepositoryImpl implements ResourceRepository {
       return const Right(unit);
     } on DioException catch (e) {
       dev.log('[ResourceRepo] DELETE DioException: ${e.response?.statusCode}');
+      // El `code` viaja además del mensaje: con historial el backend responde
+      // 422 HAS_SERVICES, y eso no es un error a secas sino la puerta al
+      // "sacar de mi lista". Sin el código la pantalla no puede distinguirlo
+      // de una caída de red.
       return Left(ServerFailure(
         e.response?.data?['error']?['message'] ?? 'Error al eliminar registro',
+        code: e.response?.data?['error']?['code'] as String?,
+      ));
+    } catch (e) {
+      return Left(ServerFailure(e.toString()));
+    }
+  }
+
+  @override
+  Future<Either<Failure, Unit>> release(String id) async {
+    try {
+      dev.log('[ResourceRepo] POST /client-resources/$id/release');
+      await _dio.post('/client-resources/$id/release');
+      return const Right(unit);
+    } on DioException catch (e) {
+      dev.log('[ResourceRepo] RELEASE DioException: ${e.response?.statusCode}');
+      return Left(ServerFailure(
+        e.response?.data?['error']?['message'] ?? 'No se pudo sacar de tu lista',
+        code: e.response?.data?['error']?['code'] as String?,
       ));
     } catch (e) {
       return Left(ServerFailure(e.toString()));

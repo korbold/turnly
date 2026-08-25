@@ -439,9 +439,73 @@ class ClientResourceController extends Controller
             ], 422);
         }
 
+        // Lo mismo con el trabajo ya hecho, que hasta ahora pasaba de largo:
+        // el candado protegía la agenda y dejaba pasar la plata.
+        //
+        // `service_logs.client_resource_id` es ON DELETE SET NULL, así que
+        // borrar el vehículo no borra sus servicios: los deja sin auto, con su
+        // precio, su cobro y su bitácora intactos. En producción quedaron 11
+        // servicios cobrados así entre el 2 y el 25 de agosto — no se puede
+        // saber sobre qué vehículo se trabajó, y el cliente los pierde de su
+        // historial y de su total gastado. La base lo hace sin tocar
+        // `updated_at` ni escribir en la bitácora, así que no deja rastro.
+        //
+        // Un registro anulado cuenta igual: sigue siendo historia de la placa.
+        // Para juntar dos fichas de la misma placa existe
+        // `clients:merge-duplicate-plates`, que reasigna los servicios antes
+        // de borrar en vez de dejarlos huérfanos.
+        $servicios = ServiceLogModel::where('client_resource_id', $clientResource->id)->count();
+
+        if ($servicios > 0) {
+            return response()->json([
+                'error' => [
+                    'code'     => 'HAS_SERVICES',
+                    'message'  => $servicios === 1
+                        ? 'Este vehículo tiene 1 servicio en su historial. Podés sacarlo de tu lista y el local lo conserva.'
+                        : "Este vehículo tiene {$servicios} servicios en su historial. Podés sacarlo de tu lista y el local los conserva.",
+                    // Cuántos, para que el mostrador sepa si es un ticket de
+                    // prueba o el historial de un año.
+                    'services' => $servicios,
+                    // El mensaje lo lee el dueño del auto en el móvil, no un
+                    // empleado. Un "no se puede" sin salida es lo que hace que
+                    // insista o llame al local; `release` es la salida.
+                    'can_release' => true,
+                ],
+            ], 422);
+        }
+
         $clientResource->delete();
 
         return response()->json(['message' => 'Registro eliminado'], 200);
+    }
+
+    /**
+     * Saca el vehículo de la lista de su dueño sin borrarlo.
+     *
+     * Es la salida al candado de `destroy()`: alguien que vendió el auto
+     * necesita que deje de aparecerle, y el local necesita conservar los
+     * servicios que le hizo. Poner `client_id` en null hace las dos: el
+     * vehículo queda sin dueño conocido —que a partir de ahí es la verdad— y
+     * sigue en Clientes como cualquier walk-in, con su historial entero.
+     *
+     * Mismo criterio que `clients:release-staff-owned`, que ya suelta así los
+     * vehículos que colgaban del personal.
+     */
+    public function release(Request $request, string $id): JsonResponse
+    {
+        // El vehículo de otro cliente es un 404, no un 403: no se confirma que
+        // ese id exista. `findOrFail` ya aplica el TenantScope.
+        $resource = ClientResourceModel::findOrFail($id);
+
+        if ($resource->client_id !== $request->user()?->id) {
+            abort(404);
+        }
+
+        $resource->update(['client_id' => null]);
+
+        return response()->json([
+            'data' => ['message' => 'El vehículo salió de tu lista.'],
+        ]);
     }
 
     private function hasReservations(ClientResourceModel $resource): bool

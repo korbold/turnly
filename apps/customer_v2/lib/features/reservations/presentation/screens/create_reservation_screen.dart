@@ -1,5 +1,6 @@
 // lib/features/reservations/presentation/screens/create_reservation_screen.dart
 import 'package:flutter/material.dart';
+import '../../../../core/error/failures.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:flutter_animate/flutter_animate.dart';
 import 'package:go_router/go_router.dart';
@@ -322,6 +323,51 @@ class _CreateReservationViewState extends State<_CreateReservationView> {
     _reseedCart(picked);
   }
 
+  /// El vehículo tiene historial en el local, así que no se borra. Se le
+  /// ofrece sacarlo de su lista: deja de aparecerle y el local conserva los
+  /// servicios que le hizo.
+  Future<void> _ofrecerSacarDeLaLista(
+    ClientResource resource,
+    String motivo,
+  ) async {
+    final sacar = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+        title: const Text('Sacar de tu lista'),
+        content: Text('$motivo\n\n¿Sacar "${resource.label}" de tu lista?'),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx, false),
+            child: const Text('Cancelar'),
+          ),
+          TextButton(
+            onPressed: () => Navigator.pop(ctx, true),
+            child: const Text('Sacar de mi lista'),
+          ),
+        ],
+      ),
+    );
+
+    if (sacar != true || !mounted) return;
+
+    final fallo = await context.read<ResourcesCubit>().releaseResource(resource.id);
+
+    if (!mounted) return;
+
+    if (fallo != null) {
+      if (!context.mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text(fallo.message)),
+      );
+      return;
+    }
+
+    if (_selectedResource?.id == resource.id) {
+      setState(() => _selectedResource = null);
+    }
+  }
+
   Future<void> _submitReservation() async {
     if (_selectedSlot == null || _selectedService == null) return;
     if (!_skipResourceStep && _selectedResource == null) return;
@@ -539,8 +585,33 @@ class _CreateReservationViewState extends State<_CreateReservationView> {
                           ),
                         );
                         if (confirmed == true && mounted) {
-                          await context.read<ResourcesCubit>().deleteResource(resource.id);
-                          if (mounted && _selectedResource?.id == resource.id) {
+                          final fallo = await context
+                              .read<ResourcesCubit>()
+                              .deleteResource(resource.id);
+
+                          if (!mounted) return;
+
+                          // Un vehículo con historial no se borra: el local
+                          // conserva los servicios que le hizo. Pero el dueño
+                          // que lo vendió necesita que deje de aparecerle, así
+                          // que en vez de un "no se puede" se le ofrece la
+                          // salida. Antes esto fallaba en silencio: el
+                          // vehículo seguía en la lista sin explicación.
+                          if (fallo is ServerFailure &&
+                              fallo.code == 'HAS_SERVICES') {
+                            await _ofrecerSacarDeLaLista(resource, fallo.message);
+                            return;
+                          }
+
+                          if (fallo != null) {
+                            if (!context.mounted) return;
+                            ScaffoldMessenger.of(context).showSnackBar(
+                              SnackBar(content: Text(fallo.message)),
+                            );
+                            return;
+                          }
+
+                          if (_selectedResource?.id == resource.id) {
                             setState(() => _selectedResource = null);
                           }
                         }

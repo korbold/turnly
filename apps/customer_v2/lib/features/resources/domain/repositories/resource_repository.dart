@@ -12,5 +12,10 @@ abstract class ResourceRepository {
   });
   Future<Either<Failure, Unit>> update({required String id, Map<String, dynamic>? data});
   Future<Either<Failure, Unit>> delete(String id);
+
+  /// Saca el vehículo de la lista del cliente sin borrarlo: el local conserva
+  /// los servicios que le hizo. Es la salida cuando `delete` responde
+  /// HAS_SERVICES.
+  Future<Either<Failure, Unit>> release(String id);
   Future<Either<Failure, List<ServiceHistoryEntry>>> getHistory(String resourceId);
 }

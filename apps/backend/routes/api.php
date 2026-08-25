@@ -128,6 +128,9 @@ Route::prefix('v1')->group(function () {
             Route::get('client-resources/{id}', [ClientResourceController::class, 'show']);
             Route::patch('client-resources/{id}', [ClientResourceController::class, 'update']);
             Route::delete('client-resources/{id}', [ClientResourceController::class, 'destroy']);
+            // La salida cuando el vehículo tiene historial y no se puede
+            // borrar: sale de la lista del cliente, el local lo conserva.
+            Route::post('client-resources/{id}/release', [ClientResourceController::class, 'release']);
             Route::get('client-resources/{id}/history', [ClientResourceController::class, 'history']);
             // Deuda de una placa: de qué está hecha y qué se le pagó.
             Route::get('client-resources/{id}/debt', [DebtController::class, 'show']);
