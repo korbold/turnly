@@ -98,6 +98,55 @@ class PaymentLedger
             ->sum('amount');
     }
 
+    /**
+     * Con qué métodos se cobró cada uno de estos servicios, en el orden en que
+     * entró la plata.
+     *
+     * Una sola consulta para toda la página: el Registro Diario dibuja 50
+     * filas y una consulta por fila lo convierte en un timeout. Devuelve un
+     * mapa `logId => [['method' => 'cash', 'amount' => 60.0, 'bank' => null]]`.
+     *
+     * Existe porque la fila mostraba un único chip de método, tomado de la
+     * columna del servicio, y un ticket cobrado $60 en efectivo y $14 en
+     * transferencia se anunciaba como si hubiera entrado entero por el último
+     * método usado. El cajero no tenía cómo ver la diferencia.
+     *
+     * @param  iterable<string>  $logIds
+     * @return array<string, list<array{method: string, amount: float, bank: ?string}>>
+     */
+    public function methodBreakdownFor(string $tenantId, iterable $logIds): array
+    {
+        $ids = collect($logIds)->filter()->unique()->values();
+
+        if ($ids->isEmpty()) {
+            return [];
+        }
+
+        $filas = PaymentAllocationModel::query()
+            ->forTenant($tenantId)
+            ->where('payable_type', PaymentAllocationModel::PAYABLE_SERVICE_LOG)
+            ->whereIn('payable_id', $ids)
+            ->join('payments', 'payments.id', '=', 'payment_allocations.payment_id')
+            ->orderBy('payments.paid_at')
+            ->get([
+                'payment_allocations.payable_id',
+                'payment_allocations.amount',
+                'payments.method',
+                'payments.bank',
+            ]);
+
+        $mapa = [];
+        foreach ($filas as $fila) {
+            $mapa[$fila->payable_id][] = [
+                'method' => $fila->method,
+                'amount' => round((float) $fila->amount, 2),
+                'bank'   => $fila->bank,
+            ];
+        }
+
+        return $mapa;
+    }
+
     public function statusFor(ServiceLogModel $log): string
     {
         $paid  = $this->paidFor($log);

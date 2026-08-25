@@ -210,6 +210,10 @@ export function LogList({
       {logs.map((log, idx) => {
         const statusCfg = STATUS_CONFIG[log.status];
         const pmCfg = log.paymentMethod ? PAYMENT_METHOD_CONFIG[log.paymentMethod] : null;
+        // Dos tramos del MISMO método (dos abonos en efectivo) no son un pago
+        // partido: mostrarlos por separado no le dice nada nuevo al mostrador.
+        // Lo que confunde es que el ticket entró por dos vías distintas.
+        const partido = new Set(log.paymentBreakdown.map((p) => p.method)).size > 1;
         // "Falta cobrar", no "no se cobró nada": un servicio con $10 de $30
         // sigue necesitando el botón de Cobrar. Comparar contra 'unpaid'
         // dejaba los abonos sin forma de cobrarse desde la lista.
@@ -411,6 +415,28 @@ export function LogList({
                       ? `Abonado ${fmt(log.amountPaid)} · falta ${fmt(log.amountDue)}`
                       : 'Pendiente'}
                 </span>
+              ) : partido ? (
+                // Cobrado en dos partes: cada tramo con su monto, uno por
+                // línea. Un solo chip con el último método usado hacía leer
+                // "Transferencia" un ticket del que la mitad entró en
+                // efectivo — y es lo que descuadró la caja del 24 de agosto.
+                // Los montos van impresos, no en un tooltip: en la PWA no
+                // hay hover que los revele.
+                <div className="flex flex-col items-end gap-1 lg:items-start">
+                  {log.paymentBreakdown.map((tramo, i) => {
+                    const cfg = PAYMENT_METHOD_CONFIG[tramo.method];
+                    return (
+                      <span
+                        key={`${tramo.method}-${i}`}
+                        className="inline-flex items-center gap-1 rounded-full bg-[var(--bg-sunken)] px-2 py-0.5 text-[11px] font-medium text-[var(--fg-strong)]"
+                      >
+                        <span aria-hidden="true">{cfg.icon}</span>
+                        <span className="tabular-nums font-semibold">{fmt(tramo.amount)}</span>
+                        <span className="text-[var(--fg-muted)]">{cfg.label}</span>
+                      </span>
+                    );
+                  })}
+                </div>
               ) : pmCfg ? (
                 <span className="inline-flex items-center gap-1.5 whitespace-nowrap rounded-full bg-[var(--bg-sunken)] lg:whitespace-normal px-2.5 py-1 text-[11.5px] font-medium text-[var(--fg-strong)]">
                   <span aria-hidden="true">{pmCfg.icon}</span>

@@ -73,6 +73,13 @@ export interface ServiceLogEvent {
   changedBy: { id: string; name: string } | null;
 }
 
+/** Un tramo de cobro: cuánto entró por un método, y por qué banco si aplica. */
+export interface PaymentSplit {
+  method: PaymentMethod;
+  amount: number;
+  bank: string | null;
+}
+
 export interface ServiceLog {
   id: string;
   /** Null on a counter sale — the ticket is not attached to a vehicle. */
@@ -91,6 +98,15 @@ export interface ServiceLog {
   paymentMethod: PaymentMethod | null;
   paymentBank: string | null;
   paymentStatus: 'paid' | 'unpaid' | 'partial';
+  /**
+   * Con qué métodos se cobró, en el orden en que entró la plata. Un solo
+   * tramo en el caso normal; dos o más cuando el ticket se pagó partido.
+   *
+   * La fila mostraba un único chip tomado de `paymentMethod`, que guarda el
+   * último método usado: un cobro de $60 en efectivo más $14 en transferencia
+   * se anunciaba entero como transferencia y el mostrador no podía verlo.
+   */
+  paymentBreakdown: PaymentSplit[];
   /** Lo abonado y lo que falta, del libro de pagos. */
   amountPaid: number;
   amountDue: number;

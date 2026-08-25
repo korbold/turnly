@@ -173,3 +173,43 @@ test('the correction is still written to the log history', function () {
     expect($cambio)->not->toBeNull();
     expect(collect($cambio['detail']['changes'])->pluck('field'))->toContain('payment_method');
 });
+
+test('the row carries how a split ticket was actually collected', function () {
+    // La fila mostraba un solo chip de método, sacado de la columna del
+    // servicio, así que un ticket cobrado en dos partes se anunciaba entero
+    // por el último método usado. El mostrador no tenía cómo ver la
+    // diferencia — y es justo el caso que descuadró la caja del 24.
+    [$log] = ($this->cobrado)(null, [['cash', 41], ['transfer', 14]]);
+
+    $fila = ($this->as)()
+        ->getJson('/api/v1/service-logs?date=' . now()->toDateString())
+        ->assertOk()
+        ->json('data.0');
+
+    expect($fila['payment_breakdown'])->toHaveCount(2);
+    expect(collect($fila['payment_breakdown'])->pluck('amount', 'method')->all())
+        ->toEqual(['cash' => 41.0, 'transfer' => 14.0]);
+});
+
+test('a ticket collected with one method carries a single leg', function () {
+    ($this->cobrado)(null);
+
+    $fila = ($this->as)()
+        ->getJson('/api/v1/service-logs?date=' . now()->toDateString())
+        ->assertOk()
+        ->json('data.0');
+
+    expect($fila['payment_breakdown'])->toHaveCount(1);
+    expect($fila['payment_breakdown'][0]['method'])->toBe('cash');
+});
+
+test('the detail of a split ticket carries the same legs as the row', function () {
+    // Si la lista muestra dos tramos y el detalle uno, el mostrador tiene dos
+    // versiones del mismo cobro.
+    [$log] = ($this->cobrado)(null, [['cash', 41], ['transfer', 14]]);
+
+    $detalle = ($this->as)()->getJson("/api/v1/service-logs/{$log->id}")->assertOk()->json('data');
+
+    expect(collect($detalle['payment_breakdown'])->pluck('amount', 'method')->all())
+        ->toEqual(['cash' => 41.0, 'transfer' => 14.0]);
+});

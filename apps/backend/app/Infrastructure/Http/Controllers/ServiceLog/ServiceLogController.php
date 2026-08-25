@@ -465,8 +465,14 @@ class ServiceLogController extends Controller
         $deudas = app(\App\Application\Services\DebtLedger::class)
             ->debtByResource(app('current_tenant_id'));
 
-        $logs->getCollection()->transform(function ($log) use ($deudas) {
+        // Con qué métodos se cobró cada fila. Misma razón que arriba: una
+        // consulta para la página entera, no una por fila.
+        $desgloses = app(\App\Application\Services\PaymentLedger::class)
+            ->methodBreakdownFor(app('current_tenant_id'), $logs->getCollection()->pluck('id'));
+
+        $logs->getCollection()->transform(function ($log) use ($deudas, $desgloses) {
             $log->setAttribute('resource_debt', (float) ($deudas[$log->client_resource_id] ?? 0));
+            $log->setAttribute('payment_breakdown', $desgloses[$log->id] ?? []);
             return $log;
         });
 
@@ -631,6 +637,15 @@ class ServiceLogController extends Controller
             'clientResource.client', 'service', 'attendant', 'reservation', 'items.variant',
             'washer', 'dryer', 'events.changedBy',
         ])->findOrFail($id);
+
+        // Una fila, una consulta: acá el N+1 no existe, y sin esto el detalle
+        // mostraría un solo método donde la lista muestra los dos tramos.
+        $serviceLog->setAttribute(
+            'payment_breakdown',
+            app(\App\Application\Services\PaymentLedger::class)
+                ->methodBreakdownFor(app('current_tenant_id'), [$serviceLog->id])[$serviceLog->id] ?? [],
+        );
+
         return new ServiceLogResource($serviceLog);
     }
 

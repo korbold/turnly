@@ -4,6 +4,7 @@ import type {
   ServiceLogEvent,
   DailySummary,
   PriceChange,
+  PaymentSplit,
 } from '@/domain/entities/service-log';
 
 export function mapServiceLog(raw: Record<string, unknown>): ServiceLog {
@@ -42,6 +43,11 @@ export function mapServiceLog(raw: Record<string, unknown>): ServiceLog {
     paymentStatus: ((raw.payment_status as 'paid' | 'unpaid' | 'partial' | null) ?? 'paid') as ServiceLog['paymentStatus'],
     leftOwing: Boolean(raw.left_owing ?? false),
     otherDebt: Number(raw.other_debt ?? 0),
+    paymentBreakdown: ((raw.payment_breakdown as Record<string, unknown>[]) ?? []).map((p) => ({
+      method: p.method as PaymentSplit['method'],
+      amount: Number(p.amount ?? 0),
+      bank: (p.bank as string) ?? null,
+    })),
     amountPaid: Number(raw.amount_paid ?? 0),
     // Sin el campo (respuesta vieja en caché), lo que falta es todo el precio
     // si no está pagado: nunca mostrar "$0 pendiente" por un dato ausente.

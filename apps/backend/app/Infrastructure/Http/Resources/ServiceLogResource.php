@@ -29,6 +29,12 @@ class ServiceLogResource extends JsonResource
             // fila sólo sabe si está pagado, no cuánto entró.
             'amount_paid'    => round($this->amountPaidFromLedger(), 2),
             'amount_due'     => round(max(0.0, (float) $this->price_charged - $this->amountPaidFromLedger()), 2),
+            // Con qué métodos se cobró, en orden. Una fila cobrada $60 en
+            // efectivo y $14 en transferencia anunciaba un solo chip —el
+            // último método— y el mostrador no tenía cómo ver la diferencia.
+            // Lo presetea el controlador en bloque; sin preset va vacío en vez
+            // de disparar una consulta por fila, igual que `resource_debt`.
+            'payment_breakdown' => $this->payment_breakdown ?? [],
             'left_owing'     => (bool) $this->left_owing,
             // Lo que la placa debe APARTE de este servicio. El saldo propio ya
             // vive en `amount_due` y la fila lo muestra en su columna; sumarlo
