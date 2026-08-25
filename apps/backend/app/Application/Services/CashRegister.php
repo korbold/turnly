@@ -10,6 +10,7 @@ use App\Infrastructure\Persistence\Models\CashSessionClosureModel;
 use App\Infrastructure\Persistence\Models\CashSessionModel;
 use App\Infrastructure\Persistence\Models\PaymentAllocationModel;
 use App\Infrastructure\Persistence\Models\PaymentModel;
+use App\Infrastructure\Persistence\Models\TenantModel;
 use App\Infrastructure\Persistence\Models\ServiceLogModel;
 use Illuminate\Support\Facades\DB;
 
@@ -348,5 +349,39 @@ class CashRegister
 
             return $session->fresh();
         });
+    }
+
+    /**
+     * ¿Este tenant exige caja abierta para cobrar en efectivo?
+     *
+     * Detrás de un ajuste y no encendido para todos porque hay negocios que
+     * nunca abren caja: para ellos la regla sería un candado sobre cada cobro
+     * en efectivo que hacen. Apagado es el default, así que un tenant que no
+     * sabe que esto existe sigue trabajando igual.
+     */
+    public function requiresOpenTillForCash(string $tenantId): bool
+    {
+        $tenant = TenantModel::find($tenantId);
+
+        return (bool) ($tenant?->settings['require_open_till_for_cash'] ?? false);
+    }
+
+    /**
+     * Lo que hay que cumplir para que un billete entre al sistema.
+     *
+     * El 24 de agosto se cobraron $45 en efectivo veintiún minutos después
+     * del cierre: ese billete quedó en el cajón sin que ningún arqueo lo
+     * esperara. Sólo el efectivo — tarjeta y transferencia no tocan el cajón,
+     * y pedirles caja abierta sería un candado sin motivo.
+     */
+    public function guardCashPayment(string $tenantId, string $method): void
+    {
+        if ($method !== 'cash' || !$this->requiresOpenTillForCash($tenantId)) {
+            return;
+        }
+
+        if ($this->currentSession($tenantId) === null) {
+            throw CashRegisterException::cashNeedsOpenTill();
+        }
     }
 }

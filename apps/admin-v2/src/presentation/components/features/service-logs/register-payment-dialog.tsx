@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from 'react';
 import { toast } from 'sonner';
-import { Banknote, CreditCard, ArrowLeftRight, MoreHorizontal } from 'lucide-react';
+import { Banknote, CreditCard, ArrowLeftRight, MoreHorizontal, Lock } from 'lucide-react';
 import {
   Dialog,
   DialogContent,
@@ -16,6 +16,9 @@ import { Input } from '@/presentation/components/ui/input';
 import { Label } from '@/presentation/components/ui/label';
 import { useRecordServiceLogPayment } from '@/presentation/hooks/use-service-logs';
 import { useDebt } from '@/presentation/hooks/use-debt';
+import { useSettings } from '@/presentation/hooks/use-settings';
+import { useCashSession } from '@/presentation/hooks/use-cash-session';
+import { format } from 'date-fns';
 import { BankChip } from '@/presentation/components/features/reservations/bank-chip';
 import { ECUADOR_BANKS } from '@/shared/constants/banks';
 import { cn } from '@/shared/utils/cn';
@@ -43,7 +46,11 @@ const METHODS: { value: PaymentMethod; label: string; icon: typeof Banknote }[] 
  * needs to mark a "cobrar al retirar" service as paid. Mirrors the
  * reservation payment modal shape so the muscle memory carries.
  */
+/** El día del negocio, para preguntar por la caja de hoy. */
+const hoyStr = () => format(new Date(), 'yyyy-MM-dd');
+
 export function RegisterPaymentDialog({ serviceLogId, clientResourceId, total, open, onClose }: Props) {
+  const hoy = hoyStr();
   const [method, setMethod] = useState<PaymentMethod>('cash');
   const [bank, setBank] = useState<string | null>(null);
   const [reference, setReference] = useState('');
@@ -72,7 +79,19 @@ export function RegisterPaymentDialog({ serviceLogId, clientResourceId, total, o
     if (method !== 'transfer') setBank(null);
   }, [method]);
 
+  // Efectivo sin caja abierta: el backend lo rechaza, así que el diálogo lo
+  // dice antes de que el cajero escriba el monto. Enterarse por un error
+  // después de llenar el formulario, con el cliente enfrente, es la peor
+  // versión de la misma regla. Sólo afecta al efectivo: tarjeta y
+  // transferencia no tocan el cajón.
+  const { data: tenant } = useSettings();
+  const { data: caja } = useCashSession(hoy);
+  const exigeCaja = tenant?.requireOpenTillForCash ?? false;
+  const cajaAbierta = caja?.session?.status === 'open';
+  const efectivoTrabado = exigeCaja && !cajaAbierta && method === 'cash';
+
   function submit() {
+    if (efectivoTrabado) return;
     if (method === 'transfer' && !bank) {
       toast.error('Selecciona el banco emisor');
       return;
@@ -188,6 +207,22 @@ export function RegisterPaymentDialog({ serviceLogId, clientResourceId, total, o
             </div>
           </div>
 
+          {efectivoTrabado && (
+            // El candado se explica y se sale de él: sin caja abierta el
+            // billete quedaría fuera del arqueo, que es lo que pasó el 24 de
+            // agosto con $45. Las salidas se nombran porque quien lee esto
+            // tiene un cliente enfrente.
+            <div className="flex gap-2.5 rounded-lg border border-[var(--warning-200)] bg-[var(--warning-50)] p-3">
+              <Lock className="mt-0.5 h-4 w-4 shrink-0 text-[var(--warning-700)]" aria-hidden="true" />
+              <p className="text-[12.5px] leading-relaxed text-[var(--warning-700)]">
+                <strong>No hay caja abierta.</strong> Sin ella el efectivo no entra a
+                ningún arqueo. Abre la caja del día desde el Registro Diario — o si ya
+                se cerró, pídele al dueño que la reabra. También puedes cobrar por
+                tarjeta o transferencia.
+              </p>
+            </div>
+          )}
+
           {method === 'transfer' && (
             <div className="space-y-2 rounded-lg border border-[var(--border)] bg-[var(--bg-app)] p-3">
               <Label className="text-[11px] font-semibold uppercase tracking-[0.04em] text-[var(--fg-muted)]">
@@ -250,7 +285,11 @@ export function RegisterPaymentDialog({ serviceLogId, clientResourceId, total, o
           <Button variant="outline" onClick={onClose} disabled={mutation.isPending}>
             Cancelar
           </Button>
-          <Button onClick={submit} disabled={mutation.isPending} className="cursor-pointer">
+          <Button
+            onClick={submit}
+            disabled={mutation.isPending || efectivoTrabado}
+            className="cursor-pointer"
+          >
             Marcar pagado
           </Button>
         </DialogFooter>

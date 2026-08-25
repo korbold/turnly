@@ -42,6 +42,9 @@ export class ApiTenantRepository implements TenantRepository {
     if (settings.ivaMode !== undefined) {
       body.iva_mode = settings.ivaMode;
     }
+    if (settings.requireOpenTillForCash !== undefined) {
+      body.require_open_till_for_cash = settings.requireOpenTillForCash;
+    }
 
     const { data: res } = await api.patch('/tenant/settings', body);
     return mapTenantSettings(res.data);

@@ -45,6 +45,8 @@ class PaymentLedger
             // se infiere después por ventana de tiempo: la caja que se abre
             // tarde y el pago de las 23:58 son los bordes reales, y son
             // justo los días que el dueño revisa.
+            $this->cash->guardCashPayment($log->tenant_id, $method);
+
             $sesion = $this->cash->currentSession($log->tenant_id);
 
             $payment = PaymentModel::create([
@@ -145,6 +147,8 @@ class PaymentLedger
         return DB::transaction(function () use (
             $tenantId, $clientId, $amount, $method, $bank, $receivedBy, $plan, $notes
         ) {
+            $this->cash->guardCashPayment($tenantId, $method);
+
             $sesion = $this->cash->currentSession($tenantId);
 
             $payment = PaymentModel::create([
@@ -186,6 +190,8 @@ class PaymentLedger
                 ->forTenant($tenantId)
                 ->whereKey($clientResourceId)
                 ->first();
+
+            $this->cash->guardCashPayment($tenantId, $method);
 
             $sesion = $this->cash->currentSession($tenantId);
 

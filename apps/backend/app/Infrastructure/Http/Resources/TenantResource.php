@@ -46,6 +46,7 @@ class TenantResource extends JsonResource
             'allow_client_resource_selection' => (bool) ($this->settings['allow_client_resource_selection'] ?? false),
             'iva_mode'            => $this->settings['iva_mode'] ?? 'excluded',
             'permissions'         => $this->settings['permissions'] ?? (object) [],
+            'require_open_till_for_cash' => (bool) ($this->settings['require_open_till_for_cash'] ?? false),
             'payment_timing'      => $this->getPaymentTiming(),
         ];
     }

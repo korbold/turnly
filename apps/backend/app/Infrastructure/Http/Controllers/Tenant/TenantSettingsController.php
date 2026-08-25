@@ -74,6 +74,7 @@ class TenantSettingsController extends Controller
             'allow_client_resource_selection' => 'sometimes|boolean',
             'payment_timing' => 'sometimes|string|in:prepay_required,at_pickup,at_completion,flexible,none',
             'iva_mode' => 'sometimes|string|in:excluded,included,zero',
+            'require_open_till_for_cash' => 'sometimes|boolean',
             'permissions' => 'sometimes|array',
         ]);
 
@@ -123,6 +124,12 @@ class TenantSettingsController extends Controller
         }
         if ($request->has('iva_mode')) {
             $settings['iva_mode'] = (string) $request->iva_mode;
+        }
+        // Exigir caja abierta para cobrar en efectivo. Apagado por default:
+        // hay negocios que nunca abren caja, y para ellos esto sería un
+        // candado sobre cada billete que reciben.
+        if ($request->has('require_open_till_for_cash')) {
+            $settings['require_open_till_for_cash'] = (bool) $request->require_open_till_for_cash;
         }
         if ($request->has('permissions')) {
             $settings['permissions'] = $request->input('permissions');

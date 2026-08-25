@@ -42,6 +42,7 @@ export function mapTenantSettings(raw: Record<string, unknown>): TenantSettings 
     autoConfirmReservations: Boolean(raw.auto_confirm_reservations ?? false),
     allowClientResourceSelection: Boolean(raw.allow_client_resource_selection ?? false),
     ivaMode: (raw.iva_mode as TenantSettings['ivaMode']) ?? 'excluded',
+    requireOpenTillForCash: Boolean(raw.require_open_till_for_cash ?? false),
     socialLinks: {
       instagram: socialLinks.instagram ?? null,
       facebook: socialLinks.facebook ?? null,

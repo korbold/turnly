@@ -50,6 +50,13 @@ export interface TenantSettings {
       excluded = price has no IVA (SRI adds 15%), included = price already has 15% IVA
       (job divides by 1.15), zero = 0% IVA (no tax added). */
   ivaMode: 'excluded' | 'included' | 'zero';
+  /**
+   * Exigir caja abierta para cobrar en efectivo.
+   *
+   * Apagado por defecto: hay negocios que nunca abren caja, y para ellos esto
+   * sería un candado sobre cada billete que reciben.
+   */
+  requireOpenTillForCash: boolean;
   socialLinks: {
     instagram: string | null;
     facebook: string | null;
