@@ -30,6 +30,13 @@ const signed = (v: number) =>
  * esperado y diferencia. No hay camino a la segunda pantalla que no pase por
  * la primera, y por eso el resultado vive en el estado de este componente y
  * no en una consulta que se pueda hacer antes.
+ *
+ * El texto nombra la base a propósito. El primer cierre de FEDER dio −$50, que
+ * era exactamente la base ($40) más un aumento ($10): la cajera declaró lo que
+ * había COBRADO en vez de lo que había en el cajón. Decir "contá el efectivo"
+ * no alcanza — el efectivo cobrado también es efectivo, y es el número que
+ * tiene más a mano. Nombrar la base no revela el esperado, así que el cierre
+ * sigue siendo ciego.
  */
 export function CloseCashDialog({ open, sessionId, onClose }: Props) {
   const [counted, setCounted] = useState('');
@@ -48,7 +55,7 @@ export function CloseCashDialog({ open, sessionId, onClose }: Props) {
   async function submit() {
     const contado = Number(counted);
     if (!Number.isFinite(contado) || contado < 0) {
-      toast.error('Poné cuánto efectivo contaste');
+      toast.error('Escribe cuánto efectivo contaste');
       return;
     }
 
@@ -82,13 +89,13 @@ export function CloseCashDialog({ open, sessionId, onClose }: Props) {
             <DialogHeader>
               <DialogTitle>Cerrar caja</DialogTitle>
               <DialogDescription>
-                Contá el efectivo del cajón y escribí cuánto hay. El sistema te dice después
-                cuánto esperaba.
+                Cuenta todo el efectivo que hay en el cajón, <strong>incluida la base con la
+                que abriste</strong>. El sistema te dice después cuánto esperaba.
               </DialogDescription>
             </DialogHeader>
 
             <div className="space-y-2">
-              <Label htmlFor="counted-amount">Efectivo contado</Label>
+              <Label htmlFor="counted-amount">Efectivo contado (todo el cajón)</Label>
               <Input
                 id="counted-amount"
                 type="number"

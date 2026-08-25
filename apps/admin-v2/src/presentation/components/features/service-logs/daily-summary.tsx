@@ -132,7 +132,7 @@ export function DailySummary({ date }: DailySummaryProps) {
       <div className="flex items-center gap-2.5 rounded-xl border border-dashed border-[var(--border-strong)] bg-[var(--bg-surface)] px-4 py-3">
         <EyeOff className="h-4 w-4 shrink-0 text-[var(--fg-muted)]" aria-hidden="true" />
         <p className="text-[12.5px] text-[var(--fg-secondary)]">
-          Los totales del día aparecen al cerrar la caja. Contá el efectivo antes de declararlo.
+          Los totales del día aparecen al cerrar la caja. Cuenta el efectivo del cajón antes de declararlo.
         </p>
       </div>
     );
