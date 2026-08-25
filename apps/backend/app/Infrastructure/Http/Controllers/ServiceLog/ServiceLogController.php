@@ -34,6 +34,8 @@ use App\Infrastructure\Persistence\Models\TenantUserModel;
 use App\Infrastructure\Persistence\Models\UserBillingProfileModel;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Collection;
+use Illuminate\Support\Facades\DB;
 
 class ServiceLogController extends Controller
 {
@@ -779,11 +781,84 @@ class ServiceLogController extends Controller
             $changes[] = ['field' => $field, 'from' => $from, 'to' => $to];
         }
 
-        $serviceLog->update($payload);
+        // Corregir el método del registro tiene que corregir el cobro, o las
+        // pantallas se separan: Reportes lee el registro, el Registro Diario y
+        // la Caja leen el pago.
+        $cambiaMetodo = array_key_exists('payment_method', $payload)
+            && (string) $payload['payment_method'] !== (string) $serviceLog->payment_method;
+
+        $pagos = $cambiaMetodo ? $this->paymentsOf($serviceLog) : collect();
+
+        if ($cambiaMetodo && $pagos->isNotEmpty()) {
+            if ($problema = $this->methodChangeProblem($pagos, $payload['payment_method'])) {
+                return $problema;
+            }
+        }
+
+        DB::transaction(function () use ($serviceLog, $payload, $pagos, $cambiaMetodo) {
+            $serviceLog->update($payload);
+
+            if ($cambiaMetodo) {
+                foreach ($pagos as $pago) {
+                    $pago->update(array_filter([
+                        'method' => $payload['payment_method'],
+                        // El banco viaja con el método: una transferencia sin
+                        // banco es la mitad del dato.
+                        'bank'   => $payload['payment_bank'] ?? null,
+                    ], fn ($v) => $v !== null));
+                }
+            }
+        });
 
         $this->events->logUpdated($serviceLog, $changes, $request->user()?->id);
 
         return new ServiceLogResource($serviceLog->load(['clientResource', 'service', 'attendant']));
+    }
+
+    /**
+     * Qué impide llevar el método del registro hasta su cobro.
+     *
+     * El 24 de agosto un cobro de $55 en efectivo se corrigió a transferencia
+     * cuatro horas después. El registro cambió, el pago no, y el esperado del
+     * cajón siguió contando esos $55 como billetes: la caja cerró con un
+     * faltante de $50 que era un pago mal clasificado.
+     */
+    private function methodChangeProblem(Collection $pagos, ?string $nuevo): ?JsonResponse
+    {
+        // Un cobro sin método no existe. Si el registro se queda sin método
+        // teniendo plata cobrada, el pago no tiene a dónde ir.
+        if ($nuevo === null) {
+            return response()->json([
+                'error' => [
+                    'code'    => 'PAYMENT_METHOD_REQUIRED',
+                    'message' => 'Este registro ya tiene un cobro: no se puede dejar sin método de pago.',
+                ],
+            ], 422);
+        }
+
+        // Con dos métodos, "el método" del registro no significa nada: elegir
+        // uno le borraría el otro al cobro.
+        if ($pagos->pluck('method')->unique()->count() > 1) {
+            return response()->json([
+                'error' => [
+                    'code'    => 'PAYMENT_METHOD_SPLIT',
+                    'message' => 'Este registro se cobró con más de un método: corregilo desde los cobros.',
+                ],
+            ], 422);
+        }
+
+        // Mismo criterio que el borrado: un conteo firmado no se reescribe
+        // desde el editor de un registro.
+        if ($pagos->contains(fn ($p) => $p->cashSession?->status === 'closed')) {
+            return response()->json([
+                'error' => [
+                    'code'    => 'PAYMENT_METHOD_LOCKED',
+                    'message' => 'Este cobro ya entró en una caja cerrada: no se puede cambiar el método.',
+                ],
+            ], 422);
+        }
+
+        return null;
     }
 
     public function updateItems(Request $request, string $id): ServiceLogResource|JsonResponse
