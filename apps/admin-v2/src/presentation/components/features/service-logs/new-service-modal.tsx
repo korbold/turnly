@@ -123,6 +123,14 @@ interface NewServiceModalProps {
    * the Dialog mobile-friendly behaviour.
    */
   embedded?: boolean;
+  /**
+   * Con qué texto abre el buscador de cliente/recurso.
+   *
+   * El mostrador busca la placa en el Registro Diario, no la encuentra porque
+   * ese auto todavía no vino hoy, y desde ahí registra el servicio. Volver a
+   * escribir la placa que acaba de escribir es el paso que sobra.
+   */
+  initialSearch?: string;
 }
 
 interface LineItem {
@@ -194,7 +202,7 @@ async function fetchSuggestedVariant(
   }
 }
 
-export function NewServiceModal({ open, onClose, embedded = false }: NewServiceModalProps) {
+export function NewServiceModal({ open, onClose, embedded = false, initialSearch }: NewServiceModalProps) {
   const [lineItems, setLineItems] = useState<LineItem[]>([]);
   const [productLines, setProductLines] = useState<ProductLine[]>([]);
   const [clientSearch, setClientSearch] = useState('');
@@ -264,8 +272,12 @@ export function NewServiceModal({ open, onClose, embedded = false }: NewServiceM
   // Seed recent-services list once on mount (and refresh when the panel
   // opens) so the cashier sees their muscle-memory picks at the top.
   useEffect(() => {
-    if (open) setRecentServiceIds(loadRecentServiceIds());
-  }, [open]);
+    if (open) {
+      setRecentServiceIds(loadRecentServiceIds());
+      // La placa que el mostrador ya escribió en el Registro Diario.
+      if (initialSearch) setClientSearch(initialSearch);
+    }
+  }, [open, initialSearch]);
 
   // Re-resolve variants when the cashier swaps the client/recurso.
   // A Lavada premium picked while the Kia SUV was selected has to drop

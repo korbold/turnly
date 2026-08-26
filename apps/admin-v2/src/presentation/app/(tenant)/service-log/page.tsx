@@ -69,6 +69,10 @@ function ServiceLogContent() {
   const router = useRouter();
   const pathname = usePathname();
   const [createOpen, setCreateOpen] = useState(false);
+  // Con qué texto abre el buscador del formulario. Se llena cuando el vacío
+  // del día viene de una búsqueda: la placa que el mostrador ya escribió no
+  // se vuelve a escribir.
+  const [createPrefill, setCreatePrefill] = useState<string | undefined>();
   const [editTarget, setEditTarget] = useState<ServiceLog | null>(null);
 
   // Day and filters live in the URL: a refresh used to drop the cashier back
@@ -129,6 +133,7 @@ function ServiceLogContent() {
 
   function closeCreate() {
     setCreateOpen(false);
+    setCreatePrefill(undefined);
     // Strip the `?create=true` flag so a later URL change (date nav,
     // share-link back) doesn't silently reopen the panel.
     if (searchParams?.has('create')) {
@@ -288,7 +293,10 @@ function ServiceLogContent() {
             setPerPage(size === '15' ? null : size);
             setPage(null);
           }}
-          onCreate={() => setCreateOpen(true)}
+          onCreate={(prefill) => {
+            setCreatePrefill(prefill);
+            setCreateOpen(true);
+          }}
           onEdit={setEditTarget}
         />
       </main>
@@ -298,7 +306,7 @@ function ServiceLogContent() {
       {showInlineCreate && (
         <aside className="hidden lg:block">
           <div className="sticky top-4">
-            <NewServiceModal embedded open onClose={closeCreate} />
+            <NewServiceModal embedded open onClose={closeCreate} initialSearch={createPrefill} />
           </div>
         </aside>
       )}
@@ -306,7 +314,7 @@ function ServiceLogContent() {
       {/* Mobile / tablet — Sheet/Dialog variant, suppressed once the
           inline panel renders so the portal doesn't double-mount. */}
       {!isDesktop && (
-        <NewServiceModal open={createOpen} onClose={closeCreate} />
+        <NewServiceModal open={createOpen} onClose={closeCreate} initialSearch={createPrefill} />
       )}
 
       <EditServiceLogDialog

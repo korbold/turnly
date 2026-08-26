@@ -78,7 +78,8 @@ interface LogListProps {
   onPageChange?: (page: number) => void;
   onPerPageChange?: (size: PageSize) => void;
   onEdit?: (log: ServiceLog) => void;
-  onCreate?: () => void;
+  /** Recibe el texto buscado cuando el vacío viene de una búsqueda sin resultados. */
+  onCreate?: (prefill?: string) => void;
   /** Dashboard preview: no pager, no size selector — the full list is a click away. */
   compact?: boolean;
 }
@@ -165,7 +166,16 @@ export function LogList({
     // An empty result under a filter is not an empty day — saying "aún no
     // registras servicios" there reads as data loss, and offering to create a
     // service is the wrong next step when the row probably exists unfiltered.
-    const filtered = !!payment || !!status || !!q?.trim();
+    //
+    // Con una BÚSQUEDA el razonamiento se da vuelta: si el mostrador escribió
+    // una placa y el día no la tiene, es porque ese auto todavía no vino, y
+    // registrarlo es exactamente el paso siguiente. Por eso la búsqueda se
+    // separa de los filtros de pago y estado, donde la fila sí existe y sólo
+    // está tapada.
+    const buscada = q?.trim() ?? '';
+    const conFiltros = !!payment || !!status;
+    const soloBusqueda = !!buscada && !conFiltros;
+    const filtered = conFiltros || !!buscada;
 
     return (
       <div className="flex flex-col items-center justify-center rounded-xl border border-dashed border-[var(--border-strong)] bg-[var(--bg-surface)] px-6 py-12 text-center">
@@ -173,17 +183,23 @@ export function LogList({
           <ClipboardList className="h-5 w-5 text-[var(--fg-secondary)]" aria-hidden="true" />
         </div>
         <p className="text-[15px] font-semibold text-[var(--fg-strong)]">
-          {filtered ? 'Sin resultados para este filtro' : 'Aún no registras servicios hoy'}
+          {soloBusqueda
+            ? 'Sin servicios hoy para esa búsqueda'
+            : filtered
+              ? 'Sin resultados para este filtro'
+              : 'Aún no registras servicios hoy'}
         </p>
         <p className="mt-1 max-w-xs text-[13px] text-[var(--fg-secondary)]">
-          {filtered
-            ? 'Prueba con otra búsqueda o limpia los filtros para ver todo el día.'
-            : 'Cada vez que completes un servicio, anótalo aquí para llevar caja del día.'}
+          {soloBusqueda
+            ? 'Ese cliente no tiene servicios registrados hoy. Podés registrarle uno ahora.'
+            : filtered
+              ? 'Prueba con otra búsqueda o limpia los filtros para ver todo el día.'
+              : 'Cada vez que completes un servicio, anótalo aquí para llevar caja del día.'}
         </p>
-        {onCreate && !filtered && (
-          <Button onClick={onCreate} className="mt-5">
+        {onCreate && !conFiltros && (
+          <Button onClick={() => onCreate(soloBusqueda ? buscada : undefined)} className="mt-5">
             <Plus className="mr-1.5 h-4 w-4" aria-hidden="true" />
-            Registrar servicio
+            {soloBusqueda ? `Registrar servicio para ${buscada}` : 'Registrar servicio'}
           </Button>
         )}
       </div>
