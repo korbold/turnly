@@ -37,6 +37,7 @@ function buildFormFromSettings(settings: TenantSettings | undefined): Partial<Te
     autoConfirmReservations: settings.autoConfirmReservations,
     allowClientResourceSelection: settings.allowClientResourceSelection,
     requireOpenTillForCash: settings.requireOpenTillForCash,
+    requireStaffOnComplete: settings.requireStaffOnComplete,
     paymentTiming: settings.paymentTiming,
     socialLinks: settings.socialLinks ?? { instagram: null, facebook: null, whatsapp: null, maps_url: null },
     logoUrl: settings.logoUrl,
@@ -131,6 +132,7 @@ export function GeneralTab() {
         autoConfirmReservations: form.autoConfirmReservations ?? false,
         allowClientResourceSelection: form.allowClientResourceSelection ?? false,
         requireOpenTillForCash: form.requireOpenTillForCash ?? false,
+        requireStaffOnComplete: form.requireStaffOnComplete ?? true,
         paymentTiming: form.paymentTiming ?? 'flexible',
       };
       await update.mutateAsync(payload);
@@ -409,6 +411,36 @@ export function GeneralTab() {
               <span className="h-6 w-11 rounded-full bg-[var(--ink-100)] transition-colors peer-checked:bg-[var(--brand-600)] after:absolute after:left-[2px] after:top-[2px] after:h-5 after:w-5 after:rounded-full after:bg-white after:transition-transform after:content-[''] peer-checked:after:translate-x-5" />
             </label>
           </div>
+
+          {/* Exigir lavador y secador al completar. Sólo para lavaderos: en los
+              demás rubros la regla no corre. Encendido por defecto, porque es
+              lo que regía antes de que este interruptor existiera — apagarlo
+              es una decisión del local que dejó de llevar esa cuenta. */}
+          {form.businessType === 'car_wash' && (
+            <div className="mt-3 flex items-start justify-between gap-4 rounded-lg border border-[var(--border)] bg-[var(--bg-app)]/40 p-3">
+              <div className="min-w-0">
+                <p className="text-[13px] font-semibold text-[var(--fg-strong)]">
+                  Exigir lavador y secador para completar
+                </p>
+                <p className="mt-0.5 text-[11px] leading-snug text-[var(--fg-muted)]">
+                  Un servicio no se puede cerrar sin registrar quién lo hizo. Apágalo si
+                  dejaste de llevar esa cuenta: vas a poder completar sin asignar a nadie,
+                  y quien quiera anotarlo va a seguir pudiendo.
+                </p>
+              </div>
+              <label className="relative inline-flex cursor-pointer items-center">
+                <input
+                  type="checkbox"
+                  checked={form.requireStaffOnComplete ?? true}
+                  onChange={(e) =>
+                    handleChange('requireStaffOnComplete', e.target.checked as unknown as never)
+                  }
+                  className="peer sr-only"
+                />
+                <span className="h-6 w-11 rounded-full bg-[var(--ink-100)] transition-colors peer-checked:bg-[var(--brand-600)] after:absolute after:left-[2px] after:top-[2px] after:h-5 after:w-5 after:rounded-full after:bg-white after:transition-transform after:content-[''] peer-checked:after:translate-x-5" />
+              </label>
+            </div>
+          )}
 
           {/* Allow client resource selection toggle. When enabled, the public
               booking flow presents a "¿Con quién?" step so clients can pick

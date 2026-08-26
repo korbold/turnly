@@ -57,6 +57,15 @@ export interface TenantSettings {
    * sería un candado sobre cada billete que reciben.
    */
   requireOpenTillForCash: boolean;
+  /**
+   * Exigir el lavador (y el secador, si el servicio lo lleva) antes de
+   * completar un registro.
+   *
+   * Encendido por defecto: es la regla que regía antes de que este switch
+   * existiera. Apagarlo no apaga la función — quien quiera anotar quién lavó
+   * sigue pudiendo, sólo deja de ser obligatorio para cerrar el servicio.
+   */
+  requireStaffOnComplete: boolean;
   socialLinks: {
     instagram: string | null;
     facebook: string | null;

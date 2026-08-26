@@ -75,6 +75,7 @@ class TenantSettingsController extends Controller
             'payment_timing' => 'sometimes|string|in:prepay_required,at_pickup,at_completion,flexible,none',
             'iva_mode' => 'sometimes|string|in:excluded,included,zero',
             'require_open_till_for_cash' => 'sometimes|boolean',
+            'require_staff_on_complete'  => 'sometimes|boolean',
             'permissions' => 'sometimes|array',
         ]);
 
@@ -130,6 +131,12 @@ class TenantSettingsController extends Controller
         // candado sobre cada billete que reciben.
         if ($request->has('require_open_till_for_cash')) {
             $settings['require_open_till_for_cash'] = (bool) $request->require_open_till_for_cash;
+        }
+
+        // Exigir lavador y secador al completar. Encendido por defecto, así
+        // que sólo se escribe cuando el local lo cambia.
+        if ($request->has('require_staff_on_complete')) {
+            $settings['require_staff_on_complete'] = (bool) $request->require_staff_on_complete;
         }
         if ($request->has('permissions')) {
             $settings['permissions'] = $request->input('permissions');

@@ -45,6 +45,9 @@ export class ApiTenantRepository implements TenantRepository {
     if (settings.requireOpenTillForCash !== undefined) {
       body.require_open_till_for_cash = settings.requireOpenTillForCash;
     }
+    if (settings.requireStaffOnComplete !== undefined) {
+      body.require_staff_on_complete = settings.requireStaffOnComplete;
+    }
 
     const { data: res } = await api.patch('/tenant/settings', body);
     return mapTenantSettings(res.data);

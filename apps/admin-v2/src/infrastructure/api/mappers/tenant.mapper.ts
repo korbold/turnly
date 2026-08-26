@@ -43,6 +43,9 @@ export function mapTenantSettings(raw: Record<string, unknown>): TenantSettings 
     allowClientResourceSelection: Boolean(raw.allow_client_resource_selection ?? false),
     ivaMode: (raw.iva_mode as TenantSettings['ivaMode']) ?? 'excluded',
     requireOpenTillForCash: Boolean(raw.require_open_till_for_cash ?? false),
+    // Ausente = encendido: es la regla que regía antes de que el switch
+    // existiera, y nadie debe perderla por un deploy.
+    requireStaffOnComplete: Boolean(raw.require_staff_on_complete ?? true),
     socialLinks: {
       instagram: socialLinks.instagram ?? null,
       facebook: socialLinks.facebook ?? null,

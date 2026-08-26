@@ -1714,9 +1714,17 @@ class ServiceLogController extends Controller
         // secador— y en un catálogo real es falsa para la mayoría: un lavado de
         // chasis no se seca, un cambio de aceite no lo lava nadie, y una venta
         // de mostrador no la hace nadie.
-        $isCarWash = TenantModel::find(app('current_tenant_id'))?->business_type === 'car_wash';
+        //
+        // Y se exige sólo si el local todavía lleva esa cuenta. La exigencia ya
+        // era por servicio, pero apagarla así obliga a editar el catálogo
+        // entero; el interruptor la apaga de una vez para el local que dejó de
+        // usar la función, sin tocar los servicios. Encendido por defecto: los
+        // que hoy la usan no pueden perderla por un deploy.
+        $tenant    = TenantModel::find(app('current_tenant_id'));
+        $isCarWash = $tenant?->business_type === 'car_wash';
+        $loExige   = (bool) ($tenant?->settings['require_staff_on_complete'] ?? true);
 
-        if ($isCarWash && ($problema = $this->assigneesProblem($log))) {
+        if ($isCarWash && $loExige && ($problema = $this->assigneesProblem($log))) {
             return $problema;
         }
 

@@ -190,3 +190,64 @@ test('a barbershop completes with no assignees at all', function () {
 
     expect($log->fresh()->status)->toBe('completed');
 });
+
+/*
+ * El local que dejó de llevar la cuenta de quién lava y quién seca.
+ *
+ * La exigencia ya era por servicio —cada uno declara su `staffing`— pero
+ * apagarla así obliga a editar el catálogo entero, y lo que el dueño pide es
+ * dejar de usar la función. El interruptor apaga la exigencia de una vez, sin
+ * tocar los servicios: si mañana la vuelve a querer, el catálogo sigue igual.
+ *
+ * Encendido por defecto: los locales que hoy la usan no pueden perderla por un
+ * deploy.
+ */
+test('with the switch off a service completes without assignees', function () {
+    $this->tenant->forceFill([
+        'settings' => array_merge($this->tenant->settings ?? [], [
+            'require_staff_on_complete' => false,
+        ]),
+    ])->save();
+
+    $this->service->update(['staffing' => ServiceStaffing::WASHER_DRYER]);
+    $log = ($this->log)();
+
+    ($this->as)($this->owner)
+        ->patchJson("/api/v1/service-logs/{$log->id}/complete")
+        ->assertOk();
+
+    expect($log->fresh()->status)->toBe('completed');
+});
+
+test('the switch defaults to on, so nobody loses the rule in a deploy', function () {
+    // Sin la clave en settings —que es como están todos los tenants hoy— la
+    // exigencia sigue en pie.
+    expect($this->tenant->settings['require_staff_on_complete'] ?? null)->toBeNull();
+
+    $this->service->update(['staffing' => ServiceStaffing::WASHER_DRYER]);
+    $log = ($this->log)();
+
+    ($this->as)($this->owner)
+        ->patchJson("/api/v1/service-logs/{$log->id}/complete")
+        ->assertStatus(422)
+        ->assertJsonPath('error.code', 'ASSIGNEES_REQUIRED');
+});
+
+test('with the switch off the assignees can still be recorded', function () {
+    // Apagar la exigencia no apaga la función: quien quiera anotarlo, puede.
+    $this->tenant->forceFill([
+        'settings' => array_merge($this->tenant->settings ?? [], [
+            'require_staff_on_complete' => false,
+        ]),
+    ])->save();
+
+    $log = ($this->log)();
+
+    ($this->as)($this->owner)
+        ->patchJson("/api/v1/service-logs/{$log->id}/assignees", [
+            'washed_by' => $this->washer->id,
+        ])
+        ->assertOk();
+
+    expect($log->fresh()->washed_by)->toBe($this->washer->id);
+});

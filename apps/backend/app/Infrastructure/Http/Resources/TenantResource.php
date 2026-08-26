@@ -47,6 +47,8 @@ class TenantResource extends JsonResource
             'iva_mode'            => $this->settings['iva_mode'] ?? 'excluded',
             'permissions'         => $this->settings['permissions'] ?? (object) [],
             'require_open_till_for_cash' => (bool) ($this->settings['require_open_till_for_cash'] ?? false),
+            // Ausente = encendido: es la regla que ya regía antes del switch.
+            'require_staff_on_complete'  => (bool) ($this->settings['require_staff_on_complete'] ?? true),
             'payment_timing'      => $this->getPaymentTiming(),
         ];
     }
