@@ -518,7 +518,11 @@ export function NewServiceModal({ open, onClose, embedded = false, initialSearch
   }
 
   const services = servicesData?.data ?? [];
-  const clients = clientsData?.data ?? [];
+  // El que ya está elegido se muestra arriba con su ✕ para quitarlo, así que
+  // repetirlo en la lista hace ver dos autos donde hay uno. Se nota sobre todo
+  // después de "Crear y usar": el buscador se limpia, la lista deja de estar
+  // filtrada, y el recién creado aparece dos veces.
+  const clients = (clientsData?.data ?? []).filter((cr) => cr.id !== selectedClientResourceId);
   const team = teamData?.data ?? [];
 
   function handleReset() {
