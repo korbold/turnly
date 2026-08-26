@@ -7,6 +7,7 @@ import { es } from 'date-fns/locale';
 import { ArrowLeft, RotateCcw } from 'lucide-react';
 import { Button } from '@/presentation/components/ui/button';
 import { Skeleton } from '@/presentation/components/ui/skeleton';
+import { ExpectedMath } from '@/presentation/components/features/cash/expected-breakdown';
 import { useCashSessionDetail } from '@/presentation/hooks/use-cash-session';
 import {
   CASH_BILLS,
@@ -198,6 +199,18 @@ export default function CashDetailPage({ params }: { params: Promise<{ id: strin
               </li>
             ))}
           </ul>
+
+          {/* La base y los movimientos, para que la suma cierre a la vista: un
+              retiro dejaba este bloque diciendo un número y el arqueo otro. */}
+          {caja.expectedAmount !== null && (
+            <div className="mt-3 border-t border-[var(--border)] pt-3">
+              <ExpectedMath
+                openingAmount={caja.openingAmount}
+                movements={caja.movements}
+                expectedAmount={caja.expectedAmount}
+              />
+            </div>
+          )}
         </section>
       )}
 

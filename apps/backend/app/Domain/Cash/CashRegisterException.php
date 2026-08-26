@@ -80,4 +80,12 @@ class CashRegisterException extends RuntimeException
     {
         return new self('INVALID_TYPE', "Tipo de movimiento desconocido: {$type}.");
     }
+    /** Quedó en el cajón más de lo que se contó: uno de los dos números está mal. */
+    public static function leftInDrawerTooHigh(): self
+    {
+        return new self(
+            'LEFT_IN_DRAWER_TOO_HIGH',
+            'No puede quedar en el cajón más de lo que se contó al cerrar.',
+        );
+    }
 }

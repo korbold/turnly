@@ -32,6 +32,9 @@ use Illuminate\Support\Facades\DB;
  */
 class CashRegister
 {
+    /** Tolerancia de redondeo: comparar plata con `>` a secas hace ruido. */
+    private const CENTAVO = 0.005;
+
     public function currentSession(string $tenantId): ?CashSessionModel
     {
         return CashSessionModel::query()
@@ -344,12 +347,48 @@ class CashRegister
         CashSessionModel $session,
         string $reason,
         ?string $userId,
+        ?float $leftInDrawer = null,
     ): CashSessionModel {
         if ($session->isOpen()) {
             throw CashRegisterException::sessionAlreadyOpen();
         }
 
-        return DB::transaction(function () use ($session, $reason, $userId) {
+        $contado = (float) ($session->counted_amount ?? 0);
+
+        if ($leftInDrawer !== null && $leftInDrawer > $contado + self::CENTAVO) {
+            throw CashRegisterException::leftInDrawerTooHigh();
+        }
+
+        return DB::transaction(function () use ($session, $reason, $userId, $leftInDrawer, $contado) {
+            // Lo que salió del cajón al cerrar. En la industria es un `cash
+            // drop`, y las guías de POS lo dan como el descuadre más común:
+            // el corte se lleva la plata y nadie lo asienta.
+            //
+            // El 25 de agosto Fernanda cerró con $488, se los llevó, reabrió
+            // para cobrar $10 y al cerrar contó los $10 que había. El sistema
+            // pidió $498 —vuelve a sumar todo el efectivo del día— y marcó un
+            // faltante de $488 que nunca existió. La fórmula del esperado ya
+            // resta los retiros; lo único que faltaba era registrar éste.
+            //
+            // Se pregunta cuánto QUEDÓ y no cuánto se sacó porque es lo que el
+            // mostrador puede mirar. Sin el dato no se asienta nada: una caja
+            // que se reabre por un error de tipeo no tiene por qué inventar un
+            // retiro.
+            $retiro = $leftInDrawer === null ? 0.0 : round($contado - $leftInDrawer, 2);
+
+            if ($retiro > self::CENTAVO) {
+                CashMovementModel::create([
+                    'tenant_id'       => $session->tenant_id,
+                    'cash_session_id' => $session->id,
+                    'type'            => CashMovementModel::TYPE_WITHDRAWAL,
+                    'amount'          => $retiro,
+                    'reason'          => 'Retiro del corte al cerrar' . (
+                        $session->closed_at ? ' de las ' . $session->closed_at->format('H:i') : ''
+                    ),
+                    'created_by'      => $userId,
+                ]);
+            }
+
             CashSessionClosureModel::query()
                 ->where('cash_session_id', $session->id)
                 ->whereNull('reopened_at')

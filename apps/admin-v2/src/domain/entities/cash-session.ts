@@ -119,6 +119,14 @@ export interface ReopenCashSessionInput {
   sessionId: string;
   /** Sin motivo, reabrir es indistinguible de borrar un arqueo que no gustó. */
   reason: string;
+  /**
+   * Cuánto quedó en el cajón después del corte.
+   *
+   * Lo que salió se asienta como retiro, así el arqueo siguiente espera sólo
+   * lo que entre desde ahora. Sin el dato no se asienta nada: una caja que se
+   * reabre por un error de tipeo no tiene por qué inventar un retiro.
+   */
+  leftInDrawer?: number;
 }
 
 export interface OpenCashSessionInput {

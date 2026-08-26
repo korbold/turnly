@@ -84,12 +84,24 @@ class CashSessionController extends Controller
             // Sin motivo, reabrir es indistinguible de borrar un arqueo que no
             // gustó.
             'reason' => 'required|string|max:200',
+            // Cuánto quedó en el cajón después del corte. Opcional: sin el
+            // dato no se asienta ningún retiro y la caja se comporta como
+            // antes, así que un cliente viejo no empieza a inventar
+            // movimientos.
+            'left_in_drawer' => 'sometimes|nullable|numeric|min:0',
         ]);
 
         $session = CashSessionModel::findOrFail($id);
 
         try {
-            $session = $this->cash->reopenSession($session, $data['reason'], $request->user()?->id);
+            $session = $this->cash->reopenSession(
+                $session,
+                $data['reason'],
+                $request->user()?->id,
+                array_key_exists('left_in_drawer', $data) && $data['left_in_drawer'] !== null
+                    ? (float) $data['left_in_drawer']
+                    : null,
+            );
         } catch (CashRegisterException $e) {
             return $this->fromException($e);
         }

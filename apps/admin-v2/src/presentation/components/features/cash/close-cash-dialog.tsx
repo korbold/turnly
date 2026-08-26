@@ -10,6 +10,7 @@ import { Input } from '@/presentation/components/ui/input';
 import { Label } from '@/presentation/components/ui/label';
 import { Textarea } from '@/presentation/components/ui/textarea';
 import { AlertTriangle } from 'lucide-react';
+import { ExpectedBreakdown } from '@/presentation/components/features/cash/expected-breakdown';
 import { useCashSession, useCloseCashSession } from '@/presentation/hooks/use-cash-session';
 import {
   CASH_BILLS,
@@ -305,33 +306,12 @@ export function CloseCashDialog({ open, sessionId, businessDate, onClose }: Prop
             </dl>
 
             {(result.cashByPerson?.length ?? 0) > 0 && (
-              // Con dos personas en un cajón, "faltan $50" no dice nada si no
-              // se ve que una tocó $434 y la otra $75. No acusa a nadie: da la
-              // conversación.
-              <div className="rounded-lg border border-[var(--border)] bg-[var(--bg-sunken)] p-3">
-                <p className="text-[11px] font-semibold uppercase tracking-[0.04em] text-[var(--fg-muted)]">
-                  Efectivo cobrado por
-                </p>
-                <ul className="mt-1.5 space-y-1">
-                  {result.cashByPerson!.map((p) => (
-                    <li
-                      key={p.userId ?? p.name}
-                      className="flex items-baseline justify-between gap-2 text-[12.5px]"
-                    >
-                      <span className="min-w-0 truncate text-[var(--fg-secondary)]">
-                        {p.name}
-                        <span className="text-[var(--fg-muted)]">
-                          {' · '}
-                          {p.count} {p.count === 1 ? 'cobro' : 'cobros'}
-                        </span>
-                      </span>
-                      <span className="shrink-0 font-semibold tabular-nums text-[var(--fg-strong)]">
-                        {money(p.amount)}
-                      </span>
-                    </li>
-                  ))}
-                </ul>
-              </div>
+              <ExpectedBreakdown
+                openingAmount={result.openingAmount}
+                cashByPerson={result.cashByPerson!}
+                movements={result.movements}
+                expectedAmount={result.expectedAmount ?? 0}
+              />
             )}
 
             <DialogFooter>

@@ -160,7 +160,10 @@ export class ApiCashSessionRepository implements CashSessionRepository {
   async reopen(input: ReopenCashSessionInput): Promise<CashSession> {
     const { data: res } = await api.post<{ data: Raw }>(
       `/cash-sessions/${input.sessionId}/reopen`,
-      { reason: input.reason },
+      {
+        reason: input.reason,
+        ...(input.leftInDrawer !== undefined ? { left_in_drawer: input.leftInDrawer } : {}),
+      },
     );
     return mapSession(res.data);
   }

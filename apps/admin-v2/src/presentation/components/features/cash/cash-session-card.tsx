@@ -197,6 +197,7 @@ export function CashSessionCard({ date }: Props) {
       <ReopenCashDialog
         open={openDialog === 'reopen'}
         sessionId={session.id}
+        countedAmount={session.countedAmount}
         onClose={() => setOpenDialog(null)}
       />
     </>
