@@ -1187,9 +1187,15 @@ export function NewServiceModal({ open, onClose, embedded = false, initialSearch
                     type="button"
                     onClick={() => {
                       setShowCustomForm(true);
-                      const seedKey = customFields[0]?.key;
-                      if (seedKey && clientSearch.trim()) {
-                        setCustomFieldValues({ [seedKey]: clientSearch.trim() });
+                      const seed = customFields[0];
+                      if (seed && clientSearch.trim()) {
+                        // Con la misma regla que el campo aplica al teclear:
+                        // una placa buscada en minúsculas se guardaba tal cual
+                        // y quedaba "ibf4567" en el padrón, distinta de las
+                        // demás.
+                        setCustomFieldValues({
+                          [seed.key]: applyCapitalization(clientSearch.trim(), seed.capitalize),
+                        });
                       }
                     }}
                     className="mt-1.5 flex w-full items-center gap-2 rounded-lg border border-dashed border-[var(--border-strong)] p-2.5 text-left transition-colors hover:bg-[var(--bg-hover)]"
