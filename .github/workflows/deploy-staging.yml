@@ -86,8 +86,15 @@ jobs:
             # storage/ and bootstrap/cache/ are written by BOTH php-fpm
             # (www-data) and the queue worker (deploy). Group-writable with the
             # setgid bit is what keeps them from fighting.
-            chmod -R g+w storage bootstrap/cache
-            find storage bootstrap/cache -type d -exec chmod g+s {} +
+            #
+            # Scoped to what this user owns, on purpose. A blanket `chmod -R`
+            # dies with "Operation not permitted" the moment php-fpm has
+            # written a log — only the owner or root can chmod a file, and the
+            # file is already 664 anyway. That killed the first real deploy on
+            # 2026-08-27, before certbot and the service restarts.
+            me="$(id -un)"
+            find storage bootstrap/cache -user "$me" -type d -exec chmod g+ws {} +
+            find storage bootstrap/cache -user "$me" -type f -exec chmod g+w {} +
 
             # ── TLS ─────────────────────────────────────────────────────────
             # Idempotent: certbot exits 0 and changes nothing when a valid cert
