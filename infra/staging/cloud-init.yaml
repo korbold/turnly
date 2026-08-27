@@ -1,0 +1,433 @@
+#cloud-config
+# Bootstrap for turnly-staging. Mirrors the hand-built prod box measured over
+# SSH on 2026-08-20 (see the turnly_prod_box_anatomy note): same OS, same PHP,
+# same extensions, same four systemd units with their different users, same
+# nginx shape including the two Reverb websocket locations.
+#
+# Deliberately NOT here:
+#   - certbot. It runs before DNS has propagated and fails. The deploy workflow
+#     issues the certificate in an idempotent step.
+#   - application code, migrations, APP_KEY. That is the deploy workflow's job.
+#   - external secrets (Resend, Firebase, Google, Turnstile). GitHub Actions
+#     writes those; a value passed through Terraform lands in the state in clear.
+#
+# NOTE for editors: this file is rendered with templatefile(). Terraform only
+# treats a dollar sign as special when a BRACE follows it — that pair is the
+# interpolation marker, and doubling the dollar escapes it. Everything else is
+# literal, so nginx's $uri and bash's $DB_PASS need no escaping at all and must
+# be written with a single dollar. Doubling them ships a literal double dollar
+# to the box and breaks both nginx and the bootstrap script.
+#
+# Only three dollar-brace placeholders are substituted here: api_hostname,
+# operator_key and deploy_public_key. Never spell the marker out literally in a
+# comment — it is still an interpolation, and it fails `tofu validate`.
+
+package_update: true
+package_upgrade: false
+
+# Vultr's image ships /etc/ssh/sshd_config.d/50-cloud-init.conf with
+# PasswordAuthentication yes. sshd honours the FIRST match it reads, and 50
+# sorts before any 9x drop-in, so a later file cannot override it. This key
+# makes cloud-init write 'no' into that same file. Found on the first real
+# boot 2026-08-26: the box came up with password auth ON.
+ssh_pwauth: false
+
+# PHP comes from the ondrej/sury PPA, NOT from Ubuntu main — because that is
+# where PROD gets it. Measured 2026-08-26: prod runs 8.3.31 from
+# deb.sury.org while Ubuntu 24.04 main only ships 8.3.6. Matching the package
+# SOURCE matters more than matching the digits; 25 patch releases of drift is
+# exactly the kind of difference that makes a staging box lie.
+#
+# The key is embedded instead of using the "ppa:ondrej/php" shorthand because
+# add-apt-repository needs api.launchpad.net, which times out from this box
+# (ppa.launchpadcontent.net itself answers fine in 0.4s).
+apt:
+  sources:
+    ondrej-php.sources:
+      source: "deb https://ppa.launchpadcontent.net/ondrej/php/ubuntu noble main"
+      key: |
+        -----BEGIN PGP PUBLIC KEY BLOCK-----
+        .
+        mQINBGYo0vEBEAC0Semxy5I2b8exRUxJfTKkHR4f5uyS0dTd9vYgMI5T3gsa7ypH
+        HtE+GiZC+T9m/F9h66+XJMxhuNsKRs7T2In5NSeso9H/ytlSTayUaBtCFfRp6y6b
+        6ozuRBfqYJGxhjAnIzvNF/Wpp2BvfQm3OrQ7uJJrt5IvzLDC4jPxl/Xs3sTT+Hbk
+        bkKKprZ3xmy2enuwBaNWR/CUtAz3hbkzL1kGbhX9m3QidFJagVVdDw3aNEwo8ush
+        djWfF+BajNvpDFYJKBGQbCeagB753Baa5yIN62x+THLnLiKTMDS1e7U0ZDiV9671
+        noTbtN5TeZeyfsEmeZ8X60x11JIP3yYHYZT70/DyTYX3WC9yQFyIgVOfRlGklMKI
+        k3TLMmtq8w5Hz1vovwzV7PzaQnmY+uNP2ZbAP4fJ3iFAj0L+u0i1nOFgTy0Lq058
+        O/FjRrQxuceDDCF+9ThspXMw3Puvz8giuBDCdEda84uC7XWMdqgz/maLfFQjAmyP
+        Ixi1EMxMlHYyZajpR1cdCfrAIQlnQjHSWmyeCFgXPPfRA71aCcJ7oSrDjogW6Ahd
+        HRkQRKf1FF9BFzycgSQotfR+7CKfPQh1kghufM9W/spARzA709nGZjXJzgEJLQd3
+        CDB6dIIxT/0YI36h3Qgfmiiw4twO24MMEqEEPIELz2WJKeWGkdQdcekpxQARAQAB
+        tB9MYXVuY2hwYWQgUFBBIGZvciBPbmTFmWVqIFN1csO9iQJOBBMBCgA4FiEEuNx+
+        U5RmVu+85MHdcdrqq0rUyrYFAmYo0vECGwMFCwkIBwIGFQoJCAsCBBYCAwECHgEC
+        F4AACgkQcdrqq0rUyrYOPQ/+IArA4s1J3op/w7cXek0ieFHWHFDrxPYS+78/LF/J
+        LoYZw0nIU5Ovr+LzehFMIQU6esgPXwbeCVgwLwat57augAkAYWT0UzH5dE6RKAGr
+        C2vsHWVfPhQn6UndfzwXc0mTLGQni25aQaZ6k60Dbm/vblejrTQrtAUWoMO3Z1cr
+        NDGJ3Z9DCxtr2o9gRYUI6HwLHJtobTIeI5xsr5x+GvXiIAVCPa3ZEuRL6jMQfqfS
+        C43mpuiS1kGgsnQLs2DbN7EFCfiJoNX1QzZu25zg+IS9PXbCJnheZWnH0rwUSb/N
+        hZPcSefGlNlhr824OfT30v79hQnw59XbsfV270O9jPbD4kttN+OiszbU66zsuiOh
+        BO46XCckQPqDkBMw56GPFuVrQgGb1thXvn67URJgPyJhwauBWKPNAJ9Ojuo+yVq/
+        hdR1VNWThXQbZgaGSWrbjt6FdYtQb9VX88uu5gFDmr180HogHNUDUcqNLLdnjfFs
+        4DyJlusQ5I/a7cQ7nlkNgxAmHszwO/mGLBuGljDUYkwZDW9nqP1Q5Q2jMtrhgXvR
+        2SOtufvecUbB7+eoRSaOnu7CNMATG6LocFEMzhKUde1uZTfWSqnYEcdqoFJMi46y
+        qaNxhiNLsQ5OBMbgSp2zCbQxRBdITMVvBR5YjCetUIGEs6T1yQ5wh5Xpoi34ShHn
+        v38=
+        =kFlZ
+        -----END PGP PUBLIC KEY BLOCK-----
+
+packages:
+  - nginx
+  - mysql-server
+  - redis-server
+  - git
+  - unzip
+  - curl
+  - certbot
+  - python3-certbot-nginx
+  # PHP 8.3 is the default in Ubuntu 24.04 — no ondrej PPA needed, which is one
+  # less thing that can drift away from prod.
+  - php8.3-fpm
+  - php8.3-cli
+  - php8.3-bcmath
+  - php8.3-curl
+  - php8.3-gd
+  - php8.3-intl
+  - php8.3-mbstring
+  - php8.3-mysql
+  - php8.3-opcache
+  - php8.3-readline
+  - php8.3-xml
+  - php8.3-zip
+  # The three the SRI forces. Without soap the billing service does not boot.
+  - php8.3-soap
+  - php8.3-xsl
+  - php-redis
+  - php-igbinary
+
+users:
+  - name: root
+    ssh_authorized_keys:
+      - ${operator_key}
+  - name: deploy
+    groups: [www-data]
+    shell: /bin/bash
+    sudo: null
+    ssh_authorized_keys:
+      - ${operator_key}
+%{ if deploy_public_key != "" ~}
+      - ${deploy_public_key}
+%{ endif ~}
+
+write_files:
+  # Narrow sudo. The deploy user restarts services and nothing else; a broad
+  # NOPASSWD ALL would hand the whole box to any leaked deploy key.
+  - path: /etc/sudoers.d/deploy-systemctl
+    permissions: "0440"
+    content: |
+      deploy ALL=(root) NOPASSWD: /usr/bin/systemctl reload php8.3-fpm, \
+        /usr/bin/systemctl restart php8.3-fpm, \
+        /usr/bin/systemctl restart turnly-queue, \
+        /usr/bin/systemctl restart turnly-reverb, \
+        /usr/bin/systemctl restart billing, \
+        /usr/bin/systemctl restart billing-queue, \
+        /usr/bin/systemctl start turnly-queue, \
+        /usr/bin/systemctl start turnly-reverb, \
+        /usr/bin/systemctl start billing, \
+        /usr/bin/systemctl start billing-queue, \
+        /usr/bin/systemctl reload nginx, \
+        /usr/bin/certbot
+
+  # 00- prefix on purpose: sshd takes the first match, so a hardening file
+  # must sort BEFORE the image's 50-cloud-init.conf, not after.
+  - path: /etc/ssh/sshd_config.d/00-staging.conf
+    permissions: "0644"
+    content: |
+      PasswordAuthentication no
+      PermitRootLogin prohibit-password
+
+  # Port 80 only. certbot --nginx rewrites this file to add the 443 server and
+  # the redirect, exactly as it did on prod.
+  - path: /etc/nginx/sites-available/turnly
+    permissions: "0644"
+    content: |
+      server {
+          listen 80;
+          listen [::]:80;
+          server_name ${api_hostname};
+
+          root /var/www/turnly/apps/backend/public;
+          index index.php;
+
+          charset utf-8;
+          client_max_body_size 20M;
+
+          location / {
+              try_files $uri $uri/ /index.php?$query_string;
+          }
+
+          # Reverb. The 8080 port is never exposed by the firewall; websockets
+          # arrive here and are proxied to loopback. Both /app and /apps exist
+          # because prod has both.
+          location /app {
+              proxy_pass http://127.0.0.1:8080;
+              proxy_http_version 1.1;
+              proxy_set_header Upgrade $http_upgrade;
+              proxy_set_header Connection "upgrade";
+              proxy_set_header Host $host;
+              proxy_set_header X-Real-IP $remote_addr;
+              proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+              proxy_set_header X-Forwarded-Proto $scheme;
+              proxy_buffering off;
+              proxy_read_timeout 86400;
+              proxy_send_timeout 86400;
+          }
+
+          location /apps {
+              proxy_pass http://127.0.0.1:8080;
+              proxy_http_version 1.1;
+              proxy_set_header Upgrade $http_upgrade;
+              proxy_set_header Connection "upgrade";
+              proxy_set_header Host $host;
+              proxy_buffering off;
+              proxy_read_timeout 86400;
+              proxy_send_timeout 86400;
+          }
+
+          location ~ \.php$ {
+              fastcgi_pass unix:/var/run/php/php8.3-fpm.sock;
+              fastcgi_index index.php;
+              fastcgi_param SCRIPT_FILENAME $realpath_root$fastcgi_script_name;
+              fastcgi_read_timeout 60s;
+              include fastcgi_params;
+          }
+
+          location ~ /\.(?!well-known).* {
+              deny all;
+          }
+      }
+
+  # The four units, with the SAME user split as prod: the queue runs as deploy,
+  # everything else as www-data. That asymmetry is not cosmetic — file
+  # ownership of storage/ and bootstrap/cache/ depends on it.
+  - path: /etc/systemd/system/turnly-queue.service
+    permissions: "0644"
+    content: |
+      [Unit]
+      Description=Turnly queue worker
+      After=network.target mysql.service redis-server.service
+
+      [Service]
+      User=deploy
+      Group=deploy
+      Restart=always
+      RestartSec=5
+      WorkingDirectory=/var/www/turnly/apps/backend
+      ExecStart=/usr/bin/php /var/www/turnly/apps/backend/artisan queue:work --queue=default --sleep=3 --tries=3 --max-time=3600
+
+      [Install]
+      WantedBy=multi-user.target
+
+  - path: /etc/systemd/system/turnly-reverb.service
+    permissions: "0644"
+    content: |
+      [Unit]
+      Description=Turnly Reverb websocket server
+      After=network.target
+
+      [Service]
+      User=www-data
+      Restart=always
+      RestartSec=5
+      WorkingDirectory=/var/www/turnly/apps/backend
+      ExecStart=/usr/bin/php artisan reverb:start --host=0.0.0.0 --port=8080
+
+      [Install]
+      WantedBy=multi-user.target
+
+  # Yes, `artisan serve` — the PHP dev server. That is what prod runs. Staging
+  # replicates prod, it does not improve it; fixing this is separate work and
+  # staging is exactly where that fix should be tried first.
+  - path: /etc/systemd/system/billing.service
+    permissions: "0644"
+    content: |
+      [Unit]
+      Description=Turnly billing service (SRI)
+      After=network.target mysql.service
+
+      [Service]
+      User=www-data
+      Restart=always
+      RestartSec=5
+      WorkingDirectory=/var/www/billing
+      ExecStart=/usr/bin/php artisan serve --host=127.0.0.1 --port=8100
+
+      [Install]
+      WantedBy=multi-user.target
+
+  - path: /etc/systemd/system/billing-queue.service
+    permissions: "0644"
+    content: |
+      [Unit]
+      Description=Turnly billing queue worker
+      After=network.target mysql.service
+
+      [Service]
+      User=www-data
+      Restart=always
+      RestartSec=5
+      WorkingDirectory=/var/www/billing
+      ExecStart=/usr/bin/php artisan queue:work --sleep=3 --tries=3 --max-time=3600
+
+      [Install]
+      WantedBy=multi-user.target
+
+  - path: /usr/local/sbin/turnly-bootstrap.sh
+    permissions: "0750"
+    content: |
+      #!/usr/bin/env bash
+      set -euo pipefail
+
+      # The database password is generated ON THE BOX and never leaves it. It is
+      # not a Terraform variable precisely so it stays out of the state file,
+      # and not a GitHub secret because nothing outside this machine needs it.
+      DB_PASS="$(openssl rand -hex 24)"
+      RID="$(shuf -i 100000-999999 -n1)"
+      RKEY="$(openssl rand -hex 16)"
+      RSEC="$(openssl rand -hex 24)"
+      printf '%s' "$DB_PASS" > /root/.turnly_db_password
+      chmod 600 /root/.turnly_db_password
+
+      mysql --protocol=socket -uroot <<SQL
+      CREATE DATABASE IF NOT EXISTS turnly_staging
+        CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
+      CREATE DATABASE IF NOT EXISTS turnly_billing_staging
+        CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
+      CREATE USER IF NOT EXISTS 'turnly'@'localhost' IDENTIFIED BY '$DB_PASS';
+      ALTER USER 'turnly'@'localhost' IDENTIFIED BY '$DB_PASS';
+      GRANT ALL PRIVILEGES ON turnly_staging.* TO 'turnly'@'localhost';
+      GRANT ALL PRIVILEGES ON turnly_billing_staging.* TO 'turnly'@'localhost';
+      FLUSH PRIVILEGES;
+      SQL
+
+      install -d -o deploy -g www-data -m 2775 /var/www/turnly
+      install -d -o deploy -g www-data -m 2775 /var/www/billing
+
+      # .env skeletons. Only what is knowable on the box: app identity, DB,
+      # cache, and the SRI environment. Every external secret is left empty for
+      # GitHub Actions to fill, and APP_KEY is generated by the deploy step.
+      cat > /var/www/turnly/.env.skeleton <<ENVEOF
+      APP_NAME=Turnly
+      APP_ENV=staging
+      APP_KEY=
+      APP_DEBUG=false
+      APP_URL=https://${api_hostname}
+
+      LOG_CHANNEL=daily
+      LOG_LEVEL=debug
+
+      DB_CONNECTION=mysql
+      DB_HOST=127.0.0.1
+      DB_PORT=3306
+      DB_DATABASE=turnly_staging
+      DB_USERNAME=turnly
+      DB_PASSWORD=$DB_PASS
+
+      SESSION_DRIVER=redis
+      CACHE_STORE=redis
+      QUEUE_CONNECTION=redis
+      REDIS_CLIENT=phpredis
+      REDIS_HOST=127.0.0.1
+      REDIS_PORT=6379
+      FILESYSTEM_DISK=local
+
+      # SESSION_DOMAIN deliberately unset. Prod uses .goturnly.com, which would
+      # scope staging's cookies across the whole apex — prod included.
+      FRONTEND_HOST=staging.goturnly.com
+      ADMIN_URL=https://${api_hostname}
+
+      # BROADCAST_CONNECTION=reverb without the REVERB_* keys makes even
+      # `artisan migrate` die: the Pusher constructor gets a null auth_key.
+      # Learned the hard way on the first deploy, 2026-08-26. These credentials
+      # are self-issued — no external service is involved, so cloud-init can
+      # mint them and there is no reason to leave them blank.
+      BROADCAST_CONNECTION=reverb
+      REVERB_APP_ID=$RID
+      REVERB_APP_KEY=$RKEY
+      REVERB_APP_SECRET=$RSEC
+      REVERB_HOST="0.0.0.0"
+      REVERB_PORT=8080
+      REVERB_SCHEME=http
+      REVERB_SERVER_HOST="0.0.0.0"
+      REVERB_SERVER_PORT=8080
+
+      # GAP, tracked in the spec: prod uses MAIL_MAILER=resend. Until a sender
+      # is verified on a staging subdomain, mail goes to the log — and
+      # acceptance test 5 cannot pass. Same story for the R2 bucket and the
+      # Firebase project: staging needs its OWN, never prod's.
+      MAIL_MAILER=log
+
+      # BILLING_SERVICE_URL is intentionally ABSENT. Prod does not set it either:
+      # it falls through to the http://localhost:8100 default in
+      # config/services.php and works because billing is a co-tenant of the same
+      # box. Inventing a URL here would introduce a difference from prod.
+      ENVEOF
+
+      cat > /var/www/billing/.env.skeleton <<ENVEOF
+      APP_NAME=TurnlyBilling
+      APP_ENV=staging
+      APP_KEY=
+      APP_DEBUG=false
+
+      DB_CONNECTION=mysql
+      DB_HOST=127.0.0.1
+      DB_PORT=3306
+      DB_DATABASE=turnly_billing_staging
+      DB_USERNAME=turnly
+      DB_PASSWORD=$DB_PASS
+
+      QUEUE_CONNECTION=database
+
+      # 1 = pruebas. The deploy workflow asserts this line is present before it
+      # runs a single migration. A production invoice issued to consumidor final
+      # can never be voided, and staging will emit many.
+      SRI_AMBIENTE=1
+      ENVEOF
+
+      chown deploy:www-data /var/www/turnly/.env.skeleton /var/www/billing/.env.skeleton
+      chmod 640 /var/www/turnly/.env.skeleton /var/www/billing/.env.skeleton
+
+runcmd:
+  - [ systemctl, enable, --now, redis-server ]
+  - [ systemctl, enable, --now, mysql ]
+  - [ systemctl, enable, --now, php8.3-fpm ]
+  - /usr/local/sbin/turnly-bootstrap.sh
+  # HOME is unset inside cloud-init's runcmd, and the composer installer aborts
+  # with "The HOME or COMPOSER_HOME environment variable must be set" — quietly,
+  # with exit 0, so cloud-init reports success and composer is simply absent.
+  # Observed on the first real boot 2026-08-26.
+  - HOME=/root curl -sS https://getcomposer.org/installer | HOME=/root php -- --install-dir=/usr/local/bin --filename=composer
+  - test -x /usr/local/bin/composer || { echo "composer install FAILED"; exit 1; }
+  # Vultr's image ships ufw ACTIVE with a default-deny INPUT policy, and only
+  # SSH survives it — nginx listens on 0.0.0.0:80 and the port still answers
+  # nothing from outside. Prod has the same ufw enabled with 22/80/443 opened
+  # BY HAND; measured 2026-08-26. Two firewalls in series, and both must agree.
+  - [ ufw, allow, 22/tcp ]
+  - [ ufw, allow, 80/tcp ]
+  - [ ufw, allow, 443/tcp ]
+  - [ ufw, --force, reload ]
+  - rm -f /etc/nginx/sites-enabled/default
+  - ln -sf /etc/nginx/sites-available/turnly /etc/nginx/sites-enabled/turnly
+  - nginx -t
+  - [ systemctl, reload, nginx ]
+  - [ systemctl, daemon-reload ]
+  # Enabled but NOT started. There is no application code yet, so starting them
+  # would spin a Restart=always crash loop until the first deploy. The deploy
+  # workflow starts them once the code is in place.
+  - [ systemctl, enable, turnly-queue ]
+  - [ systemctl, enable, turnly-reverb ]
+  - [ systemctl, enable, billing ]
+  - [ systemctl, enable, billing-queue ]
+  - [ systemctl, restart, ssh ]
+
+final_message: "turnly-staging ready after $UPTIME seconds — no app code yet, deploy workflow takes it from here"

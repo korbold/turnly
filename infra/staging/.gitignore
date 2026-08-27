@@ -1,0 +1,11 @@
+# The state records every variable Terraform read — including both API keys —
+# in clear text. It never goes in git.
+*.tfstate
+*.tfstate.*
+*.tfvars
+*.tfvars.json
+.terraform/
+crash.log
+
+# .terraform.lock.hcl is deliberately NOT ignored: committing it pins the
+# provider versions so a later apply installs exactly what was validated here.

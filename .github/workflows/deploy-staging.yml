@@ -1,0 +1,114 @@
+name: Deploy Staging (backend)
+
+# Phase 2 of docs/superpowers/specs/2026-08-26-staging-e2e-design.md.
+# Target: turnly-staging (Vultr MIA, api.staging.goturnly.com), provisioned by
+# infra/staging/. Fed by `develop`, never by `main`.
+#
+# This file is intentionally NOT under apps/backend/**, so editing it can never
+# trigger deploy-prod.yml.
+
+on:
+  push:
+    branches: [develop]
+    paths:
+      - 'apps/backend/**'
+      - '.github/workflows/deploy-staging.yml'
+  workflow_dispatch:
+
+concurrency:
+  group: deploy-staging
+  cancel-in-progress: false
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Setup SSH
+        run: |
+          mkdir -p ~/.ssh
+          echo "${{ secrets.STAGING_DEPLOY_SSH_KEY }}" > ~/.ssh/deploy_key
+          chmod 600 ~/.ssh/deploy_key
+          ssh-keyscan -H ${{ secrets.STAGING_DEPLOY_HOST }} >> ~/.ssh/known_hosts
+
+      - name: Deploy backend to turnly-staging
+        run: |
+          ssh -i ~/.ssh/deploy_key ${{ secrets.STAGING_DEPLOY_USER }}@${{ secrets.STAGING_DEPLOY_HOST }} bash <<'ENDSSH'
+            set -euo pipefail
+
+            # ── Guard rails ─────────────────────────────────────────────────
+            # Assertions, not conventions. An invoice issued in the SRI's
+            # production environment to CONSUMIDOR FINAL can never be voided,
+            # and staging is going to emit a lot of them.
+            grep -qx 'SRI_AMBIENTE=1' /var/www/billing/.env 2>/dev/null \
+              || grep -qx 'SRI_AMBIENTE=1' /var/www/billing/.env.skeleton \
+              || { echo "::error::billing is not pinned to SRI_AMBIENTE=1"; exit 1; }
+
+            # BILLING_SERVICE_URL must stay unset so config/services.php falls
+            # through to http://localhost:8100, exactly as prod does. A value
+            # here would mean staging is talking to somebody else's billing.
+            if grep -q '^BILLING_SERVICE_URL=' /var/www/turnly/apps/backend/.env 2>/dev/null; then
+              url=$(grep '^BILLING_SERVICE_URL=' /var/www/turnly/apps/backend/.env | cut -d= -f2-)
+              [ "$url" = "http://localhost:8100" ] \
+                || { echo "::error::BILLING_SERVICE_URL points off-box: $url"; exit 1; }
+            fi
+
+            cd /var/www/turnly
+            [ "$(git rev-parse --abbrev-ref HEAD)" = "develop" ] \
+              || { echo "::error::staging checkout is not on develop"; exit 1; }
+
+            # ── Code ────────────────────────────────────────────────────────
+            git fetch --all --prune
+            git reset --hard origin/develop
+
+            cd apps/backend
+            composer install --no-dev --prefer-dist --optimize-autoloader --no-interaction
+
+            # First deploy only: seed .env from the skeleton cloud-init left,
+            # then mint an APP_KEY. Never overwrites an existing .env, because
+            # that is where the secrets written by hand live.
+            if [ ! -f .env ]; then
+              cp /var/www/turnly/.env.skeleton .env
+              php artisan key:generate --force
+              echo "NOTE: .env seeded from skeleton — external secrets still empty"
+            fi
+
+            php artisan migrate --force
+            php artisan config:cache
+            php artisan route:cache
+            php artisan view:cache
+
+            # PHP-FPM runs as www-data and needs to read .env. Without this,
+            # Laravel silently falls back to config defaults (sqlite/database)
+            # and HTTP requests 500 while CLI keeps working.
+            chgrp www-data .env
+            chmod 640 .env
+
+            # storage/ and bootstrap/cache/ are written by BOTH php-fpm
+            # (www-data) and the queue worker (deploy). Group-writable with the
+            # setgid bit is what keeps them from fighting.
+            chmod -R g+w storage bootstrap/cache
+            find storage bootstrap/cache -type d -exec chmod g+s {} +
+
+            # ── TLS ─────────────────────────────────────────────────────────
+            # Idempotent: certbot exits 0 and changes nothing when a valid cert
+            # is already installed. It lives here and not in cloud-init because
+            # at first boot the DNS record has not propagated yet.
+            if [ ! -d /etc/letsencrypt/live/api.staging.goturnly.com ]; then
+              sudo /usr/bin/certbot --nginx -n --agree-tos \
+                -m danny@lupio.dev -d api.staging.goturnly.com --redirect
+            fi
+
+            # ── Services ────────────────────────────────────────────────────
+            sudo /usr/bin/systemctl reload php8.3-fpm
+            sudo /usr/bin/systemctl restart turnly-queue
+            sudo /usr/bin/systemctl restart turnly-reverb
+            sudo /usr/bin/systemctl reload nginx
+
+            echo "Deploy OK at $(date) — $(git -C /var/www/turnly rev-parse --short HEAD)"
+          ENDSSH
+
+      - name: Smoke check
+        run: |
+          code=$(curl -s -o /dev/null -m 20 -w '%{http_code}' https://api.staging.goturnly.com/up || true)
+          echo "GET /up -> $code"
+          [ "$code" = "200" ] || { echo "::error::staging did not answer 200 on /up"; exit 1; }
