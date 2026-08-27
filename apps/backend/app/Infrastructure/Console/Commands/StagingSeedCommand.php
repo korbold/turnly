@@ -63,6 +63,23 @@ final class StagingSeedCommand extends Command
      */
     private const CATALOGUE_TABLES = ['plans', 'business_categories'];
 
+    /**
+     * The matrix names roles one way and the database stores them another.
+     * `tenant_users.role` holds a CODE, and the admin panel gates its whole
+     * nav on it: usePermissions treats 'cashier' and 'washer' as restricted
+     * and reads the matrix for them, while anything it does not recognise
+     * falls through to full access. Seeding 'Cajero' therefore produced a
+     * cashier who could see Equipo, Config and Plan — sections the matrix
+     * denies. Found by logging into staging on 2026-08-27; production stores
+     * tenant_admin, cashier and client.
+     */
+    private const ROLE_CODES = [
+        'Admin' => 'tenant_admin',
+        'Cajero' => 'cashier',
+        'Lavador' => 'washer',
+        'Cliente' => 'client',
+    ];
+
     /** Invented. Any resemblance to a real customer would defeat the point. */
     private const CLIENT_NAMES = [
         'Aurora Benitez', 'Ciro Delgado', 'Elena Fajardo', 'Gaspar Herrera',
@@ -315,7 +332,7 @@ final class StagingSeedCommand extends Command
                 'id' => $this->id("tenant_user:{$slug}:{$role}"),
                 'tenant_id' => $tenant['id'],
                 'user_id' => $id,
-                'role' => $role,
+                'role' => self::ROLE_CODES[$role] ?? strtolower($role),
                 'is_active' => 1,
                 'created_at' => now(),
                 'updated_at' => now(),
@@ -350,7 +367,7 @@ final class StagingSeedCommand extends Command
                 'id' => $this->id("tenant_user:{$slug}:client:{$i}"),
                 'tenant_id' => $tenant['id'],
                 'user_id' => $id,
-                'role' => 'Cliente',
+                'role' => self::ROLE_CODES['Cliente'],
                 'is_active' => 1,
                 'created_at' => now(),
                 'updated_at' => now(),

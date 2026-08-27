@@ -97,18 +97,22 @@ it('creates one login per role in every tenant, with the email already verified'
     $roles = DB::table('tenant_users')
         ->join('users', 'users.id', '=', 'tenant_users.user_id')
         ->where('users.email', 'like', '%@autospa-demo.%')
-        ->where('tenant_users.role', '!=', 'Cliente')
+        ->where('tenant_users.role', '!=', 'client')
         ->pluck('tenant_users.role')
         ->sort()->values()->all();
 
-    // Exactly the roles autospa's own matrix names, minus Cliente.
-    expect($roles)->toBe(['Admin', 'Cajero', 'Lavador']);
+    // Role CODES, not the matrix's display keys. The admin panel gates its
+    // nav on 'cashier'/'washer'/'tenant_admin'; a row saying 'Cajero' falls
+    // through every check and the cashier sees Equipo, Config and Plan —
+    // sections the matrix denies. Caught in the browser on 2026-08-27, and
+    // production stores tenant_admin/cashier/client.
+    expect($roles)->toBe(['cashier', 'tenant_admin', 'washer']);
 
     // The clients are in the same tenant, under the role that gets nothing.
     expect(DB::table('tenant_users')
         ->join('users', 'users.id', '=', 'tenant_users.user_id')
         ->where('users.email', 'like', 'cliente%@autospa-demo.%')
-        ->where('tenant_users.role', 'Cliente')
+        ->where('tenant_users.role', 'client')
         ->count())->toBe(4);
 });
 
