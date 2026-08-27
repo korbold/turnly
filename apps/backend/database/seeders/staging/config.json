@@ -1,0 +1,2052 @@
+{
+ "plans": [
+  {
+   "id": "019e1ea2-df33-7052-83ea-66e93773c969",
+   "name": "Gratis",
+   "slug": "free",
+   "price": 0.0,
+   "is_active": 1,
+   "created_at": "2026-05-12 19:00:50.000000",
+   "deleted_at": null,
+   "sort_order": 1,
+   "updated_at": "2026-05-12 19:00:50.000000",
+   "description": "Para empezar. 1 servicio, 30 reservas/mes.",
+   "has_reports": 0,
+   "max_services": 1,
+   "has_reminders": 0,
+   "max_employees": 0,
+   "has_custom_page": 0,
+   "has_push_notifications": 0,
+   "max_reservations_per_month": 30
+  },
+  {
+   "id": "019e1ea2-df3e-70d0-ab06-269e13c1d8ff",
+   "name": "Básico",
+   "slug": "basic",
+   "price": 9.99,
+   "is_active": 1,
+   "created_at": "2026-05-12 19:00:51.000000",
+   "deleted_at": null,
+   "sort_order": 2,
+   "updated_at": "2026-05-12 19:00:51.000000",
+   "description": "5 servicios, reservas ilimitadas, 1 empleado.",
+   "has_reports": 0,
+   "max_services": 5,
+   "has_reminders": 0,
+   "max_employees": 1,
+   "has_custom_page": 0,
+   "has_push_notifications": 1,
+   "max_reservations_per_month": null
+  },
+  {
+   "id": "019e1ea2-df43-71bf-ae56-e6169147d185",
+   "name": "Pro",
+   "slug": "pro",
+   "price": 19.99,
+   "is_active": 1,
+   "created_at": "2026-05-12 19:00:51.000000",
+   "deleted_at": null,
+   "sort_order": 3,
+   "updated_at": "2026-05-12 19:00:51.000000",
+   "description": "Todo ilimitado, reportes y recordatorios.",
+   "has_reports": 1,
+   "max_services": null,
+   "has_reminders": 1,
+   "max_employees": null,
+   "has_custom_page": 0,
+   "has_push_notifications": 1,
+   "max_reservations_per_month": null
+  },
+  {
+   "id": "019e1ea2-df48-711f-973f-c9ce81700d21",
+   "name": "Premium",
+   "slug": "premium",
+   "price": 29.99,
+   "is_active": 1,
+   "created_at": "2026-05-12 19:00:51.000000",
+   "deleted_at": null,
+   "sort_order": 4,
+   "updated_at": "2026-05-12 19:00:51.000000",
+   "description": "Todo + página pública personalizada, soporte prioritario.",
+   "has_reports": 1,
+   "max_services": null,
+   "has_reminders": 1,
+   "max_employees": null,
+   "has_custom_page": 1,
+   "has_push_notifications": 1,
+   "max_reservations_per_month": null
+  }
+ ],
+ "business_categories": [
+  {
+   "id": "357cabf1-bf6c-4ead-93cf-4966ac187eb4",
+   "icon": "local_car_wash",
+   "name": "Car Wash",
+   "slug": "car_wash",
+   "color": "#3B82F6",
+   "emoji": "🚗",
+   "is_active": 1,
+   "created_at": "2026-05-12 18:46:30.000000",
+   "sort_order": 1,
+   "updated_at": "2026-05-12 18:46:30.000000",
+   "description": "Lavado de vehiculos"
+  },
+  {
+   "id": "5ce6ce29-f5ef-429a-bd17-2107bc0868da",
+   "icon": "medical_services",
+   "name": "Medico",
+   "slug": "medical",
+   "color": "#14B8A6",
+   "emoji": "🏥",
+   "is_active": 0,
+   "created_at": "2026-05-12 18:46:30.000000",
+   "sort_order": 3,
+   "updated_at": "2026-08-17 09:00:31.000000",
+   "description": "Consultas medicas"
+  },
+  {
+   "id": "636d0c20-8325-472c-ac5c-2296dd949ea2",
+   "icon": "store",
+   "name": "Otro",
+   "slug": "other",
+   "color": "#6B7280",
+   "emoji": "🏪",
+   "is_active": 0,
+   "created_at": "2026-05-12 18:46:30.000000",
+   "sort_order": 6,
+   "updated_at": "2026-08-17 09:00:36.000000",
+   "description": "Otros servicios"
+  },
+  {
+   "id": "715a0316-647b-4290-a6f3-c870a043c43a",
+   "icon": "content_cut",
+   "name": "Barberia",
+   "slug": "barbershop",
+   "color": "#F97316",
+   "emoji": "💈",
+   "is_active": 1,
+   "created_at": "2026-05-12 18:46:30.000000",
+   "sort_order": 2,
+   "updated_at": "2026-05-12 18:46:30.000000",
+   "description": "Cortes y estilos"
+  },
+  {
+   "id": "9001e8ba-c638-44bf-a4a8-38b231c1b953",
+   "icon": "spa",
+   "name": "Spa",
+   "slug": "spa",
+   "color": "#A855F7",
+   "emoji": "🧖",
+   "is_active": 0,
+   "created_at": "2026-05-12 18:46:30.000000",
+   "sort_order": 4,
+   "updated_at": "2026-08-17 09:00:33.000000",
+   "description": "Bienestar y relax"
+  },
+  {
+   "id": "f2f1e769-b554-41aa-ac51-0ca57bb43253",
+   "icon": "fitness_center",
+   "name": "Gym",
+   "slug": "gym",
+   "color": "#EF4444",
+   "emoji": "💪",
+   "is_active": 0,
+   "created_at": "2026-05-12 18:46:30.000000",
+   "sort_order": 5,
+   "updated_at": "2026-08-17 09:00:35.000000",
+   "description": "Entrenamiento"
+  }
+ ],
+ "tenants": [
+  {
+   "id": "dbf7b143-43a3-57d7-8a8c-73815f1b4a24",
+   "city": null,
+   "name": "Negocio Demo",
+   "slug": "negocio-demo",
+   "email": "admin@negocio-demo.staging.goturnly.com",
+   "phone": "0999000000",
+   "status": "active",
+   "tax_id": "1700000000001",
+   "address": "Av. Demo 100",
+   "country": "EC",
+   "plan_id": "019e1ea2-df48-711f-973f-c9ce81700d21",
+   "is_trial": 0,
+   "logo_url": null,
+   "settings": {
+    "iva_mode": "included",
+    "permissions": {
+     "Admin": {
+      "Config": "full",
+      "Equipo": "full",
+      "Clientes": "full",
+      "Registro": "full",
+      "Reportes": "full",
+      "Reservas": "full",
+      "Dashboard": "full",
+      "Servicios": "full"
+     },
+     "Cajero": {
+      "Config": "none",
+      "Equipo": "none",
+      "Clientes": "full",
+      "Registro": "full",
+      "Reportes": "full",
+      "Reservas": "full",
+      "Dashboard": "full",
+      "Servicios": "view"
+     },
+     "Cliente": {
+      "Config": "none",
+      "Equipo": "none",
+      "Clientes": "none",
+      "Registro": "none",
+      "Reportes": "none",
+      "Reservas": "none",
+      "Dashboard": "none",
+      "Servicios": "none"
+     },
+     "Lavador": {
+      "Config": "none",
+      "Equipo": "none",
+      "Clientes": "none",
+      "Registro": "full",
+      "Reportes": "none",
+      "Reservas": "view",
+      "Dashboard": "view",
+      "Servicios": "none"
+     }
+    }
+   },
+   "cover_url": null,
+   "created_at": "2026-05-12 21:13:00.000000",
+   "deleted_at": null,
+   "legal_name": "NEGOCIO DEMO",
+   "owner_name": "Duenio Demo",
+   "updated_at": "2026-08-01 15:45:44.000000",
+   "brand_theme": "blue",
+   "description": null,
+   "tax_id_type": "ruc",
+   "activated_at": "2026-07-03 09:10:49.000000",
+   "social_links": null,
+   "billing_email": "facturacion@negocio-demo.staging.goturnly.com",
+   "billing_phone": "0999000000",
+   "business_type": "car_wash",
+   "custom_fields": [
+    {
+     "key": "plate",
+     "type": "text",
+     "label": "Placa",
+     "options": null,
+     "required": true,
+     "capitalize": "uppercase"
+    },
+    {
+     "key": "brand",
+     "type": "text",
+     "label": "Marca",
+     "options": null,
+     "required": false,
+     "capitalize": "capitalize"
+    },
+    {
+     "key": "model",
+     "type": "text",
+     "label": "Modelo",
+     "options": null,
+     "required": false,
+     "capitalize": "capitalize"
+    },
+    {
+     "key": "color",
+     "type": "text",
+     "label": "Color",
+     "options": null,
+     "required": false,
+     "capitalize": "capitalize"
+    },
+    {
+     "key": "vehicle_type",
+     "type": "select",
+     "label": "Tipo de vehículo",
+     "options": [
+      "Sedán",
+      "Hatchback",
+      "SUV",
+      "Camioneta",
+      "Camión / Van"
+     ],
+     "required": true,
+     "variant_map": {
+      "SUV": [
+       "mediano",
+       "medium",
+       "suv"
+      ],
+      "Sedán": [
+       "pequeño",
+       "small",
+       "sedan"
+      ],
+      "Camioneta": [
+       "camioneta",
+       "grande",
+       "large"
+      ],
+      "Hatchback": [
+       "pequeño",
+       "small",
+       "hatchback"
+      ],
+      "Camión / Van": [
+       "grande",
+       "extra",
+       "large",
+       "camion",
+       "van"
+      ]
+     },
+     "affects_variant": true
+    }
+   ],
+   "trial_ends_at": "2026-06-11 21:13:00.000000",
+   "billing_address": "Av. Demo 100",
+   "onboarding_step": 0,
+   "billing_verified": 0,
+   "billing_verified_at": null
+  },
+  {
+   "id": "764c7420-85b1-5f00-b0c1-53ccc6af93e2",
+   "city": null,
+   "name": "AutoSpa Demo",
+   "slug": "autospa-demo",
+   "email": "admin@autospa-demo.staging.goturnly.com",
+   "phone": "0999000000",
+   "status": "active",
+   "tax_id": "1700000000001",
+   "address": "Av. Demo 100",
+   "country": "EC",
+   "plan_id": "019e1ea2-df48-711f-973f-c9ce81700d21",
+   "is_trial": 0,
+   "logo_url": null,
+   "settings": {
+    "iva_mode": "included",
+    "permissions": {
+     "Admin": {
+      "Caja": "full",
+      "Plan": "full",
+      "Config": "full",
+      "Equipo": "full",
+      "Precio": "full",
+      "Clientes": "full",
+      "Eliminar": "full",
+      "Facturas": "full",
+      "Registro": "full",
+      "Reportes": "full",
+      "Reservas": "full",
+      "Asignados": "full",
+      "Dashboard": "full",
+      "Servicios": "full",
+      "Inventario": "full"
+     },
+     "Cajero": {
+      "Caja": "full",
+      "Plan": "none",
+      "Config": "none",
+      "Equipo": "none",
+      "Precio": "none",
+      "Clientes": "full",
+      "Eliminar": "none",
+      "Facturas": "full",
+      "Registro": "full",
+      "Reportes": "full",
+      "Reservas": "full",
+      "Asignados": "full",
+      "Dashboard": "full",
+      "Servicios": "full",
+      "Inventario": "full"
+     },
+     "Cliente": {
+      "Caja": "none",
+      "Plan": "none",
+      "Config": "none",
+      "Equipo": "none",
+      "Precio": "none",
+      "Clientes": "none",
+      "Eliminar": "none",
+      "Facturas": "none",
+      "Registro": "none",
+      "Reportes": "none",
+      "Reservas": "none",
+      "Asignados": "none",
+      "Dashboard": "none",
+      "Servicios": "none",
+      "Inventario": "none"
+     },
+     "Lavador": {
+      "Caja": "none",
+      "Plan": "none",
+      "Config": "none",
+      "Equipo": "none",
+      "Precio": "none",
+      "Clientes": "none",
+      "Eliminar": "none",
+      "Facturas": "none",
+      "Registro": "full",
+      "Reportes": "none",
+      "Reservas": "view",
+      "Asignados": "none",
+      "Dashboard": "view",
+      "Servicios": "none",
+      "Inventario": "none"
+     }
+    },
+    "payment_timing": "at_pickup",
+    "default_tax_rate": 15,
+    "cancellation_hours": 1,
+    "slot_duration_minutes": 30,
+    "auto_confirm_reservations": false,
+    "require_staff_on_complete": false,
+    "require_open_till_for_cash": false,
+    "allow_client_resource_selection": false
+   },
+   "cover_url": null,
+   "created_at": "2026-06-01 18:45:24.000000",
+   "deleted_at": null,
+   "legal_name": "AUTOSPA DEMO",
+   "owner_name": "Duenio Demo",
+   "updated_at": "2026-08-25 19:32:16.000000",
+   "brand_theme": "#0EA5E9",
+   "description": null,
+   "tax_id_type": "ruc",
+   "activated_at": "2026-07-28 10:26:13.000000",
+   "social_links": {
+    "facebook": null,
+    "maps_url": null,
+    "whatsapp": null,
+    "instagram": null
+   },
+   "billing_email": "facturacion@autospa-demo.staging.goturnly.com",
+   "billing_phone": "0999000000",
+   "business_type": "car_wash",
+   "custom_fields": [
+    {
+     "key": "plate",
+     "type": "text",
+     "label": "Placa",
+     "required": true,
+     "capitalize": "uppercase"
+    },
+    {
+     "key": "brand",
+     "type": "text",
+     "label": "Marca",
+     "required": false,
+     "capitalize": "capitalize"
+    },
+    {
+     "key": "model",
+     "type": "text",
+     "label": "Modelo",
+     "required": false,
+     "capitalize": "capitalize"
+    },
+    {
+     "key": "color",
+     "type": "text",
+     "label": "Color",
+     "required": false,
+     "capitalize": "capitalize"
+    },
+    {
+     "key": "vehicle_type",
+     "type": "select",
+     "label": "Tipo de vehículo",
+     "locked": true,
+     "options": [
+      "Sedán",
+      "Hatchback",
+      "SUV",
+      "Camioneta",
+      "Camión / Van",
+      "Motocicleta"
+     ],
+     "required": true,
+     "affectsVariant": true,
+     "affects_variant": true
+    }
+   ],
+   "trial_ends_at": "2026-07-01 18:45:24.000000",
+   "billing_address": "Av. Demo 100",
+   "onboarding_step": 0,
+   "billing_verified": 0,
+   "billing_verified_at": null
+  },
+  {
+   "id": "079213c2-5830-56c2-8787-23e0f7cf1054",
+   "city": null,
+   "name": "Barberia Demo",
+   "slug": "barberia-demo",
+   "email": "admin@barberia-demo.staging.goturnly.com",
+   "phone": "0999000000",
+   "status": "active",
+   "tax_id": null,
+   "address": "Av. Demo 100",
+   "country": "EC",
+   "plan_id": "019e1ea2-df48-711f-973f-c9ce81700d21",
+   "is_trial": 0,
+   "logo_url": null,
+   "settings": {
+    "payment_timing": "at_completion",
+    "default_tax_rate": 15,
+    "cancellation_hours": 1,
+    "slot_duration_minutes": 30,
+    "auto_confirm_reservations": false,
+    "allow_client_resource_selection": true
+   },
+   "cover_url": null,
+   "created_at": "2026-07-18 18:47:05.000000",
+   "deleted_at": null,
+   "legal_name": "BARBERIA DEMO",
+   "owner_name": "Duenio Demo",
+   "updated_at": "2026-07-23 12:07:30.000000",
+   "brand_theme": "blue",
+   "description": "Peluquería infantil",
+   "tax_id_type": null,
+   "activated_at": "2026-07-18 18:47:25.000000",
+   "social_links": {
+    "facebook": null,
+    "maps_url": null,
+    "whatsapp": null,
+    "instagram": null
+   },
+   "billing_email": "facturacion@barberia-demo.staging.goturnly.com",
+   "billing_phone": "0999000000",
+   "business_type": "barbershop",
+   "custom_fields": [
+    {
+     "key": "nombre",
+     "type": "text",
+     "label": "Nombre",
+     "options": null,
+     "required": false,
+     "capitalize": "capitalize"
+    },
+    {
+     "key": "telefono",
+     "type": "text",
+     "label": "Teléfono",
+     "options": null,
+     "required": false
+    }
+   ],
+   "trial_ends_at": "2026-08-17 18:47:05.000000",
+   "billing_address": "Av. Demo 100",
+   "onboarding_step": 0,
+   "billing_verified": 0,
+   "billing_verified_at": null
+  }
+ ],
+ "services": [
+  {
+   "id": "622e115f-b743-5e59-be81-0d19611134c9",
+   "name": "Lavado carrocería",
+   "price": 0.0,
+   "staffing": "washer",
+   "image_url": null,
+   "is_active": 1,
+   "tenant_id": "764c7420-85b1-5f00-b0c1-53ccc6af93e2",
+   "created_at": "2026-06-01 18:59:51.000000",
+   "deleted_at": null,
+   "sort_order": 0,
+   "updated_at": "2026-06-01 19:00:38.000000",
+   "description": "Lavado exterior y secado, brillo de llantas y partes negras"
+  },
+  {
+   "id": "7badc2bb-ae36-5efa-b7a2-cbc808a12cd5",
+   "name": "Lavada Express",
+   "price": 7.0,
+   "staffing": "washer",
+   "image_url": null,
+   "is_active": 1,
+   "tenant_id": "dbf7b143-43a3-57d7-8a8c-73815f1b4a24",
+   "created_at": "2026-07-03 14:03:10.000000",
+   "deleted_at": null,
+   "sort_order": 0,
+   "updated_at": "2026-07-20 08:05:06.000000",
+   "description": null
+  },
+  {
+   "id": "a9c0860f-2d14-5e54-ab86-c283c757befa",
+   "name": "Lavada Completa",
+   "price": 12.0,
+   "staffing": "washer",
+   "image_url": null,
+   "is_active": 1,
+   "tenant_id": "dbf7b143-43a3-57d7-8a8c-73815f1b4a24",
+   "created_at": "2026-07-03 14:10:02.000000",
+   "deleted_at": null,
+   "sort_order": 1,
+   "updated_at": "2026-07-03 14:10:02.000000",
+   "description": null
+  },
+  {
+   "id": "39fb320f-9865-5deb-9bfe-d7b6d465ca13",
+   "name": "Lavada Premium (cera)",
+   "price": 20.0,
+   "staffing": "washer",
+   "image_url": null,
+   "is_active": 1,
+   "tenant_id": "dbf7b143-43a3-57d7-8a8c-73815f1b4a24",
+   "created_at": "2026-07-03 14:10:02.000000",
+   "deleted_at": null,
+   "sort_order": 2,
+   "updated_at": "2026-07-03 14:10:02.000000",
+   "description": null
+  },
+  {
+   "id": "0f6e0d11-2112-58da-9703-5bd0b29e1b5a",
+   "name": "Aspirado Interior",
+   "price": 8.0,
+   "staffing": "washer",
+   "image_url": null,
+   "is_active": 1,
+   "tenant_id": "dbf7b143-43a3-57d7-8a8c-73815f1b4a24",
+   "created_at": "2026-07-03 14:10:02.000000",
+   "deleted_at": null,
+   "sort_order": 3,
+   "updated_at": "2026-07-03 14:10:02.000000",
+   "description": null
+  },
+  {
+   "id": "7f13cf3e-d992-5232-a512-8dddeac053c8",
+   "name": "Encerado",
+   "price": 15.0,
+   "staffing": "washer",
+   "image_url": null,
+   "is_active": 1,
+   "tenant_id": "dbf7b143-43a3-57d7-8a8c-73815f1b4a24",
+   "created_at": "2026-07-03 14:10:02.000000",
+   "deleted_at": null,
+   "sort_order": 4,
+   "updated_at": "2026-07-03 14:10:02.000000",
+   "description": null
+  },
+  {
+   "id": "8174576e-2885-5776-8a46-bcf7e6b6ad2c",
+   "name": "Lavado Motor",
+   "price": 10.0,
+   "staffing": "washer",
+   "image_url": null,
+   "is_active": 1,
+   "tenant_id": "dbf7b143-43a3-57d7-8a8c-73815f1b4a24",
+   "created_at": "2026-07-03 14:10:02.000000",
+   "deleted_at": null,
+   "sort_order": 5,
+   "updated_at": "2026-07-03 14:10:02.000000",
+   "description": null
+  },
+  {
+   "id": "773bcea3-7a9c-54e8-a31f-6017d0618927",
+   "name": "Corte niños",
+   "price": 7.0,
+   "staffing": "washer",
+   "image_url": null,
+   "is_active": 1,
+   "tenant_id": "079213c2-5830-56c2-8787-23e0f7cf1054",
+   "created_at": "2026-07-18 18:48:34.000000",
+   "deleted_at": null,
+   "sort_order": 0,
+   "updated_at": "2026-07-18 18:48:34.000000",
+   "description": "Corte clásico de niño"
+  },
+  {
+   "id": "e469c42a-415e-5fd7-9375-51b05685b936",
+   "name": "Primer Corte",
+   "price": 10.0,
+   "staffing": "washer",
+   "image_url": null,
+   "is_active": 1,
+   "tenant_id": "079213c2-5830-56c2-8787-23e0f7cf1054",
+   "created_at": "2026-07-18 18:49:43.000000",
+   "deleted_at": null,
+   "sort_order": 0,
+   "updated_at": "2026-07-20 10:23:02.000000",
+   "description": "Combo primer corte con diploma, fotografía y mechón"
+  },
+  {
+   "id": "553ebcf8-c967-5c9f-b4c4-17f9c5e7ffd9",
+   "name": "Lavado express",
+   "price": 5.0,
+   "staffing": "washer_dryer",
+   "image_url": null,
+   "is_active": 1,
+   "tenant_id": "764c7420-85b1-5f00-b0c1-53ccc6af93e2",
+   "created_at": "2026-08-02 14:38:29.000000",
+   "deleted_at": null,
+   "sort_order": 0,
+   "updated_at": "2026-08-24 09:32:05.000000",
+   "description": null
+  },
+  {
+   "id": "fd53aac1-9a04-5f6a-be5d-ef07fb80ee42",
+   "name": "Lavada Completa",
+   "price": 12.0,
+   "staffing": "washer_dryer",
+   "image_url": null,
+   "is_active": 1,
+   "tenant_id": "764c7420-85b1-5f00-b0c1-53ccc6af93e2",
+   "created_at": "2026-08-02 14:55:49.000000",
+   "deleted_at": null,
+   "sort_order": 0,
+   "updated_at": "2026-08-24 09:31:29.000000",
+   "description": null
+  },
+  {
+   "id": "50960f3d-38eb-583a-ada6-c8d6ac36d73f",
+   "name": "Cambio de aceite",
+   "price": 30.0,
+   "staffing": "none",
+   "image_url": null,
+   "is_active": 1,
+   "tenant_id": "764c7420-85b1-5f00-b0c1-53ccc6af93e2",
+   "created_at": "2026-08-02 15:09:34.000000",
+   "deleted_at": null,
+   "sort_order": 0,
+   "updated_at": "2026-08-24 09:31:02.000000",
+   "description": null
+  },
+  {
+   "id": "f7d6094f-6635-5eea-a03d-f8e70a4f30bc",
+   "name": "Tapiceria",
+   "price": 30.0,
+   "staffing": "washer",
+   "image_url": null,
+   "is_active": 1,
+   "tenant_id": "764c7420-85b1-5f00-b0c1-53ccc6af93e2",
+   "created_at": "2026-08-02 15:24:18.000000",
+   "deleted_at": null,
+   "sort_order": 0,
+   "updated_at": "2026-08-02 15:24:48.000000",
+   "description": null
+  },
+  {
+   "id": "dcdba421-02eb-505c-9823-12c83ab8a0a8",
+   "name": "Filtros De Aire",
+   "price": 7.0,
+   "staffing": "none",
+   "image_url": null,
+   "is_active": 1,
+   "tenant_id": "764c7420-85b1-5f00-b0c1-53ccc6af93e2",
+   "created_at": "2026-08-17 09:09:20.000000",
+   "deleted_at": null,
+   "sort_order": 0,
+   "updated_at": "2026-08-24 09:32:13.000000",
+   "description": null
+  },
+  {
+   "id": "871b49bf-4896-5c3b-96cb-55f1bab0f516",
+   "name": "Moto",
+   "price": 3.0,
+   "staffing": "washer",
+   "image_url": null,
+   "is_active": 1,
+   "tenant_id": "764c7420-85b1-5f00-b0c1-53ccc6af93e2",
+   "created_at": "2026-08-17 10:19:13.000000",
+   "deleted_at": null,
+   "sort_order": 0,
+   "updated_at": "2026-08-17 10:19:13.000000",
+   "description": null
+  },
+  {
+   "id": "2b63de92-1257-504c-be5b-b48b0fe6b600",
+   "name": "Refrigerantes",
+   "price": 2.0,
+   "staffing": "none",
+   "image_url": null,
+   "is_active": 1,
+   "tenant_id": "764c7420-85b1-5f00-b0c1-53ccc6af93e2",
+   "created_at": "2026-08-17 14:36:46.000000",
+   "deleted_at": null,
+   "sort_order": 0,
+   "updated_at": "2026-08-24 09:31:53.000000",
+   "description": null
+  },
+  {
+   "id": "b60ccd2e-5f34-59a4-875c-0ed2cf8cd2be",
+   "name": "Chasis",
+   "price": 8.0,
+   "staffing": "washer",
+   "image_url": null,
+   "is_active": 1,
+   "tenant_id": "764c7420-85b1-5f00-b0c1-53ccc6af93e2",
+   "created_at": "2026-08-17 18:18:46.000000",
+   "deleted_at": null,
+   "sort_order": 0,
+   "updated_at": "2026-08-17 18:18:46.000000",
+   "description": null
+  },
+  {
+   "id": "9766760e-8abe-5608-974c-0e9c42e2ddb6",
+   "name": "Lavada completa y asientos",
+   "price": 40.0,
+   "staffing": "washer_dryer",
+   "image_url": null,
+   "is_active": 1,
+   "tenant_id": "764c7420-85b1-5f00-b0c1-53ccc6af93e2",
+   "created_at": "2026-08-18 08:15:51.000000",
+   "deleted_at": null,
+   "sort_order": 0,
+   "updated_at": "2026-08-24 09:32:56.000000",
+   "description": "Lavada completa"
+  },
+  {
+   "id": "e87cac79-6378-5138-a150-4d4cdeec410d",
+   "name": "Lavada de Chasis",
+   "price": 7.0,
+   "staffing": "washer",
+   "image_url": null,
+   "is_active": 1,
+   "tenant_id": "764c7420-85b1-5f00-b0c1-53ccc6af93e2",
+   "created_at": "2026-08-24 09:02:16.000000",
+   "deleted_at": null,
+   "sort_order": 0,
+   "updated_at": "2026-08-24 09:02:16.000000",
+   "description": null
+  },
+  {
+   "id": "acd6c859-3dae-55be-a85b-5f8d1c801a38",
+   "name": "Lavado de Motor A Vapor",
+   "price": 20.0,
+   "staffing": "washer",
+   "image_url": null,
+   "is_active": 1,
+   "tenant_id": "764c7420-85b1-5f00-b0c1-53ccc6af93e2",
+   "created_at": "2026-08-27 09:11:16.000000",
+   "deleted_at": null,
+   "sort_order": 0,
+   "updated_at": "2026-08-27 09:11:16.000000",
+   "description": null
+  },
+  {
+   "id": "7c570386-3706-5985-bec1-b6e40fd696dc",
+   "name": "Engrasado",
+   "price": 7.0,
+   "staffing": "washer",
+   "image_url": null,
+   "is_active": 1,
+   "tenant_id": "764c7420-85b1-5f00-b0c1-53ccc6af93e2",
+   "created_at": "2026-08-27 12:35:58.000000",
+   "deleted_at": null,
+   "sort_order": 0,
+   "updated_at": "2026-08-27 12:35:58.000000",
+   "description": null
+  }
+ ],
+ "service_variants": [
+  {
+   "id": "1092da91-1b98-526d-b6d5-28b58aaa019f",
+   "label": "Pequeño",
+   "price": 7.0,
+   "is_active": 1,
+   "tenant_id": "dbf7b143-43a3-57d7-8a8c-73815f1b4a24",
+   "created_at": "2026-07-03 14:03:56.000000",
+   "deleted_at": null,
+   "service_id": "7badc2bb-ae36-5efa-b7a2-cbc808a12cd5",
+   "sort_order": 0,
+   "updated_at": "2026-07-03 19:12:14.000000",
+   "duration_min": 60,
+   "vehicle_types": [
+    "Sedán",
+    "Hatchback"
+   ]
+  },
+  {
+   "id": "4871959f-8e9c-57b4-b834-24206c9cba58",
+   "label": "Auto",
+   "price": 7.0,
+   "is_active": 1,
+   "tenant_id": "dbf7b143-43a3-57d7-8a8c-73815f1b4a24",
+   "created_at": "2026-07-03 14:12:40.000000",
+   "deleted_at": "2026-08-02 08:24:24.000000",
+   "service_id": "7badc2bb-ae36-5efa-b7a2-cbc808a12cd5",
+   "sort_order": 1,
+   "updated_at": "2026-08-02 08:24:24.000000",
+   "duration_min": 20,
+   "vehicle_types": [
+    "Sedán",
+    "Hatchback"
+   ]
+  },
+  {
+   "id": "51626161-daaf-5dd4-b813-18b856c02114",
+   "label": "Camioneta/SUV",
+   "price": 10.0,
+   "is_active": 1,
+   "tenant_id": "dbf7b143-43a3-57d7-8a8c-73815f1b4a24",
+   "created_at": "2026-07-03 14:12:40.000000",
+   "deleted_at": null,
+   "service_id": "7badc2bb-ae36-5efa-b7a2-cbc808a12cd5",
+   "sort_order": 2,
+   "updated_at": "2026-07-03 19:12:14.000000",
+   "duration_min": 30,
+   "vehicle_types": [
+    "SUV",
+    "Camioneta",
+    "Camión / Van"
+   ]
+  },
+  {
+   "id": "41db8e5e-25be-5ef6-b09a-dce1014b4955",
+   "label": "Auto",
+   "price": 12.0,
+   "is_active": 1,
+   "tenant_id": "dbf7b143-43a3-57d7-8a8c-73815f1b4a24",
+   "created_at": "2026-07-03 14:12:40.000000",
+   "deleted_at": null,
+   "service_id": "a9c0860f-2d14-5e54-ab86-c283c757befa",
+   "sort_order": 1,
+   "updated_at": "2026-07-03 19:12:36.000000",
+   "duration_min": 40,
+   "vehicle_types": [
+    "Sedán",
+    "Hatchback"
+   ]
+  },
+  {
+   "id": "d4c5f397-3085-5457-8ad6-2e6e04bb4ef1",
+   "label": "Camioneta/SUV",
+   "price": 16.0,
+   "is_active": 1,
+   "tenant_id": "dbf7b143-43a3-57d7-8a8c-73815f1b4a24",
+   "created_at": "2026-07-03 14:12:40.000000",
+   "deleted_at": null,
+   "service_id": "a9c0860f-2d14-5e54-ab86-c283c757befa",
+   "sort_order": 2,
+   "updated_at": "2026-07-03 19:12:14.000000",
+   "duration_min": 50,
+   "vehicle_types": [
+    "SUV",
+    "Camioneta",
+    "Camión / Van"
+   ]
+  },
+  {
+   "id": "03fae62c-ea4a-56e5-a6ca-31813d662c64",
+   "label": "Auto",
+   "price": 20.0,
+   "is_active": 1,
+   "tenant_id": "dbf7b143-43a3-57d7-8a8c-73815f1b4a24",
+   "created_at": "2026-07-03 14:12:40.000000",
+   "deleted_at": null,
+   "service_id": "39fb320f-9865-5deb-9bfe-d7b6d465ca13",
+   "sort_order": 1,
+   "updated_at": "2026-07-03 19:12:36.000000",
+   "duration_min": 60,
+   "vehicle_types": [
+    "Sedán",
+    "Hatchback"
+   ]
+  },
+  {
+   "id": "cd903f7a-1d3a-5ade-a24f-c348b57913a8",
+   "label": "Camioneta/SUV",
+   "price": 26.0,
+   "is_active": 1,
+   "tenant_id": "dbf7b143-43a3-57d7-8a8c-73815f1b4a24",
+   "created_at": "2026-07-03 14:12:40.000000",
+   "deleted_at": null,
+   "service_id": "39fb320f-9865-5deb-9bfe-d7b6d465ca13",
+   "sort_order": 2,
+   "updated_at": "2026-07-03 19:12:14.000000",
+   "duration_min": 75,
+   "vehicle_types": [
+    "SUV",
+    "Camioneta",
+    "Camión / Van"
+   ]
+  },
+  {
+   "id": "90efab33-c7f4-5454-8183-f50ef915d74d",
+   "label": "Auto",
+   "price": 8.0,
+   "is_active": 1,
+   "tenant_id": "dbf7b143-43a3-57d7-8a8c-73815f1b4a24",
+   "created_at": "2026-07-03 14:12:40.000000",
+   "deleted_at": null,
+   "service_id": "0f6e0d11-2112-58da-9703-5bd0b29e1b5a",
+   "sort_order": 1,
+   "updated_at": "2026-07-03 19:12:36.000000",
+   "duration_min": 25,
+   "vehicle_types": [
+    "Sedán",
+    "Hatchback"
+   ]
+  },
+  {
+   "id": "1c489e4d-64e9-5801-ba3a-4617cf11632c",
+   "label": "Camioneta/SUV",
+   "price": 11.0,
+   "is_active": 1,
+   "tenant_id": "dbf7b143-43a3-57d7-8a8c-73815f1b4a24",
+   "created_at": "2026-07-03 14:12:40.000000",
+   "deleted_at": null,
+   "service_id": "0f6e0d11-2112-58da-9703-5bd0b29e1b5a",
+   "sort_order": 2,
+   "updated_at": "2026-07-03 19:12:14.000000",
+   "duration_min": 35,
+   "vehicle_types": [
+    "SUV",
+    "Camioneta",
+    "Camión / Van"
+   ]
+  },
+  {
+   "id": "c901fbd5-ed81-5c25-9193-5c2043ce7c07",
+   "label": "Auto",
+   "price": 15.0,
+   "is_active": 1,
+   "tenant_id": "dbf7b143-43a3-57d7-8a8c-73815f1b4a24",
+   "created_at": "2026-07-03 14:12:40.000000",
+   "deleted_at": null,
+   "service_id": "7f13cf3e-d992-5232-a512-8dddeac053c8",
+   "sort_order": 1,
+   "updated_at": "2026-07-03 19:12:36.000000",
+   "duration_min": 45,
+   "vehicle_types": [
+    "Sedán",
+    "Hatchback"
+   ]
+  },
+  {
+   "id": "599bfecb-856d-57f0-966e-68616e13bf67",
+   "label": "Camioneta/SUV",
+   "price": 19.0,
+   "is_active": 1,
+   "tenant_id": "dbf7b143-43a3-57d7-8a8c-73815f1b4a24",
+   "created_at": "2026-07-03 14:12:40.000000",
+   "deleted_at": null,
+   "service_id": "7f13cf3e-d992-5232-a512-8dddeac053c8",
+   "sort_order": 2,
+   "updated_at": "2026-07-03 19:12:14.000000",
+   "duration_min": 55,
+   "vehicle_types": [
+    "SUV",
+    "Camioneta",
+    "Camión / Van"
+   ]
+  },
+  {
+   "id": "3384e26e-abf1-5ed5-9835-53aba8452351",
+   "label": "Único",
+   "price": 10.0,
+   "is_active": 1,
+   "tenant_id": "dbf7b143-43a3-57d7-8a8c-73815f1b4a24",
+   "created_at": "2026-07-03 14:12:40.000000",
+   "deleted_at": null,
+   "service_id": "8174576e-2885-5776-8a46-bcf7e6b6ad2c",
+   "sort_order": 1,
+   "updated_at": "2026-07-03 19:12:36.000000",
+   "duration_min": 30,
+   "vehicle_types": [
+    "Sedán",
+    "Hatchback",
+    "SUV",
+    "Camioneta",
+    "Camión / Van"
+   ]
+  },
+  {
+   "id": "d093f083-6a54-5536-b72e-bb12e206f360",
+   "label": "Pequeño",
+   "price": 5.0,
+   "is_active": 1,
+   "tenant_id": "764c7420-85b1-5f00-b0c1-53ccc6af93e2",
+   "created_at": "2026-08-02 14:42:33.000000",
+   "deleted_at": null,
+   "service_id": "553ebcf8-c967-5c9f-b4c4-17f9c5e7ffd9",
+   "sort_order": 0,
+   "updated_at": "2026-08-02 14:42:33.000000",
+   "duration_min": 60,
+   "vehicle_types": [
+    "Hatchback"
+   ]
+  },
+  {
+   "id": "8b7a3bda-f479-5309-982a-384dcad1b7ca",
+   "label": "Mediano",
+   "price": 6.0,
+   "is_active": 1,
+   "tenant_id": "764c7420-85b1-5f00-b0c1-53ccc6af93e2",
+   "created_at": "2026-08-02 14:43:33.000000",
+   "deleted_at": null,
+   "service_id": "553ebcf8-c967-5c9f-b4c4-17f9c5e7ffd9",
+   "sort_order": 0,
+   "updated_at": "2026-08-02 14:43:33.000000",
+   "duration_min": 75,
+   "vehicle_types": [
+    "Sedán"
+   ]
+  },
+  {
+   "id": "74a411c8-ca3e-55d2-acde-ea0c57d73e45",
+   "label": "SUV",
+   "price": 7.0,
+   "is_active": 1,
+   "tenant_id": "764c7420-85b1-5f00-b0c1-53ccc6af93e2",
+   "created_at": "2026-08-02 14:44:09.000000",
+   "deleted_at": null,
+   "service_id": "553ebcf8-c967-5c9f-b4c4-17f9c5e7ffd9",
+   "sort_order": 0,
+   "updated_at": "2026-08-02 14:44:09.000000",
+   "duration_min": 75,
+   "vehicle_types": [
+    "SUV"
+   ]
+  },
+  {
+   "id": "8c49e6e3-2908-505b-ac26-e1b2ceecd97c",
+   "label": "Camionetas",
+   "price": 8.0,
+   "is_active": 1,
+   "tenant_id": "764c7420-85b1-5f00-b0c1-53ccc6af93e2",
+   "created_at": "2026-08-02 14:44:46.000000",
+   "deleted_at": null,
+   "service_id": "553ebcf8-c967-5c9f-b4c4-17f9c5e7ffd9",
+   "sort_order": 0,
+   "updated_at": "2026-08-02 14:44:46.000000",
+   "duration_min": 90,
+   "vehicle_types": [
+    "Camioneta"
+   ]
+  },
+  {
+   "id": "825f688d-2f1a-5554-8ff2-6cd78e11fdec",
+   "label": "Camion pequeño",
+   "price": 9.0,
+   "is_active": 1,
+   "tenant_id": "764c7420-85b1-5f00-b0c1-53ccc6af93e2",
+   "created_at": "2026-08-02 14:46:17.000000",
+   "deleted_at": null,
+   "service_id": "553ebcf8-c967-5c9f-b4c4-17f9c5e7ffd9",
+   "sort_order": 0,
+   "updated_at": "2026-08-02 14:46:17.000000",
+   "duration_min": 120,
+   "vehicle_types": [
+    "Camión / Van"
+   ]
+  },
+  {
+   "id": "7e52120a-bdf3-5b95-9fd7-0848169385b9",
+   "label": "Camion mediano",
+   "price": 12.0,
+   "is_active": 1,
+   "tenant_id": "764c7420-85b1-5f00-b0c1-53ccc6af93e2",
+   "created_at": "2026-08-02 14:46:49.000000",
+   "deleted_at": null,
+   "service_id": "553ebcf8-c967-5c9f-b4c4-17f9c5e7ffd9",
+   "sort_order": 0,
+   "updated_at": "2026-08-02 14:46:49.000000",
+   "duration_min": 30,
+   "vehicle_types": [
+    "Camión / Van"
+   ]
+  },
+  {
+   "id": "3ec2cb82-7e9c-5596-80d6-25a76b17fc17",
+   "label": "Camion grande",
+   "price": 15.0,
+   "is_active": 1,
+   "tenant_id": "764c7420-85b1-5f00-b0c1-53ccc6af93e2",
+   "created_at": "2026-08-02 14:47:53.000000",
+   "deleted_at": null,
+   "service_id": "553ebcf8-c967-5c9f-b4c4-17f9c5e7ffd9",
+   "sort_order": 0,
+   "updated_at": "2026-08-02 14:47:53.000000",
+   "duration_min": 150,
+   "vehicle_types": [
+    "Camión / Van"
+   ]
+  },
+  {
+   "id": "913cc0cb-9300-5490-b66c-f98ade6b34fe",
+   "label": "Camion extragrande",
+   "price": 20.0,
+   "is_active": 1,
+   "tenant_id": "764c7420-85b1-5f00-b0c1-53ccc6af93e2",
+   "created_at": "2026-08-02 14:48:22.000000",
+   "deleted_at": null,
+   "service_id": "553ebcf8-c967-5c9f-b4c4-17f9c5e7ffd9",
+   "sort_order": 0,
+   "updated_at": "2026-08-02 14:48:22.000000",
+   "duration_min": 150,
+   "vehicle_types": [
+    "Camión / Van"
+   ]
+  },
+  {
+   "id": "5919eed4-59ef-51c8-a569-a550de2892f0",
+   "label": "Meduano/SUV",
+   "price": 4.0,
+   "is_active": 1,
+   "tenant_id": "764c7420-85b1-5f00-b0c1-53ccc6af93e2",
+   "created_at": "2026-08-02 14:52:33.000000",
+   "deleted_at": null,
+   "service_id": "622e115f-b743-5e59-be81-0d19611134c9",
+   "sort_order": 0,
+   "updated_at": "2026-08-02 14:53:17.000000",
+   "duration_min": 30,
+   "vehicle_types": [
+    "Sedán"
+   ]
+  },
+  {
+   "id": "00c91145-2e6a-5cd0-8e1e-f32694348efb",
+   "label": "Camionetas",
+   "price": 5.0,
+   "is_active": 1,
+   "tenant_id": "764c7420-85b1-5f00-b0c1-53ccc6af93e2",
+   "created_at": "2026-08-02 14:53:46.000000",
+   "deleted_at": null,
+   "service_id": "622e115f-b743-5e59-be81-0d19611134c9",
+   "sort_order": 0,
+   "updated_at": "2026-08-02 14:53:46.000000",
+   "duration_min": 45,
+   "vehicle_types": [
+    "Camioneta"
+   ]
+  },
+  {
+   "id": "84a408be-1d9f-5fcc-a6e7-af7b225cfb73",
+   "label": "Pequeño",
+   "price": 10.0,
+   "is_active": 1,
+   "tenant_id": "764c7420-85b1-5f00-b0c1-53ccc6af93e2",
+   "created_at": "2026-08-02 14:56:35.000000",
+   "deleted_at": null,
+   "service_id": "fd53aac1-9a04-5f6a-be5d-ef07fb80ee42",
+   "sort_order": 0,
+   "updated_at": "2026-08-02 14:57:21.000000",
+   "duration_min": 75,
+   "vehicle_types": [
+    "Hatchback"
+   ]
+  },
+  {
+   "id": "3e2ad6e5-a820-5cae-a9fa-fa0bb605ea2a",
+   "label": "Mediano",
+   "price": 12.0,
+   "is_active": 1,
+   "tenant_id": "764c7420-85b1-5f00-b0c1-53ccc6af93e2",
+   "created_at": "2026-08-02 14:57:38.000000",
+   "deleted_at": null,
+   "service_id": "fd53aac1-9a04-5f6a-be5d-ef07fb80ee42",
+   "sort_order": 0,
+   "updated_at": "2026-08-02 14:57:38.000000",
+   "duration_min": 75,
+   "vehicle_types": [
+    "Sedán"
+   ]
+  },
+  {
+   "id": "c973b1d6-1811-51bc-9766-b31867b6b0de",
+   "label": "Suv",
+   "price": 13.0,
+   "is_active": 1,
+   "tenant_id": "764c7420-85b1-5f00-b0c1-53ccc6af93e2",
+   "created_at": "2026-08-02 14:58:10.000000",
+   "deleted_at": null,
+   "service_id": "fd53aac1-9a04-5f6a-be5d-ef07fb80ee42",
+   "sort_order": 0,
+   "updated_at": "2026-08-02 14:58:10.000000",
+   "duration_min": 90,
+   "vehicle_types": [
+    "SUV"
+   ]
+  },
+  {
+   "id": "2ac3032d-2ada-51b6-a62b-77a64a66c590",
+   "label": "Camionetas",
+   "price": 15.0,
+   "is_active": 1,
+   "tenant_id": "764c7420-85b1-5f00-b0c1-53ccc6af93e2",
+   "created_at": "2026-08-02 14:58:32.000000",
+   "deleted_at": null,
+   "service_id": "fd53aac1-9a04-5f6a-be5d-ef07fb80ee42",
+   "sort_order": 0,
+   "updated_at": "2026-08-02 14:58:32.000000",
+   "duration_min": 120,
+   "vehicle_types": [
+    "Camioneta"
+   ]
+  },
+  {
+   "id": "be6e4f23-660d-5956-8464-5e64d52a3926",
+   "label": "Camioneta Grande",
+   "price": 18.0,
+   "is_active": 1,
+   "tenant_id": "764c7420-85b1-5f00-b0c1-53ccc6af93e2",
+   "created_at": "2026-08-02 14:59:02.000000",
+   "deleted_at": null,
+   "service_id": "fd53aac1-9a04-5f6a-be5d-ef07fb80ee42",
+   "sort_order": 0,
+   "updated_at": "2026-08-02 14:59:02.000000",
+   "duration_min": 120,
+   "vehicle_types": [
+    "Camioneta"
+   ]
+  },
+  {
+   "id": "eccd2ba2-25ea-588b-b9d3-68a972b17a86",
+   "label": "Pequeño",
+   "price": 18.0,
+   "is_active": 1,
+   "tenant_id": "764c7420-85b1-5f00-b0c1-53ccc6af93e2",
+   "created_at": "2026-08-02 14:59:24.000000",
+   "deleted_at": null,
+   "service_id": "fd53aac1-9a04-5f6a-be5d-ef07fb80ee42",
+   "sort_order": 0,
+   "updated_at": "2026-08-02 14:59:24.000000",
+   "duration_min": 120,
+   "vehicle_types": [
+    "Camión / Van"
+   ]
+  },
+  {
+   "id": "2dde07bd-e712-5d61-b118-a6a35bda85bd",
+   "label": "Mediano",
+   "price": 25.0,
+   "is_active": 1,
+   "tenant_id": "764c7420-85b1-5f00-b0c1-53ccc6af93e2",
+   "created_at": "2026-08-02 14:59:58.000000",
+   "deleted_at": null,
+   "service_id": "fd53aac1-9a04-5f6a-be5d-ef07fb80ee42",
+   "sort_order": 0,
+   "updated_at": "2026-08-02 14:59:58.000000",
+   "duration_min": 150,
+   "vehicle_types": [
+    "Camión / Van"
+   ]
+  },
+  {
+   "id": "bbf8a4d5-6b19-5afc-b21b-0f9ef7b91866",
+   "label": "Grande",
+   "price": 30.0,
+   "is_active": 1,
+   "tenant_id": "764c7420-85b1-5f00-b0c1-53ccc6af93e2",
+   "created_at": "2026-08-02 15:00:18.000000",
+   "deleted_at": null,
+   "service_id": "fd53aac1-9a04-5f6a-be5d-ef07fb80ee42",
+   "sort_order": 0,
+   "updated_at": "2026-08-02 15:00:18.000000",
+   "duration_min": 180,
+   "vehicle_types": [
+    "Camión / Van"
+   ]
+  },
+  {
+   "id": "ceb92bac-cb4f-52cb-acd8-76a1163d593e",
+   "label": "Camion Extra Grande",
+   "price": 45.0,
+   "is_active": 1,
+   "tenant_id": "764c7420-85b1-5f00-b0c1-53ccc6af93e2",
+   "created_at": "2026-08-02 15:01:22.000000",
+   "deleted_at": null,
+   "service_id": "fd53aac1-9a04-5f6a-be5d-ef07fb80ee42",
+   "sort_order": 0,
+   "updated_at": "2026-08-02 15:01:22.000000",
+   "duration_min": 240,
+   "vehicle_types": [
+    "Camión / Van"
+   ]
+  },
+  {
+   "id": "adaaa2f8-982e-566e-94c1-74b6c332ab3f",
+   "label": "Aceite economico",
+   "price": 30.0,
+   "is_active": 1,
+   "tenant_id": "764c7420-85b1-5f00-b0c1-53ccc6af93e2",
+   "created_at": "2026-08-02 15:11:03.000000",
+   "deleted_at": null,
+   "service_id": "50960f3d-38eb-583a-ada6-c8d6ac36d73f",
+   "sort_order": 0,
+   "updated_at": "2026-08-02 15:11:03.000000",
+   "duration_min": 150,
+   "vehicle_types": []
+  },
+  {
+   "id": "ac5e786e-9de8-56a3-bf16-d2292bc715fa",
+   "label": "Aceite Mineral",
+   "price": 32.0,
+   "is_active": 1,
+   "tenant_id": "764c7420-85b1-5f00-b0c1-53ccc6af93e2",
+   "created_at": "2026-08-02 15:11:32.000000",
+   "deleted_at": null,
+   "service_id": "50960f3d-38eb-583a-ada6-c8d6ac36d73f",
+   "sort_order": 0,
+   "updated_at": "2026-08-02 15:11:32.000000",
+   "duration_min": 120,
+   "vehicle_types": []
+  },
+  {
+   "id": "4ee94fa8-1d02-5845-80fe-0a4d3daa6d8a",
+   "label": "Aceite Semi sintetico",
+   "price": 38.0,
+   "is_active": 1,
+   "tenant_id": "764c7420-85b1-5f00-b0c1-53ccc6af93e2",
+   "created_at": "2026-08-02 15:11:48.000000",
+   "deleted_at": null,
+   "service_id": "50960f3d-38eb-583a-ada6-c8d6ac36d73f",
+   "sort_order": 0,
+   "updated_at": "2026-08-02 15:11:48.000000",
+   "duration_min": 150,
+   "vehicle_types": []
+  },
+  {
+   "id": "21bb176c-45db-5cb1-8857-143bb9989ca2",
+   "label": "Aceite full sintetico",
+   "price": 45.0,
+   "is_active": 1,
+   "tenant_id": "764c7420-85b1-5f00-b0c1-53ccc6af93e2",
+   "created_at": "2026-08-02 15:12:18.000000",
+   "deleted_at": null,
+   "service_id": "50960f3d-38eb-583a-ada6-c8d6ac36d73f",
+   "sort_order": 0,
+   "updated_at": "2026-08-02 15:12:18.000000",
+   "duration_min": 150,
+   "vehicle_types": []
+  },
+  {
+   "id": "4d1907e9-9d74-5021-8cb3-f7c5919bd02b",
+   "label": "Asientos",
+   "price": 30.0,
+   "is_active": 1,
+   "tenant_id": "764c7420-85b1-5f00-b0c1-53ccc6af93e2",
+   "created_at": "2026-08-02 15:27:54.000000",
+   "deleted_at": null,
+   "service_id": "f7d6094f-6635-5eea-a03d-f8e70a4f30bc",
+   "sort_order": 0,
+   "updated_at": "2026-08-02 15:27:54.000000",
+   "duration_min": 120,
+   "vehicle_types": []
+  },
+  {
+   "id": "15fc26dd-5d86-51d8-b33a-60e95831f3e5",
+   "label": "Techo",
+   "price": 20.0,
+   "is_active": 1,
+   "tenant_id": "764c7420-85b1-5f00-b0c1-53ccc6af93e2",
+   "created_at": "2026-08-02 15:28:45.000000",
+   "deleted_at": null,
+   "service_id": "f7d6094f-6635-5eea-a03d-f8e70a4f30bc",
+   "sort_order": 0,
+   "updated_at": "2026-08-02 15:28:45.000000",
+   "duration_min": 120,
+   "vehicle_types": []
+  },
+  {
+   "id": "7fc645ab-cc0c-54db-8161-209220cd5aa8",
+   "label": "Alfombra",
+   "price": 35.0,
+   "is_active": 1,
+   "tenant_id": "764c7420-85b1-5f00-b0c1-53ccc6af93e2",
+   "created_at": "2026-08-02 15:29:20.000000",
+   "deleted_at": null,
+   "service_id": "f7d6094f-6635-5eea-a03d-f8e70a4f30bc",
+   "sort_order": 0,
+   "updated_at": "2026-08-02 15:29:20.000000",
+   "duration_min": 120,
+   "vehicle_types": []
+  },
+  {
+   "id": "b6fc6b13-d42d-5200-aaff-f5b1b7bb1d4d",
+   "label": "FILTROS DE CABINA",
+   "price": 7.0,
+   "is_active": 1,
+   "tenant_id": "764c7420-85b1-5f00-b0c1-53ccc6af93e2",
+   "created_at": "2026-08-17 09:09:55.000000",
+   "deleted_at": null,
+   "service_id": "dcdba421-02eb-505c-9823-12c83ab8a0a8",
+   "sort_order": 0,
+   "updated_at": "2026-08-17 09:09:55.000000",
+   "duration_min": 30,
+   "vehicle_types": []
+  },
+  {
+   "id": "f1fba033-ad84-5413-8ce9-e31a13cfc1a5",
+   "label": "Mediana",
+   "price": 4.0,
+   "is_active": 1,
+   "tenant_id": "764c7420-85b1-5f00-b0c1-53ccc6af93e2",
+   "created_at": "2026-08-17 10:20:45.000000",
+   "deleted_at": null,
+   "service_id": "871b49bf-4896-5c3b-96cb-55f1bab0f516",
+   "sort_order": 0,
+   "updated_at": "2026-08-17 10:20:45.000000",
+   "duration_min": 30,
+   "vehicle_types": []
+  },
+  {
+   "id": "ef00be26-f608-5ad7-a020-2ff4fd50dbc9",
+   "label": "1/4",
+   "price": 2.0,
+   "is_active": 1,
+   "tenant_id": "764c7420-85b1-5f00-b0c1-53ccc6af93e2",
+   "created_at": "2026-08-17 14:37:16.000000",
+   "deleted_at": null,
+   "service_id": "2b63de92-1257-504c-be5b-b48b0fe6b600",
+   "sort_order": 0,
+   "updated_at": "2026-08-17 14:37:16.000000",
+   "duration_min": 30,
+   "vehicle_types": [
+    "Sedán"
+   ]
+  },
+  {
+   "id": "f861205b-78fc-5361-be22-510a0a83a593",
+   "label": "Mediano",
+   "price": 8.0,
+   "is_active": 1,
+   "tenant_id": "764c7420-85b1-5f00-b0c1-53ccc6af93e2",
+   "created_at": "2026-08-17 18:19:11.000000",
+   "deleted_at": null,
+   "service_id": "b60ccd2e-5f34-59a4-875c-0ed2cf8cd2be",
+   "sort_order": 0,
+   "updated_at": "2026-08-17 18:19:11.000000",
+   "duration_min": 30,
+   "vehicle_types": [
+    "Hatchback",
+    "Sedán"
+   ]
+  },
+  {
+   "id": "b11c5c23-73e2-5e37-8fb5-d4b26b07efa2",
+   "label": "Mediano",
+   "price": 7.0,
+   "is_active": 1,
+   "tenant_id": "764c7420-85b1-5f00-b0c1-53ccc6af93e2",
+   "created_at": "2026-08-24 09:02:39.000000",
+   "deleted_at": null,
+   "service_id": "e87cac79-6378-5138-a150-4d4cdeec410d",
+   "sort_order": 0,
+   "updated_at": "2026-08-24 09:02:39.000000",
+   "duration_min": 30,
+   "vehicle_types": [
+    "SUV"
+   ]
+  },
+  {
+   "id": "72758b6e-4ebe-54a9-8bc2-e98340479df6",
+   "label": "Pequeño",
+   "price": 3.0,
+   "is_active": 1,
+   "tenant_id": "764c7420-85b1-5f00-b0c1-53ccc6af93e2",
+   "created_at": "2026-06-04 17:51:11.000000",
+   "deleted_at": null,
+   "service_id": "622e115f-b743-5e59-be81-0d19611134c9",
+   "sort_order": 0,
+   "updated_at": "2026-08-02 14:52:19.000000",
+   "duration_min": 30,
+   "vehicle_types": [
+    "Hatchback"
+   ]
+  }
+ ],
+ "products": [
+  {
+   "id": "fb7ad53e-0dc5-5d17-b287-e895b9fb27dc",
+   "sku": "001",
+   "cost": 1.0,
+   "name": "Shampoo",
+   "type": "consumable",
+   "unit": "L",
+   "price": 0.0,
+   "tax_rate": 15.0,
+   "is_active": 1,
+   "stock_min": 1000.0,
+   "tenant_id": "dbf7b143-43a3-57d7-8a8c-73815f1b4a24",
+   "created_at": "2026-07-03 14:05:45.000000",
+   "deleted_at": null,
+   "updated_at": "2026-07-03 14:05:45.000000",
+   "description": null
+  },
+  {
+   "id": "c9cb99d3-0cf8-5f57-9ecc-d3fec833ff0b",
+   "sku": "SHMP",
+   "cost": 0.01,
+   "name": "Shampoo concentrado",
+   "type": "consumable",
+   "unit": "ml",
+   "price": 0.0,
+   "tax_rate": 15.0,
+   "is_active": 1,
+   "stock_min": 500.0,
+   "tenant_id": "dbf7b143-43a3-57d7-8a8c-73815f1b4a24",
+   "created_at": "2026-07-03 14:12:40.000000",
+   "deleted_at": null,
+   "updated_at": "2026-07-03 14:12:40.000000",
+   "description": null
+  },
+  {
+   "id": "7e56fbf2-2661-5de6-914c-3c5ba355a191",
+   "sku": "CERA",
+   "cost": 0.03,
+   "name": "Cera líquida",
+   "type": "consumable",
+   "unit": "ml",
+   "price": 0.0,
+   "tax_rate": 15.0,
+   "is_active": 1,
+   "stock_min": 300.0,
+   "tenant_id": "dbf7b143-43a3-57d7-8a8c-73815f1b4a24",
+   "created_at": "2026-07-03 14:12:40.000000",
+   "deleted_at": null,
+   "updated_at": "2026-07-03 14:12:40.000000",
+   "description": null
+  },
+  {
+   "id": "d5e346ec-9612-5964-b305-09d6da8e422d",
+   "sku": "DESE",
+   "cost": 0.02,
+   "name": "Desengrasante motor",
+   "type": "consumable",
+   "unit": "ml",
+   "price": 0.0,
+   "tax_rate": 15.0,
+   "is_active": 1,
+   "stock_min": 300.0,
+   "tenant_id": "dbf7b143-43a3-57d7-8a8c-73815f1b4a24",
+   "created_at": "2026-07-03 14:12:40.000000",
+   "deleted_at": null,
+   "updated_at": "2026-07-03 14:12:40.000000",
+   "description": null
+  },
+  {
+   "id": "4a411b47-9f3b-58e2-abd7-8565b530fe40",
+   "sku": "AROM",
+   "cost": 0.5,
+   "name": "Aromatizante",
+   "type": "both",
+   "unit": "u",
+   "price": 2.0,
+   "tax_rate": 15.0,
+   "is_active": 1,
+   "stock_min": 10.0,
+   "tenant_id": "dbf7b143-43a3-57d7-8a8c-73815f1b4a24",
+   "created_at": "2026-07-03 14:12:40.000000",
+   "deleted_at": null,
+   "updated_at": "2026-07-03 14:12:40.000000",
+   "description": null
+  },
+  {
+   "id": "097a5b30-6194-5c2d-a7cc-1a1659a20355",
+   "sku": "PANO",
+   "cost": 1.0,
+   "name": "Paño microfibra",
+   "type": "sellable",
+   "unit": "u",
+   "price": 3.5,
+   "tax_rate": 15.0,
+   "is_active": 1,
+   "stock_min": 20.0,
+   "tenant_id": "dbf7b143-43a3-57d7-8a8c-73815f1b4a24",
+   "created_at": "2026-07-03 14:12:40.000000",
+   "deleted_at": null,
+   "updated_at": "2026-07-03 14:12:40.000000",
+   "description": null
+  },
+  {
+   "id": "6c77d6f3-e1ff-5736-b419-4e36d794d5f3",
+   "sku": null,
+   "cost": 21.0,
+   "name": "ACDELCO DEXOS1",
+   "type": "sellable",
+   "unit": "u",
+   "price": 30.0,
+   "tax_rate": 15.0,
+   "is_active": 1,
+   "stock_min": 3.0,
+   "tenant_id": "764c7420-85b1-5f00-b0c1-53ccc6af93e2",
+   "created_at": "2026-08-02 15:42:01.000000",
+   "deleted_at": null,
+   "updated_at": "2026-08-02 15:42:01.000000",
+   "description": null
+  },
+  {
+   "id": "0f0fb398-b4bf-53c5-993c-4e407d569451",
+   "sku": null,
+   "cost": 20.76,
+   "name": "Aceite Amalie 15w-40  sintetica",
+   "type": "sellable",
+   "unit": "u",
+   "price": 13.0,
+   "tax_rate": 15.0,
+   "is_active": 1,
+   "stock_min": 5.0,
+   "tenant_id": "764c7420-85b1-5f00-b0c1-53ccc6af93e2",
+   "created_at": "2026-08-15 14:51:40.000000",
+   "deleted_at": null,
+   "updated_at": "2026-08-19 10:15:09.000000",
+   "description": null
+  },
+  {
+   "id": "c6c02e9a-cdf4-5ea0-b12f-0f965043973f",
+   "sku": null,
+   "cost": 20.0,
+   "name": "Aceite amalie 20w-50 semi sintetico",
+   "type": "both",
+   "unit": "u",
+   "price": 28.0,
+   "tax_rate": 15.0,
+   "is_active": 1,
+   "stock_min": 5.0,
+   "tenant_id": "764c7420-85b1-5f00-b0c1-53ccc6af93e2",
+   "created_at": "2026-08-15 15:04:02.000000",
+   "deleted_at": null,
+   "updated_at": "2026-08-15 15:04:02.000000",
+   "description": null
+  },
+  {
+   "id": "5708fb46-2011-5638-a1b7-612981519a9b",
+   "sku": null,
+   "cost": 5.0,
+   "name": "Hidraulico",
+   "type": "both",
+   "unit": "L",
+   "price": 5.0,
+   "tax_rate": 15.0,
+   "is_active": 1,
+   "stock_min": 0.0,
+   "tenant_id": "764c7420-85b1-5f00-b0c1-53ccc6af93e2",
+   "created_at": "2026-08-21 11:40:09.000000",
+   "deleted_at": null,
+   "updated_at": "2026-08-21 11:41:21.000000",
+   "description": null
+  },
+  {
+   "id": "68bba4cf-9885-5c32-8ddf-4bbbe49f9839",
+   "sku": null,
+   "cost": 0.0,
+   "name": "Refrigerante",
+   "type": "both",
+   "unit": "L",
+   "price": 2.0,
+   "tax_rate": 15.0,
+   "is_active": 1,
+   "stock_min": 0.0,
+   "tenant_id": "764c7420-85b1-5f00-b0c1-53ccc6af93e2",
+   "created_at": "2026-08-22 14:02:42.000000",
+   "deleted_at": null,
+   "updated_at": "2026-08-22 14:02:42.000000",
+   "description": null
+  },
+  {
+   "id": "9b4292a1-94a6-5379-b579-b957ad9dc618",
+   "sku": "X",
+   "cost": 0.0,
+   "name": "Caneca de Aceite 15w40",
+   "type": "both",
+   "unit": "u",
+   "price": 80.0,
+   "tax_rate": 15.0,
+   "is_active": 1,
+   "stock_min": 0.0,
+   "tenant_id": "764c7420-85b1-5f00-b0c1-53ccc6af93e2",
+   "created_at": "2026-08-22 14:03:53.000000",
+   "deleted_at": null,
+   "updated_at": "2026-08-22 14:04:10.000000",
+   "description": null
+  }
+ ],
+ "business_resources": [
+  {
+   "id": "42aaa104-2e8c-58d2-bc9f-13e7b104ae21",
+   "name": "Estacion 1",
+   "type": "physical",
+   "is_active": 1,
+   "tenant_id": "dbf7b143-43a3-57d7-8a8c-73815f1b4a24",
+   "created_at": "2026-07-03 19:16:41.000000",
+   "sort_order": 0,
+   "updated_at": "2026-07-03 19:16:41.000000",
+   "description": null,
+   "employee_id": null
+  },
+  {
+   "id": "3d82237e-55af-543c-b772-da91ddbba9d6",
+   "name": "Estacion 2",
+   "type": "physical",
+   "is_active": 1,
+   "tenant_id": "dbf7b143-43a3-57d7-8a8c-73815f1b4a24",
+   "created_at": "2026-07-03 19:16:48.000000",
+   "sort_order": 0,
+   "updated_at": "2026-07-03 19:16:48.000000",
+   "description": null,
+   "employee_id": null
+  },
+  {
+   "id": "61c95145-c41e-571c-8008-61de8e0ff0b0",
+   "name": "Estacion 3",
+   "type": "physical",
+   "is_active": 1,
+   "tenant_id": "dbf7b143-43a3-57d7-8a8c-73815f1b4a24",
+   "created_at": "2026-07-03 19:16:57.000000",
+   "sort_order": 0,
+   "updated_at": "2026-07-03 19:16:57.000000",
+   "description": null,
+   "employee_id": null
+  }
+ ],
+ "service_staff": [
+  {
+   "id": "a560e21e-57a5-559f-b717-4e12f78b060a",
+   "name": "Bruno",
+   "position": "washer",
+   "is_active": 1,
+   "tenant_id": "764c7420-85b1-5f00-b0c1-53ccc6af93e2",
+   "created_at": "2026-08-24 08:20:47.000000",
+   "updated_at": "2026-08-24 08:20:47.000000"
+  },
+  {
+   "id": "bc1dcc3d-e1d6-5e34-9971-de2dc428cc47",
+   "name": "Ivan",
+   "position": "washer",
+   "is_active": 1,
+   "tenant_id": "764c7420-85b1-5f00-b0c1-53ccc6af93e2",
+   "created_at": "2026-08-24 08:20:56.000000",
+   "updated_at": "2026-08-24 08:20:56.000000"
+  },
+  {
+   "id": "3c39d5d5-077a-54e0-98e4-46d791ccb9ae",
+   "name": "Marco",
+   "position": "washer",
+   "is_active": 1,
+   "tenant_id": "764c7420-85b1-5f00-b0c1-53ccc6af93e2",
+   "created_at": "2026-08-24 08:21:03.000000",
+   "updated_at": "2026-08-24 08:21:03.000000"
+  },
+  {
+   "id": "711a3188-b76d-560f-8566-1b76aa7e63c0",
+   "name": "Tomas",
+   "position": "washer",
+   "is_active": 1,
+   "tenant_id": "764c7420-85b1-5f00-b0c1-53ccc6af93e2",
+   "created_at": "2026-08-24 08:21:13.000000",
+   "updated_at": "2026-08-24 08:21:13.000000"
+  },
+  {
+   "id": "dc4eea95-bfba-5c69-a19f-5d1d36ec7e4c",
+   "name": "Simon",
+   "position": "washer",
+   "is_active": 1,
+   "tenant_id": "764c7420-85b1-5f00-b0c1-53ccc6af93e2",
+   "created_at": "2026-08-24 08:21:21.000000",
+   "updated_at": "2026-08-24 08:21:21.000000"
+  },
+  {
+   "id": "e54418ea-a823-5e30-9d2c-fa2ff84b0574",
+   "name": "Lucia",
+   "position": "dryer",
+   "is_active": 1,
+   "tenant_id": "764c7420-85b1-5f00-b0c1-53ccc6af93e2",
+   "created_at": "2026-08-24 08:21:29.000000",
+   "updated_at": "2026-08-24 08:21:29.000000"
+  },
+  {
+   "id": "997db964-acac-526a-a956-3407d77cdd79",
+   "name": "Noelia",
+   "position": "dryer",
+   "is_active": 1,
+   "tenant_id": "764c7420-85b1-5f00-b0c1-53ccc6af93e2",
+   "created_at": "2026-08-24 08:21:36.000000",
+   "updated_at": "2026-08-24 08:21:39.000000"
+  },
+  {
+   "id": "3ba77e74-5dfc-562a-bb51-8a39c1fa0f46",
+   "name": "Sofia",
+   "position": "dryer",
+   "is_active": 1,
+   "tenant_id": "764c7420-85b1-5f00-b0c1-53ccc6af93e2",
+   "created_at": "2026-08-24 08:21:48.000000",
+   "updated_at": "2026-08-24 08:21:48.000000"
+  },
+  {
+   "id": "ccc3ade2-d46c-5eaa-b1a5-32744c6ac1e8",
+   "name": "Ximena",
+   "position": "dryer",
+   "is_active": 1,
+   "tenant_id": "764c7420-85b1-5f00-b0c1-53ccc6af93e2",
+   "created_at": "2026-08-24 08:21:58.000000",
+   "updated_at": "2026-08-24 08:21:58.000000"
+  },
+  {
+   "id": "897e0f75-c7f3-5477-8d85-53a71830af9d",
+   "name": "Renata",
+   "position": "dryer",
+   "is_active": 1,
+   "tenant_id": "764c7420-85b1-5f00-b0c1-53ccc6af93e2",
+   "created_at": "2026-08-24 08:22:05.000000",
+   "updated_at": "2026-08-24 08:22:05.000000"
+  }
+ ],
+ "service_variant_consumption": [
+  {
+   "id": "06882345-80f3-5389-bb12-a82343ede9f5",
+   "qty": 100.0,
+   "created_at": "2026-07-03 14:06:30.000000",
+   "product_id": "fb7ad53e-0dc5-5d17-b287-e895b9fb27dc",
+   "updated_at": "2026-07-03 14:06:30.000000",
+   "service_variant_id": "1092da91-1b98-526d-b6d5-28b58aaa019f"
+  },
+  {
+   "id": "4072b5b2-0d38-565e-8393-74c5ba5da0c6",
+   "qty": 150.0,
+   "created_at": "2026-07-03 14:12:40.000000",
+   "product_id": "c9cb99d3-0cf8-5f57-9ecc-d3fec833ff0b",
+   "updated_at": "2026-07-03 14:12:40.000000",
+   "service_variant_id": "4871959f-8e9c-57b4-b834-24206c9cba58"
+  },
+  {
+   "id": "bf2f278b-c198-5d0a-8b69-66abb089e04d",
+   "qty": 250.0,
+   "created_at": "2026-07-03 14:12:40.000000",
+   "product_id": "c9cb99d3-0cf8-5f57-9ecc-d3fec833ff0b",
+   "updated_at": "2026-07-03 14:12:40.000000",
+   "service_variant_id": "51626161-daaf-5dd4-b813-18b856c02114"
+  },
+  {
+   "id": "7969f0d9-0fc7-5264-b766-0152ee1591bd",
+   "qty": 250.0,
+   "created_at": "2026-07-03 14:12:40.000000",
+   "product_id": "c9cb99d3-0cf8-5f57-9ecc-d3fec833ff0b",
+   "updated_at": "2026-07-03 14:12:40.000000",
+   "service_variant_id": "41db8e5e-25be-5ef6-b09a-dce1014b4955"
+  },
+  {
+   "id": "c96a7f42-74d4-52b8-927c-ee6f3949c62e",
+   "qty": 1.0,
+   "created_at": "2026-07-03 14:12:40.000000",
+   "product_id": "4a411b47-9f3b-58e2-abd7-8565b530fe40",
+   "updated_at": "2026-07-03 14:12:40.000000",
+   "service_variant_id": "41db8e5e-25be-5ef6-b09a-dce1014b4955"
+  },
+  {
+   "id": "ccc74aaa-3fc5-54af-8442-36ae204f7eed",
+   "qty": 400.0,
+   "created_at": "2026-07-03 14:12:40.000000",
+   "product_id": "c9cb99d3-0cf8-5f57-9ecc-d3fec833ff0b",
+   "updated_at": "2026-07-03 14:12:40.000000",
+   "service_variant_id": "d4c5f397-3085-5457-8ad6-2e6e04bb4ef1"
+  },
+  {
+   "id": "1d9d14e8-5c64-5447-8c16-33c641584bf9",
+   "qty": 1.0,
+   "created_at": "2026-07-03 14:12:40.000000",
+   "product_id": "4a411b47-9f3b-58e2-abd7-8565b530fe40",
+   "updated_at": "2026-07-03 14:12:40.000000",
+   "service_variant_id": "d4c5f397-3085-5457-8ad6-2e6e04bb4ef1"
+  },
+  {
+   "id": "6928046e-69f6-5b06-b26d-a6df1c2d7e49",
+   "qty": 250.0,
+   "created_at": "2026-07-03 14:12:40.000000",
+   "product_id": "c9cb99d3-0cf8-5f57-9ecc-d3fec833ff0b",
+   "updated_at": "2026-07-03 14:12:40.000000",
+   "service_variant_id": "03fae62c-ea4a-56e5-a6ca-31813d662c64"
+  },
+  {
+   "id": "8fd9e9a4-d6fe-5c55-85fc-681500b4e8c8",
+   "qty": 100.0,
+   "created_at": "2026-07-03 14:12:40.000000",
+   "product_id": "7e56fbf2-2661-5de6-914c-3c5ba355a191",
+   "updated_at": "2026-07-03 14:12:40.000000",
+   "service_variant_id": "03fae62c-ea4a-56e5-a6ca-31813d662c64"
+  },
+  {
+   "id": "95e18cec-73f9-5b01-b3ff-d59f96bff455",
+   "qty": 1.0,
+   "created_at": "2026-07-03 14:12:40.000000",
+   "product_id": "4a411b47-9f3b-58e2-abd7-8565b530fe40",
+   "updated_at": "2026-07-03 14:12:40.000000",
+   "service_variant_id": "03fae62c-ea4a-56e5-a6ca-31813d662c64"
+  },
+  {
+   "id": "f4a46b50-2e6d-5112-85c4-fa1fdd1e02da",
+   "qty": 400.0,
+   "created_at": "2026-07-03 14:12:40.000000",
+   "product_id": "c9cb99d3-0cf8-5f57-9ecc-d3fec833ff0b",
+   "updated_at": "2026-07-03 14:12:40.000000",
+   "service_variant_id": "cd903f7a-1d3a-5ade-a24f-c348b57913a8"
+  },
+  {
+   "id": "39ab659e-4876-59ce-958d-f5f2e55fb8e3",
+   "qty": 150.0,
+   "created_at": "2026-07-03 14:12:40.000000",
+   "product_id": "7e56fbf2-2661-5de6-914c-3c5ba355a191",
+   "updated_at": "2026-07-03 14:12:40.000000",
+   "service_variant_id": "cd903f7a-1d3a-5ade-a24f-c348b57913a8"
+  },
+  {
+   "id": "9e026d16-1994-54be-80d3-0a0be8e74ffc",
+   "qty": 1.0,
+   "created_at": "2026-07-03 14:12:40.000000",
+   "product_id": "4a411b47-9f3b-58e2-abd7-8565b530fe40",
+   "updated_at": "2026-07-03 14:12:40.000000",
+   "service_variant_id": "cd903f7a-1d3a-5ade-a24f-c348b57913a8"
+  },
+  {
+   "id": "97794824-407b-527c-a45e-080cdac05597",
+   "qty": 1.0,
+   "created_at": "2026-07-03 14:12:40.000000",
+   "product_id": "4a411b47-9f3b-58e2-abd7-8565b530fe40",
+   "updated_at": "2026-07-03 14:12:40.000000",
+   "service_variant_id": "90efab33-c7f4-5454-8183-f50ef915d74d"
+  },
+  {
+   "id": "013a0c08-7a0f-5562-8c61-d6627de43a9d",
+   "qty": 1.0,
+   "created_at": "2026-07-03 14:12:40.000000",
+   "product_id": "4a411b47-9f3b-58e2-abd7-8565b530fe40",
+   "updated_at": "2026-07-03 14:12:40.000000",
+   "service_variant_id": "1c489e4d-64e9-5801-ba3a-4617cf11632c"
+  },
+  {
+   "id": "819515de-c652-54a9-8875-2e3558bee2f0",
+   "qty": 150.0,
+   "created_at": "2026-07-03 14:12:40.000000",
+   "product_id": "7e56fbf2-2661-5de6-914c-3c5ba355a191",
+   "updated_at": "2026-07-03 14:12:40.000000",
+   "service_variant_id": "c901fbd5-ed81-5c25-9193-5c2043ce7c07"
+  },
+  {
+   "id": "5edc54b8-c81d-50e1-879d-d81ca0ae3f93",
+   "qty": 1.0,
+   "created_at": "2026-07-03 14:12:40.000000",
+   "product_id": "097a5b30-6194-5c2d-a7cc-1a1659a20355",
+   "updated_at": "2026-07-03 14:12:40.000000",
+   "service_variant_id": "c901fbd5-ed81-5c25-9193-5c2043ce7c07"
+  },
+  {
+   "id": "04cf1c36-994c-52fd-b5e8-2f8ab6963a69",
+   "qty": 200.0,
+   "created_at": "2026-07-03 14:12:40.000000",
+   "product_id": "7e56fbf2-2661-5de6-914c-3c5ba355a191",
+   "updated_at": "2026-07-03 14:12:40.000000",
+   "service_variant_id": "599bfecb-856d-57f0-966e-68616e13bf67"
+  },
+  {
+   "id": "717ade1a-9cd6-5129-91d4-3aa0a534f221",
+   "qty": 1.0,
+   "created_at": "2026-07-03 14:12:40.000000",
+   "product_id": "097a5b30-6194-5c2d-a7cc-1a1659a20355",
+   "updated_at": "2026-07-03 14:12:40.000000",
+   "service_variant_id": "599bfecb-856d-57f0-966e-68616e13bf67"
+  },
+  {
+   "id": "2a53d0f6-b6e9-5097-80de-fd6449e40b9a",
+   "qty": 200.0,
+   "created_at": "2026-07-03 14:12:40.000000",
+   "product_id": "d5e346ec-9612-5964-b305-09d6da8e422d",
+   "updated_at": "2026-07-03 14:12:40.000000",
+   "service_variant_id": "3384e26e-abf1-5ed5-9835-53aba8452351"
+  }
+ ]
+}
