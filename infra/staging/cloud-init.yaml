@@ -361,6 +361,13 @@ write_files:
       REVERB_SERVER_HOST="0.0.0.0"
       REVERB_SERVER_PORT=8080
 
+      # Cloudflare publishes Turnstile keys that always pass verification, so
+      # staging runs the same check prod runs instead of skipping it. This
+      # matters: VerifyTurnstileMiddleware fails OPEN when the secret is empty,
+      # which would make magic links and guest booking bot-checkless here while
+      # prod fails closed.
+      TURNSTILE_SECRET_KEY=1x0000000000000000000000000000000AA
+
       # GAP, tracked in the spec: prod uses MAIL_MAILER=resend. Until a sender
       # is verified on a staging subdomain, mail goes to the log — and
       # acceptance test 5 cannot pass. Same story for the R2 bucket and the
