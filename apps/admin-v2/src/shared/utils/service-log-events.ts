@@ -112,6 +112,12 @@ export function describeServiceLogEvent(event: ServiceLogEvent): string {
       return `Anuló el registro · ${motivo}${nota}`;
     }
 
+    // El impago del cierre. Sin esta línea la bitácora imprimía la clave
+    // cruda —"left_owing"— justo en el evento que explica por qué el ticket
+    // se completó sin plata.
+    case 'left_owing':
+      return `Se fue debiendo ${money(d.amount)}`;
+
     case 'status_changed':
       return d.to === 'completed' ? 'Completó el servicio' : `Estado: ${String(d.to)}`;
 

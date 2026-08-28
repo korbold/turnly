@@ -65,6 +65,7 @@ export interface ServiceLogEvent {
     | 'payment_recorded'
     | 'payment_reverted'
     | 'log_cancelled'
+    | 'left_owing'
     | 'status_changed'
     | 'invoice_requested'
     | 'invoice_status_changed';
