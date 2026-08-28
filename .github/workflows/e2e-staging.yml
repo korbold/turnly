@@ -1,0 +1,128 @@
+name: E2E Staging
+
+# Sub-proyecto 2 de docs/superpowers/specs/2026-08-28-e2e-staging-design.md.
+#
+# Dos disparos, y los dos hacen falta. `Deploy Staging (backend)` sólo corre
+# con cambios en apps/backend/**; un cambio puro de admin —de donde salieron
+# los tres bugs que motivaron todo esto— no lo dispara, y con workflow_run
+# como único trigger nunca se probaría.
+
+on:
+  workflow_run:
+    workflows: ['Deploy Staging (backend)']
+    types: [completed]
+  push:
+    branches: [develop]
+    paths:
+      - 'apps/admin-v2/**'
+      - '.github/workflows/e2e-staging.yml'
+  workflow_dispatch:
+
+concurrency:
+  group: e2e-staging
+  cancel-in-progress: false
+
+env:
+  BASE_URL: https://staging.goturnly.com
+  API_URL: https://api.staging.goturnly.com
+
+jobs:
+  e2e:
+    # Un deploy de staging en rojo no deja nada que probar.
+    if: github.event_name != 'workflow_run' || github.event.workflow_run.conclusion == 'success'
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: apps/admin-v2
+
+    steps:
+      - name: Resolver el commit a probar
+        id: commit
+        working-directory: .
+        run: |
+          set -euo pipefail
+          if [ "${{ github.event_name }}" = "workflow_run" ]; then
+            sha="${{ github.event.workflow_run.head_sha }}"
+          else
+            sha="${{ github.sha }}"
+          fi
+          echo "sha=$sha" >> "$GITHUB_OUTPUT"
+          echo "Commit bajo prueba: $sha"
+
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ steps.commit.outputs.sha }}
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: npm
+          cache-dependency-path: apps/admin-v2/package-lock.json
+
+      - name: Esperar a que Vercel publique este commit
+        working-directory: .
+        run: |
+          set -euo pipefail
+          want="${{ steps.commit.outputs.sha }}"
+          for i in $(seq 1 60); do
+            got=$(curl -sf -m 15 "$BASE_URL/api/version" | jq -r '.sha' || echo '')
+            if [ "$got" = "$want" ]; then
+              echo "Admin desplegado en $want"
+              exit 0
+            fi
+            echo "intento $i: el admin sirve '$got', se espera '$want'"
+            sleep 5
+          done
+          echo "::error::Vercel no publicó $want en 5 minutos"
+          exit 1
+
+      - name: Chequear la API de staging
+        working-directory: .
+        run: |
+          set -euo pipefail
+          code=$(curl -s -o /dev/null -m 20 -w '%{http_code}' "$API_URL/up")
+          [ "$code" = "200" ] || { echo "::error::/up devolvió $code"; exit 1; }
+
+      - name: Setup SSH
+        working-directory: .
+        run: |
+          mkdir -p ~/.ssh
+          echo "${{ secrets.STAGING_DEPLOY_SSH_KEY }}" > ~/.ssh/deploy_key
+          chmod 600 ~/.ssh/deploy_key
+          ssh-keyscan -H ${{ secrets.STAGING_DEPLOY_HOST }} >> ~/.ssh/known_hosts
+
+      - name: Base nueva
+        working-directory: .
+        run: |
+          set -euo pipefail
+          ssh -i ~/.ssh/deploy_key \
+            ${{ secrets.STAGING_DEPLOY_USER }}@${{ secrets.STAGING_DEPLOY_HOST }} bash <<'ENDSSH'
+            set -euo pipefail
+            cd /var/www/turnly/apps/backend
+
+            # Sin esto, cada corrida deja sedimento —tickets a medio cobrar,
+            # cajas abiertas de la anterior— y el punto de partida cambia.
+            php artisan migrate:fresh --force
+            php artisan staging:seed
+          ENDSSH
+
+      - name: npm ci
+        run: npm ci
+
+      - name: Instalar Chromium
+        run: npx playwright install --with-deps chromium
+
+      - name: Correr los E2E
+        run: npm run e2e
+        env:
+          E2E_BASE_URL: ${{ env.BASE_URL }}
+
+      - name: Subir el diagnóstico
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: playwright-report
+          path: |
+            apps/admin-v2/playwright-report/
+            apps/admin-v2/test-results/
+          retention-days: 14
