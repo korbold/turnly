@@ -61,7 +61,7 @@ export function IosInstallBanner() {
     // The customer portal has its own fixed tab bar at the bottom; the
     // banner sits above it instead of burying Inicio/Reservas/Perfil.
     <div
-      className={`fixed left-0 right-0 z-50 border-t border-zinc-200 bg-white p-4 shadow-lg ${
+      className={`fixed left-0 right-0 z-50 border-t border-zinc-200 bg-white p-4 shadow-lg print:hidden ${
         pathname?.startsWith('/app') ? 'bottom-[61px]' : 'bottom-0'
       }`}
     >

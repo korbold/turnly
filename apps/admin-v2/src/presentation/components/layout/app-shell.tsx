@@ -39,12 +39,21 @@ export function AppShell({ children }: { children: ReactNode }) {
   if (!isTablet) {
     return (
       <BrandThemeProvider>
-        <div className="flex min-h-screen flex-col bg-zinc-50">
-          <Topbar />
-          <main className="flex-1 overflow-y-auto px-4 py-4 pb-24">
+        {/* Las mismas reglas de impresión que la rama de escritorio, que sí las
+            tenía. Sin esto, imprimir desde el celular —el dispositivo principal
+            del segmento— mete la barra superior y las pestañas inferiores en el
+            papel, y el pb-24 que reserva sitio para esas pestañas empuja una
+            segunda página en blanco. Afecta también a Reportes. */}
+        <div className="flex min-h-screen flex-col bg-zinc-50 print:block print:bg-white">
+          <div className="print:hidden">
+            <Topbar />
+          </div>
+          <main className="flex-1 overflow-y-auto px-4 py-4 pb-24 print:overflow-visible print:p-0">
             {children}
           </main>
-          <BottomTabs />
+          <div className="print:hidden">
+            <BottomTabs />
+          </div>
         </div>
       </BrandThemeProvider>
     );
