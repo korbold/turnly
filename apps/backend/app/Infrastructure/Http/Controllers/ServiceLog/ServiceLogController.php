@@ -389,23 +389,6 @@ class ServiceLogController extends Controller
             'washer', 'dryer', 'priceChanges.changedBy',
         ]);
 
-        // A single day for the Registro Diario, a range for the reports, which
-        // list the rows behind their own totals.
-        if ($request->filled('date_from') || $request->filled('date_to')) {
-            $from = $request->get('date_from', $request->get('date_to'));
-            $to   = $request->get('date_to', $from);
-            $query->whereBetween('log_date', [$from, $to]);
-        } elseif ($request->has('date')) {
-            $query->whereDate('log_date', $request->date);
-        } else {
-            $query->whereDate('log_date', now()->toDateString());
-        }
-
-        // The reports slice transfers by bank; the column lives on the log.
-        if ($request->filled('payment_bank')) {
-            $query->where('payment_bank', $request->get('payment_bank'));
-        }
-
         // One control in the UI, mirroring the PAGO column: either a payment
         // state or a concrete method. They can't be combined — a pending row
         // has no method yet — so they share a single parameter.
@@ -414,14 +397,59 @@ class ServiceLogController extends Controller
         // servicio con $10 de $30 tiene plata pendiente, y esconderlo del
         // filtro es cómo se pierde un cobro. `partial` es el filtro fino.
         $payment = (string) $request->get('payment', '');
+        $metodo  = in_array($payment, ['cash', 'card', 'transfer', 'other'], true) ? $payment : null;
+        $banco   = $request->filled('payment_bank') ? $request->get('payment_bank') : null;
+        $rango   = $request->filled('date_from') || $request->filled('date_to');
+
+        // A single day for the Registro Diario, a range for the reports, which
+        // list the rows behind their own totals.
+        //
+        // Con un método pedido sobre un rango —o sea, la tabla de Reportes— las
+        // filas salen del libro de pagos y no de `log_date`: son las mismas que
+        // el reporte sumó arriba. Cortar por la fecha del registro dejaba el
+        // ticket de ayer cobrado hoy fuera de la lista pero dentro del titular,
+        // y la tabla no cuadraba con su propio total.
+        if ($rango && $metodo !== null) {
+            $from = $request->get('date_from', $request->get('date_to'));
+            $to   = $request->get('date_to', $from);
+
+            $query->whereExists(
+                fn ($q) => $q->selectRaw('1')
+                    ->from('payment_allocations')
+                    ->join('payments', 'payments.id', '=', 'payment_allocations.payment_id')
+                    ->whereColumn('payment_allocations.payable_id', 'service_logs.id')
+                    ->where('payment_allocations.payable_type', 'service_log')
+                    ->where('payments.method', $metodo)
+                    ->whereBetween('payments.paid_at', [$from . ' 00:00:00', $to . ' 23:59:59'])
+                    ->when($banco, fn ($qq) => $qq->where('payments.bank', $banco))
+            );
+        } else {
+            if ($rango) {
+                $from = $request->get('date_from', $request->get('date_to'));
+                $to   = $request->get('date_to', $from);
+                $query->whereBetween('log_date', [$from, $to]);
+            } elseif ($request->has('date')) {
+                $query->whereDate('log_date', $request->date);
+            } else {
+                $query->whereDate('log_date', now()->toDateString());
+            }
+
+            // The reports slice transfers by bank; the column lives on the log.
+            if ($banco !== null) {
+                $query->where('payment_bank', $banco);
+            }
+
+            if ($metodo !== null) {
+                $query->where('payment_method', $metodo);
+            }
+        }
+
         if ($payment === 'paid') {
             $query->where('payment_status', 'paid');
         } elseif ($payment === 'pending') {
             $query->where('payment_status', '!=', 'paid');
         } elseif ($payment === 'partial') {
             $query->where('payment_status', 'partial');
-        } elseif (in_array($payment, ['cash', 'card', 'transfer', 'other'], true)) {
-            $query->where('payment_method', $payment);
         }
 
         if (in_array($request->get('status'), ['in_progress', 'completed'], true)) {

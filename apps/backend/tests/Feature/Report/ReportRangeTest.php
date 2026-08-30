@@ -332,3 +332,76 @@ test('the headline and the per-method buckets agree under a filter', function ()
     expect($res->json('data.stats.total_revenue'))
         ->toBe($res->json('data.by_payment_method.transfer.total'));
 });
+
+/*
+ * El 29 de agosto en FEDER: Caja del día marcaba $334 en transferencias y
+ * Reportes $286. Los $48 que faltaban eran cuatro tickets del día anterior
+ * cobrados ese día. Reportes partía de `log_date` y los dejaba afuera; la caja
+ * parte de `paid_at` y los contaba. Las dos pantallas se contradecían sobre la
+ * misma plata, y la que el dueño compara con el banco es la caja.
+ *
+ * Con un filtro de método la pregunta es "cuánto entró", así que el ticket de
+ * ayer cobrado hoy es plata de hoy.
+ */
+function cobraElDia(callable $log, string $registrado, string $cobrado, float $monto, string $metodo, ?string $banco = null): ServiceLogModel
+{
+    $fila = $log($registrado, $monto, null, 'unpaid');
+
+    app(\App\Application\Services\PaymentLedger::class)->recordForServiceLog(
+        $fila,
+        $monto,
+        $metodo,
+        $banco,
+        test()->owner->id,
+        \Carbon\Carbon::parse($cobrado . ' 09:00:00'),
+    );
+
+    return $fila->fresh();
+}
+
+test('a ticket from an earlier day collected inside the range is money of the range', function () {
+    cobraElDia($this->log, '2026-08-16', '2026-08-17', 48.00, 'transfer', 'pichincha');
+    ($this->log)('2026-08-17', 286.00, 'transfer', 'paid', 'pichincha');
+
+    $res = test()
+        ->actingAs(test()->owner)
+        ->withHeader('X-Tenant', test()->tenant->slug)
+        ->getJson('/api/v1/reports/range?date_from=2026-08-17&date_to=2026-08-17&payment_method=transfer')
+        ->assertOk();
+
+    $res->assertJsonPath('data.stats.total_revenue', 334)
+        ->assertJsonPath('data.stats.collected_revenue', 334)
+        ->assertJsonPath('data.stats.total_services', 2)
+        // El gráfico también: la barra del día tiene que dar el titular.
+        ->assertJsonPath('data.daily_breakdown.0.by_transfer', 334)
+        ->assertJsonPath('data.daily_breakdown.0.revenue', 334)
+        ->assertJsonPath('data.daily_breakdown.0.services', 2);
+
+    // El titular y su propio desglose no pueden diferir.
+    expect($res->json('data.stats.total_revenue'))
+        ->toBe($res->json('data.by_payment_method.transfer.total'))
+        ->and($res->json('data.by_bank.pichincha.total'))->toBe(334);
+});
+
+// Sin filtro la pregunta es otra —qué se trabajó en el rango— y ahí el ticket
+// de ayer no es de hoy. Que el filtro cambie el criterio es a propósito; que lo
+// cambie sin filtro sería mover la facturación de día.
+test('without a method filter the range still reports what was registered in it', function () {
+    cobraElDia($this->log, '2026-08-16', '2026-08-17', 48.00, 'transfer', 'pichincha');
+    ($this->log)('2026-08-17', 286.00, 'transfer', 'paid', 'pichincha');
+
+    fetchRange('2026-08-17', '2026-08-17')
+        ->assertOk()
+        ->assertJsonPath('data.stats.total_services', 1)
+        ->assertJsonPath('data.stats.total_revenue', 286);
+});
+
+test('the bank chips list a bank that only appears through an earlier ticket', function () {
+    // Único movimiento del día: un cobro sobre un ticket de ayer. La lista de
+    // bancos salía de la columna del log, así que ese chip no existía y el
+    // banco no se podía filtrar.
+    cobraElDia($this->log, '2026-08-16', '2026-08-17', 14.00, 'transfer', 'guayaquil');
+
+    expect(fetchRange('2026-08-17', '2026-08-17')->assertOk()->json('data.available_banks'))
+        ->toEqualCanonicalizing(['guayaquil']);
+});

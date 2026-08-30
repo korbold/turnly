@@ -159,7 +159,7 @@ function ReportsContent() {
       )}
 
       {/* Stats row */}
-      <StatsCards stats={report?.stats} isLoading={isLoading} />
+      <StatsCards stats={report?.stats} isLoading={isLoading} byPaymentMethod={method !== null} />
 
       {/* Revenue chart */}
       <RevenueChart data={report?.dailyBreakdown} isLoading={isLoading} />

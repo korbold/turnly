@@ -8,9 +8,13 @@ import { formatCurrency } from '@/shared/utils/format';
 interface StatsCardsProps {
   stats?: ReportStats;
   isLoading: boolean;
+  /** Hay un filtro de método activo: el titular deja de ser "lo que se
+   *  facturó en el rango" y pasa a ser "la plata que entró", que puede
+   *  incluir tickets de días anteriores cobrados dentro del rango. */
+  byPaymentMethod?: boolean;
 }
 
-export function StatsCards({ stats, isLoading }: StatsCardsProps) {
+export function StatsCards({ stats, isLoading, byPaymentMethod = false }: StatsCardsProps) {
   if (isLoading) {
     return (
       <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
@@ -53,7 +57,9 @@ export function StatsCards({ stats, isLoading }: StatsCardsProps) {
         <p className="mt-2 text-[13px] text-[var(--fg-secondary)] print:mt-1 print:text-[11px]">
           {totalServices === 0
             ? 'Sin servicios en este rango'
-            : `${totalServices} ${totalServices === 1 ? 'servicio' : 'servicios'} registrados`}
+            : `${totalServices} ${totalServices === 1 ? 'servicio' : 'servicios'} ${
+                byPaymentMethod ? 'cobrados' : 'registrados'
+              }`}
         </p>
         {unpaid > 0 && (
           <p className="mt-2 inline-flex items-center gap-1.5 rounded-full bg-[var(--warning-50)] px-2.5 py-1 text-[12px] font-semibold text-[var(--warning-700)] ring-1 ring-[var(--warning-200)] print:mt-1">

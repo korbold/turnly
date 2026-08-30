@@ -115,3 +115,76 @@ test('paginates a range', function () {
         ->assertJsonCount(10, 'data')
         ->assertJsonPath('meta.total', 12);
 });
+
+/*
+ * La tabla de Reportes lista las filas detrás de sus propios totales, así que
+ * tiene que tener la misma población que ellos. Con un método pedido, esa
+ * población sale del libro de pagos: el ticket de ayer cobrado hoy entra, y el
+ * de hoy que nadie cobró con ese método no.
+ *
+ * Antes cortaba por `log_date` y quedaba una tabla de 15 filas sumando $286
+ * debajo de un titular que decía $334.
+ */
+test('a range filtered by method lists the tickets that were collected in it', function () {
+    $ayer = ($this->log)('2026-08-16', 48.00, null);
+    app(\App\Application\Services\PaymentLedger::class)->recordForServiceLog(
+        $ayer, 48.00, 'transfer', 'pichincha', $this->owner->id,
+        \Carbon\Carbon::parse('2026-08-17 09:00:00'),
+    );
+
+    $hoy = ($this->log)('2026-08-17', 20.00, null);
+    app(\App\Application\Services\PaymentLedger::class)->recordForServiceLog(
+        $hoy, 20.00, 'transfer', 'pichincha', $this->owner->id,
+        \Carbon\Carbon::parse('2026-08-17 15:00:00'),
+    );
+
+    // Registrado hoy pero cobrado en efectivo: no es plata de transferencia.
+    $efectivo = ($this->log)('2026-08-17', 30.00, null);
+    app(\App\Application\Services\PaymentLedger::class)->recordForServiceLog(
+        $efectivo, 30.00, 'cash', null, $this->owner->id,
+        \Carbon\Carbon::parse('2026-08-17 16:00:00'),
+    );
+
+    $res = fetchLogsInRange([
+        'date_from' => '2026-08-17', 'date_to' => '2026-08-17', 'payment' => 'transfer',
+    ])->assertOk()->assertJsonCount(2, 'data');
+
+    expect(collect($res->json('data'))->pluck('id')->all())
+        ->toEqualCanonicalizing([$ayer->id, $hoy->id]);
+});
+
+test('a range filtered by method and bank follows the payment, not the log column', function () {
+    $ayer = ($this->log)('2026-08-16', 14.00, null);
+    app(\App\Application\Services\PaymentLedger::class)->recordForServiceLog(
+        $ayer, 14.00, 'transfer', 'guayaquil', $this->owner->id,
+        \Carbon\Carbon::parse('2026-08-17 09:00:00'),
+    );
+
+    $otro = ($this->log)('2026-08-17', 22.00, null);
+    app(\App\Application\Services\PaymentLedger::class)->recordForServiceLog(
+        $otro, 22.00, 'transfer', 'pichincha', $this->owner->id,
+        \Carbon\Carbon::parse('2026-08-17 10:00:00'),
+    );
+
+    fetchLogsInRange([
+        'date_from' => '2026-08-17', 'date_to' => '2026-08-17',
+        'payment' => 'transfer', 'payment_bank' => 'guayaquil',
+    ])
+        ->assertOk()
+        ->assertJsonCount(1, 'data')
+        ->assertJsonPath('data.0.id', $ayer->id);
+});
+
+// El Registro Diario sigue siendo la lista del día: filtrar por método ahí no
+// puede traer el trabajo de ayer aunque se haya cobrado hoy.
+test('the daily list is not moved by a payment from another day', function () {
+    $ayer = ($this->log)('2026-08-16', 48.00, null);
+    app(\App\Application\Services\PaymentLedger::class)->recordForServiceLog(
+        $ayer, 48.00, 'transfer', 'pichincha', $this->owner->id,
+        \Carbon\Carbon::parse('2026-08-17 09:00:00'),
+    );
+
+    fetchLogsInRange(['date' => '2026-08-17', 'payment' => 'transfer'])
+        ->assertOk()
+        ->assertJsonCount(0, 'data');
+});

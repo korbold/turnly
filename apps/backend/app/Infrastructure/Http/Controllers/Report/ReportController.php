@@ -5,6 +5,8 @@ namespace App\Infrastructure\Http\Controllers\Report;
 use App\Application\Services\DiscountReport;
 use App\Application\Services\PlanLimitsService;
 use App\Infrastructure\Http\Controllers\Controller;
+use App\Infrastructure\Persistence\Models\PaymentAllocationModel;
+use App\Infrastructure\Persistence\Models\PaymentModel;
 use App\Infrastructure\Persistence\Models\ReservationModel;
 use App\Infrastructure\Persistence\Models\ServiceLogModel;
 use App\Infrastructure\Persistence\Models\TenantUserModel;
@@ -86,7 +88,7 @@ class ReportController extends Controller
 
         // Plata recibida por método, del libro de pagos. Sumar price_charged
         // por método miente en cuanto existe un abono.
-        $pagosDelDia = \App\Infrastructure\Persistence\Models\PaymentModel::query()
+        $pagosDelDia = PaymentModel::query()
             ->forTenant($tenantId)
             ->whereDate('paid_at', $date)
             ->get();
@@ -134,9 +136,9 @@ class ReportController extends Controller
             return 0.0;
         }
 
-        return (float) \App\Infrastructure\Persistence\Models\PaymentAllocationModel::query()
+        return (float) PaymentAllocationModel::query()
             ->forTenant(app('current_tenant_id'))
-            ->where('payable_type', \App\Infrastructure\Persistence\Models\PaymentAllocationModel::PAYABLE_SERVICE_LOG)
+            ->where('payable_type', PaymentAllocationModel::PAYABLE_SERVICE_LOG)
             ->whereIn('payable_id', $logs->pluck('id'))
             ->whereExists(
                 fn ($q) => $q->selectRaw('1')
@@ -167,32 +169,73 @@ class ReportController extends Controller
         $methodFilter = $request->get('payment_method');
         $bankFilter   = $request->get('payment_bank');
 
-        // Legacy wash logs (kept around for tenants migrated from the
-        // standalone "registro diario" surface).
-        $washLogsQuery = ServiceLogModel::notCancelled()->whereBetween('log_date', [$from, $to]);
+        $tenantId = app('current_tenant_id');
+        $desde    = $from . ' 00:00:00';
+        $hasta    = $to . ' 23:59:59';
+
+        // Plata recibida en el rango, del libro de pagos. Se arma acá arriba
+        // porque bajo un filtro de método ESTO es el reporte: el titular, los
+        // buckets, los bancos y el desglose diario salen todos de esta
+        // colección.
+        //
+        // Se acota por `paid_at`, nunca por `log_date`: un servicio de ayer
+        // cobrado hoy es plata de hoy. Es el criterio de la caja, y las dos
+        // pantallas tienen que decir el mismo número.
+        $pagos = PaymentModel::query()
+            ->forTenant($tenantId)
+            ->whereBetween('paid_at', [$desde, $hasta])
+            ->get();
+
         if ($methodFilter) {
-            // Por el libro, no por el casillero del log: un servicio cobrado
-            // $60 en efectivo y $14 en transferencia lleva UN método —se lo
-            // lleva el último cobro— y quedaba entero en una columna, con los
-            // $60 desaparecidos de la otra. Filtrar por método pregunta por
-            // plata que entró, así que un ticket partido pertenece a los dos
-            // filtros, cada uno por su tramo.
-            $washLogsQuery->whereExists(
-                fn ($q) => $q->selectRaw('1')
-                    ->from('payment_allocations')
-                    ->join('payments', 'payments.id', '=', 'payment_allocations.payment_id')
-                    ->whereColumn('payment_allocations.payable_id', 'service_logs.id')
-                    ->where('payment_allocations.payable_type', 'service_log')
-                    ->where('payments.method', $methodFilter)
-            );
+            $pagos = $pagos->where('method', $methodFilter);
         }
-        // Service logs have carried payment_bank since the 400001 migration, and
-        // in practice that is where the bank data lives — discarding them here
-        // made every bank filter come back empty.
         if ($bankFilter) {
-            $washLogsQuery->where('payment_bank', $bankFilter);
+            $pagos = $pagos->where('bank', $bankFilter);
         }
-        $washLogs = $washLogsQuery->get();
+
+        // Qué servicios tocó esa plata, y con cuánto de cada pago.
+        //
+        // El 29 de agosto la caja marcaba $334 en transferencias y Reportes
+        // $286: los $48 que faltaban eran cuatro tickets del día anterior
+        // cobrados ese día. Partir de `log_date` los dejaba fuera del reporte
+        // pero no de la caja, y las dos pantallas se contradecían sobre la
+        // misma plata. Con un filtro de método la población de servicios sale
+        // de los pagos, no de la fecha en que se registró el trabajo.
+        $cobros = $methodFilter
+            ? PaymentAllocationModel::query()
+                ->join('payments', 'payments.id', '=', 'payment_allocations.payment_id')
+                ->where('payment_allocations.tenant_id', $tenantId)
+                ->where('payment_allocations.payable_type', PaymentAllocationModel::PAYABLE_SERVICE_LOG)
+                ->where('payments.method', $methodFilter)
+                ->whereBetween('payments.paid_at', [$desde, $hasta])
+                ->when($bankFilter, fn ($q) => $q->where('payments.bank', $bankFilter))
+                ->get([
+                    'payment_allocations.payable_id',
+                    'payment_allocations.amount',
+                    'payments.paid_at',
+                ])
+            : collect();
+
+        if ($methodFilter) {
+            // Los servicios que recibieron esa plata, sin importar cuándo se
+            // registraron. Un ticket partido —$60 efectivo, $14 transferencia—
+            // aparece en los dos filtros, cada uno por su tramo. Los anulados
+            // quedan afuera: siguen en la lista del día pero no son trabajo.
+            $washLogs = ServiceLogModel::notCancelled()
+                ->whereIn('id', $cobros->pluck('payable_id')->unique()->all())
+                ->get();
+        } else {
+            // Legacy wash logs (kept around for tenants migrated from the
+            // standalone "registro diario" surface).
+            $washLogsQuery = ServiceLogModel::notCancelled()->whereBetween('log_date', [$from, $to]);
+            // Un filtro de banco suelto —sin método— sigue leyendo la columna
+            // del log. La UI siempre elige método antes que banco, así que es
+            // un camino de compatibilidad, no el normal.
+            if ($bankFilter) {
+                $washLogsQuery->where('payment_bank', $bankFilter);
+            }
+            $washLogs = $washLogsQuery->get();
+        }
 
         // Reservations are the source of truth now. We compute revenue
         // off the persisted items[] (sum of line_total) because the
@@ -233,8 +276,13 @@ class ReportController extends Controller
         // transferencia". Sumar precios ahí devolvía $459 donde el Registro
         // Diario mostraba $399, y la pantalla se contradecía con su propio
         // desglose por método.
+        //
+        // Es la misma suma que el bucket de ese método unas líneas más abajo,
+        // a propósito: si el titular y su propio desglose difieren, la
+        // pantalla se desmiente sola. Las reservas todavía no escriben en el
+        // libro, así que suman aparte y no se cuentan dos veces.
         $serviceRevenue = $methodFilter
-            ? $this->collectedByMethod($washLogs, $methodFilter, $from, $to)
+            ? round((float) $pagos->sum('amount'), 2)
             : (float) $washLogs->sum('price_charged');
 
         $reservationRevenue = (float) $reservations->sum($totalForReservation);
@@ -251,35 +299,22 @@ class ReportController extends Controller
         // debe de un servicio es su precio menos lo que se le abonó.
         $ledger = app(\App\Application\Services\PaymentLedger::class);
 
-        $unpaidLogs = $washLogs->filter(fn ($l) => $l->payment_status !== 'paid');
-        $unpaidRes  = $reservations->where('payment_status', 'unpaid');
-
         // Bajo un filtro de método no hay deuda que reportar: lo que nadie
         // cobró no entró por ningún método, y restarlo dejaría el titular por
-        // debajo de la plata que sí entró.
-        $unpaidRevenue = $methodFilter ? 0.0 : ((float) $unpaidLogs->sum(
+        // debajo de la plata que sí entró. Las dos colecciones se vacían para
+        // que el conteo no anuncie servicios pendientes junto a un monto de $0.
+        $unpaidLogs = $methodFilter
+            ? collect()
+            : $washLogs->filter(fn ($l) => $l->payment_status !== 'paid');
+        $unpaidRes  = $methodFilter
+            ? collect()
+            : $reservations->where('payment_status', 'unpaid');
+
+        $unpaidRevenue = (float) $unpaidLogs->sum(
             fn ($l) => max(0.0, (float) $l->price_charged - $ledger->paidFor($l))
-        ) + (float) $unpaidRes->sum($totalForReservation));
+        ) + (float) $unpaidRes->sum($totalForReservation);
 
         $collectedRevenue = $totalRevenue - $unpaidRevenue;
-
-        // Plata recibida en el rango, del libro de pagos. Sumar price_charged
-        // por método miente en cuanto existe un abono: un servicio de $30 con
-        // $10 cobrados sumaría $30 al bucket de efectivo.
-        //
-        // Se filtra por `paid_at` y no por log_date: un servicio de ayer
-        // cobrado hoy es plata de hoy. Es el mismo criterio que la caja.
-        $pagos = \App\Infrastructure\Persistence\Models\PaymentModel::query()
-            ->forTenant(app('current_tenant_id'))
-            ->whereBetween('paid_at', [$from . ' 00:00:00', $to . ' 23:59:59'])
-            ->get();
-
-        if ($methodFilter) {
-            $pagos = $pagos->where('method', $methodFilter);
-        }
-        if ($bankFilter) {
-            $pagos = $pagos->where('bank', $bankFilter);
-        }
 
         $paidReservations = $reservations->where('payment_status', 'paid');
 
@@ -327,11 +362,16 @@ class ReportController extends Controller
         // narrows anything: these are the chips the user switches between, and
         // deriving them from the filtered result left only the bank already
         // selected, with no way across to another.
-        $availableBanks = ServiceLogModel::notCancelled()->whereBetween('log_date', [$from, $to])
-            ->where('payment_method', 'transfer')
-            ->whereNotNull('payment_bank')
+        // Del libro y no de la columna del log, por la misma razón que todo lo
+        // demás acá: el banco de un cobro de hoy sobre un ticket de ayer no
+        // aparecía como chip, así que no había forma de filtrar por él.
+        $availableBanks = PaymentModel::query()
+            ->forTenant($tenantId)
+            ->whereBetween('paid_at', [$desde, $hasta])
+            ->where('method', 'transfer')
+            ->whereNotNull('bank')
             ->distinct()
-            ->pluck('payment_bank')
+            ->pluck('bank')
             ->merge(
                 ReservationModel::whereBetween('scheduled_at', [$from . ' 00:00:00', $to . ' 23:59:59'])
                     ->whereNotIn('status', ['cancelled', 'no_show'])
@@ -347,12 +387,49 @@ class ReportController extends Controller
 
         // Daily breakdown over every date in the range, even days with
         // zero activity, so the chart's x-axis stays continuous.
+        // Con un filtro de método el eje del gráfico es la fecha del COBRO, no
+        // la del registro: es la única forma de que la suma de las barras dé
+        // el titular. Sin filtro sigue siendo la fecha del servicio.
+        $pagosPorDia  = $pagos->groupBy(fn ($p) => $p->paid_at?->format('Y-m-d'));
+        $cobrosPorDia = $cobros->groupBy(fn ($c) => substr((string) $c->paid_at, 0, 10));
+
         $dailyBreakdown = [];
         $current = new \DateTime($from);
         $end     = new \DateTime($to);
         $activeDays = 0;
         while ($current <= $end) {
             $dayStr  = $current->format('Y-m-d');
+
+            if ($methodFilter) {
+                // Las reservas ya vienen acotadas al método por su consulta.
+                $dayRes    = $reservations->filter(fn ($r) => str_starts_with((string) $r->scheduled_at, $dayStr));
+                $dayCobros = $cobrosPorDia->get($dayStr, collect());
+                $dayResRev = (float) $dayRes->sum($totalForReservation);
+
+                $dayRevenue  = round((float) $pagosPorDia->get($dayStr, collect())->sum('amount'), 2) + $dayResRev;
+                $dayServices = $dayCobros->pluck('payable_id')->unique()->count() + $dayRes->count();
+
+                if ($dayRevenue > 0 || $dayServices > 0) {
+                    $activeDays++;
+                }
+
+                $dailyBreakdown[] = [
+                    'date'         => $dayStr,
+                    'services'     => $dayServices,
+                    'reservations' => $dayRes->count(),
+                    'revenue'      => $dayRevenue,
+                    // Bajo el filtro todo lo que se reporta ya entró.
+                    'collected'    => $dayRevenue,
+                    'unpaid'       => 0.0,
+                    'by_cash'      => $methodFilter === 'cash' ? $dayRevenue : 0.0,
+                    'by_card'      => $methodFilter === 'card' ? $dayRevenue : 0.0,
+                    'by_transfer'  => $methodFilter === 'transfer' ? $dayRevenue : 0.0,
+                ];
+
+                $current->modify('+1 day');
+                continue;
+            }
+
             // log_date is cast to a date, so the model hands back a Carbon whose
             // string form carries a time. Comparing it against a plain Y-m-d never
             // matched, and every day came back empty under headline totals that were
@@ -508,7 +585,7 @@ class ReportController extends Controller
         $totalRevenue = (float) $washLogs->sum('price_charged') + $reservationRevenue;
 
         // Misma razón que en range(): los buckets cuentan plata recibida.
-        $pagosDelMes = \App\Infrastructure\Persistence\Models\PaymentModel::query()
+        $pagosDelMes = PaymentModel::query()
             ->forTenant(app('current_tenant_id'))
             ->whereBetween('paid_at', [$startDate . ' 00:00:00', $endDate . ' 23:59:59'])
             ->get();
