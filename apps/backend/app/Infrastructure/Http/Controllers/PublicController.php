@@ -482,10 +482,16 @@ class PublicController extends Controller
         $clientResourceId = $request->client_resource_id;
         if (!$clientResourceId && $request->client_resource_data) {
             $resourceData = $request->client_resource_data;
+            // Hay un índice único en (tenant_id, plate). Dos NULL no chocan en
+            // MySQL; dos cadenas vacías sí. Guardar '' cuando el negocio no
+            // pide placa le daba a cada peluquería UNA sola reserva web en toda
+            // su vida: la segunda moría con un 500 y el cliente leía "Error al
+            // crear la reserva. Intenta de nuevo", que nunca iba a funcionar.
+            $plate = strtoupper(trim((string) ($resourceData['plate'] ?? '')));
             $resource = ClientResourceModel::withoutGlobalScopes()->create([
                 'tenant_id' => $tenant->id,
                 'client_id' => $client->id,
-                'plate' => strtoupper($resourceData['plate'] ?? ''),
+                'plate' => $plate !== '' ? $plate : null,
                 'brand' => $resourceData['brand'] ?? null,
                 'model' => $resourceData['model'] ?? null,
                 'color' => $resourceData['color'] ?? null,
