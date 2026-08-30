@@ -18,7 +18,9 @@ test('un link de correo inválido explica el problema en vez de mandar al panel'
 
   await page.getByRole('button', { name: 'Continuar en el navegador' }).click();
 
-  await expect(page.getByRole('alert')).toContainText(/link/i);
+  // Filtrado por texto: Next.js monta su anunciador de rutas con role="alert"
+  // y vacío, así que `getByRole('alert')` a secas matchea dos elementos.
+  await expect(page.getByRole('alert').filter({ hasText: /link/i })).toBeVisible();
   await expect(page.getByRole('link', { name: 'Pedir otro link' })).toBeVisible();
   // Lo que no puede pasar: terminar en el login del panel.
   await expect(page).not.toHaveURL(/\/login$/);
