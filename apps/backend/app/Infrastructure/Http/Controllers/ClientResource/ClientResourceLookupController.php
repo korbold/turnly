@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Infrastructure\Http\Controllers\ClientResource;
 
+use App\Infrastructure\Http\Support\CurrentTenant;
 use App\Domain\ClientResource\Plate;
 use App\Infrastructure\Http\Controllers\Controller;
 use App\Infrastructure\Persistence\Models\ClientResourceModel;
@@ -36,7 +37,7 @@ class ClientResourceLookupController extends Controller
         $buscada = Plate::normalize($plate);
 
         $resource = ClientResourceModel::query()
-            ->forTenant(app('current_tenant_id'))
+            ->forTenant(CurrentTenant::id())
             ->with('client:id,name,phone,email')
             ->get()
             ->first(fn ($r) => Plate::normalize(Plate::fromData($r->data)) === $buscada);

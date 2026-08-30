@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Infrastructure\Http\Controllers\Debt;
 
+use App\Infrastructure\Http\Support\CurrentTenant;
 use App\Application\Services\DebtLedger;
 use App\Application\Services\PaymentLedger;
 use App\Infrastructure\Http\Controllers\Controller;
@@ -31,7 +32,7 @@ class DebtController extends Controller
     {
         // findOrFail bajo el TenantScope: la placa de otro tenant es un 404.
         $resource = ClientResourceModel::findOrFail($id);
-        $tenantId = app('current_tenant_id');
+        $tenantId = CurrentTenant::id();
 
         $items = $this->debts->outstandingFor($tenantId, $resource->id);
 
@@ -93,7 +94,7 @@ class DebtController extends Controller
      */
     public function showClient(Request $request, string $clientId): JsonResponse
     {
-        $tenantId = app('current_tenant_id');
+        $tenantId = CurrentTenant::id();
 
         $items = $this->debts->outstandingForClient($tenantId, $clientId);
         $total = round(array_sum(array_column($items, 'due')), 2);
@@ -124,7 +125,7 @@ class DebtController extends Controller
             'notes'  => ['nullable', 'string', 'max:200'],
         ]);
 
-        $tenantId = app('current_tenant_id');
+        $tenantId = CurrentTenant::id();
         $total = $this->debts->totalForClient($tenantId, $clientId);
 
         // Cobrar de más no es un abono: es plata sin deuda a la que imputarse,
@@ -170,7 +171,7 @@ class DebtController extends Controller
         $resource = ClientResourceModel::findOrFail($data['client_resource_id']);
 
         $debt = ManualDebtModel::create([
-            'tenant_id'          => app('current_tenant_id'),
+            'tenant_id'          => CurrentTenant::id(),
             'client_resource_id' => $resource->id,
             'client_id'          => $resource->client_id,
             'amount'             => $data['amount'],
@@ -207,7 +208,7 @@ class DebtController extends Controller
         $resource = ClientResourceModel::findOrFail($data['client_resource_id']);
 
         $payment = $this->ledger->recordAgainstResource(
-            app('current_tenant_id'),
+            CurrentTenant::id(),
             $resource->id,
             (float) $data['amount'],
             $data['method'],

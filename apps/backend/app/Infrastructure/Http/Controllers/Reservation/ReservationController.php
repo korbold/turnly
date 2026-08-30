@@ -2,6 +2,7 @@
 
 namespace App\Infrastructure\Http\Controllers\Reservation;
 
+use App\Infrastructure\Http\Support\CurrentTenant;
 use App\Application\DTOs\Reservation\AvailableSlotsQueryDTO;
 use App\Application\DTOs\Reservation\CreateReservationDTO;
 use App\Application\Services\PlanLimitsService;
@@ -194,13 +195,13 @@ class ReservationController extends Controller
 
     public function store(CreateReservationRequest $request): JsonResponse
     {
-        if (!$this->planLimits->canCreateReservation(app('current_tenant_id'))) {
+        if (!$this->planLimits->canCreateReservation(CurrentTenant::id())) {
             return response()->json([
                 'error' => ['code' => 'PLAN_LIMIT', 'message' => 'Límite de reservas mensuales alcanzado. Actualiza tu plan.'],
             ], 403);
         }
 
-        $tenantId = app('current_tenant_id');
+        $tenantId = CurrentTenant::id();
 
         // Resolve items[] (multi-service) to (totalDuration, firstService,
         // firstVariant, normalized lines) so the existing DTO/Use Case keeps
@@ -518,12 +519,12 @@ class ReservationController extends Controller
         $request->validate([
             'date'                 => 'required|date',
             'service_id'           => 'required|uuid',
-            'business_resource_id' => 'nullable|uuid|exists:business_resources,id,tenant_id,' . app('current_tenant_id'),
+            'business_resource_id' => 'nullable|uuid|exists:business_resources,id,tenant_id,' . CurrentTenant::id(),
             'duration_min'         => 'nullable|integer|min:1|max:600',
         ]);
 
         $dto = new AvailableSlotsQueryDTO(
-            tenantId:           app('current_tenant_id'),
+            tenantId:           CurrentTenant::id(),
             date:               $request->date,
             serviceId:          $request->service_id,
             businessResourceId: $request->business_resource_id,

@@ -2,6 +2,7 @@
 
 namespace App\Infrastructure\Http\Controllers\ClientResource;
 
+use App\Infrastructure\Http\Support\CurrentTenant;
 use App\Application\DTOs\ClientResource\CreateClientResourceDTO;
 use App\Application\UseCases\ClientResource\CreateClientResourceUseCase;
 use App\Application\UseCases\ClientResource\GetClientResourceHistoryUseCase;
@@ -68,7 +69,7 @@ class ClientResourceController extends Controller
         if (!$request->boolean('all')) {
             $query->where('client_id', $request->user()->id);
         } else {
-            $tenantId = app('current_tenant_id');
+            $tenantId = CurrentTenant::id();
             // When browsing without a search term, hide staff-owned resources
             // so the clients list doesn't surface employees as customers.
             // When actively searching, include all resources so the cashier
@@ -119,8 +120,12 @@ class ClientResourceController extends Controller
         // El saldo de TODAS las placas del tenant en dos consultas agregadas.
         // Una consulta por fila convertiría la pantalla del lunes en un
         // timeout con doscientos vehículos.
-        $deudas = app(\App\Application\Services\DebtLedger::class)
-            ->debtByResource(app('current_tenant_id'));
+        // Sin negocio no hay deuda que mostrar, y no es motivo para negarle al
+        // cliente la lista de sus propias cosas: la deuda es dato de mostrador.
+        $tenantForDebt = CurrentTenant::idOrNull();
+        $deudas = $tenantForDebt
+            ? app(\App\Application\Services\DebtLedger::class)->debtByResource($tenantForDebt)
+            : [];
 
         // El toggle "Solo con deuda". El `?: ['-']` es lo que hace que un
         // tenant sin deudores devuelva vacío en vez de devolver todo.
@@ -143,7 +148,7 @@ class ClientResourceController extends Controller
     public function store(CreateClientResourceRequest $request): JsonResponse
     {
         $data = $request->data ?? [];
-        $tenantId = app('current_tenant_id');
+        $tenantId = CurrentTenant::id();
 
         // La misma placa no puede entrar dos veces. El formulario ya
         // consultaba `lookup`, pero buscaba en la columna `plate` —que nadie
@@ -415,7 +420,7 @@ class ClientResourceController extends Controller
         if (!$clientId && !$clientResource->client_id) {
             $name = $this->extractClientName($data);
             $clientId = $name
-                ? $this->findOrCreateClient($name, app('current_tenant_id'))->id
+                ? $this->findOrCreateClient($name, CurrentTenant::id())->id
                 : null;
         }
 
