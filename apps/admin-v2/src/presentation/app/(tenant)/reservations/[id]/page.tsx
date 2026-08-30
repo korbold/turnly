@@ -20,6 +20,7 @@ import {
   UserX,
   User,
   Car,
+  ClipboardList,
   Calendar,
   Mail,
   Hash,
@@ -58,6 +59,7 @@ import {
   useAddReservationItem,
 } from '@/presentation/hooks/use-reservations';
 import { useServiceVariants } from '@/presentation/hooks/use-service-variants';
+import { useSettings } from '@/presentation/hooks/use-settings';
 import { CheckInModal } from '@/presentation/components/features/reservations/check-in-modal';
 import { AddItemModal } from '@/presentation/components/features/reservations/add-item-modal';
 import { PaymentModal } from '@/presentation/components/features/reservations/payment-modal';
@@ -192,6 +194,7 @@ export default function ReservationDetailPage({ params }: { params: Promise<{ id
   const { id } = use(params);
   const { data: reservation, isLoading } = useReservation(id);
   const { data: items } = useReservationItems(id);
+  const { data: settings } = useSettings();
   const { data: changes } = useReservationChanges(id);
   const remove = useRemoveReservationItem(id);
   const override = useOverrideReservationItemPrice(id);
@@ -339,7 +342,23 @@ export default function ReservationDetailPage({ params }: { params: Promise<{ id
   const endTime = reservation.estimatedEnd;
   const duration = formatDuration(startTime, endTime);
   const itemsCount = items?.length ?? 0;
-  const hasResource = !!reservation.clientResource?.plate;
+  // El recurso vive en el JSON `data`, no en las columnas: `plate` está vacía
+  // en las 519 filas de producción, así que exigirla apagaba esta tarjeta para
+  // todos los negocios, no sólo para los que no tienen vehículos.
+  const resourceData = reservation.clientResource?.data ?? null;
+  const resourceFields = Object.entries(resourceData ?? {})
+    .filter(([, value]) => value !== null && value !== undefined && String(value).trim() !== '')
+    .map(([key, value]) => ({
+      key,
+      // La etiqueta la puso el negocio al configurar sus campos; sin ella,
+      // la llave cruda es mejor que esconder el dato.
+      label: (settings?.customFields ?? []).find((f) => f.key === key)?.label ?? key,
+      value: String(value),
+    }));
+  const hasResource = resourceFields.length > 0;
+  // Una lavadora busca "Vehículo"; una peluquería que guarda el nombre del
+  // niño, no. El título sale de lo que el negocio configuró.
+  const resourceIsVehicle = resourceFields.some((f) => f.key === 'plate');
   const isTerminal = status === 'completed' || status === 'cancelled' || status === 'no_show';
   // The "pending payment" banner only makes sense for live bookings —
   // a cancelled / no-show row never expects money, and a paid one is
@@ -429,11 +448,18 @@ export default function ReservationDetailPage({ params }: { params: Promise<{ id
             })}
           />
           <Stat icon={Clock} label="Duración" value={duration} mono />
+          {/* Un servicio sin variantes no genera líneas (PublicController lo
+              hace a propósito), así que contar items dejaba en "—" a negocios
+              que sí reservaron algo. La reserva conoce su servicio. */}
           <Stat
             icon={Wrench}
             label="Servicios"
-            value={itemsCount > 0 ? String(itemsCount) : '—'}
-            mono
+            value={
+              itemsCount > 0
+                ? String(itemsCount)
+                : (reservation.service?.name ?? '—')
+            }
+            mono={itemsCount > 0}
           />
           <Stat icon={Receipt} label="Total" value={fmt(total)} mono emphasis />
         </dl>
@@ -830,18 +856,23 @@ export default function ReservationDetailPage({ params }: { params: Promise<{ id
           {hasResource && (
             <section className="rounded-xl border border-[var(--border)] bg-[var(--bg-surface)] p-4 sm:p-5">
               <h3 className="mb-3 flex items-center gap-1.5 text-[11px] font-semibold uppercase tracking-[0.06em] text-[var(--fg-muted)]">
-                <Car className="h-3.5 w-3.5" aria-hidden="true" />
-                Vehículo
+                {resourceIsVehicle ? (
+                  <Car className="h-3.5 w-3.5" aria-hidden="true" />
+                ) : (
+                  <ClipboardList className="h-3.5 w-3.5" aria-hidden="true" />
+                )}
+                {resourceIsVehicle ? 'Vehículo' : 'Datos del cliente'}
               </h3>
-              <p className="text-[14px] font-semibold text-[var(--fg-strong)]">
-                {reservation.clientResource?.brand} {reservation.clientResource?.model}
-              </p>
-              <p
-                className="mt-1 font-mono text-[13px] tabular-nums text-[var(--fg-secondary)]"
-                style={{ fontFamily: 'var(--font-mono)' }}
-              >
-                {reservation.clientResource?.plate}
-              </p>
+              <dl className="space-y-2 text-[13px]">
+                {resourceFields.map((field) => (
+                  <div key={field.key} className="flex items-baseline justify-between gap-3">
+                    <dt className="shrink-0 text-[var(--fg-muted)]">{field.label}</dt>
+                    <dd className="min-w-0 truncate text-right font-semibold text-[var(--fg-strong)]">
+                      {field.value}
+                    </dd>
+                  </div>
+                ))}
+              </dl>
             </section>
           )}
 
