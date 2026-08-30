@@ -28,6 +28,52 @@ function brandColor(value: string | null | undefined): string {
   return /^#?[0-9a-f]{6}$/i.test(hex) ? hex : FALLBACK_COLOR;
 }
 
+/** Mezcla hacia blanco, en hex: `color-mix()` depende del motor que renderice
+    el PDF, y un fondo que no se calcula deja la pastilla transparente. */
+function tintOf(hex: string, amount: number): string {
+  const m = /^#?([0-9a-f]{6})$/i.exec(hex);
+  if (!m) return '#FFFFFF';
+  const mixed = [0, 2, 4].map((i) => {
+    const v = parseInt(m[1].slice(i, i + 2), 16);
+    return Math.round(v + (255 - v) * (1 - amount));
+  });
+  return `#${mixed.map((v) => v.toString(16).padStart(2, '0')).join('')}`;
+}
+
+/**
+ * El mismo color, oscurecido lo necesario para leerse SOBRE EL FONDO QUE VA A
+ * TENER. Un celeste de marca funciona como banda y desaparece como texto; y
+ * calcularlo contra blanco cuando el fondo real es un tinte deja el resultado
+ * corto —4.04:1 medido, con 4.5 como objetivo—. En papel, además, no hay
+ * brillo de pantalla que lo salve.
+ */
+function inkOn(hex: string, background = '#FFFFFF'): string {
+  const m = /^#?([0-9a-f]{6})$/i.exec(hex);
+  if (!m) return '#0E121A';
+  const rgb = [0, 2, 4].map((i) => parseInt(m[1].slice(i, i + 2), 16)) as [number, number, number];
+  const lum = (c: [number, number, number]) => {
+    const f = (v: number) => {
+      const x = v / 255;
+      return x <= 0.03928 ? x / 12.92 : ((x + 0.055) / 1.055) ** 2.4;
+    };
+    return 0.2126 * f(c[0]) + 0.7152 * f(c[1]) + 0.0722 * f(c[2]);
+  };
+  const bg = /^#?([0-9a-f]{6})$/i.exec(background);
+  const bgRgb = (bg ? [0, 2, 4].map((i) => parseInt(bg[1].slice(i, i + 2), 16)) : [255, 255, 255]) as
+    [number, number, number];
+  const contrast = (l: number) => {
+    const lb = lum(bgRgb);
+    return (Math.max(l, lb) + 0.05) / (Math.min(l, lb) + 0.05);
+  };
+  const target: [number, number, number] = [11, 18, 32];
+  let cur = rgb;
+  for (let i = 0; i <= 10; i++) {
+    if (contrast(lum(cur)) >= 4.5) break;
+    cur = cur.map((v, j) => v + (target[j] - v) * 0.1) as [number, number, number];
+  }
+  return `#${cur.map((v) => Math.round(v).toString(16).padStart(2, '0')).join('')}`;
+}
+
 /**
  * El cartel que el negocio imprime y pega en el mostrador: su logo, un QR
  * grande y la promesa de que escanear alcanza para reservar.
@@ -74,6 +120,13 @@ export default function PosterPage() {
       </div>
     );
   }
+
+  const brand = brandColor(settings.themeColor);
+  const brandTint = tintOf(brand, 0.12);
+  const brandInk = inkOn(brand);
+  // La URL vive dentro de la pastilla, no sobre el papel: su tinta se mide
+  // contra el tinte, que es el fondo que de verdad tiene debajo.
+  const brandInkOnTint = inkOn(brand, brandTint);
 
   return (
     <>
@@ -124,62 +177,81 @@ export default function PosterPage() {
       {/* La hoja. En pantalla se ve encogida dentro de su marco; al imprimir
           ocupa la página entera. */}
       <div className="poster-sheet mx-auto w-full max-w-[210mm] rounded-xl border border-[var(--border)] bg-white shadow-sm">
-        <div className="flex min-h-[297mm] flex-col items-center justify-between px-[18mm] py-[22mm] text-center">
-          <header className="flex w-full flex-col items-center gap-5">
+        <div
+          className="relative flex min-h-[297mm] flex-col items-center px-[16mm] pb-[16mm] pt-[22mm] text-center"
+        >
+          {/* Una banda fina arriba, no un fondo a sangre: el dueño imprime esto
+              en la inyección de tinta del local, y una hoja llena de color se
+              come el cartucho y sale con bandas. */}
+          <div
+            className="absolute inset-x-0 top-0 h-[7mm]"
+            style={{ backgroundColor: brand }}
+          />
+
+          <header className="flex w-full flex-col items-center">
             {settings.logoUrl ? (
+              /* Sin repetir el nombre debajo: el logo ya lo dice, y en grande.
+                 Escribirlo otra vez le robaba tamaño a lo que sí importa. */
               <img
                 src={settings.logoUrl}
-                alt=""
-                className="max-h-[38mm] max-w-[110mm] object-contain"
+                alt={settings.name}
+                className="max-h-[42mm] max-w-[140mm] object-contain"
               />
             ) : (
-              <div
-                className="grid h-[30mm] w-[30mm] place-items-center rounded-2xl text-[42px] font-bold text-white"
-                style={{ backgroundColor: brandColor(settings.themeColor) }}
+              <h1
+                className="text-[42px] font-bold leading-tight tracking-[-0.02em]"
+                style={{ color: brandInk }}
               >
-                {settings.name.charAt(0)}
-              </div>
+                {settings.name}
+              </h1>
             )}
-            <h1
-              className="text-[34px] font-bold leading-tight tracking-[-0.02em] text-[#0E121A]"
-              style={{ fontFamily: 'var(--font-display)' }}
-            >
-              {settings.name}
-            </h1>
           </header>
 
-          <div className="flex flex-col items-center gap-7">
-            {qrSvg ? (
-              <div
-                className="h-[90mm] w-[90mm] [&>svg]:h-full [&>svg]:w-full"
-                // El SVG lo genera qrcode a partir de la URL; no hay entrada
-                // de usuario en ese string más que el slug del propio negocio.
-                dangerouslySetInnerHTML={{ __html: qrSvg }}
-              />
-            ) : (
-              <div className="grid h-[90mm] w-[90mm] place-items-center rounded-lg bg-[#F4F5F7] text-[13px] text-[#6B7280]">
-                Generando el código…
-              </div>
-            )}
-
+          {/* El bloque que manda. Va centrado en el espacio que sobra, así la
+              hoja no queda con dos huecos y un contenido flotando arriba. */}
+          <div className="flex flex-1 flex-col items-center justify-center gap-[9mm] py-[8mm]">
             <div>
-              <p className="text-[30px] font-bold leading-tight tracking-[-0.01em] text-[#0E121A]">
-                Escanea y reserva tu cita
+              <p className="text-[40px] font-bold leading-[1.1] tracking-[-0.02em] text-[#0E121A]">
+                Escanea y reserva
+                <br />
+                tu cita
               </p>
-              <p className="mt-2 text-[15px] text-[#4B5462]">
+              <p className="mt-[4mm] text-[17px] text-[#4B5462]">
                 Apunta la cámara de tu teléfono al código.
               </p>
             </div>
+
+            {/* El QR siempre negro sobre blanco y con su marco: teñirlo con el
+                color de la marca es la forma más rápida de que un lector barato
+                deje de leerlo. */}
+            {qrSvg ? (
+              <div
+                className="rounded-[4mm] border border-[#E4E7EC] bg-white p-[5mm]"
+              >
+                <div
+                  className="h-[104mm] w-[104mm] [&>svg]:h-full [&>svg]:w-full"
+                  dangerouslySetInnerHTML={{ __html: qrSvg }}
+                />
+              </div>
+            ) : (
+              <div className="grid h-[104mm] w-[104mm] place-items-center rounded-[4mm] bg-[#F4F5F7] text-[13px] text-[#6B7280]">
+                Generando el código…
+              </div>
+            )}
           </div>
 
           <footer className="w-full">
-            {/* La URL en texto: quien no puede escanear igual puede escribirla,
-                y el papel sirve aunque la cámara falle. */}
-            <p className="text-[17px] font-semibold text-[#0E121A]">
+            {/* La URL en texto, dentro de una pastilla del color del negocio:
+                quien no puede escanear igual la escribe, y el papel sirve
+                aunque la cámara falle. */}
+            <p
+              className="inline-block rounded-full px-[8mm] py-[3mm] text-[19px] font-semibold"
+              style={{ backgroundColor: brandTint, color: brandInkOnTint }}
+            >
               {bookingUrl?.replace(/^https?:\/\//, '')}
             </p>
             {(settings.address || settings.phone) && (
-              <p className="mt-2 text-[13px] text-[#6B7280]">
+              <p className="mt-[5mm] text-[14px] text-[#6B7280]">
                 {[settings.address, settings.phone].filter(Boolean).join(' · ')}
               </p>
             )}
