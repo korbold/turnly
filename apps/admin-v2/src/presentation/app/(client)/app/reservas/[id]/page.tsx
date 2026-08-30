@@ -7,7 +7,8 @@ import { whatsappLink, toInternational } from '@/shared/utils/whatsapp';
 import { format } from 'date-fns';
 import { es } from 'date-fns/locale';
 import { toast } from 'sonner';
-import { ArrowLeft, CalendarDays, Tag, Loader2, MessageCircle, Phone } from 'lucide-react';
+import { ArrowLeft, CalendarDays, Tag, Loader2, Phone } from 'lucide-react';
+import { WhatsAppIcon } from '@/presentation/components/icons/whatsapp';
 import { Button } from '@/presentation/components/ui/button';
 import { Skeleton } from '@/presentation/components/ui/skeleton';
 import {
@@ -202,7 +203,7 @@ export default function ClientReservationDetailPage({
         <Button asChild variant="outline" className="w-full">
           <a href={contactLink.href} target="_blank" rel="noopener noreferrer">
             {contactLink.kind === 'whatsapp' ? (
-              <MessageCircle className="mr-1.5 h-4 w-4" aria-hidden="true" />
+              <WhatsAppIcon className="mr-2 h-[18px] w-[18px]" />
             ) : (
               <Phone className="mr-1.5 h-4 w-4" aria-hidden="true" />
             )}

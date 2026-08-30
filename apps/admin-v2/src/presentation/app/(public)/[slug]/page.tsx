@@ -5,6 +5,7 @@ import { useParams } from 'next/navigation';
 import { useQuery } from '@tanstack/react-query';
 import { MapPin, Phone } from 'lucide-react';
 import { whatsappLink } from '@/shared/utils/whatsapp';
+import { WhatsAppIcon } from '@/presentation/components/icons/whatsapp';
 import { Button } from '@/presentation/components/ui/button';
 import { Skeleton } from '@/presentation/components/ui/skeleton';
 import { useRepository } from '@/infrastructure/providers/repository.provider';
@@ -394,8 +395,9 @@ export default function PublicTenantPage() {
                 href={whatsappLink(tenant.socialLinks.whatsapp) ?? '#'}
                 target="_blank"
                 rel="noopener noreferrer"
-                className="text-[13px] font-medium text-[var(--fg-secondary)] hover:text-[var(--fg-strong)]"
+                className="inline-flex items-center gap-1.5 text-[13px] font-medium text-[var(--fg-secondary)] hover:text-[var(--fg-strong)]"
               >
+                <WhatsAppIcon className="h-4 w-4" />
                 WhatsApp
               </a>
             )}
