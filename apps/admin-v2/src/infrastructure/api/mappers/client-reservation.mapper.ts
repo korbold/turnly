@@ -36,6 +36,9 @@ export function mapClientReservation(raw: Record<string, unknown>): ClientReserv
           name: String(tenant.name ?? ''),
           slug: String(tenant.slug ?? ''),
           cancellationHours: Number(tenant.cancellation_hours ?? 1),
+          whatsapp: (tenant.whatsapp as string | null) ?? null,
+          phone: (tenant.phone as string | null) ?? null,
+          country: (tenant.country as string | null) ?? null,
         }
       : null,
     service: service

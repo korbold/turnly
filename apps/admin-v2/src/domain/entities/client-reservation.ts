@@ -19,8 +19,11 @@ export interface ClientReservation {
   business: {
     name: string;
     slug: string;
-    /** Hours before the appointment when cancelling stops being allowed. */
     cancellationHours: number;
+    /** Con qué escribirle al negocio desde el detalle de la cita. */
+    whatsapp: string | null;
+    phone: string | null;
+    country: string | null;
   } | null;
   service: { name: string; price: number } | null;
   resourceLabel: string | null;

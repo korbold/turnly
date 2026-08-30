@@ -96,6 +96,13 @@ class ReservationResource extends JsonResource
                 'slug' => $this->tenant->slug,
                 'cancellation_hours' => $this->tenant->settings['cancellation_hours'] ?? 1,
                 'payment_timing'     => $this->tenant->getPaymentTiming(),
+                // Con qué escribirle al negocio desde el portal. La pantalla de
+                // la cita decía "comunícate con el negocio" sin dar con qué.
+                // El país viaja porque wa.me exige el número internacional y
+                // aquí se guardan en formato local ("0991213606").
+                'whatsapp' => $this->tenant->social_links['whatsapp'] ?? null,
+                'phone'    => $this->tenant->phone,
+                'country'  => $this->tenant->country,
             ]),
         ];
     }

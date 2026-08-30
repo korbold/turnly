@@ -4,6 +4,7 @@ import { useEffect, useRef, useState } from 'react';
 import { useParams } from 'next/navigation';
 import { useQuery } from '@tanstack/react-query';
 import { MapPin, Phone } from 'lucide-react';
+import { whatsappLink } from '@/shared/utils/whatsapp';
 import { Button } from '@/presentation/components/ui/button';
 import { Skeleton } from '@/presentation/components/ui/skeleton';
 import { useRepository } from '@/infrastructure/providers/repository.provider';
@@ -388,7 +389,9 @@ export default function PublicTenantPage() {
             )}
             {tenant.socialLinks.whatsapp && (
               <a
-                href={`https://wa.me/${tenant.socialLinks.whatsapp.replace(/[^0-9]/g, '')}`}
+                /* Quitar los no-dígitos dejaba `wa.me/0991213606`, que no
+                   resuelve a ningún contacto: hace falta el internacional. */
+                href={whatsappLink(tenant.socialLinks.whatsapp) ?? '#'}
                 target="_blank"
                 rel="noopener noreferrer"
                 className="text-[13px] font-medium text-[var(--fg-secondary)] hover:text-[var(--fg-strong)]"

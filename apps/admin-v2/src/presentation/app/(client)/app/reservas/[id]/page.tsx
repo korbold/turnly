@@ -3,10 +3,11 @@
 import { use, useState } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
+import { whatsappLink, toInternational } from '@/shared/utils/whatsapp';
 import { format } from 'date-fns';
 import { es } from 'date-fns/locale';
 import { toast } from 'sonner';
-import { ArrowLeft, CalendarDays, Tag, Loader2 } from 'lucide-react';
+import { ArrowLeft, CalendarDays, Tag, Loader2, MessageCircle, Phone } from 'lucide-react';
 import { Button } from '@/presentation/components/ui/button';
 import { Skeleton } from '@/presentation/components/ui/skeleton';
 import {
@@ -66,6 +67,26 @@ export default function ClientReservationDetailPage({
       : reservation.service
         ? [{ id: 'svc', label: reservation.service.name, qty: 1, lineTotal: reservation.service.price }]
         : [];
+
+  /**
+   * El mensaje ya escrito: quien abre WhatsApp no debería tener que explicar
+   * de qué cita habla. Lleva día, hora y servicio, que es lo que el negocio
+   * necesita para encontrarla en su agenda.
+   */
+  const contactLink = (() => {
+    const business = reservation.business;
+    if (!business) return null;
+
+    const cuando = format(reservation.scheduledAt, "EEEE d 'de' MMMM 'a las' HH:mm", { locale: es });
+    const que = lines.map((l) => l.label).join(', ');
+    const mensaje = `Hola ${business.name}, escribo por mi cita del ${cuando}${que ? ` (${que})` : ''}.`;
+
+    const wa = whatsappLink(business.whatsapp, mensaje, business.country);
+    if (wa) return { kind: 'whatsapp' as const, href: wa };
+
+    const tel = toInternational(business.phone, business.country);
+    return tel ? { kind: 'phone' as const, href: `tel:+${tel}` } : null;
+  })();
 
   function handleCancel() {
     cancelMutation.mutate(
@@ -170,6 +191,24 @@ export default function ClientReservationDetailPage({
             {reservation.business?.cancellationHours ?? 1} h. Comunícate con el negocio.
           </p>
         ) : null
+      )}
+
+      {/* "Comunícate con el negocio" sin dar con qué era un callejón sin
+          salida, justo en el momento en que la persona más lo necesita: cuando
+          ya no puede cancelar sola. Si el negocio no tiene WhatsApp pero sí
+          teléfono, se ofrece llamar; no se inventa un WhatsApp que quizá no
+          exista. */}
+      {contactLink && (
+        <Button asChild variant="outline" className="w-full">
+          <a href={contactLink.href} target="_blank" rel="noopener noreferrer">
+            {contactLink.kind === 'whatsapp' ? (
+              <MessageCircle className="mr-1.5 h-4 w-4" aria-hidden="true" />
+            ) : (
+              <Phone className="mr-1.5 h-4 w-4" aria-hidden="true" />
+            )}
+            {contactLink.kind === 'whatsapp' ? 'Escribir al negocio' : 'Llamar al negocio'}
+          </a>
+        </Button>
       )}
 
       {reservation.business?.slug && (
