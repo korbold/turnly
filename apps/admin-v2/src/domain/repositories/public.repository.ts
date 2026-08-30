@@ -9,6 +9,10 @@ export interface PublicTenant {
   socialLinks: { instagram: string | null; facebook: string | null; whatsapp: string | null };
   address: string | null;
   phone: string | null;
+  /** Galería del negocio. La página mostraba las fotos de los servicios en su
+      lugar, así que la misma imagen aparecía dos veces y un negocio sin galería
+      igual veía un carrusel. */
+  images: string[];
   services: Array<{
     id: string;
     name: string;

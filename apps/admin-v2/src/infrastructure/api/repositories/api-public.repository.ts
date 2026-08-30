@@ -23,6 +23,9 @@ function mapPublicTenant(raw: Record<string, unknown>): PublicTenant {
     },
     address: (tenant.address as string) ?? null,
     phone: (tenant.phone as string) ?? null,
+    images: ((raw.images ?? tenant.images ?? []) as Record<string, unknown>[])
+      .map((i) => (typeof i === 'string' ? i : (i.url as string)))
+      .filter(Boolean),
     services: services.map((s) => ({
       id: s.id as string,
       name: s.name as string,

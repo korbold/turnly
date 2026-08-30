@@ -1,17 +1,84 @@
 'use client';
 
-import { useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { useParams } from 'next/navigation';
 import { useQuery } from '@tanstack/react-query';
-import { MapPin, Phone, MessageCircle } from 'lucide-react';
+import { MapPin, Phone } from 'lucide-react';
 import { Button } from '@/presentation/components/ui/button';
-import { Card, CardContent } from '@/presentation/components/ui/card';
 import { Skeleton } from '@/presentation/components/ui/skeleton';
 import { useRepository } from '@/infrastructure/providers/repository.provider';
 import { GalleryCarousel } from '@/presentation/components/features/public/gallery-carousel';
 import { BookingFlow } from '@/presentation/components/features/public/booking-flow';
 import { OpenInAppBanner } from '@/presentation/components/features/public/open-in-app-banner';
-import type { PublicTenant } from '@/domain/repositories/public.repository';
+
+const FALLBACK_COLOR = '#F2693A';
+
+const INK = '#111827';
+const WHITE = '#FFFFFF';
+
+function parseHex(hex: string): [number, number, number] | null {
+  const m = /^#?([0-9a-f]{6})$/i.exec(hex.trim());
+  if (!m) return null;
+  return [0, 2, 4].map((i) => parseInt(m[1].slice(i, i + 2), 16)) as [number, number, number];
+}
+
+function luminance([r, g, b]: [number, number, number]): number {
+  const lin = (v: number) => {
+    const c = v / 255;
+    return c <= 0.03928 ? c / 12.92 : ((c + 0.055) / 1.055) ** 2.4;
+  };
+  return 0.2126 * lin(r) + 0.7152 * lin(g) + 0.0722 * lin(b);
+}
+
+function contrast(a: number, b: number): number {
+  return (Math.max(a, b) + 0.05) / (Math.min(a, b) + 0.05);
+}
+
+function toHex([r, g, b]: [number, number, number]): string {
+  return `#${[r, g, b].map((v) => Math.round(v).toString(16).padStart(2, '0')).join('')}`;
+}
+
+function mix(a: [number, number, number], b: [number, number, number], t: number) {
+  return a.map((v, i) => v + (b[i] - v) * t) as [number, number, number];
+}
+
+/**
+ * El color lo elige cada negocio y hay celestes, amarillos y verdes entre
+ * ellos. Usarlo tal cual daba botones de 2.6:1, cuando PRODUCT.md fija AA
+ * (4.5:1) como objetivo. Estas dos funciones oscurecen el color lo mínimo
+ * necesario para que pase, y sólo cuando hace falta: un color que ya cumple
+ * se usa intacto, así el negocio se sigue reconociendo.
+ */
+function solidAccent(hex: string): { bg: string; fg: string } {
+  const rgb = parseHex(hex);
+  if (!rgb) return { bg: FALLBACK_COLOR, fg: WHITE };
+  const lum = luminance(rgb);
+  if (contrast(lum, luminance(parseHex(WHITE)!)) >= 4.5) return { bg: hex, fg: WHITE };
+  if (contrast(lum, luminance(parseHex(INK)!)) >= 4.5) return { bg: hex, fg: INK };
+  // Ni blanco ni tinta se leen encima: oscurecer hasta que el blanco entre.
+  const target = parseHex('#0B1220')!;
+  for (let t = 0.1; t <= 1; t += 0.1) {
+    const candidate = mix(rgb, target, t);
+    if (contrast(luminance(candidate), luminance(parseHex(WHITE)!)) >= 4.5) {
+      return { bg: toHex(candidate), fg: WHITE };
+    }
+  }
+  return { bg: toHex(target), fg: WHITE };
+}
+
+/** El mismo color, apto como texto o borde sobre una superficie clara. */
+function inkAccent(hex: string): string {
+  const rgb = parseHex(hex);
+  if (!rgb) return FALLBACK_COLOR;
+  const onWhite = luminance(parseHex(WHITE)!);
+  if (contrast(luminance(rgb), onWhite) >= 4.5) return hex;
+  const target = parseHex('#0B1220')!;
+  for (let t = 0.1; t <= 1; t += 0.1) {
+    const candidate = mix(rgb, target, t);
+    if (contrast(luminance(candidate), onWhite) >= 4.5) return toHex(candidate);
+  }
+  return toHex(target);
+}
 
 export default function PublicTenantPage() {
   const params = useParams();
@@ -19,6 +86,10 @@ export default function PublicTenantPage() {
   const repo = useRepository('public');
   const [bookingServiceId, setBookingServiceId] = useState<string | undefined>(undefined);
   const [showBooking, setShowBooking] = useState(false);
+  // La barra fija sólo aparece cuando la cabecera —que ya trae el botón— se fue
+  // hacia arriba. Si no, dos "Reservar" compitiendo en la misma pantalla.
+  const [headerGone, setHeaderGone] = useState(false);
+  const sentinel = useRef<HTMLDivElement>(null);
 
   const { data: tenant, isLoading, error } = useQuery({
     queryKey: ['public', 'tenant', slug],
@@ -26,18 +97,26 @@ export default function PublicTenantPage() {
     enabled: !!slug,
   });
 
+  useEffect(() => {
+    const node = sentinel.current;
+    if (!node) return;
+    const observer = new IntersectionObserver(
+      ([entry]) => setHeaderGone(!entry.isIntersecting),
+      { rootMargin: '-8px 0px 0px 0px' },
+    );
+    observer.observe(node);
+    return () => observer.disconnect();
+  }, [tenant]);
+
   if (isLoading) {
     return (
-      <div className="min-h-screen bg-zinc-50">
-        <Skeleton className="h-64 w-full" />
-        <div className="mx-auto max-w-4xl space-y-4 p-6">
+      <div className="min-h-screen bg-[var(--bg-app)]">
+        <Skeleton className="h-44 w-full" />
+        <div className="mx-auto max-w-3xl space-y-4 p-6">
           <Skeleton className="h-8 w-48" />
-          <Skeleton className="h-4 w-96" />
-          <div className="grid grid-cols-2 gap-4">
-            {Array.from({ length: 4 }).map((_, i) => (
-              <Skeleton key={i} className="h-40 rounded-lg" />
-            ))}
-          </div>
+          <Skeleton className="h-4 w-72" />
+          <Skeleton className="h-24 w-full rounded-xl" />
+          <Skeleton className="h-24 w-full rounded-xl" />
         </div>
       </div>
     );
@@ -45,156 +124,265 @@ export default function PublicTenantPage() {
 
   if (error || !tenant) {
     return (
-      <div className="flex min-h-screen items-center justify-center bg-zinc-50">
+      <div className="grid min-h-screen place-items-center bg-[var(--bg-app)] px-4">
         <div className="text-center">
-          <h1 className="text-2xl font-bold text-zinc-900">Negocio no encontrado</h1>
-          <p className="mt-1 text-muted-foreground">El enlace que seguiste no es valido.</p>
+          <h1 className="text-[22px] font-bold text-[var(--fg-strong)]">Negocio no encontrado</h1>
+          <p className="mt-1 text-[14px] text-[var(--fg-secondary)]">
+            El enlace que seguiste no es válido.
+          </p>
         </div>
       </div>
     );
   }
 
-  const primaryColor = tenant.themeColor ?? '#F2693A';
+  // `primary` es la identidad (fondos, tintes); `accent` es la identidad
+  // ajustada para que se pueda leer encima; `primaryInk` para texto y bordes.
+  // Sólo hex: hay tenants con `brand_theme: "blue"` guardado. CSS lo acepta y
+  // mis funciones no, así que el tinte salía azul y los botones coral. Un color
+  // que no sé medir no lo puedo usar sin romper el contraste.
+  const themeHex = tenant.themeColor?.trim() ?? '';
+  const primary = /^#?[0-9a-f]{6}$/i.test(themeHex) ? themeHex : FALLBACK_COLOR;
+  const { bg: accent, fg: onAccent } = solidAccent(primary);
+  const primaryInk = inkAccent(primary);
+  const cheapest = tenant.services.reduce<number | null>((min, s) => {
+    const price = Number(s.price);
+    return Number.isFinite(price) && (min === null || price < min) ? price : min;
+  }, null);
 
-  function handleBookService(serviceId: string) {
+  function openBooking(serviceId?: string) {
     setBookingServiceId(serviceId);
     setShowBooking(true);
-    // Scroll to booking section
-    document.getElementById('booking-section')?.scrollIntoView({ behavior: 'smooth' });
+    requestAnimationFrame(() =>
+      document.getElementById('reservar')?.scrollIntoView({ behavior: 'smooth', block: 'start' }),
+    );
   }
 
   return (
-    <div className="min-h-screen bg-zinc-50" style={{ '--tenant-primary': primaryColor } as React.CSSProperties}>
-      {/* Cover */}
-      {tenant.coverUrl ? (
-        <div className="h-48 sm:h-64">
-          <img src={tenant.coverUrl} alt="" className="h-full w-full object-cover" />
-        </div>
-      ) : (
-        <div className="h-48 sm:h-64" style={{ background: `linear-gradient(135deg, ${primaryColor}, ${primaryColor}88)` }} />
-      )}
-
-      <div className="mx-auto max-w-4xl px-4 pb-12">
-        {/* Business info */}
-        <div className="-mt-12 flex items-end gap-4">
-          {tenant.logoUrl ? (
-            <img src={tenant.logoUrl} alt={tenant.name} className="h-24 w-24 rounded-xl border-4 border-white object-cover shadow-lg" />
-          ) : (
-            <div
-              className="flex h-24 w-24 items-center justify-center rounded-xl border-4 border-white text-3xl font-bold text-white shadow-lg"
-              style={{ backgroundColor: primaryColor }}
-            >
-              {tenant.name.charAt(0)}
-            </div>
+    <div className="min-h-screen bg-[var(--bg-app)]">
+      {/* Barra fija: el nombre para saber dónde estás, y el botón que es a lo
+          que vino la página. */}
+      <div
+        className={`fixed inset-x-0 top-0 z-40 border-b border-[var(--border)] bg-[var(--bg-surface)]/95 backdrop-blur-md transition-transform duration-300 ${
+          headerGone ? 'translate-y-0' : '-translate-y-full'
+        }`}
+      >
+        <div className="mx-auto flex max-w-3xl items-center gap-3 px-4 py-2.5">
+          {tenant.logoUrl && (
+            <img
+              src={tenant.logoUrl}
+              alt=""
+              className="h-8 w-8 shrink-0 rounded-md border border-[var(--border)] bg-white object-contain p-0.5"
+            />
           )}
-          <div className="pb-1">
-            <h1 className="text-2xl font-bold text-zinc-900">{tenant.name}</h1>
-            {tenant.description && (
-              <p className="mt-0.5 text-sm text-muted-foreground">{tenant.description}</p>
+          <span className="min-w-0 flex-1 truncate text-[15px] font-semibold text-[var(--fg-strong)]">
+            {tenant.name}
+          </span>
+          <Button
+            size="sm"
+            className="h-9 shrink-0 px-4 font-semibold"
+            style={{ backgroundColor: accent, color: onAccent }}
+            onClick={() => openBooking()}
+          >
+            Reservar
+          </Button>
+        </div>
+      </div>
+
+      {/* Cabecera. Con portada, la foto manda; sin portada, el color del negocio
+          tiñe el fondo detrás de la identidad. Nunca una franja vacía: antes
+          eran 256px de degradado sin un solo dato, y el botón de reservar
+          quedaba fuera de pantalla. */}
+      <header
+        className="relative overflow-hidden border-b border-[var(--border)]"
+        style={
+          tenant.coverUrl
+            ? undefined
+            : { background: `color-mix(in oklab, ${primary} 14%, white)` }
+        }
+      >
+        {tenant.coverUrl && (
+          <>
+            <img src={tenant.coverUrl} alt="" className="absolute inset-0 h-full w-full object-cover" />
+            <div className="absolute inset-0 bg-gradient-to-t from-black/75 via-black/45 to-black/20" />
+          </>
+        )}
+
+        <div className="relative mx-auto max-w-3xl px-4 pb-6 pt-8 sm:pt-10">
+          <div className="flex items-start gap-4">
+            {tenant.logoUrl ? (
+              <img
+                src={tenant.logoUrl}
+                alt={tenant.name}
+                /* object-contain, no cover: los logos son horizontales y el
+                   recorte cuadrado se comía media marca. */
+                className="h-16 w-auto max-w-[150px] shrink-0 rounded-xl border border-black/5 bg-white object-contain px-3 py-2 shadow-sm sm:h-20 sm:max-w-[200px]"
+              />
+            ) : (
+              <div
+                className="grid h-20 w-20 shrink-0 place-items-center rounded-xl text-[30px] font-bold shadow-sm sm:h-24 sm:w-24"
+                style={{ backgroundColor: accent, color: onAccent }}
+              >
+                {tenant.name.charAt(0)}
+              </div>
+            )}
+
+            <div className="min-w-0 flex-1 pt-1">
+              <h1
+                className={`text-[26px] font-bold leading-tight sm:text-[32px] ${
+                  tenant.coverUrl ? 'text-white' : 'text-[var(--fg-strong)]'
+                }`}
+                style={{ fontFamily: 'var(--font-display)', letterSpacing: '-0.02em' }}
+              >
+                {tenant.name}
+              </h1>
+              {tenant.description && (
+                <p
+                  className={`mt-1 text-[15px] ${
+                    tenant.coverUrl ? 'text-white/85' : 'text-[var(--fg-secondary)]'
+                  }`}
+                >
+                  {tenant.description}
+                </p>
+              )}
+            </div>
+          </div>
+
+          <div
+            className={`mt-4 flex flex-wrap items-center gap-x-5 gap-y-2 text-[13px] ${
+              tenant.coverUrl ? 'text-white/85' : 'text-[var(--fg-secondary)]'
+            }`}
+          >
+            {tenant.address && (
+              <span className="flex items-center gap-1.5">
+                <MapPin className="h-4 w-4 shrink-0" aria-hidden="true" />
+                {tenant.address}
+              </span>
+            )}
+            {tenant.phone && (
+              <a href={`tel:${tenant.phone}`} className="flex items-center gap-1.5 hover:underline">
+                <Phone className="h-4 w-4 shrink-0" aria-hidden="true" />
+                {tenant.phone}
+              </a>
             )}
           </div>
-        </div>
 
-        {/* Contact info */}
-        <div className="mt-4 flex flex-wrap gap-4 text-sm text-muted-foreground">
-          {tenant.address && (
-            <span className="flex items-center gap-1">
-              <MapPin className="h-3.5 w-3.5" />
-              {tenant.address}
-            </span>
-          )}
-          {tenant.phone && (
-            <span className="flex items-center gap-1">
-              <Phone className="h-3.5 w-3.5" />
-              {tenant.phone}
-            </span>
-          )}
+          <Button
+            className="mt-5 h-12 w-full text-[15px] font-semibold sm:w-auto sm:px-8"
+            style={{ backgroundColor: accent, color: onAccent }}
+            onClick={() => openBooking()}
+          >
+            Reservar una cita
+            {cheapest !== null && cheapest > 0 && (
+              <span className="ml-1.5 font-normal opacity-80">· desde ${cheapest}</span>
+            )}
+          </Button>
         </div>
+      </header>
+      <div ref={sentinel} aria-hidden="true" />
 
-        {/* Gallery */}
-        {tenant.services.some((s) => s.imageUrl) && (
+      <div className="mx-auto max-w-3xl px-4 pb-16">
+        {/* La galería del negocio, la de verdad. Antes se armaba con las fotos
+            de los servicios, así que la misma imagen aparecía arriba enorme y
+            otra vez abajo en su tarjeta. Sin fotos cargadas, no hay galería. */}
+        {tenant.images.length > 0 && (
           <div className="mt-6">
-            <GalleryCarousel
-              images={tenant.services.filter((s) => s.imageUrl).map((s) => s.imageUrl!)}
-            />
+            <GalleryCarousel images={tenant.images} />
           </div>
         )}
 
-        {/* Services */}
-        <div className="mt-8">
-          <h2 className="mb-4 text-lg font-semibold">Servicios</h2>
-          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
-            {tenant.services.map((svc) => (
-              <Card key={svc.id} className="overflow-hidden">
-                <CardContent className="p-4">
-                  {svc.imageUrl && (
-                    <img src={svc.imageUrl} alt={svc.name} className="mb-3 h-32 w-full rounded-md object-cover" />
-                  )}
-                  <h3 className="font-medium">{svc.name}</h3>
-                  {svc.description && (
-                    <p className="mt-0.5 text-xs text-muted-foreground">{svc.description}</p>
-                  )}
-                  <div className="mt-3 flex items-center justify-between">
-                    <span className="text-lg font-semibold" style={{ color: primaryColor }}>
-                      ${svc.price}
-                    </span>
-                    <Button size="sm" style={{ backgroundColor: primaryColor }} onClick={() => handleBookService(svc.id)}>
-                      Reservar
-                    </Button>
-                  </div>
-                </CardContent>
-              </Card>
-            ))}
-          </div>
-        </div>
-
-        {/* Booking flow */}
-        <div id="booking-section" className="mt-8">
-          {showBooking && (
-            <Card>
-              <CardContent className="p-6">
-                <BookingFlow
-                  slug={slug}
-                  tenant={tenant}
-                  initialServiceId={bookingServiceId}
-                  primaryColor={primaryColor}
-                />
-              </CardContent>
-            </Card>
-          )}
-          {!showBooking && (
-            <Button
-              className="w-full text-white"
-              style={{ backgroundColor: primaryColor }}
-              onClick={() => setShowBooking(true)}
+        <section id="reservar" className="mt-8 scroll-mt-16">
+          {showBooking ? (
+            /* Sin caja alrededor: el paso 1 del asistente ya son tarjetas, y
+               una tarjeta dentro de otra no es una jerarquía, es ruido. */
+            <div
+              /* El asistente hereda el color del negocio: el calendario pinta
+                 el día elegido con --color-primary, que es el coral de Turnly,
+                 y quedaba una fecha coral en una página azul. */
+              style={
+                {
+                  // `@theme inline` compila bg-primary a var(--brand-500):
+                  // pisar --color-primary no hace nada.
+                  '--brand-500': accent,
+                  '--brand-600': accent,
+                } as React.CSSProperties
+              }
             >
-              Reservar Ahora
-            </Button>
-          )}
-        </div>
+              <BookingFlow
+                slug={slug}
+                tenant={tenant}
+                initialServiceId={bookingServiceId}
+                primaryColor={accent}
+              />
+            </div>
+          ) : (
+          <>
+          <h2 className="text-[13px] font-semibold uppercase tracking-wider text-[var(--fg-muted)]">
+            Servicios
+          </h2>
 
-        {/* Social links footer */}
+          <ul className="mt-3 divide-y divide-[var(--border)] overflow-hidden rounded-xl border border-[var(--border)] bg-[var(--bg-surface)]">
+            {tenant.services.map((svc) => (
+              <li key={svc.id} className="flex items-center gap-3 p-3 sm:gap-4 sm:p-4">
+                {/* Sin foto no hay marco: un negocio que no subió ninguna
+                    mostraba una columna de cuadrados vacíos. */}
+                {svc.imageUrl && (
+                  <img
+                    src={svc.imageUrl}
+                    alt=""
+                    className="h-16 w-16 shrink-0 rounded-lg object-cover sm:h-20 sm:w-20"
+                  />
+                )}
+
+                <div className="min-w-0 flex-1">
+                  <h3 className="text-[15px] font-semibold text-[var(--fg-strong)]">{svc.name}</h3>
+                  {svc.description && (
+                    <p className="mt-0.5 line-clamp-2 text-[13px] text-[var(--fg-secondary)]">
+                      {svc.description}
+                    </p>
+                  )}
+                  <p className="mt-1 text-[15px] font-semibold text-[var(--fg-strong)]">
+                    ${svc.price}
+                  </p>
+                </div>
+
+                <Button
+                  variant="outline"
+                  className="h-10 shrink-0 px-4 font-semibold"
+                  style={{ borderColor: primary, color: primaryInk }}
+                  onClick={() => openBooking(svc.id)}
+                >
+                  Reservar
+                </Button>
+              </li>
+            ))}
+          </ul>
+          </>
+          )}
+        </section>
+
         {(tenant.socialLinks.instagram || tenant.socialLinks.facebook || tenant.socialLinks.whatsapp) && (
-          <div className="mt-12 flex items-center justify-center gap-4 border-t pt-6">
+          <footer className="mt-12 flex items-center justify-center gap-6 border-t border-[var(--border)] pt-6">
             {tenant.socialLinks.instagram && (
               <a
                 href={`https://instagram.com/${tenant.socialLinks.instagram.replace('@', '')}`}
                 target="_blank"
                 rel="noopener noreferrer"
-                className="flex items-center gap-1 text-sm text-muted-foreground hover:text-foreground"
+                className="text-[13px] font-medium text-[var(--fg-secondary)] hover:text-[var(--fg-strong)]"
               >
-                <span className="text-sm">IG</span>
                 Instagram
               </a>
             )}
             {tenant.socialLinks.facebook && (
               <a
-                href={tenant.socialLinks.facebook.startsWith('http') ? tenant.socialLinks.facebook : `https://facebook.com/${tenant.socialLinks.facebook}`}
+                href={
+                  tenant.socialLinks.facebook.startsWith('http')
+                    ? tenant.socialLinks.facebook
+                    : `https://facebook.com/${tenant.socialLinks.facebook}`
+                }
                 target="_blank"
                 rel="noopener noreferrer"
-                className="flex items-center gap-1 text-sm text-muted-foreground hover:text-foreground"
+                className="text-[13px] font-medium text-[var(--fg-secondary)] hover:text-[var(--fg-strong)]"
               >
-                <span className="text-sm">FB</span>
                 Facebook
               </a>
             )}
@@ -203,13 +391,12 @@ export default function PublicTenantPage() {
                 href={`https://wa.me/${tenant.socialLinks.whatsapp.replace(/[^0-9]/g, '')}`}
                 target="_blank"
                 rel="noopener noreferrer"
-                className="flex items-center gap-1 text-sm text-muted-foreground hover:text-foreground"
+                className="text-[13px] font-medium text-[var(--fg-secondary)] hover:text-[var(--fg-strong)]"
               >
-                <MessageCircle className="h-4 w-4" />
                 WhatsApp
               </a>
             )}
-          </div>
+          </footer>
         )}
       </div>
 
