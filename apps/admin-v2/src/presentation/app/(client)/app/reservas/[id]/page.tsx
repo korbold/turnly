@@ -6,7 +6,7 @@ import { useRouter } from 'next/navigation';
 import { format } from 'date-fns';
 import { es } from 'date-fns/locale';
 import { toast } from 'sonner';
-import { ArrowLeft, CalendarDays, MapPin, Loader2 } from 'lucide-react';
+import { ArrowLeft, CalendarDays, Tag, Loader2 } from 'lucide-react';
 import { Button } from '@/presentation/components/ui/button';
 import { Skeleton } from '@/presentation/components/ui/skeleton';
 import {
@@ -102,7 +102,11 @@ export default function ClientReservationDetailPage({
 
         {reservation.resourceLabel && (
           <p className="mt-1.5 flex items-center gap-2 text-[13.5px] text-[var(--fg-secondary)]">
-            <MapPin className="h-4 w-4 shrink-0 text-[var(--fg-muted)]" aria-hidden="true" />
+            {/* Un pin de mapa decía que "Sebas" era una dirección. La etiqueta
+                junta los campos que el negocio pide —el nombre del niño en una
+                peluquería, la placa y el modelo en una lavadora—, así que el
+                ícono tiene que servir para las dos cosas. */}
+            <Tag className="h-4 w-4 shrink-0 text-[var(--fg-muted)]" aria-hidden="true" />
             {reservation.resourceLabel}
           </p>
         )}
