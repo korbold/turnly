@@ -27,13 +27,22 @@ api.interceptors.response.use(
       return Promise.reject(error);
     }
 
-    if (error.response?.status === 401 && typeof window !== 'undefined' && !redirecting && error.config?.url !== '/auth/login') {
+    // Un 401 de estos endpoints no es una sesión vencida: es la respuesta.
+    // "Este link ya se usó" llega como 401, y tratarlo como sesión vencida
+    // borraba el storage y mandaba al cliente al login del panel, donde se le
+    // pide una contraseña que nunca tuvo. El mensaje que la pantalla sí sabe
+    // mostrar no alcanzaba a verse porque el navegador ya se había ido.
+    const authEndpoints = ['/auth/login', '/auth/magic-link/verify', '/auth/google'];
+    const isAuthAttempt = authEndpoints.some((url) => error.config?.url === url);
+
+    if (error.response?.status === 401 && typeof window !== 'undefined' && !redirecting && !isAuthAttempt) {
       redirecting = true;
       authStorage.clear();
       // Customers live under /app and have their own passwordless login;
       // sending them to the staff panel's screen would ask them for a
-      // password they never set.
-      const inPortal = window.location.pathname.startsWith('/app');
+      // password they never set. `/m/` es la misma persona: el link del correo.
+      const path = window.location.pathname;
+      const inPortal = path.startsWith('/app') || path.startsWith('/m/');
       const target = inPortal ? '/app/login' : '/login';
       // Redirecting to the page we are already on reloads it, which
       // re-fires the same request: an endless refresh.
