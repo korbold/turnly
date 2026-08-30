@@ -6,7 +6,14 @@ export interface PublicTenant {
   logoUrl: string | null;
   coverUrl: string | null;
   themeColor: string | null;
-  socialLinks: { instagram: string | null; facebook: string | null; whatsapp: string | null };
+  socialLinks: {
+    instagram: string | null;
+    facebook: string | null;
+    whatsapp: string | null;
+    /** El negocio la carga en Configuración y la página nunca la leyó: el
+        mapper se quedaba con instagram, facebook y whatsapp, y tiraba esta. */
+    mapsUrl: string | null;
+  };
   address: string | null;
   phone: string | null;
   /** Galería del negocio. La página mostraba las fotos de los servicios en su

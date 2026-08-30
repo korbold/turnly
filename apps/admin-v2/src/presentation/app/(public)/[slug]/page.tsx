@@ -254,12 +254,40 @@ export default function PublicTenantPage() {
               tenant.coverUrl ? 'text-white/85' : 'text-[var(--fg-secondary)]'
             }`}
           >
-            {tenant.address && (
-              <span className="flex items-center gap-1.5">
+            {/* La dirección lleva al mapa cuando el negocio cargó el enlace.
+                Es el gesto que la persona ya intenta: tocar la dirección para
+                que se abra el navegador GPS. Sin enlace, queda como texto. */}
+            {/* Con mapa y sin dirección escrita, el enlace igual va: perder el
+                dato por no tener con qué etiquetarlo es el mismo error de
+                antes, sólo que más chico. */}
+            {!tenant.address && tenant.socialLinks.mapsUrl && (
+              <a
+                href={tenant.socialLinks.mapsUrl}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="flex items-center gap-1.5 underline decoration-current/30 underline-offset-2 hover:decoration-current"
+              >
                 <MapPin className="h-4 w-4 shrink-0" aria-hidden="true" />
-                {tenant.address}
-              </span>
+                Cómo llegar
+              </a>
             )}
+            {tenant.address &&
+              (tenant.socialLinks.mapsUrl ? (
+                <a
+                  href={tenant.socialLinks.mapsUrl}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="flex items-center gap-1.5 underline decoration-current/30 underline-offset-2 hover:decoration-current"
+                >
+                  <MapPin className="h-4 w-4 shrink-0" aria-hidden="true" />
+                  {tenant.address}
+                </a>
+              ) : (
+                <span className="flex items-center gap-1.5">
+                  <MapPin className="h-4 w-4 shrink-0" aria-hidden="true" />
+                  {tenant.address}
+                </span>
+              ))}
             {tenant.phone && (
               <a href={`tel:${tenant.phone}`} className="flex items-center gap-1.5 hover:underline">
                 <Phone className="h-4 w-4 shrink-0" aria-hidden="true" />

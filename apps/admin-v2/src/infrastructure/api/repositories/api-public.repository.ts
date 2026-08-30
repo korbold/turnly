@@ -20,6 +20,7 @@ function mapPublicTenant(raw: Record<string, unknown>): PublicTenant {
       instagram: socialLinks.instagram ?? null,
       facebook: socialLinks.facebook ?? null,
       whatsapp: socialLinks.whatsapp ?? null,
+      mapsUrl: socialLinks.maps_url ?? null,
     },
     address: (tenant.address as string) ?? null,
     phone: (tenant.phone as string) ?? null,
