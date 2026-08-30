@@ -3,8 +3,11 @@
 namespace App\Infrastructure\Http\Controllers;
 
 use App\Application\Services\BusinessResourceAssigner;
+use App\Domain\Identity\MagicLinkIssuer;
 use App\Application\Services\PlanLimitsService;
+use App\Domain\Reservation\ReservationSummary;
 use App\Domain\Reservation\VariantSuggester;
+use App\Infrastructure\Mail\ReservationConfirmedMail;
 use App\Infrastructure\Notifications\Notifications\NewReservationForAdmin;
 use App\Infrastructure\Persistence\Models\AvailabilitySlotModel;
 use App\Infrastructure\Persistence\Models\ClientResourceModel;
@@ -21,6 +24,7 @@ use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Facades\Mail;
 use Illuminate\Support\Facades\Notification;
 use Illuminate\Support\Str;
 
@@ -29,6 +33,7 @@ class PublicController extends Controller
     public function __construct(
         private PlanLimitsService $planLimits,
         private BusinessResourceAssigner $resourceAssigner,
+        private MagicLinkIssuer $magicLinks,
     ) {}
 
     private function hasCustomPage(string $tenantId): bool
@@ -558,6 +563,11 @@ class PublicController extends Controller
             0.0
         );
 
+        // El correo que el paso final del asistente venía prometiendo. Va antes
+        // del aviso al staff porque es el único que el cliente ve: si algo
+        // falla, que falle lo que ya funcionaba sin él.
+        $this->emailTheCustomer($reservation, $tenant, $client);
+
         // Notify the tenant's staff that a customer booked. The legacy
         // CreateReservationUseCase owns this for tenant-portal bookings;
         // the public/book endpoint creates rows directly, so the dispatch
@@ -614,6 +624,56 @@ class PublicController extends Controller
      *
      * @return array{0: array<int, array{variant_id:string,service_id:string,label:string,qty:int,price:float,duration_min:int}>|null, 1: int, 2: ?string, 3: ?string}
      */
+    /**
+     * Le manda al cliente su cita, con un magic link adentro para verla sin
+     * contraseña. Traga sus propios errores: un correo caído no puede tumbar
+     * una reserva que ya está guardada.
+     */
+    private function emailTheCustomer($reservation, TenantModel $tenant, UserModel $client): void
+    {
+        $email = trim((string) $client->email);
+
+        // El mostrador le inventa `nombre-XXXX@client.local` al walk-in. No es
+        // una dirección, es un hueco con forma de correo.
+        if ($email === '' || str_ends_with(strtolower($email), '@client.local')) {
+            return;
+        }
+
+        try {
+            $withRelations = ReservationModel::withoutGlobalScopes()
+                ->with(['items', 'service'])
+                ->find($reservation->id);
+
+            $token = $this->magicLinks->issue(
+                email: $email,
+                ttlMinutes: MagicLinkIssuer::TTL_BOOKING_MINUTES,
+                requestIp: request()->ip(),
+                userAgent: (string) request()->userAgent(),
+            );
+
+            $start = \Carbon\Carbon::parse($reservation->scheduled_at);
+            $end = \Carbon\Carbon::parse($reservation->estimated_end);
+
+            Mail::to($email)->send(new ReservationConfirmedMail(
+                tenantName: (string) $tenant->name,
+                servicesLabel: $withRelations
+                    ? ReservationSummary::servicesLabel($withRelations)
+                    : 'tu reserva',
+                scheduledAt: $start->toDateTime(),
+                durationMin: (int) $start->diffInMinutes($end),
+                isConfirmed: $reservation->status === 'confirmed',
+                magicUrl: $this->magicLinks->urlFor($token),
+                address: $tenant->address,
+                phone: $tenant->phone,
+            ));
+        } catch (\Throwable $e) {
+            Log::error('Failed to email the customer their booking', [
+                'reservation_id' => $reservation->id,
+                'error' => $e->getMessage(),
+            ]);
+        }
+    }
+
     private function resolveBookingItems(string $tenantId, Request $request): array
     {
         $tenantSlotMinutes = (int) (TenantModel::find($tenantId)?->settings['slot_duration_minutes'] ?? 30);

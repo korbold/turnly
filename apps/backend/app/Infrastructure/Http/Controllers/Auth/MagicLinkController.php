@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Infrastructure\Http\Controllers\Auth;
 
+use App\Domain\Identity\MagicLinkIssuer;
 use App\Infrastructure\Http\Controllers\Controller;
 use App\Infrastructure\Mail\MagicLinkMail;
 use App\Infrastructure\Persistence\Models\TenantUserModel;
@@ -17,7 +18,9 @@ use Illuminate\Support\Str;
 
 class MagicLinkController extends Controller
 {
-    private const TTL_MINUTES = 15;
+    public function __construct(private MagicLinkIssuer $issuer) {}
+
+    private const TTL_MINUTES = MagicLinkIssuer::TTL_LOGIN_MINUTES;
 
     // Fixed bypass token for App Store review account. 64-char hex.
     private const DEMO_EMAIL = 'demo@turnly.app';
@@ -35,28 +38,16 @@ class MagicLinkController extends Controller
             return $this->handleDemoRequest();
         }
 
-        $token = bin2hex(random_bytes(32)); // 64-char URL-safe token
-        $tokenHash = hash('sha256', $token);
         $expiresAt = now()->addMinutes(self::TTL_MINUTES);
 
-        // Single-use: invalidate any previous live tokens for this email so
-        // an old link can't be reused after a new one is requested.
-        DB::table('magic_link_tokens')
-            ->where('email', $email)
-            ->whereNull('used_at')
-            ->update(['used_at' => now()]);
+        $token = $this->issuer->issue(
+            email: $email,
+            ttlMinutes: self::TTL_MINUTES,
+            requestIp: $request->ip(),
+            userAgent: (string) $request->userAgent(),
+        );
 
-        DB::table('magic_link_tokens')->insert([
-            'email' => $email,
-            'token_hash' => $tokenHash,
-            'expires_at' => $expiresAt,
-            'request_ip' => $request->ip(),
-            'request_user_agent' => substr((string) $request->userAgent(), 0, 255),
-            'created_at' => now(),
-            'updated_at' => now(),
-        ]);
-
-        $magicUrl = $this->buildMagicUrl($token);
+        $magicUrl = $this->issuer->urlFor($token);
 
         Mail::to($email)->send(new MagicLinkMail(
             email: $email,
@@ -184,12 +175,6 @@ class MagicLinkController extends Controller
                 'demo_token' => self::DEMO_TOKEN,
             ],
         ]);
-    }
-
-    private function buildMagicUrl(string $token): string
-    {
-        $host = config('app.frontend_host', 'goturnly.com');
-        return "https://{$host}/m/{$token}";
     }
 
     private function reject(string $code, string $message): JsonResponse
