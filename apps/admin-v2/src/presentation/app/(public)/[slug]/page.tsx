@@ -151,6 +151,16 @@ export default function PublicTenantPage() {
     return Number.isFinite(price) && (min === null || price < min) ? price : min;
   }, null);
 
+  const mapHref = tenant.socialLinks.mapsUrl;
+  const waHref = whatsappLink(tenant.socialLinks.whatsapp);
+  /* Sobre la portada el chip va translúcido; sobre el tinte, blanco con borde.
+     `min-h-11` son los 44px de PRODUCT.md. */
+  const metaChipClass = `inline-flex min-h-11 max-w-full items-center gap-1.5 rounded-full border px-3.5 py-2 text-[13px] font-medium transition-colors ${
+    tenant.coverUrl
+      ? 'border-white/30 bg-white/15 text-white backdrop-blur-sm hover:bg-white/25'
+      : 'border-[var(--border)] bg-[var(--bg-surface)] text-[var(--fg-secondary)] hover:text-[var(--fg-strong)]'
+  }`;
+
   function openBooking(serviceId?: string) {
     setBookingServiceId(serviceId);
     setShowBooking(true);
@@ -249,49 +259,41 @@ export default function PublicTenantPage() {
             </div>
           </div>
 
-          <div
-            className={`mt-4 flex flex-wrap items-center gap-x-5 gap-y-2 text-[13px] ${
-              tenant.coverUrl ? 'text-white/85' : 'text-[var(--fg-secondary)]'
-            }`}
-          >
-            {/* La dirección lleva al mapa cuando el negocio cargó el enlace.
-                Es el gesto que la persona ya intenta: tocar la dirección para
-                que se abra el navegador GPS. Sin enlace, queda como texto. */}
-            {/* Con mapa y sin dirección escrita, el enlace igual va: perder el
-                dato por no tener con qué etiquetarlo es el mismo error de
-                antes, sólo que más chico. */}
-            {!tenant.address && tenant.socialLinks.mapsUrl && (
+          <div className="mt-4 flex flex-wrap items-center gap-2">
+            {/* Chips y no texto subrayado: en un teléfono no hay hover que
+                delate el enlace, y una línea de texto mide 20px de alto cuando
+                PRODUCT.md exige 44 para cualquier cosa que se toque. El chip
+                dice "esto se toca" sin explicarlo. */}
+            {mapHref && (
               <a
-                href={tenant.socialLinks.mapsUrl}
+                href={mapHref}
                 target="_blank"
                 rel="noopener noreferrer"
-                className="flex items-center gap-1.5 underline decoration-current/30 underline-offset-2 hover:decoration-current"
+                className={metaChipClass}
               >
                 <MapPin className="h-4 w-4 shrink-0" aria-hidden="true" />
-                Cómo llegar
+                <span className="truncate">{tenant.address ?? 'Cómo llegar'}</span>
               </a>
             )}
-            {tenant.address &&
-              (tenant.socialLinks.mapsUrl ? (
-                <a
-                  href={tenant.socialLinks.mapsUrl}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="flex items-center gap-1.5 underline decoration-current/30 underline-offset-2 hover:decoration-current"
-                >
-                  <MapPin className="h-4 w-4 shrink-0" aria-hidden="true" />
-                  {tenant.address}
-                </a>
-              ) : (
-                <span className="flex items-center gap-1.5">
-                  <MapPin className="h-4 w-4 shrink-0" aria-hidden="true" />
-                  {tenant.address}
-                </span>
-              ))}
+
+            {!mapHref && tenant.address && (
+              <span className={`${metaChipClass} border-transparent`}>
+                <MapPin className="h-4 w-4 shrink-0" aria-hidden="true" />
+                <span className="truncate">{tenant.address}</span>
+              </span>
+            )}
+
             {tenant.phone && (
-              <a href={`tel:${tenant.phone}`} className="flex items-center gap-1.5 hover:underline">
+              <a href={`tel:${tenant.phone}`} className={metaChipClass}>
                 <Phone className="h-4 w-4 shrink-0" aria-hidden="true" />
                 {tenant.phone}
+              </a>
+            )}
+
+            {waHref && (
+              <a href={waHref} target="_blank" rel="noopener noreferrer" className={metaChipClass}>
+                <WhatsAppIcon className="h-4 w-4 shrink-0" color="currentColor" />
+                WhatsApp
               </a>
             )}
           </div>
@@ -390,7 +392,7 @@ export default function PublicTenantPage() {
           )}
         </section>
 
-        {(tenant.socialLinks.instagram || tenant.socialLinks.facebook || tenant.socialLinks.whatsapp) && (
+        {(tenant.socialLinks.instagram || tenant.socialLinks.facebook) && (
           <footer className="mt-12 flex items-center justify-center gap-6 border-t border-[var(--border)] pt-6">
             {tenant.socialLinks.instagram && (
               <a
@@ -416,19 +418,8 @@ export default function PublicTenantPage() {
                 Facebook
               </a>
             )}
-            {tenant.socialLinks.whatsapp && (
-              <a
-                /* Quitar los no-dígitos dejaba `wa.me/0991213606`, que no
-                   resuelve a ningún contacto: hace falta el internacional. */
-                href={whatsappLink(tenant.socialLinks.whatsapp) ?? '#'}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="inline-flex items-center gap-1.5 text-[13px] font-medium text-[var(--fg-secondary)] hover:text-[var(--fg-strong)]"
-              >
-                <WhatsAppIcon className="h-4 w-4" />
-                WhatsApp
-              </a>
-            )}
+          {/* WhatsApp ya está arriba, junto a la dirección y el teléfono:
+              repetirlo aquí sería el mismo dato dos veces en una pantalla. */}
           </footer>
         )}
       </div>
