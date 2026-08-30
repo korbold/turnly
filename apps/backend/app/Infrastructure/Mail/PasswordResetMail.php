@@ -45,7 +45,10 @@ class PasswordResetMail extends Mailable implements ShouldQueue
     public function headers(): Headers
     {
         return new Headers(
-            messageId: sprintf('<%s.%s@goturnly.com>', bin2hex(random_bytes(8)), time()),
+            // Sin ángulos: Symfony los agrega. Pasarlos ya puestos deja una
+            // cabecera que no cumple RFC 2822, y el correo no sale — así estuvo
+            // el link de entrada al portal desde el 3 de julio de 2026.
+            messageId: sprintf('%s.%s@goturnly.com', bin2hex(random_bytes(8)), time()),
             text: [
                 'X-Entity-Ref-ID' => bin2hex(random_bytes(16)),
                 'X-Auto-Response-Suppress' => 'All',
