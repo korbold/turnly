@@ -490,7 +490,15 @@ class PublicController extends Controller
             $clientResourceId = $resource->id;
         }
 
-        $scheduledAt = new \DateTimeImmutable($request->scheduled_at);
+        // `available-slots` entrega la hora local desnuda ("2026-09-02 09:00:00")
+        // y el navegador la reenviaba en UTC. `DateTimeImmutable` respeta la zona
+        // que trae el string, así que sin esta conversión `format()` escribía las
+        // 14:00 en una columna que el panel, el assigner y el chequeo de conflictos
+        // leen como hora local: la reserva quedaba cinco horas tarde, bien formada
+        // y sin un solo error. Normalizar acá deja que cualquier cliente mande su
+        // hora con zona o sin ella y aterrice en el mismo instante.
+        $scheduledAt = (new \DateTimeImmutable($request->scheduled_at))
+            ->setTimezone(new \DateTimeZone(config('app.timezone', 'UTC')));
         $estimatedEnd = $scheduledAt->modify("+{$totalDurationMin} minutes");
 
         // Tenants that don't review every booking (car wash, lavandería)

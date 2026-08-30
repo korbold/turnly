@@ -246,7 +246,11 @@ export function BookingFlow({ slug, tenant, initialServiceId, primaryColor = '#F
                 <div className="grid grid-cols-3 gap-2 sm:grid-cols-4">
                   {slots.map((slot) => {
                     const time = format(new Date(slot.start), 'HH:mm');
-                    const slotStr = new Date(slot.start).toISOString();
+                    // La hora local desnuda, que es lo que el panel y la app
+                    // Flutter mandan. `toISOString()` la pasaba a UTC y el
+                    // backend la escribía tal cual: el cliente elegía las 09:00
+                    // y al negocio le aparecía a las 14:00.
+                    const slotStr = format(new Date(slot.start), 'yyyy-MM-dd HH:mm:ss');
                     const isSelected = selectedSlot === slotStr;
                     return (
                       <button
