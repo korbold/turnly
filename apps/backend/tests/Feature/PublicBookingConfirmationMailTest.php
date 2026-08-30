@@ -133,3 +133,48 @@ test('nothing is sent to a placeholder address', function () {
 
     Mail::assertNotQueued(ReservationConfirmedMail::class);
 });
+
+/**
+ * Con `Mail::fake()` la vista NUNCA se renderiza: los tests de arriba miran las
+ * propiedades del mailable y pasan aunque la plantilla no compile. Así se fue a
+ * staging una vista rota — un `@if` pegado a la palabra anterior, que Blade deja
+ * como texto y cuyo `@endif` revienta el archivo entero. Esto la compila.
+ */
+test('the email renders, with and without the optional fields', function (?string $phone, ?string $address) {
+    $mail = new ReservationConfirmedMail(
+        tenantName: 'Peluquería Demo',
+        servicesLabel: 'Corte niños',
+        scheduledAt: new DateTime('2026-09-01 09:00:00'),
+        durationMin: 30,
+        isConfirmed: false,
+        magicUrl: 'https://goturnly.com/m/' . str_repeat('a', 64),
+        address: $address,
+        phone: $phone,
+    );
+
+    $html = $mail->render();
+
+    expect($html)->toContain('Corte niños');
+    expect($html)->toContain('martes 1 de septiembre, 09:00');
+    expect($html)->toContain('/m/' . str_repeat('a', 64));
+    // Lo que quedaba suelto cuando la directiva no compilaba.
+    expect($html)->not->toContain('@if');
+    expect($html)->not->toContain('@endif');
+})->with([
+    'con dirección y teléfono' => ['0991213606', 'Av. Demo 100'],
+    'sin nada opcional' => [null, null],
+]);
+
+test('the plain-text part renders too', function () {
+    $mail = new ReservationConfirmedMail(
+        tenantName: 'Peluquería Demo',
+        servicesLabel: 'Corte niños',
+        scheduledAt: new DateTime('2026-09-01 09:00:00'),
+        durationMin: 30,
+        isConfirmed: true,
+        magicUrl: 'https://goturnly.com/m/abc',
+    );
+
+    $text = (string) $mail->render();
+    expect($text)->not->toContain('@endif');
+});

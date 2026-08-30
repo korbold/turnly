@@ -75,7 +75,9 @@
     </tr>
     <tr>
       <td style="padding:20px 4px; color:#8B92A0; font-size:12px; line-height:1.5;">
-        ¿No reservaste esto? Alguien escribió tu correo por error. No toques el botón@if ($phone) y avisa a {{ $tenantName }} al {{ $phone }}@endif.
+        {{-- Sin directiva: un @if pegado a la palabra anterior no lo compila
+             Blade, se queda como texto y su @endif rompe la vista entera. --}}
+        ¿No reservaste esto? Alguien escribió tu correo por error. No toques el botón{{ $phone ? " y avisa a {$tenantName} al {$phone}" : '' }}.
         <br>Turnly · goturnly.com
       </td>
     </tr>

@@ -19,7 +19,7 @@ Donde: {{ $address }}
 Telefono: {{ $phone }}
 @endif
 
-No reservaste esto? Alguien escribio tu correo por error. No toques el link@if ($phone) y avisa a {{ $tenantName }} al {{ $phone }}@endif.
+No reservaste esto? Alguien escribio tu correo por error. No toques el link{{ $phone ? " y avisa a {$tenantName} al {$phone}" : '' }}.
 
 --
 Turnly · goturnly.com
