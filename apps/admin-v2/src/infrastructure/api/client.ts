@@ -54,16 +54,31 @@ api.interceptors.response.use(
     }
 
     const data = error.response?.data;
+    const status = error.response?.status;
+
+    // Laravel contesta el 429 con "Too Many Attempts.": en inglés, sin código
+    // y sin decir cuánto esperar. Eso llegaba tal cual a la cara del cliente.
+    // El `Retry-After` sí viene en la cabecera, así que se usa.
+    const retryAfter = Number(error.response?.headers?.['retry-after'] ?? 0);
+    const waitHint =
+      retryAfter > 60
+        ? ` Vuelve a intentar en ${Math.ceil(retryAfter / 60)} minutos.`
+        : retryAfter > 0
+          ? ` Vuelve a intentar en ${retryAfter} segundos.`
+          : ' Espera unos minutos y vuelve a intentar.';
+
     const message =
-      data?.error?.message ?? data?.message ?? error.message ?? 'Error inesperado';
-    const code = data?.error?.code ?? null;
+      status === 429
+        ? `Demasiados intentos.${waitHint}`
+        : (data?.error?.message ?? data?.message ?? error.message ?? 'Error inesperado');
+    const code = data?.error?.code ?? (status === 429 ? 'TOO_MANY_ATTEMPTS' : null);
     const fieldErrors = data?.errors ?? null;
     // El cuerpo entero del error, no sólo su mensaje: hay respuestas que
     // traen con qué actuar. `DUPLICATE_PLATE` devuelve cuál es el vehículo
     // que ya existe para poder seleccionarlo, y aplanar a {message, code} lo
     // tiraba a la basura.
     const details = data?.error ?? null;
-    return Promise.reject({ message, code, fieldErrors, details, status: error.response?.status });
+    return Promise.reject({ message, code, fieldErrors, details, status });
   },
 );
 
