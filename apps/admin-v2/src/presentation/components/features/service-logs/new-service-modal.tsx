@@ -221,6 +221,8 @@ export function NewServiceModal({ open, onClose, embedded = false, initialSearch
   // un solo desvío en el ticket entero exige un solo motivo.
   const [priceReason, setPriceReason] = useState('');
   const [priceNote, setPriceNote] = useState('');
+  // Confirmación de descarte: ver `requestClose`.
+  const [confirmDiscard, setConfirmDiscard] = useState(false);
 
   // Total = sum of line items. Stays the source of truth for the price
   // shown in the footer + sent to the backend.
@@ -485,7 +487,10 @@ export function NewServiceModal({ open, onClose, embedded = false, initialSearch
       setWalkInClientName('');
       setPersona(null);
       setClientSearch('');
-      toast.success('Registro creado');
+      // "Registro" es la palabra del Registro Diario: decirla acá hacía
+      // creer al cajero que el servicio ya estaba guardado, cuando lo único
+      // creado es el cliente y su recurso. Falta "Registrar Servicio".
+      toast.success('Cliente / recurso creado · falta registrar el servicio');
     } catch (e) {
       // La placa ya existe. El cajero quería ESE vehículo, así que se lo
       // damos: el backend devuelve cuál es, y se selecciona solo. Tragarse el
@@ -536,6 +541,10 @@ export function NewServiceModal({ open, onClose, embedded = false, initialSearch
     setPaymentMethod('cash');
     setPaymentBank(null);
     setPaymentTiming('now');
+    // Faltaba: el abono del ticket anterior se quedaba en el input y el
+    // siguiente cobro entraba como parcial por ese monto sin que nadie lo
+    // hubiera tecleado. Sólo se limpiaba al pasar a "cobrar después".
+    setAmountReceived('');
     setNotes('');
     setShowCustomForm(false);
     setCustomFieldValues({});
@@ -546,9 +555,51 @@ export function NewServiceModal({ open, onClose, embedded = false, initialSearch
   }
 
   function handleClose() {
+    setConfirmDiscard(false);
     handleReset();
     onClose();
   }
+
+  // Cerrar borra el formulario entero y no deja rastro: ni bitácora ni
+  // borrador. Si adentro hay trabajo se pregunta una vez. El cliente/recurso
+  // ya creado NO se borra — vive en la base desde su propio POST — pero al
+  // menos el cajero se entera de que está a punto de perder el servicio.
+  const hasDraft =
+    !!selectedClientResourceId ||
+    lineItems.length > 0 ||
+    productLines.length > 0 ||
+    showCustomForm ||
+    notes.trim() !== '';
+
+  function requestClose() {
+    if (hasDraft) {
+      setConfirmDiscard(true);
+      return;
+    }
+    handleClose();
+  }
+
+  const discardDialog = (
+    <Dialog open={confirmDiscard} onOpenChange={(o) => !o && setConfirmDiscard(false)}>
+      <DialogContent className="sm:max-w-md">
+        <DialogHeader>
+          <DialogTitle>¿Descartar este servicio?</DialogTitle>
+          <DialogDescription>
+            Todavía no está registrado. Si salís ahora se pierde lo que llenaste y no
+            queda en el Registro Diario.
+          </DialogDescription>
+        </DialogHeader>
+        <DialogFooter className="flex-col gap-2 sm:flex-row">
+          <Button variant="ghost" onClick={() => setConfirmDiscard(false)}>
+            Seguir llenando
+          </Button>
+          <Button variant="outline" onClick={handleClose}>
+            Descartar
+          </Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
+  );
 
   async function handleAddLineItem(svc: Service) {
     // Same service picked again → bump qty on the existing line, no
@@ -1201,7 +1252,10 @@ export function NewServiceModal({ open, onClose, embedded = false, initialSearch
                     className="mt-1.5 flex w-full items-center gap-2 rounded-lg border border-dashed border-[var(--border-strong)] p-2.5 text-left transition-colors hover:bg-[var(--bg-hover)]"
                   >
                     <Plus className="h-4 w-4 shrink-0 text-[var(--brand-500)]" />
-                    <span className="text-sm">Crear nuevo registro</span>
+                    {/* Se llamaba "Crear nuevo registro" y chocaba con el
+                        Registro Diario: crear el vehículo se leía como
+                        haber registrado el servicio. */}
+                    <span className="text-sm">Crear nuevo cliente / recurso</span>
                   </button>
                 ) : (
                   clientSearch.trim() && (
@@ -1232,7 +1286,7 @@ export function NewServiceModal({ open, onClose, embedded = false, initialSearch
             {showCustomForm && hasCustomFields && (
               <div className="mt-3 space-y-3 rounded-lg border border-[var(--border)] bg-[var(--bg-sunken)] p-3">
                 <p className="text-[11px] font-semibold uppercase tracking-[0.04em] text-[var(--fg-muted)]">
-                  Crear nuevo registro
+                  Crear nuevo cliente / recurso
                 </p>
                 {!hasNameField && (
                   <div>
@@ -1588,7 +1642,7 @@ export function NewServiceModal({ open, onClose, embedded = false, initialSearch
           {formatMoney(total)}
         </span>
       </div>
-      <Button variant="outline" onClick={handleClose}>
+      <Button variant="outline" onClick={requestClose}>
         Cancelar
       </Button>
       <Button onClick={handleSubmit} disabled={!canSubmit || createMutation.isPending}>
@@ -1605,6 +1659,7 @@ export function NewServiceModal({ open, onClose, embedded = false, initialSearch
   if (embedded) {
     if (!open) return null;
     return (
+      <>
       <div
         className={cn(
           'flex max-h-[calc(100dvh-2rem)] flex-col overflow-hidden rounded-xl border border-[var(--border)] bg-[var(--bg-surface)]',
@@ -1623,7 +1678,7 @@ export function NewServiceModal({ open, onClose, embedded = false, initialSearch
           <Button
             variant="ghost"
             size="icon"
-            onClick={handleClose}
+            onClick={requestClose}
             className="h-8 w-8 shrink-0 cursor-pointer text-[var(--fg-muted)] hover:bg-[var(--bg-sunken)] hover:text-[var(--fg-strong)]"
             aria-label="Cerrar"
           >
@@ -1635,19 +1690,24 @@ export function NewServiceModal({ open, onClose, embedded = false, initialSearch
           {footerButtons}
         </footer>
       </div>
+      {discardDialog}
+      </>
     );
   }
 
   return (
-    <Dialog open={open} onOpenChange={(o) => !o && handleClose()}>
-      <DialogContent className="max-h-[85vh] overflow-y-auto sm:max-w-xl">
-        <DialogHeader>
-          <DialogTitle>Nuevo Servicio</DialogTitle>
-          <DialogDescription>Registrar un servicio realizado</DialogDescription>
-        </DialogHeader>
-        {body}
-        <DialogFooter>{footerButtons}</DialogFooter>
-      </DialogContent>
-    </Dialog>
+    <>
+      <Dialog open={open} onOpenChange={(o) => !o && requestClose()}>
+        <DialogContent className="max-h-[85vh] overflow-y-auto sm:max-w-xl">
+          <DialogHeader>
+            <DialogTitle>Nuevo Servicio</DialogTitle>
+            <DialogDescription>Registrar un servicio realizado</DialogDescription>
+          </DialogHeader>
+          {body}
+          <DialogFooter>{footerButtons}</DialogFooter>
+        </DialogContent>
+      </Dialog>
+      {discardDialog}
+    </>
   );
 }

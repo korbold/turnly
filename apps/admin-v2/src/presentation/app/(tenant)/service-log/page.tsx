@@ -301,21 +301,25 @@ function ServiceLogContent() {
         />
       </main>
 
-      {/* Desktop master-detail — embedded panel sticky in the right rail
-          so the daily log stays visible while the cashier registers. */}
-      {showInlineCreate && (
-        <aside className="hidden lg:block">
-          <div className="sticky top-4">
-            <NewServiceModal embedded open onClose={closeCreate} initialSearch={createPrefill} />
-          </div>
-        </aside>
-      )}
-
-      {/* Mobile / tablet — Sheet/Dialog variant, suppressed once the
-          inline panel renders so the portal doesn't double-mount. */}
-      {!isDesktop && (
-        <NewServiceModal open={createOpen} onClose={closeCreate} initialSearch={createPrefill} />
-      )}
+      {/* UN SOLO wizard, siempre en la misma posición del árbol. `embedded`
+          sólo elige cómo se presenta: panel fijo en el riel derecho en lg+,
+          diálogo por debajo. Antes eran dos instancias en dos ramas del JSX
+          y girar la tablet cruzaba los 1024px: React desmontaba una y
+          montaba la otra, así que el recurso elegido, el servicio y el
+          precio tecleado se perdían sin decir nada. El auto ya se había
+          creado en su propio POST y quedaba huérfano en Clientes.
+          El <aside> se oculta cuando no hay panel embebido; el diálogo vive
+          en un portal, así que no le afecta. */}
+      <aside className={showInlineCreate ? 'hidden lg:block' : 'hidden'}>
+        <div className="sticky top-4">
+          <NewServiceModal
+            embedded={showInlineCreate}
+            open={createOpen}
+            onClose={closeCreate}
+            initialSearch={createPrefill}
+          />
+        </div>
+      </aside>
 
       <EditServiceLogDialog
         log={editTarget}
