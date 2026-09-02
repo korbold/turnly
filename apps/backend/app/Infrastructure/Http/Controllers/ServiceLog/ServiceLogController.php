@@ -428,10 +428,32 @@ class ServiceLogController extends Controller
                 $from = $request->get('date_from', $request->get('date_to'));
                 $to   = $request->get('date_to', $from);
                 $query->whereBetween('log_date', [$from, $to]);
-            } elseif ($request->has('date')) {
-                $query->whereDate('log_date', $request->date);
             } else {
-                $query->whereDate('log_date', now()->toDateString());
+                // El Registro Diario ES la caja del día, y la caja ya cuenta
+                // por `paid_at`: un ticket de ayer cobrado hoy suma en
+                // "Ingresos del día" y en el tile de su método. Cortar la
+                // tabla por `log_date` dejaba esa plata sin dueño en pantalla
+                // —el titular subía y ninguna fila lo explicaba—, que es
+                // exactamente lo que el mostrador no puede cuadrar a mano.
+                //
+                // Entra también lo cobrado ese día aunque venga de otra
+                // fecha; la fila se marca con su fecha de registro para que
+                // no se lea como trabajo de hoy.
+                $diaUnico = $request->has('date')
+                    ? (string) $request->date
+                    : now()->toDateString();
+
+                $query->where(function ($q) use ($diaUnico) {
+                    $q->whereDate('log_date', $diaUnico)
+                        ->orWhereExists(
+                            fn ($p) => $p->selectRaw('1')
+                                ->from('payment_allocations')
+                                ->join('payments', 'payments.id', '=', 'payment_allocations.payment_id')
+                                ->whereColumn('payment_allocations.payable_id', 'service_logs.id')
+                                ->where('payment_allocations.payable_type', 'service_log')
+                                ->whereDate('payments.paid_at', $diaUnico)
+                        );
+                });
             }
 
             // The reports slice transfers by bank; the column lives on the log.
@@ -474,7 +496,32 @@ class ServiceLogController extends Controller
             });
         }
 
-        $query->orderBy('started_at', 'desc');
+        // Lo cobrado hoy de otra fecha se ordena por la hora del COBRO, no por
+        // cuándo se registró el servicio: por `started_at` el ticket de ayer
+        // cae al fondo de la lista, lejos del movimiento de caja que lo trajo
+        // hasta acá. Las filas de hoy no tienen cobro anterior y siguen
+        // ordenándose igual que siempre.
+        if (isset($diaUnico)) {
+            $query->select('service_logs.*')
+                ->selectRaw(
+                    '(select max(p.paid_at) from payments p'
+                    . ' join payment_allocations pa on pa.payment_id = p.id'
+                    . ' where pa.payable_type = ? and pa.payable_id = service_logs.id'
+                    . ' and date(p.paid_at) = ?) as collected_at',
+                    ['service_log', $diaUnico],
+                )
+                ->orderByRaw(
+                    // Sólo las filas de OTRA fecha se ordenan por el cobro. Si
+                    // el criterio se aplicara a todas, un servicio de las 08:00
+                    // cobrado al mediodía se treparía sobre uno de las 11:00 y
+                    // la columna HORA se leería desordenada.
+                    '(case when date(log_date) = ? then started_at'
+                    . ' else coalesce(collected_at, started_at) end) desc',
+                    [$diaUnico],
+                );
+        } else {
+            $query->orderBy('started_at', 'desc');
+        }
 
         // Only the sizes the UI offers, so a caller can't ask for 10.000 rows.
         // "all" becomes a single page the size of the filtered result, which

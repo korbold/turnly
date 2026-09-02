@@ -2,7 +2,8 @@
 
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
-import { format } from 'date-fns';
+import { format, parseISO } from 'date-fns';
+import { es } from 'date-fns/locale';
 import { MoreHorizontal, CheckCircle2, Pencil, Plus, ClipboardList, Wallet, Play, Trophy, FileText, Receipt, Eye, Loader2, ChevronLeft, ChevronRight, UserCog } from 'lucide-react';
 import { toast } from 'sonner';
 import { motion } from 'framer-motion';
@@ -266,6 +267,14 @@ export function LogList({
         // product handed over with nothing to attach it to, so name it
         // instead of showing "Sin recurso" like a broken row.
         const isCounterSale = !log.clientResource && !log.service;
+        // `log_date` viaja como ISO en UTC ("2026-08-30T00:00:00.000000Z"):
+        // parsearlo entero en -05 devuelve el día anterior, así que se corta
+        // a la fecha desnuda antes de leerla. Vacío cuando la fila es del día
+        // que se está mirando, que es el caso normal.
+        const registeredOn = (() => {
+          const raw = log.logDate?.slice(0, 10);
+          return raw && raw !== date ? raw : null;
+        })();
         const recursoLabel =
           log.clientResource?.label ||
           log.clientResource?.plate ||
@@ -293,7 +302,7 @@ export function LogList({
               // empleado tres líneas) y centrarlas dejaba la placa arriba del
               // nombre del servicio. La primera línea es la que el ojo usa
               // para escanear la fila.
-              // Debajo de `lg` no es una tabla: es una tarjeta de dos columnas.
+              // Debajo de `xl` no es una tabla: es una tarjeta de dos columnas.
               // Meter siete columnas en una tablet trunca todo a "PBT…", y
               // apilarlas hace que un servicio coma media pantalla. La
               // tarjeta pone hora y precio en la misma línea, y el chip de
@@ -318,9 +327,24 @@ export function LogList({
           >
             {/* Hora — bigger weight on mobile to read like a chip,
                 lighter on desktop where the column header carries it. */}
-            <span className="col-start-1 row-start-1 block font-mono text-[14px] font-semibold tabular-nums text-[var(--fg-strong)] lg:col-auto lg:row-auto lg:font-normal" style={{ fontFamily: 'var(--font-mono)' }}>
-              {format(new Date(log.startedAt), 'HH:mm')}
-            </span>
+            <div className="col-start-1 row-start-1 lg:col-auto lg:row-auto">
+              <span className="block font-mono text-[14px] font-semibold tabular-nums text-[var(--fg-strong)] lg:font-normal" style={{ fontFamily: 'var(--font-mono)' }}>
+                {format(new Date(log.startedAt), 'HH:mm')}
+              </span>
+              {/* Un registro de otra fecha entra a esta lista porque su plata
+                  entró HOY —la caja ya lo suma en "Ingresos del día"— pero la
+                  hora sola lo haría pasar por trabajo de hoy y le inventaría
+                  al día un servicio que no hizo. La fecha de registro va
+                  debajo, en el mismo ámbar que marca lo que falta cobrar. */}
+              {registeredOn && (
+                <span
+                  className="mt-0.5 inline-block rounded px-1 py-px text-[10.5px] font-semibold leading-tight text-[var(--warning-700)] ring-1 ring-inset ring-[var(--warning-200)]"
+                  title={`Registrado el ${format(parseISO(registeredOn), "d 'de' MMMM", { locale: es })} · cobrado en esta fecha`}
+                >
+                  {format(parseISO(registeredOn), 'd MMM', { locale: es })}
+                </span>
+              )}
+            </div>
 
             {/* Recurso */}
             <div className="col-span-3 row-start-2 min-w-0 lg:col-span-1 lg:row-auto">
