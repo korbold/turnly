@@ -214,7 +214,7 @@ export function LogList({
           the "Cobrar"/"Completar" labeled buttons no longer fit in
           180px next to the status badge + overflow ⋯, which was
           clipping them at the right edge. */}
-      <div className="hidden rounded-lg bg-[var(--bg-sunken)] px-3 py-2 text-[11px] font-semibold uppercase tracking-[0.04em] text-[var(--fg-muted)] lg:grid lg:grid-cols-[60px_minmax(0,1.3fr)_minmax(0,1.3fr)_minmax(0,1fr)_84px_112px_minmax(368px,auto)] lg:items-center lg:gap-3">
+      <div className="hidden rounded-lg bg-[var(--bg-sunken)] px-3 py-2 text-[11px] font-semibold uppercase tracking-[0.04em] text-[var(--fg-muted)] xl:grid xl:grid-cols-[60px_minmax(0,1.3fr)_minmax(0,1.3fr)_minmax(0,1fr)_84px_112px_minmax(368px,auto)] xl:items-center xl:gap-3">
         <span>Hora</span>
         <span>Recurso</span>
         <span>Servicio</span>
@@ -321,14 +321,14 @@ export function LogList({
               // distintos (350 / 280 / 359 medidos). El piso cubre el caso más
               // ancho normal y deja que sólo el raro —"Reintentar factura" con
               // badge de estado— lo supere.
-              'lg:grid-cols-[60px_minmax(0,1.3fr)_minmax(0,1.3fr)_minmax(0,1fr)_84px_112px_minmax(368px,auto)] lg:items-start lg:gap-3',
+              'xl:grid-cols-[60px_minmax(0,1.3fr)_minmax(0,1.3fr)_minmax(0,1fr)_84px_112px_minmax(368px,auto)] xl:items-start xl:gap-3',
               rowTint,
             )}
           >
             {/* Hora — bigger weight on mobile to read like a chip,
                 lighter on desktop where the column header carries it. */}
-            <div className="col-start-1 row-start-1 lg:col-auto lg:row-auto">
-              <span className="block font-mono text-[14px] font-semibold tabular-nums text-[var(--fg-strong)] lg:font-normal" style={{ fontFamily: 'var(--font-mono)' }}>
+            <div className="col-start-1 row-start-1 xl:col-auto xl:row-auto">
+              <span className="block font-mono text-[14px] font-semibold tabular-nums text-[var(--fg-strong)] xl:font-normal" style={{ fontFamily: 'var(--font-mono)' }}>
                 {format(new Date(log.startedAt), 'HH:mm')}
               </span>
               {/* Un registro de otra fecha entra a esta lista porque su plata
@@ -347,7 +347,7 @@ export function LogList({
             </div>
 
             {/* Recurso */}
-            <div className="col-span-3 row-start-2 min-w-0 lg:col-span-1 lg:row-auto">
+            <div className="col-span-3 row-start-2 min-w-0 xl:col-span-1 xl:row-auto">
               <p
                 className={cn(
                   'truncate text-[13.5px] font-medium',
@@ -358,7 +358,7 @@ export function LogList({
                 {recursoLabel}
               </p>
               {log.clientResource?.client?.name && log.clientResource?.plate && (
-                <p className="mt-0.5 truncate text-[11.5px] text-[var(--fg-muted)] lg:hidden">
+                <p className="mt-0.5 truncate text-[11.5px] text-[var(--fg-muted)] xl:hidden">
                   {log.clientResource.client.name}
                 </p>
               )}
@@ -378,11 +378,11 @@ export function LogList({
             </div>
 
             {/* Servicio */}
-            <div className="col-span-3 row-start-3 min-w-0 lg:col-span-1 lg:row-auto">
+            <div className="col-span-3 row-start-3 min-w-0 xl:col-span-1 xl:row-auto">
               <p className="truncate text-[13.5px] text-[var(--fg-strong)]" title={serviceLabel}>
                 {serviceLabel}
               </p>
-              <p className="mt-0.5 truncate text-[11.5px] text-[var(--fg-muted)] lg:hidden">
+              <p className="mt-0.5 truncate text-[11.5px] text-[var(--fg-muted)] xl:hidden">
                 {isCarWash
                   ? ([log.washer?.name, log.dryer?.name].filter(Boolean).join(' · ') || 'Sin asignar')
                     + (log.attendant?.name ? ` · Caja: ${log.attendant.name}` : '')
@@ -394,7 +394,7 @@ export function LogList({
                 on mobile so the row stays compact). En lavadora son dos
                 personas: lavador arriba, secador debajo. */}
             {isCarWash ? (
-              <div className="hidden min-w-0 lg:block">
+              <div className="hidden min-w-0 xl:block">
                 <p className="truncate text-[13px] text-[var(--fg-secondary)]">
                   {log.washer?.name ?? (
                     <span className="text-[var(--fg-muted)]">Sin asignar</span>
@@ -412,13 +412,13 @@ export function LogList({
                 )}
               </div>
             ) : (
-              <span className="hidden truncate text-[13px] text-[var(--fg-secondary)] lg:inline">
+              <span className="hidden truncate text-[13px] text-[var(--fg-secondary)] xl:inline">
                 {log.attendant?.name ?? '-'}
               </span>
             )}
 
             {/* Precio */}
-            <div className="col-start-3 row-start-1 flex items-center gap-1.5 justify-self-end lg:col-auto lg:row-auto lg:justify-end lg:justify-self-auto">
+            <div className="col-start-3 row-start-1 flex items-center gap-1.5 justify-self-end xl:col-auto xl:row-auto xl:justify-end xl:justify-self-auto">
               {/* Que el precio no es el del catálogo, y nada más: la fila ya
                   carga recurso, servicio, dos asignados, pago y tres botones,
                   y escribir acá la historia entera truncaba la placa.
@@ -443,7 +443,7 @@ export function LogList({
                 </button>
               )}
               <span
-                className="font-mono text-[15px] font-semibold tabular-nums text-[var(--fg-strong)] lg:text-[14px]"
+                className="font-mono text-[15px] font-semibold tabular-nums text-[var(--fg-strong)] xl:text-[14px]"
                 style={{ fontFamily: 'var(--font-mono)' }}
               >
                 {fmt(log.priceCharged)}
@@ -451,9 +451,9 @@ export function LogList({
             </div>
 
             {/* Pago */}
-            <div className="col-start-2 row-start-1 flex flex-col items-end gap-1 justify-self-end lg:col-auto lg:row-auto lg:items-start lg:justify-self-auto">
+            <div className="col-start-2 row-start-1 flex flex-col items-end gap-1 justify-self-end xl:col-auto xl:row-auto xl:items-start xl:justify-self-auto">
               {isOwing ? (
-                <span className="inline-flex items-center gap-1.5 whitespace-nowrap rounded-full bg-[var(--warning-50)] lg:whitespace-normal px-2.5 py-1 text-[11.5px] font-semibold text-[var(--warning-700)] ring-1 ring-[var(--warning-200)]">
+                <span className="inline-flex items-center gap-1.5 whitespace-nowrap rounded-full bg-[var(--warning-50)] xl:whitespace-normal px-2.5 py-1 text-[11.5px] font-semibold text-[var(--warning-700)] ring-1 ring-[var(--warning-200)]">
                   <Wallet className="h-3 w-3" aria-hidden="true" />
                   {log.leftOwing
                     ? `Debe ${fmt(log.amountDue)}`
@@ -462,7 +462,7 @@ export function LogList({
                       : 'Pendiente'}
                 </span>
               ) : mostrarTramos ? null : pmCfg ? (
-                <span className="inline-flex items-center gap-1.5 whitespace-nowrap rounded-full bg-[var(--bg-sunken)] lg:whitespace-normal px-2.5 py-1 text-[11.5px] font-medium text-[var(--fg-strong)]">
+                <span className="inline-flex items-center gap-1.5 whitespace-nowrap rounded-full bg-[var(--bg-sunken)] xl:whitespace-normal px-2.5 py-1 text-[11.5px] font-medium text-[var(--fg-strong)]">
                   <span aria-hidden="true">{pmCfg.icon}</span>
                   {pmCfg.label}
                 </span>
@@ -498,7 +498,7 @@ export function LogList({
                 primary CTA so it never clips at intermediate breakpoints
                 (the bug that made the Cobrar button only show on
                 hover). */}
-            <div className="col-span-3 row-start-4 flex flex-nowrap items-center justify-end gap-2 lg:col-span-1 lg:row-auto lg:self-center">
+            <div className="col-span-3 row-start-4 flex flex-nowrap items-center justify-end gap-2 xl:col-span-1 xl:row-auto xl:self-center">
               <InvoiceStatusBadge status={log.invoiceStatus} className="ml-1" />
 
               <Badge
