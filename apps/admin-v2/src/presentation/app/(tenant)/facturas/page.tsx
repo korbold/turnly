@@ -22,7 +22,7 @@ import {
 import { Skeleton } from '@/presentation/components/ui/skeleton';
 import { InvoiceStatusBadge } from '@/presentation/components/features/service-logs/invoice-status-badge';
 import { useInvoices } from '@/presentation/hooks/use-invoices';
-import type { InvoiceFilters, InvoiceStatus } from '@/domain/entities/invoice';
+import type { Invoice, InvoiceFilters, InvoiceStatus } from '@/domain/entities/invoice';
 
 const fmtCurrency = new Intl.NumberFormat('es-EC', {
   style: 'currency',
@@ -45,32 +45,29 @@ function FacturasContent() {
     };
   }
 
-  async function handleDownloadXml(invoiceId: string) {
+  /**
+   * Both documents download as files. The RIDE used to open in a new tab,
+   * which reads as "preview" and is what a popup blocker eats first.
+   */
+  async function downloadDoc(invoice: Invoice, kind: 'pdf' | 'xml') {
     const apiUrl = process.env.NEXT_PUBLIC_API_URL ?? 'http://localhost:8000/api/v1';
-    const res = await fetch(`${apiUrl}/billing/invoices/${invoiceId}/xml`, {
+    const path = kind === 'pdf' ? 'ride' : 'xml';
+    const res = await fetch(`${apiUrl}/billing/invoices/${invoice.id}/${path}`, {
       headers: getAuthHeaders(),
     });
-    if (!res.ok) { toast.error('No se pudo descargar el XML'); return; }
+    if (!res.ok) {
+      toast.error(`No se pudo descargar el ${kind.toUpperCase()}`);
+      return;
+    }
     const blob = await res.blob();
     const url = URL.createObjectURL(blob);
     const a = document.createElement('a');
     a.href = url;
-    a.download = `factura-${invoiceId}.xml`;
+    a.download = `factura-${invoice.secuencial ?? invoice.id}.${kind}`;
+    document.body.appendChild(a);
     a.click();
+    a.remove();
     URL.revokeObjectURL(url);
-  }
-
-  async function handleOpenRide(invoiceId: string) {
-    const apiUrl = process.env.NEXT_PUBLIC_API_URL ?? 'http://localhost:8000/api/v1';
-    const res = await fetch(`${apiUrl}/billing/invoices/${invoiceId}/ride`, {
-      headers: getAuthHeaders(),
-    });
-    if (!res.ok) { toast.error('No se pudo obtener el PDF'); return; }
-    const blob = await res.blob();
-    const url = URL.createObjectURL(blob);
-    window.open(url, '_blank');
-    // Revoke after a short delay to let the new tab load the blob
-    setTimeout(() => URL.revokeObjectURL(url), 10_000);
   }
 
   const filters: InvoiceFilters = {
@@ -191,22 +188,22 @@ function FacturasContent() {
                     {inv.invoiceStatus === 'autorizada' ? (
                       <div className="flex items-center justify-center gap-1">
                         <Button
-                          variant="ghost"
-                          size="icon"
-                          className="h-7 w-7"
-                          title="Descargar XML"
-                          onClick={() => handleDownloadXml(inv.id)}
+                          variant="outline"
+                          size="sm"
+                          className="h-7 px-2 text-xs"
+                          onClick={() => downloadDoc(inv, 'pdf')}
                         >
-                          <Download className="h-4 w-4" />
+                          <FileText className="mr-1 h-3.5 w-3.5" />
+                          PDF
                         </Button>
                         <Button
                           variant="ghost"
-                          size="icon"
-                          className="h-7 w-7"
-                          title="Ver PDF (RIDE)"
-                          onClick={() => handleOpenRide(inv.id)}
+                          size="sm"
+                          className="h-7 px-2 text-xs text-muted-foreground"
+                          onClick={() => downloadDoc(inv, 'xml')}
                         >
-                          <FileText className="h-4 w-4" />
+                          <Download className="mr-1 h-3.5 w-3.5" />
+                          XML
                         </Button>
                       </div>
                     ) : (
