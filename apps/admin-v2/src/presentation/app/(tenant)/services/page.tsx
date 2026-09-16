@@ -1,29 +1,55 @@
 'use client';
 
-import { useState, useMemo, Suspense } from 'react';
+import { useState, useEffect, Suspense } from 'react';
+import { useQueryState, parseAsInteger, parseAsString } from 'nuqs';
 import { Plus, Search, Scissors } from 'lucide-react';
 import { Button } from '@/presentation/components/ui/button';
 import { Input } from '@/presentation/components/ui/input';
 import { Skeleton } from '@/presentation/components/ui/skeleton';
-import { useServices } from '@/presentation/hooks/use-services';
+import { useServicesPage } from '@/presentation/hooks/use-services';
+import { Pager } from '@/presentation/components/ui/pager';
 import { ServiceCard } from '@/presentation/components/features/services/service-card';
 import { ServiceForm } from '@/presentation/components/features/services/service-form';
 import type { Service } from '@/domain/entities/service';
 
+const PER_PAGE = 24;
+
 function ServicesContent() {
   const [createOpen, setCreateOpen] = useState(false);
   const [editService, setEditService] = useState<Service | null>(null);
-  const [search, setSearch] = useState('');
-  const { data, isLoading } = useServices();
-  const services = data?.data ?? [];
 
-  const filtered = useMemo(() => {
-    const q = search.trim().toLowerCase();
-    if (!q) return services;
-    return services.filter((s) =>
-      [s.name, s.description].some((v) => v?.toLowerCase().includes(q))
-    );
-  }, [services, search]);
+  // Página y búsqueda viven en la URL: la pantalla se comparte y sobrevive al
+  // refresh, igual que en el Registro Diario.
+  const [page, setPage] = useQueryState('page', parseAsInteger.withDefault(1));
+  const [query, setQuery] = useQueryState('q', parseAsString.withDefault(''));
+  const [search, setSearch] = useState(query);
+
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      if (search === query) return;
+      setQuery(search || null);
+      // Buscar reinicia la paginación: la página 3 de otra búsqueda saldría vacía.
+      setPage(null);
+    }, 300);
+    return () => clearTimeout(timer);
+  }, [search, query, setQuery, setPage]);
+
+  // La búsqueda la resuelve el servidor sobre TODO el catálogo. Filtrar en el
+  // cliente sólo miraría la página que ya llegó y volvería a esconder servicios.
+  const { data, isLoading } = useServicesPage({
+    page,
+    perPage: PER_PAGE,
+    q: query || undefined,
+  });
+
+  const services = data?.data ?? [];
+  const meta = data?.meta;
+
+  // Borrar el último servicio de la última página dejaría al usuario mirando
+  // una página vacía que además miente ("aún no tienes servicios").
+  useEffect(() => {
+    if (meta && page > meta.lastPage) setPage(meta.lastPage <= 1 ? null : meta.lastPage);
+  }, [meta, page, setPage]);
 
   function handleEdit(service: Service) {
     setEditService(service);
@@ -59,7 +85,7 @@ function ServicesContent() {
             <Skeleton key={i} className="h-44 rounded-xl" />
           ))}
         </div>
-      ) : filtered.length === 0 ? (
+      ) : services.length === 0 ? (
         <div className="flex flex-col items-center justify-center rounded-xl border border-dashed border-[var(--border-strong)] bg-[var(--bg-surface)] px-6 py-12 text-center">
           <div className="mb-3 grid h-12 w-12 place-items-center rounded-full bg-[var(--bg-sunken)]">
             <Scissors className="h-5 w-5 text-[var(--fg-secondary)]" aria-hidden="true" />
@@ -80,10 +106,21 @@ function ServicesContent() {
           )}
         </div>
       ) : (
-        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
-          {filtered.map((svc) => (
-            <ServiceCard key={svc.id} service={svc} onEdit={handleEdit} />
-          ))}
+        <div className="space-y-4">
+          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
+            {services.map((svc) => (
+              <ServiceCard key={svc.id} service={svc} onEdit={handleEdit} />
+            ))}
+          </div>
+
+          <Pager
+            currentPage={meta?.currentPage ?? 1}
+            lastPage={meta?.lastPage ?? 1}
+            total={meta?.total ?? services.length}
+            perPage={meta?.perPage ?? PER_PAGE}
+            onPageChange={(p) => setPage(p <= 1 ? null : p)}
+            noun="servicios"
+          />
         </div>
       )}
 

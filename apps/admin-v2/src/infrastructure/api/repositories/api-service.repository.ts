@@ -1,4 +1,8 @@
-import type { ServiceRepository, CreateServiceData } from '@/domain/repositories/service.repository';
+import type {
+  ServiceRepository,
+  CreateServiceData,
+  ListServicesParams,
+} from '@/domain/repositories/service.repository';
 import type { Service } from '@/domain/entities/service';
 import type { PaginatedResult } from '@/shared/types/api';
 import api from '../client';
@@ -6,12 +10,21 @@ import { mapService } from '../mappers/service.mapper';
 import { mapPaginatedResponse } from '../mappers/pagination';
 
 export class ApiServiceRepository implements ServiceRepository {
-  async getAll(page?: number): Promise<PaginatedResult<Service>> {
-    // Sin página explícita el que llama quiere el catálogo entero: la lista y
-    // los selectores filtran en cliente y no dibujan paginador, así que una
-    // página de 50 escondía los servicios de más sin que nadie se enterara.
-    const params = page ? { page } : { per_page: 'all' };
-    const { data: res } = await api.get('/services', { params });
+  async getAll(params?: ListServicesParams): Promise<PaginatedResult<Service>> {
+    // Sin parámetros el que llama quiere el catálogo entero. Los selectores
+    // dependen de eso: paginarlos escondería servicios sin que nadie se entere,
+    // que es exactamente el bug que el paginado no debe reintroducir.
+    const paged = Boolean(params?.page || params?.perPage || params?.q);
+
+    const query: Record<string, unknown> = paged
+      ? {
+          page: params?.page ?? 1,
+          ...(params?.perPage ? { per_page: params.perPage } : {}),
+          ...(params?.q ? { q: params.q } : {}),
+        }
+      : { per_page: 'all' };
+
+    const { data: res } = await api.get('/services', { params: query });
     return mapPaginatedResponse(res, mapService);
   }
 

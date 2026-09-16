@@ -6,13 +6,30 @@ import { GetServicesUseCase } from '@/application/use-cases/services/get-service
 import { CreateServiceUseCase } from '@/application/use-cases/services/create-service.use-case';
 import { UpdateServiceUseCase } from '@/application/use-cases/services/update-service.use-case';
 import { DeleteServiceUseCase } from '@/application/use-cases/services/delete-service.use-case';
-import type { CreateServiceData } from '@/domain/repositories/service.repository';
+import type {
+  CreateServiceData,
+  ListServicesParams,
+} from '@/domain/repositories/service.repository';
 
-export function useServices(page?: number) {
+/**
+ * El catálogo completo. Lo usan los selectores (Registro Diario, wizards de
+ * reserva), donde paginar escondería servicios sin avisar.
+ */
+export function useServices() {
   const repo = useRepository('service');
   return useQuery({
-    queryKey: ['services', page],
-    queryFn: () => new GetServicesUseCase(repo).execute(page),
+    queryKey: ['services', 'all'],
+    queryFn: () => new GetServicesUseCase(repo).execute(),
+  });
+}
+
+/** Una página del catálogo, con la búsqueda resuelta en el servidor. */
+export function useServicesPage(params: ListServicesParams) {
+  const repo = useRepository('service');
+  return useQuery({
+    queryKey: ['services', 'page', params.page ?? 1, params.perPage ?? null, params.q ?? ''],
+    queryFn: () => new GetServicesUseCase(repo).execute(params),
+    placeholderData: (prev) => prev,
   });
 }
 

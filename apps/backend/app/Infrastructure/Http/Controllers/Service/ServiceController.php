@@ -26,6 +26,18 @@ class ServiceController extends Controller
             ->orderBy('name')
             ->orderBy('id');
 
+        // La búsqueda va del lado del servidor a propósito: filtrar en el
+        // cliente sólo miraría la página que ya llegó y volvería a esconder
+        // servicios, que es justo lo que el paginado no debe reintroducir.
+        $q = trim((string) $request->get('q', ''));
+        if ($q !== '') {
+            $like = '%' . str_replace(['\\', '%', '_'], ['\\\\', '\\%', '\\_'], $q) . '%';
+            $query->where(function ($w) use ($like) {
+                $w->where('name', 'like', $like)
+                  ->orWhere('description', 'like', $like);
+            });
+        }
+
         // "all" es una sola página del tamaño del catálogo: conserva la forma de
         // la respuesta y evita que la lista o un selector se coman los
         // servicios que no entraron en los primeros 50.

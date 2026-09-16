@@ -12,8 +12,16 @@ export interface CreateServiceData {
   sortOrder?: number;
 }
 
+export interface ListServicesParams {
+  page?: number;
+  perPage?: number;
+  /** Búsqueda por nombre o descripción, resuelta en el servidor. */
+  q?: string;
+}
+
 export interface ServiceRepository {
-  getAll(page?: number): Promise<PaginatedResult<Service>>;
+  /** Sin parámetros devuelve el catálogo entero, que es lo que necesitan los selectores. */
+  getAll(params?: ListServicesParams): Promise<PaginatedResult<Service>>;
   getById(id: string): Promise<Service>;
   create(data: CreateServiceData): Promise<Service>;
   update(id: string, data: Partial<CreateServiceData>): Promise<Service>;
