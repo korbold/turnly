@@ -7,7 +7,11 @@ import { mapPaginatedResponse } from '../mappers/pagination';
 
 export class ApiServiceRepository implements ServiceRepository {
   async getAll(page?: number): Promise<PaginatedResult<Service>> {
-    const { data: res } = await api.get('/services', { params: { page } });
+    // Sin página explícita el que llama quiere el catálogo entero: la lista y
+    // los selectores filtran en cliente y no dibujan paginador, así que una
+    // página de 50 escondía los servicios de más sin que nadie se enterara.
+    const params = page ? { page } : { per_page: 'all' };
+    const { data: res } = await api.get('/services', { params });
     return mapPaginatedResponse(res, mapService);
   }
 

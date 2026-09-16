@@ -19,10 +19,22 @@ class ServiceController extends Controller
 
     public function index(Request $request)
     {
-        $services = ServiceModel::orderBy('sort_order')
-            ->paginate($request->get('per_page', 50));
+        // El catálogo entero se crea con sort_order 0, así que sin desempate
+        // MySQL reparte los empates a su antojo y un servicio puede no caer en
+        // ninguna página.
+        $query = ServiceModel::orderBy('sort_order')
+            ->orderBy('name')
+            ->orderBy('id');
 
-        return ServiceResource::collection($services);
+        // "all" es una sola página del tamaño del catálogo: conserva la forma de
+        // la respuesta y evita que la lista o un selector se coman los
+        // servicios que no entraron en los primeros 50.
+        $requested = (string) $request->get('per_page', 50);
+        $perPage = $requested === 'all'
+            ? max($query->clone()->count(), 1)
+            : max(min((int) $requested ?: 50, 200), 1);
+
+        return ServiceResource::collection($query->paginate($perPage));
     }
 
     public function show(string $id): ServiceResource
