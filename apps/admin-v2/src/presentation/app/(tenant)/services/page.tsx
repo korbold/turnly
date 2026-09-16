@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect, Suspense } from 'react';
+import { useState, useEffect, useRef, Suspense } from 'react';
 import { useQueryState, parseAsInteger, parseAsString } from 'nuqs';
 import { Plus, Search, Scissors } from 'lucide-react';
 import { Button } from '@/presentation/components/ui/button';
@@ -20,6 +20,7 @@ function ServicesContent() {
 
   // Página y búsqueda viven en la URL: la pantalla se comparte y sobrevive al
   // refresh, igual que en el Registro Diario.
+  const topRef = useRef<HTMLDivElement>(null);
   const [page, setPage] = useQueryState('page', parseAsInteger.withDefault(1));
   const [query, setQuery] = useQueryState('q', parseAsString.withDefault(''));
   const [search, setSearch] = useState(query);
@@ -60,8 +61,17 @@ function ServicesContent() {
     setEditService(null);
   }
 
+  // En un teléfono el paginador queda al final de 24 tarjetas: sin esto, tocar
+  // "2" deja al usuario abajo del todo viendo las ÚLTIMAS de la página nueva.
+  // scrollIntoView sirve a los dos casos, porque en móvil scrollea la ventana y
+  // en escritorio el <main> que tiene el overflow.
+  function goToPage(next: number) {
+    setPage(next <= 1 ? null : next);
+    topRef.current?.scrollIntoView({ block: 'start' });
+  }
+
   return (
-    <div className="space-y-4">
+    <div className="space-y-4" ref={topRef}>
       {/* Toolbar */}
       <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
         <div className="relative w-full sm:max-w-md">
@@ -118,7 +128,7 @@ function ServicesContent() {
             lastPage={meta?.lastPage ?? 1}
             total={meta?.total ?? services.length}
             perPage={meta?.perPage ?? PER_PAGE}
-            onPageChange={(p) => setPage(p <= 1 ? null : p)}
+            onPageChange={goToPage}
             noun="servicios"
           />
         </div>
