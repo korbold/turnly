@@ -126,3 +126,77 @@ test('an unpaid service reports the whole price as due', function () {
     expect((float) $res->json('data.amount_paid'))->toBe(0.0);
     expect((float) $res->json('data.amount_due'))->toBe(30.0);
 });
+
+/*
+ * Agregar un servicio a un ticket ya cobrado. FEDER lo hizo tres veces:
+ * el total subía, el ticket seguía "pagado" y la diferencia no se podía
+ * cobrar nunca — Cobrar respondía ALREADY_PAID.
+ */
+function itemsFor(ServiceModel $service, float ...$prices): array
+{
+    return array_map(fn ($p) => [
+        'service_id' => $service->id, 'label' => 'Lavado',
+        'qty' => 1, 'unit_price' => $p,
+    ], $prices);
+}
+
+test('adding a service to a paid ticket leaves the difference to collect', function () {
+    $id = ($this->register)()->json('data.id');
+
+    $res = ($this->as)()
+        ->putJson("/api/v1/service-logs/{$id}/items", [
+            'items'               => itemsFor($this->service, 30.00, 30.00),
+            'price_change_reason' => null,
+        ])
+        ->assertOk();
+
+    expect($res->json('data.payment_status'))->toBe('partial');
+    expect((float) $res->json('data.amount_paid'))->toBe(30.0);
+    expect((float) $res->json('data.amount_due'))->toBe(30.0);
+});
+
+test('the difference can then be collected like any balance', function () {
+    $id = ($this->register)()->json('data.id');
+
+    ($this->as)()->putJson("/api/v1/service-logs/{$id}/items", [
+        'items' => itemsFor($this->service, 30.00, 30.00),
+    ])->assertOk();
+
+    ($this->as)()
+        ->postJson("/api/v1/service-logs/{$id}/payment", ['method' => 'transfer', 'bank' => 'Pichincha'])
+        ->assertOk()
+        ->assertJsonPath('data.payment_status', 'paid');
+
+    expect((float) PaymentModel::withoutGlobalScopes()->sum('amount'))->toBe(60.0);
+});
+
+test('lowering a partial ticket to what was paid closes it', function () {
+    $id = ($this->register)(['amount_received' => 10.00])->json('data.id');
+
+    ($this->as)()
+        ->putJson("/api/v1/service-logs/{$id}/items", ['items' => itemsFor($this->service, 10.00)])
+        ->assertOk()
+        ->assertJsonPath('data.payment_status', 'paid');
+});
+
+test('editing an unpaid ticket keeps it unpaid', function () {
+    $id = ($this->register)(['payment_status' => 'unpaid'])->json('data.id');
+
+    ($this->as)()
+        ->putJson("/api/v1/service-logs/{$id}/items", ['items' => itemsFor($this->service, 30.00, 30.00)])
+        ->assertOk()
+        ->assertJsonPath('data.payment_status', 'unpaid');
+});
+
+test('an invoiced ticket refuses new items', function () {
+    // La pantalla ya lo bloqueaba; el backend no. Cambiar los ítems de una
+    // factura emitida exige nota de crédito.
+    $id = ($this->register)()->json('data.id');
+    \App\Infrastructure\Persistence\Models\ServiceLogModel::withoutGlobalScopes()
+        ->whereKey($id)->update(['invoiced' => true, 'invoice_status' => 'autorizada']);
+
+    ($this->as)()
+        ->putJson("/api/v1/service-logs/{$id}/items", ['items' => itemsFor($this->service, 30.00, 30.00)])
+        ->assertStatus(422)
+        ->assertJsonPath('error.code', 'LOG_INVOICED');
+});

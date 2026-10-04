@@ -960,6 +960,17 @@ class ServiceLogController extends Controller
             return $problema;
         }
 
+        // Mismo candado que la pantalla: cambiar los ítems de una factura
+        // emitida exige nota de crédito y una factura nueva.
+        if ($serviceLog->invoiced) {
+            return response()->json([
+                'error' => [
+                    'code'    => 'LOG_INVOICED',
+                    'message' => 'Este registro ya está facturado: no se pueden cambiar sus ítems.',
+                ],
+            ], 422);
+        }
+
         $request->validate([
             'items'                  => 'required|array|min:1',
             'items.*.item_type'      => 'nullable|in:service_variant,product',
@@ -1042,6 +1053,15 @@ class ServiceLogController extends Controller
                 }
             }
             $serviceLog->update($patch);
+
+            // El estado del cobro se deriva del total. Sin esto, agregarle un
+            // servicio a un ticket ya cobrado lo dejaba "pagado" con saldo, y
+            // Cobrar respondía ALREADY_PAID: la diferencia no se cobraba nunca.
+            // Sin cobros no hay nada que recalcular — y sincronizar le borraría
+            // el método a un ticket pendiente.
+            if ($this->ledger->paidFor($serviceLog) > 0) {
+                $this->ledger->syncLogPaymentState($serviceLog);
+            }
 
             // Dentro de la transacción: un evento sin su cambio miente.
             $this->events->itemsChanged($serviceLog, $totalBefore, $newTotal, $userId);

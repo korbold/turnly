@@ -383,7 +383,9 @@ export function EditServiceLogDialog({ log, open, onClose }: Props) {
       },
     });
 
-    const patchItems = updateItems.mutateAsync({
+    // Facturado: los ítems no se tocan y el backend los rechaza. Mandarlos
+    // igual haría fallar un cambio de notas o de empleado.
+    const patchItems = itemsLocked ? Promise.resolve() : updateItems.mutateAsync({
       id: log.id,
       items: [
         ...lineItems.map((it) => ({
