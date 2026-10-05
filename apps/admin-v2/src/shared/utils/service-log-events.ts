@@ -119,7 +119,10 @@ export function describeServiceLogEvent(event: ServiceLogEvent): string {
       return `Se fue debiendo ${money(d.amount)}`;
 
     case 'status_changed':
-      return d.to === 'completed' ? 'Completó el servicio' : `Estado: ${String(d.to)}`;
+      if (d.to === 'completed') return 'Completó el servicio';
+      // Sólo se vuelve a "en progreso" al agregarle un servicio a un completado.
+      if (d.from === 'completed' && d.to === 'in_progress') return 'Reabrió el servicio';
+      return `Estado: ${String(d.to)}`;
 
     case 'invoice_requested':
       return 'Solicitó factura';

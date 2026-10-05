@@ -3,6 +3,7 @@
 namespace App\Infrastructure\Http\Controllers\ServiceLog;
 
 use App\Application\DTOs\ServiceLog\CreateServiceLogDTO;
+use App\Application\Services\CashRegister;
 use App\Application\Services\PaymentLedger;
 use App\Application\Services\ServiceLogEventRecorder;
 use App\Application\UseCases\ServiceLog\CreateServiceLogUseCase;
@@ -48,6 +49,7 @@ class ServiceLogController extends Controller
         private StockLedger $stock,
         private ServiceLogEventRecorder $events,
         private PaymentLedger $ledger,
+        private CashRegister $cash,
     ) {}
 
     /**
@@ -1018,10 +1020,27 @@ class ServiceLogController extends Controller
             }
         }
 
+        // Agregarle un servicio a un registro completado es trabajo que
+        // todavía no se hizo: el registro vuelve a "en progreso". Y la
+        // diferencia se va a cobrar, así que tiene que haber una caja donde
+        // entre. Corregir sin agregar —bajar un precio, quitar una línea— no
+        // reabre nada.
+        $reabre = $serviceLog->status === 'completed'
+            && $this->addsServiceWork($serviceLog, $items);
+
+        if ($reabre && $this->cash->currentSession($serviceLog->tenant_id) === null) {
+            return response()->json([
+                'error' => [
+                    'code'    => 'REOPEN_REQUIRES_OPEN_TILL',
+                    'message' => 'Para agregar un servicio a un registro completado tiene que haber una caja abierta.',
+                ],
+            ], 422);
+        }
+
         // Wrap the delete + insert + parent-update in a single transaction
         // so a mid-loop constraint failure can never leave the log in a
         // corrupt state (old items gone, new items half-written).
-        \Illuminate\Support\Facades\DB::transaction(function () use ($request, $serviceLog, $items, $userId, $totalBefore, $desviada, $fotoPrevia) {
+        \Illuminate\Support\Facades\DB::transaction(function () use ($request, $serviceLog, $items, $userId, $totalBefore, $desviada, $fotoPrevia, $reabre) {
             // Sold units go back on the shelf before the lines are
             // replaced; persistItems then books the new sale. Editing a
             // ticket twice would otherwise discount the stock twice.
@@ -1066,6 +1085,15 @@ class ServiceLogController extends Controller
             // Dentro de la transacción: un evento sin su cambio miente.
             $this->events->itemsChanged($serviceLog, $totalBefore, $newTotal, $userId);
 
+            if ($reabre) {
+                $serviceLog->forceFill([
+                    'status'      => 'in_progress',
+                    'finished_at' => null,
+                    'reopened_at' => now(),
+                ])->save();
+                $this->events->statusChanged($serviceLog, 'completed', 'in_progress', $userId);
+            }
+
             if ($desviada !== null) {
                 $this->recordPriceChange($serviceLog, $items, $newTotal, $request, $userId, $fotoPrevia);
             }
@@ -1074,6 +1102,42 @@ class ServiceLogController extends Controller
         return new ServiceLogResource(
             $serviceLog->load(['clientResource', 'service', 'attendant', 'items.variant'])
         );
+    }
+
+    /**
+     * ¿La lista nueva trae trabajo que el registro no tenía? Un servicio que
+     * no estaba, o más unidades de uno que sí. Los productos no cuentan:
+     * nadie vuelve a trabajar un auto por un ambientador.
+     */
+    private function addsServiceWork(ServiceLogModel $log, array $items): bool
+    {
+        $antes = $log->items()
+            ->where('item_type', '!=', 'product')
+            ->get(['ref_id', 'qty'])
+            ->groupBy('ref_id')
+            ->map(fn ($filas) => (float) $filas->sum('qty'))
+            ->all();
+
+        // Fila vieja, de antes de las líneas: su servicio está en la fila.
+        if ($antes === [] && $log->service_id) {
+            $antes[$log->service_variant_id ?? $log->service_id] = 1.0;
+        }
+
+        $despues = [];
+        foreach ($items as $it) {
+            if ($this->isProductLine($it) || ($ref = $this->lineRefId($it)) === null) {
+                continue;
+            }
+            $despues[$ref] = ($despues[$ref] ?? 0.0) + (float) $it['qty'];
+        }
+
+        foreach ($despues as $ref => $qty) {
+            if ($qty > ($antes[$ref] ?? 0.0) + 0.0001) {
+                return true;
+            }
+        }
+
+        return false;
     }
 
     /**
@@ -1152,6 +1216,12 @@ class ServiceLogController extends Controller
         );
     }
 
+    private function isManager(Request $request): bool
+    {
+        return (bool) $request->user()?->is_super_admin
+            || in_array($this->tenantRole($request), ['owner', 'tenant_admin'], true);
+    }
+
     public function updateAssignees(Request $request, string $id): ServiceLogResource|JsonResponse
     {
         $log = ServiceLogModel::findOrFail($id);
@@ -1161,10 +1231,7 @@ class ServiceLogController extends Controller
         }
 
         if ($log->status === 'completed') {
-            $isManager = $request->user()?->is_super_admin
-                || in_array($this->tenantRole($request), ['owner', 'tenant_admin'], true);
-
-            if (!$isManager) {
+            if (!$this->isManager($request)) {
                 return response()->json([
                     'error' => [
                         'code'    => 'ASSIGNEES_LOCKED',
@@ -1185,6 +1252,23 @@ class ServiceLogController extends Controller
             'washed_by' => 'nullable|uuid',
             'dried_by'  => 'nullable|uuid',
         ]);
+
+        // Un registro reabierto vuelve a "en progreso", pero quien trabajó
+        // antes de reabrirlo ya quedó asentado: el cajero completa el puesto
+        // vacío, no reescribe el ocupado. Misma regla que un completado.
+        if ($log->reopened_at !== null && !$this->isManager($request)) {
+            foreach (['washed_by', 'dried_by'] as $field) {
+                if ($request->has($field) && $log->{$field} !== null
+                    && $request->input($field) !== $log->{$field}) {
+                    return response()->json([
+                        'error' => [
+                            'code'    => 'ASSIGNEES_LOCKED',
+                            'message' => 'Este registro se reabrió: quien ya trabajó en él solo lo cambia el administrador.',
+                        ],
+                    ], 403);
+                }
+            }
+        }
 
         // Solo los puestos que el request menciona. Omitir un campo es "no lo
         // toques"; mandarlo en null es "sacá al asignado", y son cosas

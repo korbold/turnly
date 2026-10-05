@@ -180,6 +180,26 @@ export function EditServiceLogDialog({ log, open, onClose }: Props) {
     [lineItems],
   );
 
+  // Agregarle trabajo a un completado lo reabre (el backend decide igual;
+  // esto sólo avisa antes de guardar). Misma cuenta que el servidor: un
+  // servicio que no estaba, o más unidades de uno que sí.
+  const reabre = useMemo(() => {
+    if (log?.status !== 'completed') return false;
+    const antes = new Map<string, number>();
+    const guardadas = log.items?.filter((it) => it.itemType !== 'product') ?? [];
+    if (guardadas.length > 0) {
+      guardadas.forEach((it) => antes.set(it.refId, (antes.get(it.refId) ?? 0) + it.qty));
+    } else if (log.serviceId) {
+      antes.set(log.serviceId, 1);
+    }
+    const despues = new Map<string, number>();
+    lineItems.forEach((it) => {
+      const ref = it.variantId ?? it.serviceId;
+      despues.set(ref, (despues.get(ref) ?? 0) + it.qty);
+    });
+    return [...despues].some(([ref, qty]) => qty > (antes.get(ref) ?? 0) + 0.0001);
+  }, [log, lineItems]);
+
   // Seed state from the log when the dialog opens
   useEffect(() => {
     if (!open || !log) return;
@@ -370,7 +390,7 @@ export function EditServiceLogDialog({ log, open, onClose }: Props) {
       return;
     }
 
-    const patchLog = updateLog.mutateAsync({
+    const patchLog = () => updateLog.mutateAsync({
       id: log.id,
       data: {
         attendedBy,
@@ -385,7 +405,7 @@ export function EditServiceLogDialog({ log, open, onClose }: Props) {
 
     // Facturado: los ítems no se tocan y el backend los rechaza. Mandarlos
     // igual haría fallar un cambio de notas o de empleado.
-    const patchItems = itemsLocked ? Promise.resolve() : updateItems.mutateAsync({
+    const patchItems = () => itemsLocked ? Promise.resolve() : updateItems.mutateAsync({
       id: log.id,
       items: [
         ...lineItems.map((it) => ({
@@ -409,7 +429,11 @@ export function EditServiceLogDialog({ log, open, onClose }: Props) {
         : undefined,
     });
 
-    Promise.all([patchLog, patchItems]).then(() => {
+    // Ítems primero, y el resto sólo si pasaron. En paralelo, un rechazo de
+    // los ítems (caja cerrada, motivo de precio) dejaba igual guardado el
+    // empleado: el cajero quedaba como quien atendió un ticket que no pudo
+    // editar.
+    patchItems().then(patchLog).then(() => {
       toast.success('Registro actualizado');
       onClose();
     }).catch((e) => {
@@ -628,6 +652,14 @@ export function EditServiceLogDialog({ log, open, onClose }: Props) {
                   </li>
                 ))}
               </ul>
+            </div>
+          )}
+
+          {reabre && (
+            <div className="rounded-lg border border-[var(--warning-200)] bg-[var(--warning-50)] p-3 text-[13px] text-[var(--warning-700)]">
+              Este registro ya estaba completado. Al guardar vuelve a{' '}
+              <span className="font-semibold">En progreso</span> y la diferencia queda
+              por cobrar. Necesitas la caja abierta.
             </div>
           )}
 

@@ -33,6 +33,7 @@ class ServiceLogModel extends Model
         return [
             'started_at' => 'datetime',
             'finished_at' => 'datetime',
+            'reopened_at' => 'datetime',
             'price_charged' => 'decimal:2',
             'log_date' => 'date',
             'consumption_applied_at' => 'datetime',
