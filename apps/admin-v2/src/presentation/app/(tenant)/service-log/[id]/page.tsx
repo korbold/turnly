@@ -336,6 +336,12 @@ function ServiceLogDetail({ id }: { id: string }) {
               value={
                 isUnpaid ? (
                   <span className="text-[var(--warning-700)]">Pendiente</span>
+                ) : log.paymentStatus === 'partial' ? (
+                  // Agregarle un servicio a un ticket cobrado lo deja parcial:
+                  // decir "Pagado" escondía la diferencia que falta cobrar.
+                  <span className="text-[var(--warning-700)]">
+                    Parcial · debe {fmt(log.amountDue)}
+                  </span>
                 ) : (
                   <span className="text-[var(--success-700)]">Pagado</span>
                 )

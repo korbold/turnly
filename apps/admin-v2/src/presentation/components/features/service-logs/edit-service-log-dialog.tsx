@@ -59,6 +59,10 @@ interface LineItem {
       cantidad); una línea nueva se compara con el catálogo. */
   basePrice: number;
   availableVariants: ServiceVariantSlim[] | null;
+  /** Cantidad con la que la línea ya estaba en el registro. Undefined en
+      una línea agregada en este diálogo. Con el ticket cobrado, el cajero
+      no baja de acá. */
+  savedQty?: number;
 }
 
 /** A counter-sale line. Kept apart from LineItem because a product has
@@ -70,6 +74,7 @@ interface ProductLine {
   productName: string;
   qty: number;
   unitPrice: number;
+  savedQty?: number;
 }
 
 interface ServiceVariantSlim {
@@ -161,7 +166,16 @@ export function EditServiceLogDialog({ log, open, onClose }: Props) {
   // ticket; quien no lo tiene, elige motivo de la lista cerrada. Bloquear
   // acá dejaba al cajero descontar en el mostrador y no poder corregir ese
   // mismo ticket un minuto después — dos políticas para la misma pregunta.
-  const { canSetPrice } = usePermissions();
+  const { canSetPrice, isOwnerOrAdmin } = usePermissions();
+  // Con un cobro adentro —parcial incluido— lo cobrado lo corrige el dueño o
+  // el admin. El cajero solo agrega: no quita líneas, no baja cantidades ni
+  // precios. El backend responde PAID_ITEMS_LOCKED igual; esto evita que
+  // arme un cambio que no va a poder guardar.
+  const paidLock =
+    !isOwnerOrAdmin &&
+    !itemsLocked &&
+    (log?.paymentStatus === 'paid' || log?.paymentStatus === 'partial' || (log?.amountPaid ?? 0) > 0);
+  const lineLocked = (savedQty: number | undefined) => paidLock && savedQty !== undefined;
   // Facturado sí es un candado de verdad: cambiar precios exigiría nota de
   // crédito y una factura nueva.
   const priceLocked = itemsLocked;
@@ -223,6 +237,7 @@ export function EditServiceLogDialog({ log, open, onClose }: Props) {
             productName: it.label,
             qty:         it.qty,
             unitPrice:   it.unitPrice,
+            savedQty:    it.qty,
           })),
       );
       setLineItems(
@@ -244,6 +259,7 @@ export function EditServiceLogDialog({ log, open, onClose }: Props) {
             unitPrice:         it.unitPrice,
             basePrice:         it.unitPrice,
             availableVariants: [],
+            savedQty:          it.qty,
           };
         })
       );
@@ -259,6 +275,7 @@ export function EditServiceLogDialog({ log, open, onClose }: Props) {
         unitPrice:         log.priceCharged,
         basePrice:         log.priceCharged,
         availableVariants: [],
+        savedQty:          1,
       }]);
     } else {
       setProductLines([]);
@@ -479,6 +496,11 @@ export function EditServiceLogDialog({ log, open, onClose }: Props) {
                     Facturado · solo lectura
                   </span>
                 )}
+                {paidLock && (
+                  <span className="ml-2 inline-flex items-center gap-1 rounded-full bg-[var(--warning-100)] px-2 py-0.5 text-[10.5px] font-semibold uppercase tracking-[0.05em] text-[var(--warning-700)]">
+                    Cobrado · solo agregar
+                  </span>
+                )}
               </Label>
               {lineItems.length > 0 && (
                 <span
@@ -530,7 +552,10 @@ export function EditServiceLogDialog({ log, open, onClose }: Props) {
                           disabled={itemsLocked}
                           onChange={(e) =>
                             handleUpdateLineItem(it.key, {
-                              qty: Math.max(1, Number(e.target.value) || 1),
+                              qty: Math.max(
+                                lineLocked(it.savedQty) ? it.savedQty! : 1,
+                                Number(e.target.value) || 1,
+                              ),
                             })
                           }
                           className="h-8 w-16 text-center"
@@ -538,14 +563,14 @@ export function EditServiceLogDialog({ log, open, onClose }: Props) {
                         />
                         <MoneyInput
                           value={it.unitPrice}
-                          disabled={priceLocked}
+                          disabled={priceLocked || lineLocked(it.savedQty)}
                           onChange={(unitPrice) =>
                             handleUpdateLineItem(it.key, { unitPrice })
                           }
                           className="h-8 w-24"
                           aria-label="Precio unitario"
                         />
-                        {!itemsLocked && (
+                        {!itemsLocked && !lineLocked(it.savedQty) && (
                           <button
                             type="button"
                             onClick={() => handleRemoveLineItem(it.key)}
@@ -623,7 +648,10 @@ export function EditServiceLogDialog({ log, open, onClose }: Props) {
                         disabled={itemsLocked}
                         onChange={(e) =>
                           handleUpdateProductLine(it.productId, {
-                            qty: Math.max(1, Number(e.target.value) || 1),
+                            qty: Math.max(
+                              lineLocked(it.savedQty) ? it.savedQty! : 1,
+                              Number(e.target.value) || 1,
+                            ),
                           })
                         }
                         className="h-8 w-16 text-center"
@@ -631,14 +659,14 @@ export function EditServiceLogDialog({ log, open, onClose }: Props) {
                       />
                       <MoneyInput
                         value={it.unitPrice}
-                        disabled={priceLocked}
+                        disabled={priceLocked || lineLocked(it.savedQty)}
                         onChange={(unitPrice) =>
                           handleUpdateProductLine(it.productId, { unitPrice })
                         }
                         className="h-8 w-24"
                         aria-label={`Precio de ${it.productName}`}
                       />
-                      {!itemsLocked && (
+                      {!itemsLocked && !lineLocked(it.savedQty) && (
                         <button
                           type="button"
                           onClick={() => handleRemoveProductLine(it.productId)}

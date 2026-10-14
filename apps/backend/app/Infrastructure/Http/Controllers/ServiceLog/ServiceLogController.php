@@ -830,6 +830,13 @@ class ServiceLogController extends Controller
             return $problema;
         }
 
+        // Lo que ya se cobró lo corrige el dueño, no el cajero: el total y el
+        // servicio de la fila son la otra puerta a los ítems.
+        if (($request->has('price_charged') || $request->has('service_id'))
+            && $this->paidItemsLockedFor($request, $serviceLog)) {
+            return $this->paidItemsLockedResponse();
+        }
+
         // price_charged is the ticket total. Staff may edit everything else on
         // the row (employee, método de pago, notas) but not the money.
         if ($request->has('price_charged') && !$this->may($request, StaffPrivileges::PRICE)) {
@@ -992,6 +999,13 @@ class ServiceLogController extends Controller
         $items  = $request->input('items');
         $userId = $request->user()?->id;
 
+        // Antes que el motivo de precio: a un cajero que baja un precio ya
+        // cobrado no hay motivo que lo habilite.
+        if ($this->paidItemsLockedFor($request, $serviceLog)
+            && $this->rewritesPaidLines($serviceLog, $items)) {
+            return $this->paidItemsLockedResponse();
+        }
+
         $totalBefore = (float) $serviceLog->price_charged;
 
         // El desvío se detecta siempre, tenga o no privilegio quien edita.
@@ -1102,6 +1116,81 @@ class ServiceLogController extends Controller
         return new ServiceLogResource(
             $serviceLog->load(['clientResource', 'service', 'attendant', 'items.variant'])
         );
+    }
+
+    /**
+     * ¿Este usuario tiene prohibido reescribir lo que ya se cobró?
+     *
+     * Desde el primer cobro —parcial incluido— los ítems cobrados son de
+     * quien responde por el local. Pedido del dueño de FEDER: el cajero
+     * cobraba y después entraba al registro a cambiar los servicios. Regla
+     * fija, fuera de la matriz, mismo criterio que los asignados de un
+     * completado: quien cobró no puede ser quien reescribe lo cobrado.
+     */
+    private function paidItemsLockedFor(Request $request, ServiceLogModel $log): bool
+    {
+        if ($this->isManager($request)) {
+            return false;
+        }
+
+        return in_array($log->payment_status, ['paid', 'partial'], true)
+            || $this->ledger->paidFor($log) > 0;
+    }
+
+    /**
+     * ¿La lista nueva le saca algo a lo que ya estaba? Una línea que
+     * desaparece, menos unidades, o un precio unitario más bajo. Agregar —un
+     * servicio nuevo, más unidades, un precio más alto— no reescribe nada: es
+     * lo que el dueño pidió que el cajero siga pudiendo hacer.
+     */
+    private function rewritesPaidLines(ServiceLogModel $log, array $items): bool
+    {
+        $antes = $log->items()->get(['ref_id', 'qty', 'unit_price'])
+            ->groupBy('ref_id')
+            ->map(fn ($filas) => [
+                'qty'   => (float) $filas->sum('qty'),
+                'price' => (float) $filas->min('unit_price'),
+            ])
+            ->all();
+
+        // Fila vieja, de antes de las líneas: su servicio está en la fila.
+        if ($antes === [] && $log->service_id) {
+            $antes[$log->service_variant_id ?? $log->service_id] = [
+                'qty' => 1.0, 'price' => (float) $log->price_charged,
+            ];
+        }
+
+        $despues = [];
+        foreach ($items as $it) {
+            if (($ref = $this->lineRefId($it)) === null) {
+                continue;
+            }
+            $despues[$ref] = [
+                'qty'   => ($despues[$ref]['qty'] ?? 0.0) + (float) $it['qty'],
+                'price' => min($despues[$ref]['price'] ?? INF, (float) $it['unit_price']),
+            ];
+        }
+
+        foreach ($antes as $ref => $linea) {
+            $nueva = $despues[$ref] ?? null;
+            if ($nueva === null
+                || $nueva['qty'] < $linea['qty'] - 0.0001
+                || $nueva['price'] < $linea['price'] - 0.005) {
+                return true;
+            }
+        }
+
+        return false;
+    }
+
+    private function paidItemsLockedResponse(): JsonResponse
+    {
+        return response()->json([
+            'error' => [
+                'code'    => 'PAID_ITEMS_LOCKED',
+                'message' => 'Este registro ya tiene un cobro: solo el administrador puede quitar o cambiar sus servicios. Puedes agregar servicios nuevos.',
+            ],
+        ], 403);
     }
 
     /**

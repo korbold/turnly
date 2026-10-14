@@ -201,7 +201,11 @@ test('an edit that declares no reason keeps the one already on the ticket', func
 });
 
 test('editing the items down later also needs a reason', function () {
-    $id = ($this->register)($this->cashier, 15.00)->json('data.id');
+    // Sin cobrar: un ticket cobrado el cajero ya no lo baja ni con motivo
+    // (ServiceLogPaidItemsLockTest).
+    $id = ($this->register)($this->cashier, 15.00, [
+        'payment_method' => null, 'payment_status' => 'unpaid',
+    ])->json('data.id');
 
     ($this->as)($this->cashier)
         ->putJson("/api/v1/service-logs/{$id}/items", [
