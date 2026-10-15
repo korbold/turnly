@@ -33,6 +33,23 @@ interface ServiceComboboxProps {
 
 const money = formatCounterCurrency;
 
+/** Minúsculas y sin tildes: "pulido" encuentra "Pulído" y "FAROS" encuentra "faros". */
+const normalize = (text: string) =>
+  text.normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase();
+
+/**
+ * Cada palabra tecleada tiene que aparecer en el nombre o la descripción, en
+ * cualquier orden: "cera premium" encuentra "Lavado Premium (cera)". El
+ * puntaje por defecto de cmdk es difuso y no ignora tildes, así que una
+ * búsqueda corta traía de todo y una con tilde no traía nada.
+ */
+function filterService(_value: string, search: string, keywords?: string[]) {
+  const words = normalize(search).split(/\s+/).filter(Boolean);
+  if (words.length === 0) return 1;
+  const haystack = normalize((keywords ?? []).join(' '));
+  return words.every((w) => haystack.includes(w)) ? 1 : 0;
+}
+
 /**
  * Service picker built on the cmdk Command primitive — type-ahead
  * filter, keyboard nav, virtualized list. Replaces the 2x4 card grid so
@@ -64,7 +81,12 @@ export function ServiceCombobox({
   }
 
   return (
-    <Popover open={open} onOpenChange={setOpen}>
+    // `modal`: el picker vive dentro de diálogos (Nuevo Servicio, reservas,
+    // editar registro) y el contenido va a un portal fuera del diálogo. Sin su
+    // propio bloqueo de scroll, el del diálogo se come la rueda del mouse
+    // sobre la lista y los servicios de más abajo —los recién creados entre
+    // ellos— no se alcanzan.
+    <Popover open={open} onOpenChange={setOpen} modal>
       <PopoverTrigger asChild>
         <Button
           type="button"
@@ -102,8 +124,8 @@ export function ServiceCombobox({
         className="w-[var(--radix-popover-trigger-width)] p-0"
         align="start"
       >
-        <Command>
-          <CommandInput placeholder={placeholder} />
+        <Command filter={filterService}>
+          <CommandInput placeholder="Buscar servicio por nombre…" />
           <CommandList>
             <CommandEmpty>
               <div className="px-3 py-6 text-center text-[12.5px] text-[var(--fg-muted)]">
@@ -162,7 +184,10 @@ function ServiceRow({
   return (
     <CommandItem
       key={service.id}
-      value={service.name}
+      // El id y no el nombre: cmdk identifica los items por `value`, y dos
+      // servicios con el mismo nombre se pisaban. La búsqueda va por keywords.
+      value={service.id}
+      keywords={[service.name, service.description ?? '']}
       onSelect={onPick}
       className="flex items-center gap-2 cursor-pointer"
     >
