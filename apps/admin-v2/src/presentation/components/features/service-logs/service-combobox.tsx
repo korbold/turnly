@@ -43,7 +43,7 @@ const normalize = (text: string) =>
  * puntaje por defecto de cmdk es difuso y no ignora tildes, así que una
  * búsqueda corta traía de todo y una con tilde no traía nada.
  */
-function filterService(_value: string, search: string, keywords?: string[]) {
+export function filterService(_value: string, search: string, keywords?: string[]) {
   const words = normalize(search).split(/\s+/).filter(Boolean);
   if (words.length === 0) return 1;
   const haystack = normalize((keywords ?? []).join(' '));

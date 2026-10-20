@@ -37,6 +37,7 @@ import { useServiceStaff } from '@/presentation/hooks/use-service-staff';
 import { useTeam } from '@/presentation/hooks/use-team';
 import { useCreateServiceLog } from '@/presentation/hooks/use-service-logs';
 import { ServiceCombobox } from '@/presentation/components/features/service-logs/service-combobox';
+import { ProductCombobox } from '@/presentation/components/features/service-logs/product-combobox';
 import { BankChip } from '@/presentation/components/features/reservations/bank-chip';
 import { ECUADOR_BANKS } from '@/shared/constants/banks';
 import { PRICE_CHANGE_REASONS, REASON_REQUIRES_NOTE } from '@/shared/constants/price-change-reasons';
@@ -342,7 +343,9 @@ export function NewServiceModal({ open, onClose, embedded = false, initialSearch
 
   const { data: servicesData, isLoading: servicesLoading } = useServices();
   // Consumables are burned by a service's recipe, never sold on their own.
-  const { data: productsPage } = useProducts({ perPage: 100, active: true });
+  // Tope alto a propósito: con 100 los de más quedaban fuera del picker sin
+  // aviso, igual que el corte de 50 que tenía Servicios.
+  const { data: productsPage } = useProducts({ perPage: 1000, active: true });
   const sellableProducts = useMemo(
     () => (productsPage?.data ?? []).filter((p) => p.type !== 'consumable'),
     [productsPage],
@@ -988,29 +991,14 @@ export function NewServiceModal({ open, onClose, embedded = false, initialSearch
                 product's price comes from the catalog, not from the
                 vehicle type, so a counter sale can be built before —
                 or without — anyone being selected. */}
-            <Select value="" onValueChange={handleAddProductLine}>
-              <SelectTrigger>
-                <SelectValue
-                  placeholder={
-                    productLines.length === 0 ? 'Agregar producto…' : 'Agregar otro producto…'
-                  }
-                />
-              </SelectTrigger>
-              <SelectContent>
-                {sellableProducts.length === 0 ? (
-                  <div className="px-2 py-3 text-[12.5px] text-[var(--fg-muted)]">
-                    No hay productos vendibles en el inventario.
-                  </div>
-                ) : (
-                  sellableProducts.map((p) => (
-                    <SelectItem key={p.id} value={p.id}>
-                      {p.name} · {formatMoney(p.price)}
-                      {p.stock ? ` · ${p.stock.onHand} en stock` : ''}
-                    </SelectItem>
-                  ))
-                )}
-              </SelectContent>
-            </Select>
+            <ProductCombobox
+              products={sellableProducts}
+              addedIds={productLines.map((it) => it.product.id)}
+              onSelect={(p) => handleAddProductLine(p.id)}
+              placeholder={
+                productLines.length === 0 ? 'Agregar producto…' : 'Agregar otro producto…'
+              }
+            />
 
             {productLines.length > 0 && (
               <ul className="mt-2 space-y-2">
