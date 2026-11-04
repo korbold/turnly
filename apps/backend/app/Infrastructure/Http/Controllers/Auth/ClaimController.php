@@ -69,6 +69,19 @@ class ClaimController extends Controller
             'method'     => ['required', Rule::in(['magic_link', 'qr_pin'])],
         ]);
 
+        // El QR/PIN devuelve el token en la respuesta: aquí, que es público,
+        // cualquiera que supiera un email, teléfono o cédula se quedaba con la
+        // cuenta. Ese PIN solo lo genera el negocio en caja (inviteToApp); por
+        // esta puerta va únicamente el magic link, que llega al correo del dueño.
+        if ($data['method'] !== 'magic_link') {
+            return response()->json([
+                'error' => [
+                    'code'    => 'METHOD_NOT_ALLOWED',
+                    'message' => 'Pide el código QR en la caja del negocio.',
+                ],
+            ], 422);
+        }
+
         $user = $this->findByIdentifier($data['identifier']);
         if (!$user) {
             return response()->json([
@@ -77,19 +90,12 @@ class ClaimController extends Controller
         }
 
         try {
-            if ($data['method'] === 'magic_link') {
-                $this->claim->startMagicLink($user);
-                return response()->json([
-                    'data' => [
-                        'method' => 'magic_link',
-                        'message' => 'Te enviamos un link a ' . $this->maskEmail($user->email),
-                    ],
-                ]);
-            }
-
-            $info = $this->claim->startQrPin($user);
+            $this->claim->startMagicLink($user);
             return response()->json([
-                'data' => array_merge($info, ['method' => 'qr_pin']),
+                'data' => [
+                    'method' => 'magic_link',
+                    'message' => 'Te enviamos un link a ' . $this->maskEmail($user->email),
+                ],
             ]);
         } catch (RuntimeException $e) {
             return response()->json([
@@ -139,7 +145,34 @@ class ClaimController extends Controller
     /** Admin endpoint: generate a QR + PIN for a specific user. */
     public function inviteToApp(Request $request, string $userId): JsonResponse
     {
-        $user = UserModel::findOrFail($userId);
+        // El PIN abre la cuenta entera, así que solo el staff del negocio lo
+        // genera, y solo para un walk-in suyo que nunca reclamó su cuenta. Sin
+        // esto un cliente (o el dueño de otro negocio) pedía el PIN de
+        // cualquier usuario de la plataforma por su id.
+        $tenantId = app('current_tenant_id');
+        $caller = $request->user();
+
+        $isStaff = $caller->is_super_admin
+            || $caller->tenants()
+                ->where('tenants.id', $tenantId)
+                ->wherePivotIn('role', ['owner', 'tenant_admin', 'cashier'])
+                ->wherePivot('is_active', true)
+                ->exists();
+
+        if (!$isStaff) {
+            return response()->json([
+                'error' => ['code' => 'FORBIDDEN', 'message' => 'Solo el personal del negocio puede invitar.'],
+            ], 403);
+        }
+
+        $user = UserModel::whereHas('tenants', fn ($q) => $q->where('tenants.id', $tenantId))
+            ->findOrFail($userId);
+
+        if (!$user->isGhost()) {
+            return response()->json([
+                'error' => ['code' => 'ALREADY_CLAIMED', 'message' => 'Este cliente ya tiene su cuenta.'],
+            ], 422);
+        }
 
         $info = $this->claim->startQrPin(
             user: $user,
