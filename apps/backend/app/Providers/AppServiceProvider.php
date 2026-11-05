@@ -28,7 +28,10 @@ class AppServiceProvider extends ServiceProvider
         // bombing of a single inbox even when the attacker rotates IPs;
         // per-IP catches a script enumerating many emails from one host.
         RateLimiter::for('magic-link-email', function (Request $request) {
-            $email = strtolower(trim((string) $request->input('email', '')));
+            // El login manda `identifier` (correo o usuario). Leer solo `email`
+            // dejaba la clave vacía: un único cupo de 5 por minuto para toda
+            // la plataforma, que cualquiera agotaba y bloqueaba a los demás.
+            $email = strtolower(trim((string) $request->input('identifier', $request->input('email', ''))));
 
             return [
                 Limit::perMinutes(10, 3)->by("magic-link-email:{$email}"),
@@ -44,7 +47,10 @@ class AppServiceProvider extends ServiceProvider
 
         // Login: caps password brute-force per email and per source IP.
         RateLimiter::for('login', function (Request $request) {
-            $email = strtolower(trim((string) $request->input('email', '')));
+            // El login manda `identifier` (correo o usuario). Leer solo `email`
+            // dejaba la clave vacía: un único cupo de 5 por minuto para toda
+            // la plataforma, que cualquiera agotaba y bloqueaba a los demás.
+            $email = strtolower(trim((string) $request->input('identifier', $request->input('email', ''))));
 
             return [
                 Limit::perMinute(5)->by("login-email:{$email}"),
