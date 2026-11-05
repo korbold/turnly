@@ -51,6 +51,27 @@ class ClientResourceController extends Controller
             ->first(fn ($r) => Plate::normalize(Plate::fromData($r->data)) === $buscada);
     }
 
+    /**
+     * El vehículo, si quien pide es su dueño o personal de SU negocio.
+     *
+     * Estas rutas viven fuera de `tenant.member` porque la app del cliente las
+     * usa sin negocio, y sin X-Tenant el TenantScope no filtra nada: con el id
+     * —que `lookup` daba a partir de la placa— cualquiera leía la cédula del
+     * dueño o se quedaba con el auto. Lo ajeno es 404, como en `release`: no
+     * se confirma que el id exista.
+     */
+    private function visibleResource(Request $request, string $id, array $with = []): ClientResourceModel
+    {
+        $resource = ClientResourceModel::with($with)->findOrFail($id);
+        $user = $request->user();
+
+        if ($resource->client_id !== $user->id && !TenantUserModel::isStaff($user, $resource->tenant_id)) {
+            abort(404);
+        }
+
+        return $resource;
+    }
+
     /** El nombre tecleado gana sobre el del usuario ligado: en un walk-in ese
      *  usuario puede ser la cajera. */
     private function resourceClientName(ClientResourceModel $resource): ?string
@@ -70,6 +91,14 @@ class ClientResourceController extends Controller
             $query->where('client_id', $request->user()->id);
         } else {
             $tenantId = CurrentTenant::id();
+
+            // La lista entera del negocio, con nombre y teléfono de cada dueño,
+            // es del mostrador.
+            if (!TenantUserModel::isStaff($request->user(), $tenantId)) {
+                return response()->json([
+                    'error' => ['code' => 'FORBIDDEN', 'message' => 'Solo el personal del negocio ve todos los vehículos.'],
+                ], 403);
+            }
             // When browsing without a search term, hide staff-owned resources
             // so the clients list doesn't surface employees as customers.
             // When actively searching, include all resources so the cashier
@@ -149,6 +178,7 @@ class ClientResourceController extends Controller
     {
         $data = $request->data ?? [];
         $tenantId = CurrentTenant::id();
+        $esPersonal = TenantUserModel::isStaff($request->user(), $tenantId);
 
         // La misma placa no puede entrar dos veces. El formulario ya
         // consultaba `lookup`, pero buscaba en la columna `plate` —que nadie
@@ -162,11 +192,13 @@ class ClientResourceController extends Controller
                     'message'  => 'Esa placa ya está registrada. Usá el vehículo que ya existe.',
                     // Para que el mostrador pueda elegirlo en vez de quedarse
                     // con un "no se puede" que no dice qué hacer.
-                    'existing' => [
+                    // Solo al personal: a un cliente le diría de quién es una
+                    // placa cualquiera.
+                    'existing' => $esPersonal ? [
                         'id'          => $ya->id,
                         'label'       => ClientResourceResource::labelFrom($ya->data),
                         'client_name' => $this->resourceClientName($ya),
-                    ],
+                    ] : null,
                 ],
             ], 422);
         }
@@ -182,15 +214,14 @@ class ClientResourceController extends Controller
         // La regla es "el empleado no se queda con el vehículo", no "nadie se
         // queda con el vehículo": un cliente que registra su auto desde la app
         // sí es su dueño.
-        $clientId = $request->client_id;
+        //
+        // Elegir otro dueño es cosa del mostrador. Un cliente que mandaba
+        // `client_id` ajeno le colgaba un auto a otra persona y, con
+        // `billing_profile`, le pisaba los datos fiscales.
+        $clientId = $esPersonal ? $request->client_id : null;
 
         if (!$clientId) {
             $user = $request->user();
-            $rol = TenantUserModel::where('user_id', $user->id)
-                ->where('tenant_id', $tenantId)
-                ->value('role');
-
-            $esPersonal = in_array($rol, ['owner', 'tenant_admin', 'cashier', 'washer'], true);
 
             if ($esPersonal) {
                 // El nombre puede venir de un campo personalizado o —cuando el
@@ -243,9 +274,9 @@ class ClientResourceController extends Controller
      * form. Falls back to CONSUMIDOR FINAL when none exists. Keyed by
      * client_resource_id (matches the rest of client-resources/{id}/*).
      */
-    public function showBilling(string $id): JsonResponse
+    public function showBilling(Request $request, string $id): JsonResponse
     {
-        $resource = ClientResourceModel::with('client')->findOrFail($id);
+        $resource = $this->visibleResource($request, $id, ['client']);
         $client   = $resource->client;
 
         $profile = $client
@@ -269,7 +300,7 @@ class ClientResourceController extends Controller
      */
     public function updateBilling(Request $request, string $id): JsonResponse
     {
-        $resource = ClientResourceModel::with('client')->findOrFail($id);
+        $resource = $this->visibleResource($request, $id, ['client']);
         $client   = $resource->client;
 
         if (!$client) {
@@ -385,15 +416,16 @@ class ClientResourceController extends Controller
         });
     }
 
-    public function show(string $id): ClientResourceResource
+    public function show(Request $request, string $id): ClientResourceResource
     {
-        $clientResource = ClientResourceModel::with('client')->findOrFail($id);
+        $clientResource = $this->visibleResource($request, $id, ['client']);
         return new ClientResourceResource($clientResource);
     }
 
     public function update(Request $request, string $id): ClientResourceResource
     {
-        $clientResource = ClientResourceModel::findOrFail($id);
+        $clientResource = $this->visibleResource($request, $id);
+        $esPersonal = TenantUserModel::isStaff($request->user(), $clientResource->tenant_id);
 
         if ($this->hasReservations($clientResource)) {
             abort(422, 'No se puede editar un registro que tiene reservas');
@@ -415,9 +447,11 @@ class ClientResourceController extends Controller
         //
         // El nombre escrito, en cambio, sólo promueve un walk-in que estaba
         // suelto: corregir el color de un auto no puede cambiarle el dueño.
-        $clientId = $request->input('client_id');
+        // Cambiar de dueño también es del mostrador: el dueño edita su auto,
+        // no se lo pasa a nadie, y un extraño ya no llega hasta aquí.
+        $clientId = $esPersonal ? $request->input('client_id') : null;
 
-        if (!$clientId && !$clientResource->client_id) {
+        if ($esPersonal && !$clientId && !$clientResource->client_id) {
             $name = $this->extractClientName($data);
             $clientId = $name
                 ? $this->findOrCreateClient($name, CurrentTenant::id())->id
@@ -431,9 +465,9 @@ class ClientResourceController extends Controller
         return new ClientResourceResource($clientResource->load('client'));
     }
 
-    public function destroy(string $id): JsonResponse
+    public function destroy(Request $request, string $id): JsonResponse
     {
-        $clientResource = ClientResourceModel::findOrFail($id);
+        $clientResource = $this->visibleResource($request, $id);
 
         if ($this->hasReservations($clientResource)) {
             return response()->json([
@@ -518,10 +552,9 @@ class ClientResourceController extends Controller
         return \App\Infrastructure\Persistence\Models\ReservationModel::where('client_resource_id', $resource->id)->exists();
     }
 
-    public function history(string $id): JsonResponse
+    public function history(Request $request, string $id): JsonResponse
     {
-        // Ensure the resource exists within the current tenant.
-        ClientResourceModel::findOrFail($id);
+        $this->visibleResource($request, $id);
 
         // Shape both service logs and reservations into the flat contract
         // the client-detail page consumes: { id, type, date, serviceName,

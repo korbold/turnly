@@ -12,6 +12,7 @@ use App\Infrastructure\Persistence\Models\ClientResourceModel;
 use App\Infrastructure\Persistence\Models\ManualDebtModel;
 use App\Infrastructure\Persistence\Models\PaymentAllocationModel;
 use App\Infrastructure\Persistence\Models\PaymentModel;
+use App\Infrastructure\Persistence\Models\TenantUserModel;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 
@@ -28,10 +29,17 @@ class DebtController extends Controller
      * pagó?" sin una segunda pantalla — y es la misma estructura que va a
      * consumir el estado de cuenta imprimible cuando exista.
      */
-    public function show(string $id): JsonResponse
+    public function show(Request $request, string $id): JsonResponse
     {
         // findOrFail bajo el TenantScope: la placa de otro tenant es un 404.
         $resource = ClientResourceModel::findOrFail($id);
+
+        // La ruta vive con las del cliente, fuera de `tenant.member`: la deuda
+        // la ve el dueño del auto o el mostrador, no cualquier usuario.
+        if ($resource->client_id !== $request->user()->id && !TenantUserModel::isStaff($request->user(), $resource->tenant_id)) {
+            abort(404);
+        }
+
         $tenantId = CurrentTenant::id();
 
         $items = $this->debts->outstandingFor($tenantId, $resource->id);

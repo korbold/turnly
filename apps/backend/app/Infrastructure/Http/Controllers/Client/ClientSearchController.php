@@ -29,6 +29,7 @@ class ClientSearchController extends Controller
 
         $tenantId = app('current_tenant_id');
         $like = '%' . $q . '%';
+        $phone = preg_replace('/\D+/', '', $q);
 
         $users = UserModel::query()
             ->leftJoin('user_billing_profiles as bp', function ($j) {
@@ -37,11 +38,24 @@ class ClientSearchController extends Controller
             ->leftJoin('tenant_users as tu', function ($j) use ($tenantId) {
                 $j->on('tu.user_id', '=', 'users.id')->where('tu.tenant_id', $tenantId);
             })
-            ->where(function ($w) use ($like) {
-                $w->where('users.name', 'like', $like)
-                    ->orWhere('users.email', 'like', $like)
-                    ->orWhere('users.phone', 'like', $like)
-                    ->orWhere('bp.doc_number', 'like', $like);
+            // Por un pedazo, solo los clientes de este negocio. Al resto de la
+            // plataforma, solo con el dato completo: alcanza para no duplicar
+            // a quien está en el mostrador, y no para listar a todos los
+            // usuarios tecleando "gma".
+            ->where(function ($w) use ($like, $q, $phone) {
+                $w->where(function ($own) use ($like) {
+                    $own->whereNotNull('tu.role')
+                        ->where(function ($f) use ($like) {
+                            $f->where('users.name', 'like', $like)
+                                ->orWhere('users.email', 'like', $like)
+                                ->orWhere('users.phone', 'like', $like)
+                                ->orWhere('bp.doc_number', 'like', $like);
+                        });
+                })
+                    ->orWhere('users.email', $q)
+                    ->orWhere('bp.doc_number', $q)
+                    ->orWhere('users.phone', $q)
+                    ->orWhere('users.phone', $phone ?: 'XXX');
             })
             ->where('users.is_super_admin', false)
             ->select([

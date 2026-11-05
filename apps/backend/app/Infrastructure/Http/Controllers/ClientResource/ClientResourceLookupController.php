@@ -8,6 +8,7 @@ use App\Infrastructure\Http\Support\CurrentTenant;
 use App\Domain\ClientResource\Plate;
 use App\Infrastructure\Http\Controllers\Controller;
 use App\Infrastructure\Persistence\Models\ClientResourceModel;
+use App\Infrastructure\Persistence\Models\TenantUserModel;
 use App\Infrastructure\Persistence\Models\UserModel;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
@@ -24,6 +25,14 @@ class ClientResourceLookupController extends Controller
 {
     public function lookup(Request $request): JsonResponse
     {
+        // Devuelve el id y el dueño de la placa: es del mostrador. La ruta está
+        // en el grupo de la app del cliente, que no exige ser personal.
+        if (!TenantUserModel::isStaff($request->user(), CurrentTenant::id())) {
+            return response()->json([
+                'error' => ['code' => 'FORBIDDEN', 'message' => 'Solo el personal del negocio busca por placa.'],
+            ], 403);
+        }
+
         $plate = trim((string) $request->input('plate', ''));
         if ($plate === '') {
             return response()->json(['data' => null]);

@@ -63,8 +63,10 @@ test('search hides clients of other tenants behind not_linked flag', function ()
 
     $response = $this->actingAs($this->admin)
         ->withHeader('X-Tenant', $this->tenant->slug)
-        ->getJson('/api/v1/clients/search?q=Pedro');
+        ->getJson('/api/v1/clients/search?q=pedro@example.com');
 
+    // De otro negocio solo aparece con el dato completo: por nombre no
+    // (ver ResourceScopeTest), por el correo exacto sí, marcado not_linked.
     $response->assertOk()
         ->assertJsonPath('data.0.tenant_relation', 'not_linked');
 });
