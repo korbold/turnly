@@ -21,11 +21,15 @@ class EnsureTenantMemberMiddleware
 
         $tenantId = app()->has('current_tenant_id') ? app('current_tenant_id') : null;
 
+        // Un `client` también tiene fila en tenant_users —basta con reservar
+        // una vez en la página pública—, pero no es personal: sus rutas son
+        // client/* y client-resources, fuera de este grupo.
         $isMember = $tenantId
             && $user
             && $user->tenants()
                 ->where('tenants.id', $tenantId)
                 ->wherePivot('is_active', true)
+                ->wherePivot('role', '!=', 'client')
                 ->exists();
 
         if (! $isMember) {

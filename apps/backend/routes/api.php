@@ -168,14 +168,14 @@ Route::prefix('v1')->group(function () {
 
             // Tenant billing profile
             Route::get('tenant/billing-profile', [\App\Infrastructure\Http\Controllers\Tenant\BillingProfileController::class, 'show']);
-            Route::patch('tenant/billing-profile', [\App\Infrastructure\Http\Controllers\Tenant\BillingProfileController::class, 'update']);
+            Route::patch('tenant/billing-profile', [\App\Infrastructure\Http\Controllers\Tenant\BillingProfileController::class, 'update'])->middleware('tenant.admin');
             Route::get('tenant/billing-profile/lookup', [\App\Infrastructure\Http\Controllers\Tenant\BillingProfileController::class, 'lookup']);
 
             // Tenant billing cert (SRI electronic invoicing certificate)
-            Route::get('settings/billing-cert', [\App\Infrastructure\Http\Controllers\Tenant\BillingProfileController::class, 'showCert']);
-            Route::post('settings/billing-cert', [\App\Infrastructure\Http\Controllers\Tenant\BillingProfileController::class, 'uploadCert']);
+            Route::get('settings/billing-cert', [\App\Infrastructure\Http\Controllers\Tenant\BillingProfileController::class, 'showCert'])->middleware('tenant.admin');
+            Route::post('settings/billing-cert', [\App\Infrastructure\Http\Controllers\Tenant\BillingProfileController::class, 'uploadCert'])->middleware('tenant.admin');
             // Ambiente SRI + establecimiento / punto de emisión, without re-uploading the .p12
-            Route::put('settings/billing-emission', [\App\Infrastructure\Http\Controllers\Tenant\BillingProfileController::class, 'updateEmission']);
+            Route::put('settings/billing-emission', [\App\Infrastructure\Http\Controllers\Tenant\BillingProfileController::class, 'updateEmission'])->middleware('tenant.admin');
 
             // Reservations
             // NOTE: reservations/available-slots moved to the customer booking
@@ -310,12 +310,12 @@ Route::prefix('v1')->group(function () {
             Route::get('products/{id}/movements', [StockMovementController::class, 'index']);
             Route::post('stock-movements', [StockMovementController::class, 'store']);
 
-            // Users
+            // Users. Equipo y contraseñas: solo dueño o admin (tenant.admin).
             Route::get('users', [UserController::class, 'index']);
-            Route::post('users/invite', [UserController::class, 'store']);
+            Route::post('users/invite', [UserController::class, 'store'])->middleware('tenant.admin');
             Route::get('users/{id}', [UserController::class, 'show']);
-            Route::patch('users/{id}/role', [UserController::class, 'updateRole']);
-            Route::patch('users/{id}/password', [UserController::class, 'resetPassword']);
+            Route::patch('users/{id}/role', [UserController::class, 'updateRole'])->middleware('tenant.admin');
+            Route::patch('users/{id}/password', [UserController::class, 'resetPassword'])->middleware('tenant.admin');
             Route::patch('clients/{id}', [UserController::class, 'updateClient']);
 
             // Client search (dedup walk-in) + claim invite.

@@ -41,7 +41,11 @@ class UserController extends Controller
 
     public function show(string $id): UserResource
     {
-        $user = UserModel::findOrFail($id);
+        $tenantId = app('current_tenant_id');
+
+        $user = UserModel::whereHas('tenants', fn ($q) => $q->where('tenants.id', $tenantId))
+            ->findOrFail($id);
+
         return new UserResource($user);
     }
 
@@ -106,9 +110,25 @@ class UserController extends Controller
             'role' => 'required|in:tenant_admin,cashier,washer,client',
         ]);
 
-        TenantUserModel::where('tenant_id', app('current_tenant_id'))
+        $membership = TenantUserModel::where('tenant_id', app('current_tenant_id'))
             ->where('user_id', $id)
-            ->update(['role' => $request->role]);
+            ->first();
+
+        if (!$membership) {
+            return response()->json([
+                'error' => ['code' => 'NOT_FOUND', 'message' => 'Miembro no encontrado'],
+            ], 404);
+        }
+
+        // Al dueño no lo baja nadie, y nadie se cambia el rol a sí mismo: un
+        // admin que se degrada por error deja al negocio sin quien lo arregle.
+        if ($membership->role === 'owner' || $id === $request->user()->id) {
+            return response()->json([
+                'error' => ['code' => 'FORBIDDEN', 'message' => 'Ese rol no se puede cambiar.'],
+            ], 403);
+        }
+
+        $membership->update(['role' => $request->role]);
 
         return response()->json([
             'data' => ['message' => 'Role updated'],
@@ -125,14 +145,31 @@ class UserController extends Controller
         $tenantId = app('current_tenant_id');
 
         // Only allow resetting passwords of users that belong to the current tenant.
-        $belongs = TenantUserModel::where('tenant_id', $tenantId)
+        $role = TenantUserModel::where('tenant_id', $tenantId)
             ->where('user_id', $id)
-            ->exists();
+            ->value('role');
 
-        if (!$belongs) {
+        if (!$role) {
             return response()->json([
                 'error' => ['code' => 'NOT_FOUND', 'message' => 'Miembro no encontrado'],
             ], 404);
+        }
+
+        // La contraseña es de toda la plataforma, no de este negocio. Solo se
+        // cambia la del personal que existe únicamente aquí: no la del dueño,
+        // no la de un cliente, y no la de alguien que también está en otro
+        // negocio —vincularlo como cliente bastaba para quitarle la cuenta—.
+        $elsewhere = TenantUserModel::where('user_id', $id)
+            ->where('tenant_id', '!=', $tenantId)
+            ->exists();
+
+        if (!in_array($role, ['tenant_admin', 'cashier', 'washer'], true) || $elsewhere) {
+            return response()->json([
+                'error' => [
+                    'code' => 'FORBIDDEN',
+                    'message' => 'Esta persona cambia su contraseña desde «Olvidé mi contraseña».',
+                ],
+            ], 403);
         }
 
         $user = UserModel::findOrFail($id);
